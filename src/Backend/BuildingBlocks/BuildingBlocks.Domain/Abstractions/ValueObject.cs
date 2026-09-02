@@ -3,7 +3,7 @@ namespace BuildingBlocks.Domain.Abstractions;
 /// <summary>
 /// Base class for value objects using structural equality.
 /// </summary>
-public abstract class ValueObject
+public abstract class ValueObject : IEquatable<ValueObject>
 {
     /// <summary>
     /// Gets the components that participate in equality.
@@ -12,15 +12,45 @@ public abstract class ValueObject
     protected abstract IEnumerable<object?> GetEqualityComponents();
 
     /// <inheritdoc />
-    public override bool Equals(object? obj)
+    public bool Equals(ValueObject? other)
     {
-        if (obj is null || obj.GetType() != GetType())
+        if (other is null)
         {
             return false;
         }
 
-        var other = (ValueObject)obj;
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        if (GetType() != other.GetType())
+        {
+            return false;
+        }
+
         return GetEqualityComponents().SequenceEqual(other.GetEqualityComponents());
+    }
+
+    /// <inheritdoc />
+    public override bool Equals(object? obj)
+    {
+        if (obj is null)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(this, obj))
+        {
+            return true;
+        }
+
+        if (obj is not ValueObject other)
+        {
+            return false;
+        }
+
+        return Equals(other);
     }
 
     /// <inheritdoc />

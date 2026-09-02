@@ -22,14 +22,26 @@ public sealed class TenantRepository : ITenantRepository
     }
 
     /// <inheritdoc />
-    public async Task AddAsync(Tenant entity, CancellationToken cancellationToken)
+    public async Task AddAsync(Tenant entity, CancellationToken cancellationToken = default)
     {
         await _masterDbContext.Tenants.AddAsync(entity, cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task<Tenant?> GetByIdAsync(TenantId id, CancellationToken cancellationToken)
+    public Task<Tenant?> GetByIdAsync(TenantId id, CancellationToken cancellationToken = default)
     {
         return _masterDbContext.Tenants.SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public void Update(Tenant entity)
+    {
+        _masterDbContext.Tenants.Update(entity);
+    }
+
+    /// <inheritdoc />
+    public void Remove(Tenant entity)
+    {
+        _masterDbContext.Tenants.Remove(entity);
     }
 }

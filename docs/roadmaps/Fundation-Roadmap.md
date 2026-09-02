@@ -59,11 +59,12 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 
 ### Subfase 2.2: Tipos Base de Domínio (DDD) e Contratos
 
-* **2.2.1 (TDD):** Implementar classes abstratas `Entity<TId>`, `AggregateRoot<TId>` e manipulação desacoplada de `IDomainEvent`.
-* **2.2.2:** Implementar classe base `ValueObject` com sobrecarga de comparadores para garantir igualdade estrutural.
-* **2.2.3:** Definir os contratos genéricos de persistência:
-* `IRepository<TEntity, TId>`
-* `IUnitOfWork` (com método `CommitAsync(CancellationToken cancellationToken)`)
+* **2.2.1 (TDD - Concluído):** Implementar classes abstratas `Entity<TId>`, `AggregateRoot<TId>` e manipulação desacoplada de `IDomainEvent` com metadados `EventId` e `OccurredOnUtc`.
+* **2.2.2 (TDD - Concluído):** Implementar classe base `ValueObject` com `IEquatable<ValueObject>`, sobrecarga de comparadores (`==`, `!=`) e suporte a componentes nulos.
+* **2.2.3 (TDD - Concluído):** Definir os contratos genéricos de persistência:
+  * `IRepository<TEntity, TId>` (com métodos `AddAsync`, `GetByIdAsync`, `Update` e `Remove`, vinculados a agregados e com suporte a `CancellationToken`).
+  * `IUnitOfWork` (com método `CommitAsync(CancellationToken cancellationToken = default)`).
+* **2.2.4 (Documentação Viva - Concluído):** Atualização de `docs/modules/building-blocks.md` e criação do ADR `docs/adr/0005-ddd-base-abstractions-and-persistence-contracts.md`.
 
 ---
 
