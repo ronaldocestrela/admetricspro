@@ -1,0 +1,93 @@
+# ---------------------------------------------
+# .NET build outputs
+# ---------------------------------------------
+[Bb]in/
+[Oo]bj/
+out/
+artifacts/
+publish/
+
+# ---------------------------------------------
+# User-specific IDE files
+# ---------------------------------------------
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.history/
+
+# Keep shareable VS Code settings only
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# ---------------------------------------------
+# NuGet
+# ---------------------------------------------
+*.nupkg
+*.snupkg
+packages/
+!packages/build/
+!packages/repositories.config
+*.nuget.props
+*.nuget.targets
+
+# ---------------------------------------------
+# Test and coverage artifacts
+# ---------------------------------------------
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage-results/
+BenchmarkDotNet.Artifacts/
+
+# ---------------------------------------------
+# Logs and temp files
+# ---------------------------------------------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.swp
+
+# ---------------------------------------------
+# Local DB and runtime data
+# ---------------------------------------------
+*.mdf
+*.ldf
+*.ndf
+*.db
+*.db-shm
+*.db-wal
+
+# ---------------------------------------------
+# Local environment and secrets
+# ---------------------------------------------
+.env
+.env.*
+!.env.example
+secrets.json
+appsettings.*.local.json
+
+# ---------------------------------------------
+# ReSharper
+# ---------------------------------------------
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# ---------------------------------------------
+# OS files
+# ---------------------------------------------
+.DS_Store
+Thumbs.db

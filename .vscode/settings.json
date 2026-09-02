@@ -1,0 +1,11 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "set": true,
+        "printf": true,
+        "dotnet new": true,
+        "dotnet sln": true,
+        "dotnet add": true,
+        "dotnet restore": true,
+        "dotnet build": true
+    }
+}
