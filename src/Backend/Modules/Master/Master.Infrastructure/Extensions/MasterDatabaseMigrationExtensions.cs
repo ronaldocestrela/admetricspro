@@ -1,6 +1,10 @@
+using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Domain.Primitives;
+using Master.Application.Repositories;
 using Master.Application.Services;
 using Master.Infrastructure.Persistence;
+using Master.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -8,10 +12,34 @@ using Microsoft.Extensions.Logging;
 namespace Master.Infrastructure.Extensions;
 
 /// <summary>
-/// Extension methods for registering and applying master database migrations.
+/// Extension methods for registering and applying master database migrations and catalog persistence.
 /// </summary>
 public static class MasterDatabaseMigrationExtensions
 {
+    /// <summary>
+    /// Registers the master catalog database and its related persistence services with connection string.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="connectionString">The master catalog SQL Server connection string.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddMasterCatalog(
+        this IServiceCollection services,
+        string connectionString)
+    {
+        services.AddDbContext<MasterDbContext>(options =>
+        {
+            options.UseSqlServer(connectionString, sqlOptions =>
+            {
+                sqlOptions.MigrationsAssembly(typeof(MasterDbContext).Assembly.FullName);
+            });
+        });
+
+        services.AddScoped<IMasterDatabaseMigrationRunner, MasterDatabaseMigrationRunner>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        return services;
+    }
+
     /// <summary>
     /// Registers the master database migration runner in the service collection.
     /// </summary>

@@ -1,9 +1,11 @@
 using FluentAssertions;
 using IntegrationTests.Infrastructure;
 using Master.Application.Services;
+using Master.Infrastructure.Extensions;
 using Master.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace IntegrationTests;
@@ -55,6 +57,30 @@ public sealed class MasterDatabaseMigrationIntegrationTests
         // Second run: idempotency verification (zero pending migrations, succeeds cleanly)
         var secondResult = await runner.ApplyMigrationsAsync(CancellationToken.None);
         secondResult.IsSuccess.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Verifies that the host extension ApplyMasterDatabaseMigrationsAsync applies pending migrations on the catalog.
+    /// </summary>
+    [Fact]
+    public async Task ApplyMasterDatabaseMigrationsAsync_HostExtension_ShouldApplyMigrationsSuccessfully()
+    {
+        var masterDbName = $"Master_HostMig_{Guid.NewGuid():N}";
+        var masterConnString = WithDatabase(_fixture.ConnectionString, masterDbName);
+        await EnsureDatabaseCreatedAsync(masterConnString);
+
+        var host = Host.CreateDefaultBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddMasterCatalog(masterConnString);
+            })
+            .Build();
+
+        var result = await host.ApplyMasterDatabaseMigrationsAsync(CancellationToken.None);
+        result.IsSuccess.Should().BeTrue();
+
+        await TableShouldExistAsync(masterConnString, "__EFMigrationsHistory");
+        await TableShouldExistAsync(masterConnString, "Tenants");
     }
 
     private static async Task EnsureDatabaseCreatedAsync(string connectionString)

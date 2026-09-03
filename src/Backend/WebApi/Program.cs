@@ -1,3 +1,4 @@
+using Master.Infrastructure.Extensions;
 using WebApi.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,7 +11,25 @@ builder.Services.Configure<RouteOptions>(options =>
 builder.Services.AddControllers();
 builder.Services.AddOpenApiDocumentation();
 
+var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb")
+    ?? "Server=localhost;Database=MasterCatalog;Trusted_Connection=True;TrustServerCertificate=True;";
+
+builder.Services.AddMasterCatalog(masterConnectionString);
+
 var app = builder.Build();
+
+// Executa migrações automáticas do catálogo MasterDb no startup quando habilitado por configuração
+if (app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOnStartup", false))
+{
+    var migrationResult = await app.ApplyMasterDatabaseMigrationsAsync();
+    if (migrationResult.IsFailure)
+    {
+        app.Logger.LogError("Falha ao aplicar migrações do MasterDb: {ErrorCode} - {ErrorMessage}",
+            migrationResult.Error.Code,
+            migrationResult.Error.Description);
+        throw new InvalidOperationException($"Falha ao aplicar migrações do MasterDb: {migrationResult.Error.Description}");
+    }
+}
 
 // Pipeline de middlewares HTTP
 app.UseOpenApiAndScalar();
