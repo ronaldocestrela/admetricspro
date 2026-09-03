@@ -62,10 +62,11 @@ Disponibilização da visualização cadastral completa e controle do ciclo de v
 Parametrização das regras de precificação, cotas estruturais e políticas automatizadas de cobrança e inadimplência.
 
 ### Subfase 3.1: Construtor de Planos e Parametrização de Tiers
-* **3.1.1 (TDD - Red):** Testes unitários para a entidade `SubscriptionPlan` validando limites de assentos (seats), limites de workspaces e teto de verba gerenciada (Ad Spend Cap).
-* **3.1.2 (TDD - Green):** Implementar entidades e agregados de plano com suporte a flags de liberação funcional (White-Label, CNAME próprio, Copiloto de IA).
-* **3.1.3:** Criar repositório `IPlanRepository` e handlers `CreatePlanCommand` e `UpdatePlanCommand`.
-* **3.1.4:** Componente Blazor `PlanBuilder.razor` para cadastro visual de planos pela diretoria.
+* [x] **3.1.1 (TDD - Red):** Testes unitários para a entidade `SubscriptionPlan` validando limites de assentos (seats), limites de workspaces e teto de verba gerenciada (Ad Spend Cap).
+* [x] **3.1.2 (TDD - Green):** Implementar entidades e agregados de plano com suporte a flags de liberação funcional (White-Label, CNAME próprio, Copiloto de IA).
+* [x] **3.1.3:** Criar repositório `IPlanRepository` e handlers `CreatePlanCommand` e `UpdatePlanCommand`.
+* [x] **3.1.4:** Componente Blazor `PlanBuilder.razor` para cadastro visual de planos pela diretoria.
+* [x] **3.1.5 (Documentação Viva):** Criar `docs/modules/backoffice-plans.md` documentando comandos, queries, modelo de Result<T> e endpoints OpenAPI/Scalar.
 
 ### Subfase 3.2: Régua de Inadimplência e Bloqueio Progressivo (Dunning Engine)
 * **3.2.1 (TDD - Red):** Testes unitários validando a política de suspensão progressiva baseada em dias de atraso (D+3: desativação de automações; D+7: bloqueio de relatórios; D+14: bloqueio de login).

@@ -50,6 +50,8 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<IMasterDatabaseMigrationRunner, MasterDatabaseMigrationRunner>();
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<ITenantReadOnlyRepository, TenantReadOnlyRepository>();
+        services.AddScoped<IPlanRepository, PlanRepository>();
+        services.AddScoped<IPlanReadOnlyRepository, PlanReadOnlyRepository>();
         services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;

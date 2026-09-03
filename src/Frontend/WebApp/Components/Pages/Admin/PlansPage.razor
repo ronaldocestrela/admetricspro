@@ -1,0 +1,300 @@
+@page "/admin/plans"
+@using Master.Application.Plans.DTOs
+@using Master.Domain.Tenants
+@using WebApp.Components.Backoffice
+@using WebApp.Models
+@using WebApp.Services
+@inject IPlanManagementService PlanManagementService
+
+<div class="plans-management-page">
+    <div class="page-header">
+        <div class="header-content">
+            <span class="page-category">Backoffice Global &middot; Billing Master</span>
+            <h1 class="page-title">Construtor de Planos & Parametrização de Tiers</h1>
+            <p class="page-description">
+                Gerencie regras de precificação, limites estruturais de cotas (assentos, workspaces, ad spend) e habilitação seletiva de recursos avançados.
+            </p>
+        </div>
+        <div class="header-actions">
+            @if (!_isBuilderOpen)
+            {
+                <button class="btn-new-plan" @onclick="OpenNewPlanModal">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    <span>Novo Plano</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_notificationMessage))
+    {
+        <div class="alert alert-@(_isNotificationError ? "danger" : "success") d-flex align-items-center mb-4" role="alert">
+            <i class="bi @(_isNotificationError ? "bi-exclamation-triangle" : "bi-check-circle") me-2 fs-5"></i>
+            <div>@_notificationMessage</div>
+        </div>
+    }
+
+    @if (_isBuilderOpen)
+    {
+        <div class="mb-4">
+            <PlanBuilder Model="_selectedPlanForEdit"
+                         OnSaveSuccess="HandleSaveSuccess"
+                         OnCancel="HandleCancelBuilder" />
+        </div>
+    }
+
+    <div class="plans-grid-card card shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="bi bi-collection me-2 text-primary"></i>
+                Catálogo de Planos Cadastrados
+            </h5>
+            <span class="badge bg-light text-dark border">
+                Total: @(_plans?.Count ?? 0)
+            </span>
+        </div>
+
+        <div class="card-body p-0">
+            @if (_isLoading)
+            {
+                <div class="p-5 text-center text-muted">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p class="mb-0">Carregando planos de assinatura...</p>
+                </div>
+            }
+            else if (_plans == null || _plans.Count == 0)
+            {
+                <div class="p-5 text-center text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary"></i>
+                    <h6>Nenhum plano cadastrado</h6>
+                    <p class="small text-muted mb-3">Clique em "Novo Plano" para configurar os primeiros tiers comerciais da plataforma.</p>
+                    <button class="btn btn-primary btn-sm" @onclick="OpenNewPlanModal">
+                        Criar Primeiro Plano
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Plano & Tier</th>
+                                <th>Mensalidade</th>
+                                <th>Assentos</th>
+                                <th>Workspaces</th>
+                                <th>Teto Ad Spend</th>
+                                <th>Recursos Habilitados</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var plan in _plans)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">@plan.Name</div>
+                                        <div class="small text-muted">
+                                            <span class="badge bg-secondary">@plan.Tier</span>
+                                            <span class="ms-1 text-truncate d-inline-block" style="max-width: 220px;">@plan.Description</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-dark">R$ @plan.MonthlyPrice.ToString("N2")</div>
+                                        @if (plan.AnnualDiscountPercentage > 0)
+                                        {
+                                            <small class="text-success fw-medium">@plan.AnnualDiscountPercentage% desc. anual</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="bi bi-people me-1"></i> @plan.MaxSeats
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="bi bi-folder me-1"></i> @plan.MaxWorkspaces
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            R$ @plan.MonthlyAdSpendCap.ToString("N0")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @if (plan.HasWhiteLabel)
+                                            {
+                                                <span class="badge bg-info-subtle text-info-emphasis" title="White-Label">WL</span>
+                                            }
+                                            @if (plan.HasCustomCname)
+                                            {
+                                                <span class="badge bg-primary-subtle text-primary-emphasis" title="CNAME Próprio">CNAME</span>
+                                            }
+                                            @if (plan.HasAiCopilot)
+                                            {
+                                                <span class="badge bg-purple-subtle text-purple" title="Copiloto IA">IA</span>
+                                            }
+                                            @if (plan.HasCrossNetworkAutomations)
+                                            {
+                                                <span class="badge bg-success-subtle text-success-emphasis" title="Automações">Auto</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge @(plan.IsActive ? "bg-success" : "bg-secondary")">
+                                            @(plan.IsActive ? "Ativo" : "Inativo")
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button class="btn btn-outline-primary btn-sm" @onclick="() => OpenEditPlanModal(plan)">
+                                            <i class="bi bi-pencil me-1"></i> Editar
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .plans-management-page {
+        padding: 2rem;
+    }
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+    }
+    .page-category {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #0d6efd;
+        letter-spacing: 0.05em;
+    }
+    .page-title {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #1a1e21;
+        margin: 0.25rem 0 0.5rem;
+    }
+    .page-description {
+        color: #6c757d;
+        max-width: 700px;
+        margin-bottom: 0;
+    }
+    .btn-new-plan {
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background-color 0.15s ease-in-out;
+    }
+    .btn-new-plan:hover {
+        background-color: #0b5ed7;
+    }
+    .bg-purple-subtle {
+        background-color: #f3e8ff;
+    }
+    .text-purple {
+        color: #6b21a8;
+    }
+</style>
+
+@code {
+    private IReadOnlyList<PlanDto>? _plans;
+    private bool _isLoading = true;
+    private bool _isBuilderOpen = false;
+    private PlanFormViewModel? _selectedPlanForEdit;
+    private string? _notificationMessage;
+    private bool _isNotificationError;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlansAsync();
+    }
+
+    private async Task LoadPlansAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await PlanManagementService.GetPlansAsync(includeInactive: true);
+            if (result.IsSuccess)
+            {
+                _plans = result.Value;
+            }
+            else
+            {
+                _notificationMessage = result.Error.Description;
+                _isNotificationError = true;
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenNewPlanModal()
+    {
+        _selectedPlanForEdit = new PlanFormViewModel();
+        _isBuilderOpen = true;
+        _notificationMessage = null;
+    }
+
+    private void OpenEditPlanModal(PlanDto plan)
+    {
+        Enum.TryParse<SubscriptionTier>(plan.Tier, out var parsedTier);
+
+        _selectedPlanForEdit = new PlanFormViewModel
+        {
+            PlanId = plan.Id,
+            Name = plan.Name,
+            Description = plan.Description,
+            Tier = parsedTier,
+            MonthlyPrice = plan.MonthlyPrice,
+            AnnualDiscountPercentage = plan.AnnualDiscountPercentage,
+            MaxSeats = plan.MaxSeats,
+            MaxWorkspaces = plan.MaxWorkspaces,
+            MonthlyAdSpendCap = plan.MonthlyAdSpendCap,
+            HasWhiteLabel = plan.HasWhiteLabel,
+            HasCustomCname = plan.HasCustomCname,
+            HasAiCopilot = plan.HasAiCopilot,
+            HasCrossNetworkAutomations = plan.HasCrossNetworkAutomations
+        };
+
+        _isBuilderOpen = true;
+        _notificationMessage = null;
+    }
+
+    private async Task HandleSaveSuccess(PlanFormViewModel model)
+    {
+        _isBuilderOpen = false;
+        _selectedPlanForEdit = null;
+        _notificationMessage = $"Plano '{model.Name}' salvo com sucesso!";
+        _isNotificationError = false;
+
+        await LoadPlansAsync();
+    }
+
+    private void HandleCancelBuilder()
+    {
+        _isBuilderOpen = false;
+        _selectedPlanForEdit = null;
+    }
+}

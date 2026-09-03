@@ -147,4 +147,69 @@ public sealed class MasterDbContextModelTests
         createdAtProperty.Should().NotBeNull();
         createdAtProperty!.IsNullable.Should().BeFalse();
     }
+
+    /// <summary>
+    /// Verifies that SubscriptionPlan maps to 'SubscriptionPlans' table with primary key.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldMapSubscriptionPlanToSubscriptionPlansTableWithPrimaryKey()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Master.Domain.Plans.SubscriptionPlan));
+
+        // Assert
+        entityType.Should().NotBeNull();
+        entityType!.GetTableName().Should().Be("SubscriptionPlans");
+
+        var primaryKey = entityType.FindPrimaryKey();
+        primaryKey.Should().NotBeNull();
+        primaryKey!.Properties.Should().ContainSingle(p => p.Name == nameof(Master.Domain.Plans.SubscriptionPlan.Id));
+    }
+
+    /// <summary>
+    /// Verifies that SubscriptionPlan name has a unique index and max length of 100.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldConfigureSubscriptionPlanNameWithUniqueIndexAndMaxLength100()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Master.Domain.Plans.SubscriptionPlan))!;
+        var nameProperty = entityType.FindProperty(nameof(Master.Domain.Plans.SubscriptionPlan.Name));
+
+        // Assert
+        nameProperty.Should().NotBeNull();
+        nameProperty!.IsNullable.Should().BeFalse();
+        nameProperty.GetMaxLength().Should().Be(100);
+
+        var index = entityType.GetIndexes().FirstOrDefault(i => i.Properties.Any(p => p.Name == nameof(Master.Domain.Plans.SubscriptionPlan.Name)));
+        index.Should().NotBeNull();
+        index!.IsUnique.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Verifies that owned navigation Limits and Features are mapped properly to columns.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldConfigureSubscriptionPlanOwnedLimitsAndFeatures()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Master.Domain.Plans.SubscriptionPlan))!;
+
+        var limitsNavigation = entityType.FindNavigation(nameof(Master.Domain.Plans.SubscriptionPlan.Limits));
+        var featuresNavigation = entityType.FindNavigation(nameof(Master.Domain.Plans.SubscriptionPlan.Features));
+
+        // Assert
+        limitsNavigation.Should().NotBeNull();
+        featuresNavigation.Should().NotBeNull();
+
+        var limitsEntityType = limitsNavigation!.TargetEntityType;
+        var featuresEntityType = featuresNavigation!.TargetEntityType;
+
+        limitsEntityType.FindProperty(nameof(Master.Domain.Plans.PlanLimits.MaxSeats)).Should().NotBeNull();
+        featuresEntityType.FindProperty(nameof(Master.Domain.Plans.PlanFeatures.HasWhiteLabel)).Should().NotBeNull();
+    }
 }
+

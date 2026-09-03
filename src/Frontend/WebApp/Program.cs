@@ -18,6 +18,7 @@ builder.Services.AddMasterApplication();
 
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
 builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
+builder.Services.AddScoped<IPlanManagementService, PlanManagementService>();
 
 var app = builder.Build();
 

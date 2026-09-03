@@ -1,3 +1,4 @@
+using Master.Domain.Plans;
 using Master.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,11 @@ public sealed class MasterDbContext : DbContext
     /// Gets the tenant catalog set.
     /// </summary>
     public DbSet<Tenant> Tenants => Set<Tenant>();
+
+    /// <summary>
+    /// Gets the subscription plans catalog set.
+    /// </summary>
+    public DbSet<SubscriptionPlan> Plans => Set<SubscriptionPlan>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
