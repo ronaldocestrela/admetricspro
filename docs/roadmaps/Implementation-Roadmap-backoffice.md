@@ -96,9 +96,10 @@ Permite que técnicos de suporte acessem o ambiente do tenant para reproduzir in
 Controle centralizado da saúde das integrações com Meta, Google, Bing e TikTok Ads, cotas e liberação de recursos.
 
 ### Subfase 5.1: Monitor de Rate Limits e Alertas Preventivos
-* **5.1.1 (TDD - Red):** Testes unitários para o agregador `ApiQuotaTracker` validando emissão de alertas quando o consumo atinge 80% do teto.
-* **5.1.2 (TDD - Green):** Implementar rastreamento em memória/persistência de consumo para Meta Graph API, Google Ads API, TikTok Marketing API e Bing Ads API.
-* **5.1.3:** Painel em Blazor `ApiHealthDashboard.razor` com indicadores visuais de tokens vencidos ou desconectados nos tenants.
+* [x] **5.1.1 (TDD - Red):** Testes unitários para o agregador `ApiQuotaTracker` validando emissão de alertas quando o consumo atinge 80% do teto.
+* [x] **5.1.2 (TDD - Green):** Implementar rastreamento em memória/persistência de consumo para Meta Graph API, Google Ads API, TikTok Marketing API e Bing Ads API.
+* [x] **5.1.3:** Painel em Blazor `ApiHealthDashboard.razor` com indicadores visuais de tokens vencidos ou desconectados nos tenants.
+* [x] **5.1.4 (Documentação Viva):** Especificações em `docs/modules/backoffice-api-health.md` e ADR `docs/adr/0014-api-quota-monitoring-and-health-tracking.md`.
 
 ### Subfase 5.2: Sistema de Feature Flags e Kill Switches Operacionais
 * **5.2.1 (TDD - Red):** Testes unitários para o serviço `IFeatureFlagService` com suporte a rollout percentual e liberação por lista de tenants.

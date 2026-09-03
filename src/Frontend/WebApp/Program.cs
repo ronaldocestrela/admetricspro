@@ -19,6 +19,7 @@ builder.Services.AddMasterApplication();
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
 builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
 builder.Services.AddScoped<IPlanManagementService, PlanManagementService>();
+builder.Services.AddScoped<IApiHealthClientService, ApiHealthClientService>();
 builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
 builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client =>
 {

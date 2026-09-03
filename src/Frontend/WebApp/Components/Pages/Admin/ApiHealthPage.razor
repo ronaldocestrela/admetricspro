@@ -1,0 +1,58 @@
+@page "/admin/api-health"
+@using WebApp.Components.Backoffice
+
+<PageTitle>Saúde das APIs &amp; Rate Limits | Backoffice SuperAdmin</PageTitle>
+
+<div class="api-health-page">
+    <div class="page-header">
+        <div class="header-content">
+            <span class="page-category">Backoffice Global &middot; Hub de Monitoramento de APIs</span>
+            <h1 class="page-title">Saúde das APIs &amp; Rate Limits</h1>
+            <p class="page-description">
+                Monitoramento preventivo em tempo real de consumo de cotas (Meta, Google, TikTok, Bing) e governança da validade de credenciais OAuth dos inquilinos.
+            </p>
+        </div>
+    </div>
+
+    <ApiHealthDashboard />
+</div>
+
+<style>
+.api-health-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.page-header {
+    background: #0f172a;
+    border-bottom: 1px solid #1e293b;
+    padding: 2rem 2.5rem;
+}
+
+.page-category {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.075em;
+    color: #38bdf8;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #f8fafc;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.025em;
+}
+
+.page-description {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    margin: 0;
+    max-width: 800px;
+    line-height: 1.5;
+}
+</style>

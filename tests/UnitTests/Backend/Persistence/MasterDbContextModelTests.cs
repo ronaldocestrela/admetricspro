@@ -276,5 +276,60 @@ public sealed class MasterDbContextModelTests
         isImpersonatedProp.Should().NotBeNull();
         isImpersonatedProp!.IsNullable.Should().BeFalse();
     }
+
+    /// <summary>
+    /// Verifies that ApiQuotaTracker maps to ApiQuotaTrackers table with primary key and unique Platform index.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldMapApiQuotaTrackerToApiQuotaTrackersTableWithPrimaryKeyAndUniqueIndex()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Master.Domain.Integrations.ApiQuotaTracker));
+
+        // Assert
+        entityType.Should().NotBeNull();
+        entityType!.GetTableName().Should().Be("ApiQuotaTrackers");
+
+        var primaryKey = entityType.FindPrimaryKey();
+        primaryKey.Should().NotBeNull();
+        primaryKey!.Properties.Should().ContainSingle(p => p.Name == nameof(Master.Domain.Integrations.ApiQuotaTracker.Id));
+
+        var platformProp = entityType.FindProperty(nameof(Master.Domain.Integrations.ApiQuotaTracker.Platform));
+        platformProp.Should().NotBeNull();
+        platformProp!.IsNullable.Should().BeFalse();
+
+        var index = entityType.GetIndexes().FirstOrDefault(i => i.Properties.Any(p => p.Name == nameof(Master.Domain.Integrations.ApiQuotaTracker.Platform)));
+        index.Should().NotBeNull();
+        index!.IsUnique.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Verifies that TenantApiConnection maps to TenantApiConnections table with composite indexes.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldMapTenantApiConnectionToTenantApiConnectionsTableWithIndexes()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Master.Domain.Integrations.TenantApiConnection));
+
+        // Assert
+        entityType.Should().NotBeNull();
+        entityType!.GetTableName().Should().Be("TenantApiConnections");
+
+        var primaryKey = entityType.FindPrimaryKey();
+        primaryKey.Should().NotBeNull();
+        primaryKey!.Properties.Should().ContainSingle(p => p.Name == nameof(Master.Domain.Integrations.TenantApiConnection.Id));
+
+        var tenantIdProp = entityType.FindProperty(nameof(Master.Domain.Integrations.TenantApiConnection.TenantId));
+        tenantIdProp.Should().NotBeNull();
+        tenantIdProp!.IsNullable.Should().BeFalse();
+
+        var statusProp = entityType.FindProperty(nameof(Master.Domain.Integrations.TenantApiConnection.Status));
+        statusProp.Should().NotBeNull();
+        statusProp!.IsNullable.Should().BeFalse();
+    }
 }
+
 

@@ -1,0 +1,345 @@
+@using Master.Application.Integrations.DTOs
+@using Master.Domain.Integrations
+@using WebApp.Services
+@inject IApiHealthClientService ApiHealthService
+
+<div class="api-health-dashboard">
+    @if (_isLoading && _overview is null)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando telemetria e métricas de quotas das APIs...</p>
+        </div>
+    }
+    else if (_overview is not null)
+    {
+        <!-- 1. Quotas & Rate Limits Section -->
+        <section class="section-quotas">
+            <div class="section-header">
+                <div class="title-group">
+                    <h2 class="section-title">Monitor de Rate Limits &amp; Quotas Operacionais</h2>
+                    <span class="section-subtitle">Acompanhamento contínuo de consumo com trava preventiva de 80%</span>
+                </div>
+                <button class="btn-refresh" @onclick="LoadDataAsync" disabled="@_isLoading">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="@(_isLoading ? "spinning" : "")">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    <span>Atualizar</span>
+                </button>
+            </div>
+
+            <div class="quotas-grid">
+                @foreach (var quota in _overview.PlatformQuotas)
+                {
+                    var isWarning = quota.AlertLevel == QuotaAlertLevel.Warning;
+                    var isCritical = quota.AlertLevel == QuotaAlertLevel.Critical || quota.AlertLevel == QuotaAlertLevel.Exceeded;
+                    var statusClass = isCritical ? "quota-critical" : isWarning ? "quota-warning" : "quota-normal";
+
+                    <div class="quota-card @statusClass">
+                        <div class="card-header">
+                            <div class="platform-meta">
+                                <span class="platform-icon @GetPlatformCssClass(quota.Platform)">
+                                    @GetPlatformInitials(quota.Platform)
+                                </span>
+                                <div class="platform-names">
+                                    <h3 class="platform-name">@quota.PlatformName</h3>
+                                    <span class="window-badge">Janela: @FormatWindowDuration(quota.WindowDuration)</span>
+                                </div>
+                            </div>
+                            @if (isCritical)
+                            {
+                                <span class="badge-quota-warning badge-critical">🚨 CRÍTICO (95%+)</span>
+                            }
+                            else if (isWarning)
+                            {
+                                <span class="badge-quota-warning">⚠️ ALERTA PREVENTIVO (80%+)</span>
+                            }
+                        </div>
+
+                        <div class="gauge-display">
+                            <div class="gauge-value">
+                                <span class="percentage-number">@quota.UsagePercentage.ToString("F1")%</span>
+                                <span class="consumption-text">
+                                    @quota.CurrentConsumption.ToString("N0") / @quota.MaxLimit.ToString("N0") ops
+                                </span>
+                            </div>
+
+                            <div class="progress-track">
+                                <div class="progress-bar @(isCritical ? "bar-critical" : isWarning ? "bar-warning" : "bar-normal")"
+                                     style="width: @(Math.Min(quota.UsagePercentage, 100.0))%">
+                                </div>
+                                <div class="threshold-marker threshold-80" title="Limiar de Alerta Preventivo (80%)"></div>
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <span class="last-sync">Última atualização: @quota.LastUpdatedUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+                            <span class="status-pill @statusClass">@GetAlertLevelLabel(quota.AlertLevel)</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <!-- 2. KPIs de Conectividade de Tokens -->
+        <section class="section-kpis">
+            <div class="kpi-card kpi-total">
+                <div class="kpi-info">
+                    <span class="kpi-label">Total de Integrações</span>
+                    <span class="kpi-value">@_overview.TotalConnections</span>
+                </div>
+                <div class="kpi-icon blue">🌐</div>
+            </div>
+
+            <div class="kpi-card kpi-connected">
+                <div class="kpi-info">
+                    <span class="kpi-label">Tokens Ativos &amp; Saudáveis</span>
+                    <span class="kpi-value">@_overview.ConnectedCount</span>
+                </div>
+                <div class="kpi-icon green">✅</div>
+            </div>
+
+            <div class="kpi-card kpi-expiring">
+                <div class="kpi-info">
+                    <span class="kpi-label">Vencendo em até 7 Dias</span>
+                    <span class="kpi-value">@_overview.ExpiringSoonCount</span>
+                </div>
+                <div class="kpi-icon amber">⏳</div>
+            </div>
+
+            <div class="kpi-card kpi-issues">
+                <div class="kpi-info">
+                    <span class="kpi-label">Expirados ou Revogados</span>
+                    <span class="kpi-value">@(_overview.ExpiredCount + _overview.RevokedOrDisconnectedCount)</span>
+                </div>
+                <div class="kpi-icon red">⚠️</div>
+            </div>
+        </section>
+
+        <!-- 3. Tabela de Conexões dos Inquilinos -->
+        <section class="section-connections">
+            <div class="connections-header">
+                <div>
+                    <h2 class="section-title">Saúde das Credenciais OAuth por Inquilino</h2>
+                    <span class="section-subtitle">Rastreamento preventivo de vencimento de tokens nos tenants</span>
+                </div>
+
+                <div class="filters-group">
+                    <select class="filter-select" @onchange="OnPlatformFilterChanged">
+                        <option value="">Todas as Plataformas</option>
+                        <option value="1">Meta Ads</option>
+                        <option value="2">Google Ads</option>
+                        <option value="3">TikTok Ads</option>
+                        <option value="4">Bing Ads</option>
+                    </select>
+
+                    <select class="filter-select" @onchange="OnStatusFilterChanged">
+                        <option value="">Todos os Status</option>
+                        <option value="0">Conectado</option>
+                        <option value="1">Vencendo em Breve (D-7)</option>
+                        <option value="2">Expirado</option>
+                        <option value="3">Revogado</option>
+                        <option value="4">Desconectado</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="connections-table-wrapper">
+                <table class="connections-table">
+                    <thead>
+                        <tr>
+                            <th>Inquilino</th>
+                            <th>Plataforma</th>
+                            <th>Conta de Anúncios</th>
+                            <th>Status do Token</th>
+                            <th>Expiração Estimada</th>
+                            <th>Última Sincronização</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_filteredConnections.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" class="empty-message">Nenhuma conexão de API localizada com os filtros ativos.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var conn in _filteredConnections)
+                            {
+                                <tr class="connection-row">
+                                    <td class="col-tenant">
+                                        <span class="tenant-name">@conn.TenantName</span>
+                                    </td>
+                                    <td class="col-platform">
+                                        <span class="platform-tag @GetPlatformCssClass(conn.Platform)">
+                                            @conn.PlatformName
+                                        </span>
+                                    </td>
+                                    <td class="col-account">
+                                        <div class="account-details">
+                                            <span class="account-name">@conn.AccountName</span>
+                                            <span class="account-id">@conn.AccountIdentifier</span>
+                                        </div>
+                                    </td>
+                                    <td class="col-status">
+                                        @switch (conn.Status)
+                                        {
+                                            case ApiConnectionStatus.Connected:
+                                                <span class="badge-status badge-status-connected">Conectado</span>
+                                                break;
+                                            case ApiConnectionStatus.ExpiringSoon:
+                                                <span class="badge-status badge-status-expiring">Vence em breve</span>
+                                                break;
+                                            case ApiConnectionStatus.Expired:
+                                                <span class="badge-status badge-status-expired">Expirado</span>
+                                                break;
+                                            case ApiConnectionStatus.Revoked:
+                                                <span class="badge-status badge-status-revoked">Revogado</span>
+                                                break;
+                                            default:
+                                                <span class="badge-status badge-status-disconnected">Desconectado</span>
+                                                break;
+                                        }
+                                        @if (!string.IsNullOrEmpty(conn.ErrorMessage))
+                                        {
+                                            <span class="conn-error-hint" title="@conn.ErrorMessage">⚠️</span>
+                                        }
+                                    </td>
+                                    <td class="col-expires">
+                                        @if (conn.TokenExpiresAtUtc.HasValue)
+                                        {
+                                            <span>@conn.TokenExpiresAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Não expira</span>
+                                        }
+                                    </td>
+                                    <td class="col-sync">
+                                        @if (conn.LastSyncAtUtc.HasValue)
+                                        {
+                                            <span>@conn.LastSyncAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Pendente</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private ApiHealthOverviewDto? _overview;
+    private IReadOnlyList<TenantApiConnectionDto> _allConnections = new List<TenantApiConnectionDto>();
+    private List<TenantApiConnectionDto> _filteredConnections = new();
+
+    private AdPlatform? _selectedPlatform;
+    private ApiConnectionStatus? _selectedStatus;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var overviewResult = await ApiHealthService.GetOverviewAsync();
+            if (overviewResult.IsSuccess)
+            {
+                _overview = overviewResult.Value;
+            }
+
+            var connectionsResult = await ApiHealthService.GetConnectionsAsync(_selectedPlatform, _selectedStatus);
+            if (connectionsResult.IsSuccess)
+            {
+                _allConnections = connectionsResult.Value;
+                ApplyLocalFilters();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnPlatformFilterChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        _selectedPlatform = string.IsNullOrEmpty(val) ? null : Enum.Parse<AdPlatform>(val);
+        ApplyLocalFilters();
+    }
+
+    private void OnStatusFilterChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        _selectedStatus = string.IsNullOrEmpty(val) ? null : Enum.Parse<ApiConnectionStatus>(val);
+        ApplyLocalFilters();
+    }
+
+    private void ApplyLocalFilters()
+    {
+        var query = _allConnections.AsEnumerable();
+
+        if (_selectedPlatform.HasValue)
+        {
+            query = query.Where(c => c.Platform == _selectedPlatform.Value);
+        }
+
+        if (_selectedStatus.HasValue)
+        {
+            query = query.Where(c => c.Status == _selectedStatus.Value);
+        }
+
+        _filteredConnections = query.ToList();
+    }
+
+    private static string GetPlatformCssClass(AdPlatform platform) => platform switch
+    {
+        AdPlatform.Meta => "platform-meta",
+        AdPlatform.Google => "platform-google",
+        AdPlatform.TikTok => "platform-tiktok",
+        AdPlatform.Bing => "platform-bing",
+        _ => "platform-default"
+    };
+
+    private static string GetPlatformInitials(AdPlatform platform) => platform switch
+    {
+        AdPlatform.Meta => "M",
+        AdPlatform.Google => "G",
+        AdPlatform.TikTok => "TT",
+        AdPlatform.Bing => "B",
+        _ => "?"
+    };
+
+    private static string FormatWindowDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 24)
+            return $"{duration.TotalDays:0} dias";
+        if (duration.TotalHours >= 1)
+            return $"{duration.TotalHours:0} hora{(duration.TotalHours > 1 ? "s" : "")}";
+        return $"{duration.TotalMinutes:0} min";
+    }
+
+    private static string GetAlertLevelLabel(QuotaAlertLevel level) => level switch
+    {
+        QuotaAlertLevel.Normal => "Operação Normal",
+        QuotaAlertLevel.Warning => "Alerta 80%+",
+        QuotaAlertLevel.Critical => "Crítico (95%+)",
+        QuotaAlertLevel.Exceeded => "Cota Esgotada",
+        _ => level.ToString()
+    };
+}

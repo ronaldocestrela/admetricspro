@@ -59,6 +59,9 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<Master.Application.Auditing.IMasterAuditRepository, MasterAuditRepository>();
         services.AddScoped<Master.Application.Auditing.IMasterAuditService, Master.Application.Auditing.MasterAuditService>();
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(Master.Application.Auditing.AuditImpersonationBehavior<,>));
+        services.AddScoped<Master.Application.Integrations.Repositories.IApiQuotaRepository, ApiQuotaRepository>();
+        services.AddScoped<Master.Application.Integrations.Repositories.ITenantApiConnectionRepository, TenantApiConnectionRepository>();
+        services.AddScoped<Master.Application.Integrations.Services.IApiQuotaTrackerService, Master.Infrastructure.Integrations.InMemoryApiQuotaTracker>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

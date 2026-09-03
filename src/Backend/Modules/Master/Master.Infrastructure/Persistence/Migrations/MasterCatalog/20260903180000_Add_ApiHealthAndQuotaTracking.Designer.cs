@@ -4,6 +4,7 @@ using Master.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog;
 
 [DbContext(typeof(MasterDbContext))]
-partial class MasterDbContextModelSnapshot : ModelSnapshot
+[Migration("20260903180000_Add_ApiHealthAndQuotaTracking")]
+partial class Add_ApiHealthAndQuotaTracking
 {
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
@@ -284,26 +287,37 @@ partial class MasterDbContextModelSnapshot : ModelSnapshot
 
                 b.Property<string>("Cnpj")
                     .IsRequired()
-                    .HasMaxLength(14)
-                    .HasColumnType("nvarchar(14)");
-
-                b.Property<string>("CompanyName")
-                    .IsRequired()
-                    .HasMaxLength(200)
-                    .HasColumnType("nvarchar(200)");
+                    .HasMaxLength(18)
+                    .HasColumnType("nvarchar(18)");
 
                 b.Property<DateTime>("CreatedAtUtc")
                     .HasColumnType("datetime2");
 
+                b.Property<string>("CustomDomain")
+                    .HasMaxLength(255)
+                    .HasColumnType("nvarchar(255)");
+
+                b.Property<string>("DatabaseConnectionString")
+                    .IsRequired()
+                    .HasMaxLength(1000)
+                    .HasColumnType("nvarchar(1000)");
+
+                b.Property<string>("DatabaseName")
+                    .IsRequired()
+                    .HasMaxLength(128)
+                    .HasColumnType("nvarchar(128)");
+
                 b.Property<string>("DunningStage")
                     .IsRequired()
+                    .ValueGeneratedOnAdd()
                     .HasMaxLength(30)
-                    .HasColumnType("nvarchar(30)");
+                    .HasColumnType("nvarchar(30)")
+                    .HasDefaultValue("None");
 
-                b.Property<string>("EncryptedConnectionString")
+                b.Property<string>("Name")
                     .IsRequired()
-                    .HasMaxLength(2000)
-                    .HasColumnType("nvarchar(2000)");
+                    .HasMaxLength(200)
+                    .HasColumnType("nvarchar(200)");
 
                 b.Property<DateTime?>("PaymentDueDateUtc")
                     .HasColumnType("datetime2");
@@ -313,23 +327,29 @@ partial class MasterDbContextModelSnapshot : ModelSnapshot
                     .HasMaxLength(30)
                     .HasColumnType("nvarchar(30)");
 
-                b.Property<DateTime?>("SubscriptionExpiresAtUtc")
-                    .HasColumnType("datetime2");
-
                 b.Property<string>("Subdomain")
                     .IsRequired()
-                    .HasMaxLength(80)
-                    .HasColumnType("nvarchar(80)");
+                    .HasMaxLength(63)
+                    .HasColumnType("nvarchar(63)");
 
-                b.Property<string>("Tier")
-                    .IsRequired()
-                    .HasMaxLength(30)
-                    .HasColumnType("nvarchar(30)");
+                b.Property<DateTime?>("SuspendedAtUtc")
+                    .HasColumnType("datetime2");
+
+                b.Property<string>("SuspensionReason")
+                    .HasMaxLength(500)
+                    .HasColumnType("nvarchar(500)");
+
+                b.Property<DateTime?>("UpdatedAtUtc")
+                    .HasColumnType("datetime2");
 
                 b.HasKey("Id");
 
                 b.HasIndex("Cnpj")
                     .IsUnique();
+
+                b.HasIndex("CustomDomain")
+                    .IsUnique()
+                    .HasFilter("[CustomDomain] IS NOT NULL");
 
                 b.HasIndex("Subdomain")
                     .IsUnique();

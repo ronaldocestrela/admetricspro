@@ -52,7 +52,7 @@ public class AppSidebarTests : BunitTestBase
 
         // Assert
         var navLinks = cut.FindAll("a.nav-link-item");
-        navLinks.Should().HaveCount(6);
+        navLinks.Should().HaveCount(7);
 
         var linkTexts = navLinks.Select(link => link.TextContent.Trim()).ToList();
         linkTexts.Should().Contain("Dashboard Geral");
@@ -61,5 +61,6 @@ public class AppSidebarTests : BunitTestBase
         linkTexts.Should().Contain("Regras & Automações");
         linkTexts.Should().Contain("Relatórios Cross-Platform");
         linkTexts.Should().Contain("Configurações White-Label");
+        linkTexts.Should().Contain("Saúde das APIs (Rate Limits)");
     }
 }

@@ -1,4 +1,5 @@
 using Master.Domain.Auditing;
+using Master.Domain.Integrations;
 using Master.Domain.Plans;
 using Master.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +39,16 @@ public sealed class MasterDbContext : DbContext
     /// Gets the master audit logs catalog set.
     /// </summary>
     public DbSet<MasterAuditEntry> AuditLogs => Set<MasterAuditEntry>();
+
+    /// <summary>
+    /// Gets the API rate limit quota trackers catalog set.
+    /// </summary>
+    public DbSet<ApiQuotaTracker> ApiQuotaTrackers => Set<ApiQuotaTracker>();
+
+    /// <summary>
+    /// Gets the tenant ad platform integration connections catalog set.
+    /// </summary>
+    public DbSet<TenantApiConnection> TenantApiConnections => Set<TenantApiConnection>();
 
     /// <inheritdoc />
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
