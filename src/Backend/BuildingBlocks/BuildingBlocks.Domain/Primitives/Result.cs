@@ -1,8 +1,11 @@
+using System.Text.Json.Serialization;
+
 namespace BuildingBlocks.Domain.Primitives;
 
 /// <summary>
 /// Represents the outcome of an operation without a return payload.
 /// </summary>
+[JsonConverter(typeof(ResultJsonConverterFactory))]
 public class Result
 {
     /// <summary>
@@ -85,6 +88,7 @@ public class Result
 /// Represents the outcome of an operation with a return payload.
 /// </summary>
 /// <typeparam name="TValue">Payload type.</typeparam>
+[JsonConverter(typeof(ResultJsonConverterFactory))]
 public sealed class Result<TValue> : Result
 {
     private readonly TValue? _value;

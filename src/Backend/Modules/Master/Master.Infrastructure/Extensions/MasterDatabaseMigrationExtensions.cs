@@ -53,6 +53,8 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<IPlanReadOnlyRepository, PlanReadOnlyRepository>();
         services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
+        services.AddScoped<IImpersonationSessionRepository, ImpersonationSessionRepository>();
+        services.AddScoped<IImpersonationTokenService, JwtImpersonationTokenService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

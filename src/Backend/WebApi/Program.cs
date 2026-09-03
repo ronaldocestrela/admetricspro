@@ -1,3 +1,4 @@
+using BuildingBlocks.Infrastructure.Security;
 using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
 using WebApi.Extensions;
@@ -17,6 +18,11 @@ var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb
 
 builder.Services.AddMasterCatalog(masterConnectionString);
 builder.Services.AddMasterApplication();
+builder.Services.AddSecurityServices();
+builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
+{
+    builder.Configuration.GetSection(Master.Infrastructure.Services.ImpersonationJwtOptions.SectionName).Bind(options);
+});
 builder.Services.AddDunningBackgroundService(options =>
 {
     builder.Configuration.GetSection(Master.Infrastructure.Services.DunningOptions.SectionName).Bind(options);

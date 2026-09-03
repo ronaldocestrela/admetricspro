@@ -80,9 +80,9 @@ Parametrização das regras de precificação, cotas estruturais e políticas au
 Permite que técnicos de suporte acessem o ambiente do tenant para reproduzir incidentes de forma totalmente auditável.
 
 ### Subfase 4.1: Emissão e Validação de Tokens de Impersonation
-* **4.1.1 (TDD - Red):** Testes unitários para o `ImpersonateTenantCommand` exigindo justificativa obrigatória e número de ticket do suporte.
-* **4.1.2 (TDD - Green):** Implementar o gerador de token JWT contextual contendo claims especiais: `IsImpersonated=true`, `OriginalSuperAdminId` e `TenantId` de destino.
-* **4.1.3:** Inclusão da política de segurança que oculta dados bancários e dados de faturamento durante o modo impersonation.
+* [x] **4.1.1 (TDD - Red):** Testes unitários para o `ImpersonateTenantCommand` exigindo justificativa obrigatória e número de ticket do suporte.
+* [x] **4.1.2 (TDD - Green):** Implementar o gerador de token JWT contextual contendo claims especiais: `IsImpersonated=true`, `OriginalSuperAdminId` e `TenantId` de destino.
+* [x] **4.1.3:** Inclusão da política de segurança que oculta dados bancários e dados de faturamento durante o modo impersonation.
 
 ### Subfase 4.2: Auditoria Master e Sinalização Visual
 * **4.2.1 (TDD - Red):** Testes de integração validando que toda operação realizada no modo impersonation recebe a tag `performed_by_superadmin` na tabela de auditoria global imutável.

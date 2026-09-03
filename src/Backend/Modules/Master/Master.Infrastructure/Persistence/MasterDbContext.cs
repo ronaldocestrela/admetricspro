@@ -28,6 +28,11 @@ public sealed class MasterDbContext : DbContext
     /// </summary>
     public DbSet<SubscriptionPlan> Plans => Set<SubscriptionPlan>();
 
+    /// <summary>
+    /// Gets the impersonation sessions catalog set.
+    /// </summary>
+    public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

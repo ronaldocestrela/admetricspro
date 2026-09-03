@@ -211,5 +211,33 @@ public sealed class MasterDbContextModelTests
         limitsEntityType.FindProperty(nameof(Master.Domain.Plans.PlanLimits.MaxSeats)).Should().NotBeNull();
         featuresEntityType.FindProperty(nameof(Master.Domain.Plans.PlanFeatures.HasWhiteLabel)).Should().NotBeNull();
     }
+
+    /// <summary>
+    /// Verifies that ImpersonationSession entity maps to the 'ImpersonationSessions' table with appropriate primary key.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldMapImpersonationSessionToTableWithPrimaryKeyAndIndexes()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Master.Domain.Tenants.ImpersonationSession));
+
+        // Assert
+        entityType.Should().NotBeNull();
+        entityType!.GetTableName().Should().Be("ImpersonationSessions");
+
+        var primaryKey = entityType.FindPrimaryKey();
+        primaryKey.Should().NotBeNull();
+        primaryKey!.Properties.Should().ContainSingle(p => p.Name == nameof(Master.Domain.Tenants.ImpersonationSession.Id));
+
+        var tenantIdProp = entityType.FindProperty(nameof(Master.Domain.Tenants.ImpersonationSession.TenantId));
+        tenantIdProp.Should().NotBeNull();
+        tenantIdProp!.IsNullable.Should().BeFalse();
+
+        var ticketProp = entityType.FindProperty(nameof(Master.Domain.Tenants.ImpersonationSession.SupportTicketId));
+        ticketProp.Should().NotBeNull();
+        ticketProp!.IsNullable.Should().BeFalse();
+        ticketProp.GetMaxLength().Should().Be(50);
+    }
 }
 
