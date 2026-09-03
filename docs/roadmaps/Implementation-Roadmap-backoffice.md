@@ -44,10 +44,10 @@ Nesta fase inicial, estabelece-se a infraestrutura de dados para o catálogo cen
 Disponibilização da visualização cadastral completa e controle do ciclo de vida dos assinantes para a equipe interna.
 
 ### Subfase 2.1: Comandos e Consultas de Tenants (Application Layer)
-* **2.1.1 (TDD - Red):** Testes unitários para `CreateTenantCommand`, `SuspendTenantCommand`, `ReactivateTenantCommand` e `GetTenantDetailsQuery`.
-* **2.1.2 (TDD - Green):** Implementar os handlers via `MediatR` no módulo `Master.Application`, retornando `Result<Unit>` ou erros tipados (ex: `Error.Conflict`, `Error.NotFound`).
-* **2.1.3:** Implementar o repositório de consulta `ITenantReadOnlyRepository` otimizado para consultas analíticas do diretório de assinantes.
-* **2.1.4 (Documentação Viva):** Atualizar `docs/modules/backoffice-tenants.md` com os payloads de entrada, saídas e possíveis erros de negócio mapeados.
+* [x] **2.1.1 (TDD - Red):** Testes unitários para `CreateTenantCommand`, `SuspendTenantCommand`, `ReactivateTenantCommand` e `GetTenantDetailsQuery`.
+* [x] **2.1.2 (TDD - Green):** Implementar os handlers via `MediatR` no módulo `Master.Application`, retornando `Result<Unit>` ou erros tipados (ex: `Error.Conflict`, `Error.NotFound`).
+* [x] **2.1.3:** Implementar o repositório de consulta `ITenantReadOnlyRepository` otimizado para consultas analíticas do diretório de assinantes.
+* [x] **2.1.4 (Documentação Viva):** Atualizar `docs/modules/backoffice-tenants.md` com os payloads de entrada, saídas e possíveis erros de negócio mapeados.
 
 ### Subfase 2.2: Interface de Diretório 360º no Blazor Server
 * **2.2.1 (TDD - bUnit):** Escrever testes de componentes para a tabela de listagem de tenants (`TenantsGrid.razor`) com suporte a filtros por status (Ativo, Trial, Inadimplente, Suspenso, Cancelado).

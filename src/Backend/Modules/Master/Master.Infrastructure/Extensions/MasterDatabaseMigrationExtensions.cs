@@ -1,9 +1,11 @@
 using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Domain.Primitives;
+using BuildingBlocks.Infrastructure.Security;
 using Master.Application.Repositories;
 using Master.Application.Services;
 using Master.Infrastructure.Persistence;
 using Master.Infrastructure.Repositories;
+using Master.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -16,15 +18,25 @@ namespace Master.Infrastructure.Extensions;
 /// </summary>
 public static class MasterDatabaseMigrationExtensions
 {
+    private static readonly string DefaultEncryptionKey = Convert.ToBase64String(new byte[32]
+    {
+        1, 2, 3, 4, 5, 6, 7, 8,
+        9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31, 32
+    });
+
     /// <summary>
     /// Registers the master catalog database and its related persistence services with connection string.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="connectionString">The master catalog SQL Server connection string.</param>
+    /// <param name="encryptionKey">Optional AES-256 base64 encryption key.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddMasterCatalog(
         this IServiceCollection services,
-        string connectionString)
+        string connectionString,
+        string? encryptionKey = null)
     {
         services.AddDbContext<MasterDbContext>(options =>
         {
@@ -34,8 +46,11 @@ public static class MasterDatabaseMigrationExtensions
             });
         });
 
+        services.AddSingleton<IEncryptionService>(_ => new AesEncryptionService(encryptionKey ?? DefaultEncryptionKey));
         services.AddScoped<IMasterDatabaseMigrationRunner, MasterDatabaseMigrationRunner>();
         services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<ITenantReadOnlyRepository, TenantReadOnlyRepository>();
+        services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

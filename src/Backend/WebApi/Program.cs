@@ -1,3 +1,4 @@
+using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
 using WebApi.Extensions;
 
@@ -15,6 +16,7 @@ var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb
     ?? "Server=localhost;Database=MasterCatalog;Trusted_Connection=True;TrustServerCertificate=True;";
 
 builder.Services.AddMasterCatalog(masterConnectionString);
+builder.Services.AddMasterApplication();
 
 var app = builder.Build();
 
