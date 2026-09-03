@@ -1,4 +1,5 @@
 using Master.Domain.Auditing;
+using Master.Domain.FeatureFlags;
 using Master.Domain.Integrations;
 using Master.Domain.Plans;
 using Master.Domain.Tenants;
@@ -49,6 +50,11 @@ public sealed class MasterDbContext : DbContext
     /// Gets the tenant ad platform integration connections catalog set.
     /// </summary>
     public DbSet<TenantApiConnection> TenantApiConnections => Set<TenantApiConnection>();
+
+    /// <summary>
+    /// Gets the feature flags and operational kill switches catalog set.
+    /// </summary>
+    public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
 
     /// <inheritdoc />
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

@@ -1,0 +1,58 @@
+@page "/admin/feature-flags"
+@using WebApp.Components.Backoffice
+
+<PageTitle>Feature Flags &amp; Kill Switches | Backoffice SuperAdmin</PageTitle>
+
+<div class="feature-flags-page">
+    <div class="page-header">
+        <div class="header-content">
+            <span class="page-category">Backoffice Global &middot; Governança Operacional</span>
+            <h1 class="page-title">Feature Flags &amp; Disjuntores de Emergência (Kill Switches)</h1>
+            <p class="page-description">
+                Controle centralizado de lançamentos progressivos (*canary releases*), segmentação por inquilinos e congelamento instantâneo do motor de automação cross-network em caso de incidentes operacionais.
+            </p>
+        </div>
+    </div>
+
+    <FeatureFlagsDashboard />
+</div>
+
+<style>
+.feature-flags-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.page-header {
+    background: #0f172a;
+    border-bottom: 1px solid #1e293b;
+    padding: 2rem 2.5rem;
+}
+
+.page-category {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.075em;
+    color: #38bdf8;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.page-title {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: #f8fafc;
+    margin: 0 0 0.75rem 0;
+    letter-spacing: -0.025em;
+}
+
+.page-description {
+    font-size: 1rem;
+    color: #94a3b8;
+    max-width: 850px;
+    margin: 0;
+    line-height: 1.6;
+}
+</style>

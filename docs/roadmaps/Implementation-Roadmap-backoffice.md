@@ -102,9 +102,9 @@ Controle centralizado da saúde das integrações com Meta, Google, Bing e TikTo
 * [x] **5.1.4 (Documentação Viva):** Especificações em `docs/modules/backoffice-api-health.md` e ADR `docs/adr/0014-api-quota-monitoring-and-health-tracking.md`.
 
 ### Subfase 5.2: Sistema de Feature Flags e Kill Switches Operacionais
-* **5.2.1 (TDD - Red):** Testes unitários para o serviço `IFeatureFlagService` com suporte a rollout percentual e liberação por lista de tenants.
-* **5.2.2 (TDD - Green):** Implementação de Kill Switch global que permite congelar o motor de automação cross-network instantaneamente caso uma API terceira apresente instabilidade.
-* **5.2.3 (Documentação Viva):** Documentar catálogo de flags em `docs/modules/backoffice-feature-flags.md`.
+* [x] **5.2.1 (TDD - Red):** Testes unitários para o serviço `IFeatureFlagService` com suporte a rollout percentual determinístico (SHA-256) e liberação por lista de tenants (Allowlist).
+* [x] **5.2.2 (TDD - Green):** Implementação de Kill Switch global e por rede (Meta, Google, TikTok, Bing) congelando automações cross-network com auditoria imutável via `IMasterAuditService` e migração EF Core no `MasterDb`.
+* [x] **5.2.3 (Documentação Viva & Frontend):** Dashboard operacional em Blazor Server (`FeatureFlagsDashboard.razor`), endpoints REST documentados com OpenAPI/Scalar em `docs/modules/backoffice-feature-flags.md` e ADR `docs/adr/0015-feature-flags-and-operational-kill-switches.md`.
 
 ---
 

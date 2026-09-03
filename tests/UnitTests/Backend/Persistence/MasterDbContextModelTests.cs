@@ -330,6 +330,37 @@ public sealed class MasterDbContextModelTests
         statusProp.Should().NotBeNull();
         statusProp!.IsNullable.Should().BeFalse();
     }
+
+    /// <summary>
+    /// Verifies that FeatureFlag entity maps to FeatureFlags table with unique Key index.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldMapFeatureFlagToFeatureFlagsTableWithUniqueKeyIndex()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Master.Domain.FeatureFlags.FeatureFlag));
+
+        // Assert
+        entityType.Should().NotBeNull();
+        entityType!.GetTableName().Should().Be("FeatureFlags");
+
+        var primaryKey = entityType.FindPrimaryKey();
+        primaryKey.Should().NotBeNull();
+        primaryKey!.Properties.Should().ContainSingle(p => p.Name == nameof(Master.Domain.FeatureFlags.FeatureFlag.Id));
+
+        var keyProp = entityType.FindProperty(nameof(Master.Domain.FeatureFlags.FeatureFlag.Key));
+        keyProp.Should().NotBeNull();
+        keyProp!.IsNullable.Should().BeFalse();
+        keyProp.GetMaxLength().Should().Be(100);
+
+        var keyIndex = entityType.GetIndexes().FirstOrDefault(i => i.Properties.Any(p => p.Name == nameof(Master.Domain.FeatureFlags.FeatureFlag.Key)));
+        keyIndex.Should().NotBeNull();
+        keyIndex!.IsUnique.Should().BeTrue();
+
+        var killSwitchIndex = entityType.GetIndexes().FirstOrDefault(i => i.Properties.Any(p => p.Name == nameof(Master.Domain.FeatureFlags.FeatureFlag.IsKillSwitch)));
+        killSwitchIndex.Should().NotBeNull();
+    }
 }
 
 

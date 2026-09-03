@@ -1,0 +1,435 @@
+@using Master.Application.FeatureFlags.DTOs
+@using Master.Domain.FeatureFlags
+@using WebApp.Services
+@inject IFeatureFlagClientService FeatureFlagService
+
+<div class="feature-flags-dashboard">
+    @if (_isLoading && _flags is null)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando catálogo de Feature Flags e Kill Switches...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Alert feedback -->
+        @if (!string.IsNullOrWhiteSpace(_feedbackMessage))
+        {
+            <div class="feedback-banner @(_isFeedbackError ? "feedback-error" : "feedback-success")">
+                <span>@_feedbackMessage</span>
+                <button class="btn-dismiss" @onclick="() => _feedbackMessage = null">×</button>
+            </div>
+        }
+
+        <!-- 1. Emergency Freeze Banner if any kill switch is active -->
+        @if (IsAnyKillSwitchActive)
+        {
+            <div class="freeze-alert-banner">
+                <div class="alert-icon-pulse">🚨</div>
+                <div class="alert-content">
+                    <h3 class="alert-title">DISJUNTOR OPERACIONAL ATIVO — EXECUÇÕES CONGELADAS</h3>
+                    <p class="alert-desc">
+                        Um ou mais Kill Switches de automação foram engatados. As regras de corte de overspending e sincronizações correspondentes estão temporariamente suspensas para mitigar riscos de instabilidade externa.
+                    </p>
+                    <div class="active-switches-tags">
+                        @foreach (var activeSwitch in ActiveKillSwitches)
+                        {
+                            <span class="active-switch-badge">
+                                <strong>@activeSwitch.Name:</strong> @activeSwitch.KillSwitchReason (@activeSwitch.KillSwitchTriggeredBy)
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- 2. Kill Switches Section (Disjuntores Operacionais de Emergência) -->
+        <section class="section-kill-switches">
+            <div class="section-header">
+                <div class="title-group">
+                    <h2 class="section-title">Disjuntores Operacionais de Emergência (Kill Switches)</h2>
+                    <span class="section-subtitle">Travas de corte imediato do motor de automação cross-network e ingestão de dados</span>
+                </div>
+                <button class="btn-refresh" @onclick="LoadFlagsAsync" disabled="@_isLoading">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="@(_isLoading ? "spinning" : "")">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    <span>Atualizar</span>
+                </button>
+            </div>
+
+            <div class="kill-switches-grid">
+                @foreach (var ks in KillSwitches)
+                {
+                    var isEngaged = ks.IsEnabled;
+                    <div class="kill-switch-card @(isEngaged ? "card-engaged" : "card-idle")">
+                        <div class="card-top">
+                            <div class="ks-badge @(isEngaged ? "badge-danger" : "badge-safe")">
+                                @(isEngaged ? "🛑 CONGELADO / INTERROMPIDO" : "⚡ OPERANDO NORMALMENTE")
+                            </div>
+                            <span class="ks-key">@ks.Key</span>
+                        </div>
+
+                        <h3 class="ks-name">@ks.Name</h3>
+                        <p class="ks-desc">@ks.Description</p>
+
+                        @if (isEngaged)
+                        {
+                            <div class="ks-active-details">
+                                <div class="detail-row">
+                                    <span class="label">Motivo:</span>
+                                    <span class="value">@ks.KillSwitchReason</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Por:</span>
+                                    <span class="value">@ks.KillSwitchTriggeredBy</span>
+                                </div>
+                                @if (ks.KillSwitchActivatedAtUtc.HasValue)
+                                {
+                                    <div class="detail-row">
+                                        <span class="label">Acionado em:</span>
+                                        <span class="value">@ks.KillSwitchActivatedAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="card-footer">
+                            @if (isEngaged)
+                            {
+                                <button class="btn-ks-restore" @onclick="() => PromptDeactivateKillSwitch(ks)">
+                                    Desativar Disjuntor &amp; Restaurar
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn-ks-freeze" @onclick="() => PromptActivateKillSwitch(ks)">
+                                    🚨 Congelar Subsistema
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <!-- 3. Functional Feature Flags (Staged Rollout & Segmentação) -->
+        <section class="section-feature-flags">
+            <div class="section-header">
+                <div class="title-group">
+                    <h2 class="section-title">Catálogo de Feature Flags Funcionais</h2>
+                    <span class="section-subtitle">Lançamentos progressivos (*canary*), controle determinístico por inquilino e chaveamento</span>
+                </div>
+                <div class="search-box">
+                    <input type="text"
+                           placeholder="Filtrar por nome ou chave..."
+                           value="@_searchTerm"
+                           @oninput="HandleSearchInput"
+                           class="search-input" />
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="flags-table">
+                    <thead>
+                        <tr>
+                            <th>Recurso / Chave</th>
+                            <th>Estratégia</th>
+                            <th>Status</th>
+                            <th>Rollout Progressivo</th>
+                            <th>Última Alteração</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (FilteredFunctionalFlags.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    Nenhuma feature flag funcional localizada para o filtro informado.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var flag in FilteredFunctionalFlags)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="flag-identity">
+                                            <span class="flag-name">@flag.Name</span>
+                                            <span class="flag-key">@flag.Key</span>
+                                            <span class="flag-desc">@flag.Description</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="targeting-badge targeting-@flag.TargetingType.ToString().ToLowerInvariant()">
+                                            @GetTargetingLabel(flag.TargetingType)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox"
+                                                   checked="@flag.IsEnabled"
+                                                   @onchange="(e) => ToggleFlagAsync(flag, (bool)e.Value!)" />
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </td>
+                                    <td>
+                                        @if (flag.TargetingType == FeatureFlagTargetingType.PercentageRollout)
+                                        {
+                                            <div class="rollout-control">
+                                                <input type="range"
+                                                       min="0"
+                                                       max="100"
+                                                       value="@flag.RolloutPercentage"
+                                                       @onchange="(e) => UpdateRolloutPercentageAsync(flag, int.Parse(e.Value!.ToString()!))"
+                                                       class="rollout-slider" />
+                                                <span class="rollout-value">@flag.RolloutPercentage%</span>
+                                            </div>
+                                        }
+                                        else if (flag.TargetingType == FeatureFlagTargetingType.TenantList)
+                                        {
+                                            <span class="allowlist-count">
+                                                @flag.TargetTenantIds.Count inquilinos autorizados
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="global-text">Global (100% dos inquilinos)</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="meta-column">
+                                            <span>@flag.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                            <span class="meta-user">@flag.UpdatedBy</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+
+    <!-- Modal de Confirmação para Kill Switches -->
+    <ConfirmActionDialog
+        IsOpen="@_isConfirmDialogOpen"
+        Title="@_confirmDialogTitle"
+        Message="@_confirmDialogMessage"
+        RequireReason="true"
+        IsProcessing="@_isProcessingDialog"
+        OnConfirm="@HandleConfirmDialogAction"
+        OnCancel="@CloseConfirmDialog" />
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private IReadOnlyList<FeatureFlagDto>? _flags;
+    private string _searchTerm = string.Empty;
+    private string? _feedbackMessage;
+    private bool _isFeedbackError;
+
+    // Confirm dialog state
+    private bool _isConfirmDialogOpen;
+    private string _confirmDialogTitle = string.Empty;
+    private string _confirmDialogMessage = string.Empty;
+    private bool _isProcessingDialog;
+    private FeatureFlagDto? _targetKillSwitch;
+    private bool _isActivatingTarget;
+
+    private IEnumerable<FeatureFlagDto> KillSwitches =>
+        _flags?.Where(f => f.IsKillSwitch) ?? Enumerable.Empty<FeatureFlagDto>();
+
+    private IEnumerable<FeatureFlagDto> ActiveKillSwitches =>
+        KillSwitches.Where(k => k.IsEnabled);
+
+    private bool IsAnyKillSwitchActive => ActiveKillSwitches.Any();
+
+    private List<FeatureFlagDto> FilteredFunctionalFlags
+    {
+        get
+        {
+            var functional = _flags?.Where(f => !f.IsKillSwitch) ?? Enumerable.Empty<FeatureFlagDto>();
+            if (string.IsNullOrWhiteSpace(_searchTerm))
+                return functional.ToList();
+
+            var term = _searchTerm.Trim().ToLowerInvariant();
+            return functional
+                .Where(f => f.Name.ToLowerInvariant().Contains(term) || f.Key.ToLowerInvariant().Contains(term))
+                .ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFlagsAsync();
+    }
+
+    private async Task LoadFlagsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await FeatureFlagService.GetAllFlagsAsync();
+            if (result.IsSuccess)
+            {
+                _flags = result.Value;
+            }
+            else
+            {
+                ShowFeedback(result.Error.Description, isError: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowFeedback($"Erro ao carregar flags: {ex.Message}", isError: true);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void HandleSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void PromptActivateKillSwitch(FeatureFlagDto ks)
+    {
+        _targetKillSwitch = ks;
+        _isActivatingTarget = true;
+        _confirmDialogTitle = $"Congelar Subsistema: {ks.Name}";
+        _confirmDialogMessage = $"Você está prestes a armar o disjuntor de segurança operacional para '{ks.Key}'. Todas as automações ou tarefas associadas serão IMEDIATAMENTE congeladas.";
+        _isConfirmDialogOpen = true;
+    }
+
+    private void PromptDeactivateKillSwitch(FeatureFlagDto ks)
+    {
+        _targetKillSwitch = ks;
+        _isActivatingTarget = false;
+        _confirmDialogTitle = $"Restaurar Subsistema: {ks.Name}";
+        _confirmDialogMessage = $"Você está prestes a desativar o Kill Switch '{ks.Key}'. A execução normal de automações será restabelecida.";
+        _isConfirmDialogOpen = true;
+    }
+
+    private async Task HandleConfirmDialogAction(string reason)
+    {
+        if (_targetKillSwitch == null)
+            return;
+
+        _isProcessingDialog = true;
+        try
+        {
+            if (_isActivatingTarget)
+            {
+                var result = await FeatureFlagService.ActivateKillSwitchAsync(
+                    _targetKillSwitch.Key,
+                    reason,
+                    "backoffice-admin");
+
+                if (result.IsSuccess)
+                {
+                    ShowFeedback($"Disjuntor '{_targetKillSwitch.Name}' foi ATIVADO com sucesso. Subsistema congelado.", isError: false);
+                    await LoadFlagsAsync();
+                }
+                else
+                {
+                    ShowFeedback(result.Error.Description, isError: true);
+                }
+            }
+            else
+            {
+                var result = await FeatureFlagService.DeactivateKillSwitchAsync(
+                    _targetKillSwitch.Key,
+                    reason,
+                    "backoffice-admin");
+
+                if (result.IsSuccess)
+                {
+                    ShowFeedback($"Disjuntor '{_targetKillSwitch.Name}' foi DESATIVADO. Operações normalizadas.", isError: false);
+                    await LoadFlagsAsync();
+                }
+                else
+                {
+                    ShowFeedback(result.Error.Description, isError: true);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowFeedback($"Erro na operação: {ex.Message}", isError: true);
+        }
+        finally
+        {
+            _isProcessingDialog = false;
+            CloseConfirmDialog();
+        }
+    }
+
+    private void CloseConfirmDialog()
+    {
+        _isConfirmDialogOpen = false;
+        _targetKillSwitch = null;
+    }
+
+    private async Task ToggleFlagAsync(FeatureFlagDto flag, bool isEnabled)
+    {
+        var result = await FeatureFlagService.UpdateFlagAsync(
+            flag.Id,
+            isEnabled,
+            flag.TargetingType,
+            flag.RolloutPercentage,
+            flag.TargetTenantIds,
+            "backoffice-admin");
+
+        if (result.IsSuccess)
+        {
+            ShowFeedback($"Feature flag '{flag.Name}' {(isEnabled ? "habilitada" : "desabilitada")}.", isError: false);
+            await LoadFlagsAsync();
+        }
+        else
+        {
+            ShowFeedback(result.Error.Description, isError: true);
+        }
+    }
+
+    private async Task UpdateRolloutPercentageAsync(FeatureFlagDto flag, int percentage)
+    {
+        var result = await FeatureFlagService.UpdateFlagAsync(
+            flag.Id,
+            flag.IsEnabled,
+            FeatureFlagTargetingType.PercentageRollout,
+            percentage,
+            flag.TargetTenantIds,
+            "backoffice-admin");
+
+        if (result.IsSuccess)
+        {
+            ShowFeedback($"Rollout de '{flag.Name}' ajustado para {percentage}%.", isError: false);
+            await LoadFlagsAsync();
+        }
+        else
+        {
+            ShowFeedback(result.Error.Description, isError: true);
+        }
+    }
+
+    private void ShowFeedback(string message, bool isError)
+    {
+        _feedbackMessage = message;
+        _isFeedbackError = isError;
+    }
+
+    private static string GetTargetingLabel(FeatureFlagTargetingType type) => type switch
+    {
+        FeatureFlagTargetingType.Global => "Global",
+        FeatureFlagTargetingType.PercentageRollout => "Rollout %",
+        FeatureFlagTargetingType.TenantList => "Allowlist",
+        _ => type.ToString()
+    };
+}
