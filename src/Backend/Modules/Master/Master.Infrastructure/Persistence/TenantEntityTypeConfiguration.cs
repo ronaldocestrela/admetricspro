@@ -54,6 +54,16 @@ public sealed class TenantEntityTypeConfiguration : IEntityTypeConfiguration<Ten
             .IsRequired();
 
         builder
+            .Property(tenant => tenant.Tier)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
+        builder
+            .Property(tenant => tenant.SubscriptionExpiresAtUtc)
+            .IsRequired(false);
+
+        builder
             .Property(tenant => tenant.CreatedAtUtc)
             .IsRequired();
     }

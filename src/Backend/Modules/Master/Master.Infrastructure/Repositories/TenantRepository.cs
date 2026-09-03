@@ -34,6 +34,13 @@ public sealed class TenantRepository : ITenantRepository
     }
 
     /// <inheritdoc />
+    public Task<Tenant?> GetBySubdomainAsync(string subdomain, CancellationToken cancellationToken = default)
+    {
+        var normalized = subdomain.Trim().ToLowerInvariant();
+        return _masterDbContext.Tenants.SingleOrDefaultAsync(t => t.Subdomain == normalized, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public void Update(Tenant entity)
     {
         _masterDbContext.Tenants.Update(entity);

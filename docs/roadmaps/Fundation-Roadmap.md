@@ -16,9 +16,9 @@ Este documento detalha o passo a passo técnico da **Fase 0 (Fundação)** para 
 
 ---
 
-## Fase 1: Setup Estrutural da Solução, Governança e Tooling
+## Fase 1: Setup Estrutural da Solução, Governança e Tooling [Concluída]
 
-### Subfase 1.1: Criação da Solução e Diretórios Físicos
+### Subfase 1.1: Criação da Solução e Diretórios Físicos [Concluída]
 * **1.1.1:** Inicializar a solução principal em .NET 10 LTS (`AdMetricsPro.sln`).
 * **1.1.2:** Criar as separações físicas de diretórios:
   * `src/Backend/`
@@ -39,11 +39,11 @@ Este documento detalha o passo a passo técnico da **Fase 0 (Fundação)** para 
 
 ---
 
-## Fase 2: BuildingBlocks (Kernel Compartilhado) via TDD
+## Fase 2: BuildingBlocks (Kernel Compartilhado) via TDD [Concluída]
 
 Construção das abstrações essenciais e tipos utilitários sem acoplamento externo.
 
-### Subfase 2.1: Implementação do Padrão `Result<T>` e Erros Fortemente Tipados
+### Subfase 2.1: Implementação do Padrão `Result<T>` e Erros Fortemente Tipados [Concluída]
 
 * **2.1.1 (TDD - Red):** Escrever testes unitários em `tests/UnitTests/Backend/ResultTests.cs` cobrindo:
 * Criação de instâncias de sucesso contendo payload.
@@ -57,7 +57,7 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 * `Error.Unauthorized(code, description)`
 * **2.1.4 (Documentação Viva):** Adicionar comentários XML com `<summary>`, `<param>` e `<returns>` em todas as classes de resultado e erros.
 
-### Subfase 2.2: Tipos Base de Domínio (DDD) e Contratos
+### Subfase 2.2: Tipos Base de Domínio (DDD) e Contratos [Concluída]
 
 * **2.2.1 (TDD - Concluído):** Implementar classes abstratas `Entity<TId>`, `AggregateRoot<TId>` e manipulação desacoplada de `IDomainEvent` com metadados `EventId` e `OccurredOnUtc`.
 * **2.2.2 (TDD - Concluído):** Implementar classe base `ValueObject` com `IEquatable<ValueObject>`, sobrecarga de comparadores (`==`, `!=`) e suporte a componentes nulos.
@@ -68,9 +68,9 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 
 ---
 
-## Fase 3: Isolamento Multi-Tenant & SQL Server (Database-per-Tenant)
+## Fase 3: Isolamento Multi-Tenant & SQL Server (Database-per-Tenant) [Em andamento]
 
-### Subfase 3.1: Resolução de Tenant Dinâmica
+### Subfase 3.1: Resolução de Tenant Dinâmica [Concluída]
 
 * **3.1.1 (TDD - Concluído):** Escrever testes para o middleware de tenant validando os canais de extração de identidade:
   * Leitura via CNAME/Subdomínio (ex.: `agencia-alfa.app.com` e hosts de desenvolvimento).
@@ -81,9 +81,10 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 
 ### Subfase 3.2: Persistência com EF Core 10 e Catálogo Master
 
-* **3.2.1:** Configurar `MasterDbContext` com a entidade `Tenant` mapeada no SQL Server, contendo chaves, dados de assinatura e credencial de conexão criptografada.
-* **3.2.2:** Implementar serviço de criptografia simétrica AES-256 para gravação segura das Connection Strings dos bancos de inquilino.
-* **3.2.3:** Implementar fábrica dinâmica do `TenantDbContext` (usando `ITenantConnectionResolver`) que altera em tempo de execução a connection string de acordo com o contexto resolvido na requisição.
+* **3.2.1 (TDD - Concluído):** Configurar `MasterDbContext` com a entidade `Tenant` mapeada no SQL Server, contendo chaves, dados de assinatura (`SubscriptionTier`, `SubscriptionExpiresAtUtc`) e credencial de conexão criptografada.
+* **3.2.2 (TDD - Concluído):** Implementar serviço de criptografia simétrica AES-256 (`AesEncryptionService`) para gravação segura das Connection Strings dos bancos de inquilino com cobertura unitária exaustiva.
+* **3.2.3 (TDD - Concluído):** Implementar contrato `ITenantConnectionResolver`, implementação com cache seguro `CachedTenantConnectionResolver` e fábrica dinâmica `ITenantDbContextFactory<TenantDbContext>` para instanciação assíncrona do `TenantDbContext` contextual.
+* **3.2.4 (Documentação Viva - Concluído):** Criação do ADR `docs/adr/0007-tenant-connection-resolver-and-dynamic-dbcontext.md` e atualização de `docs/modules/backoffice-master-db.md` e `docs/modules/building-blocks.md`.
 
 ### Subfase 3.3: Pipeline de Migrações Automáticas
 

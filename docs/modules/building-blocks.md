@@ -230,4 +230,30 @@ Este subsistema gerencia a extração, identificação e propagação do inquili
   - `services.AddMultiTenancy(options => ...)`: Registra os serviços como `Scoped` e estratégias como `Transient`.
   - `app.UseTenantResolution()`: Adiciona o middleware ao pipeline ASP.NET Core.
 
+---
+
+## 9. Persistência Multi-Tenant Dinâmica (Database-per-Tenant)
+
+### 9.1 `ITenantConnectionResolver` (`BuildingBlocks.Application.MultiTenancy`)
+- Contrato central para obter a string de conexão decifrada do banco de dados operacional de cada tenant.
+- Métodos disponíveis:
+  - `Task<Result<string>> ResolveConnectionStringAsync(Guid tenantId, CancellationToken cancellationToken = default);`
+  - `Task<Result<string>> ResolveConnectionStringBySubdomainAsync(string subdomain, CancellationToken cancellationToken = default);`
+  - `Task<Result<string>> ResolveCurrentTenantConnectionStringAsync(CancellationToken cancellationToken = default);`
+  - `void InvalidateCache(Guid tenantId);`
+  - `void InvalidateCacheBySubdomain(string subdomain);`
+
+### 9.2 `CachedTenantConnectionResolver` (`Master.Infrastructure.Services`)
+- Implementa `ITenantConnectionResolver` com cache em memória seguro (`IMemoryCache`), desacoplando as requisições recorrentes do `MasterDb`.
+- Decodifica o payload `EncryptedConnectionString` em repouso com `IEncryptionService` (AES-256-CBC com IV randômico).
+- Retém a string decifrada por até 30 minutos de inatividade (Sliding) e 4 horas absolutas.
+
+### 9.3 `TenantDbContext` & `ITenantDbContextFactory<TContext>` (`BuildingBlocks.Infrastructure.Persistence`)
+- **`TenantDbContext`**: Contexto base para bancos de dados isolados por inquilino, contendo a tabela de verificação `TenantSchemaMarkers`.
+- **`ITenantDbContextFactory<TContext>`**: Fábrica dinâmica que instancia DbContexts operacionais conectando ao banco correto com 100% de suporte assíncrono:
+  - `Task<Result<TContext>> CreateDbContextAsync(CancellationToken cancellationToken = default);`
+  - `Task<Result<TContext>> CreateDbContextAsync(Guid tenantId, CancellationToken cancellationToken = default);`
+- **`ITenantConnectionHolder`**: Armazenamento com escopo de requisição (`Scoped`) para reaproveitamento imediato da connection string no mesmo ciclo HTTP.
+
+
 

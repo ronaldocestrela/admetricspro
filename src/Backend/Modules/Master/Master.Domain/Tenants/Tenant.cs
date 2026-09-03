@@ -8,13 +8,15 @@ namespace Master.Domain.Tenants;
 /// </summary>
 public sealed class Tenant : AggregateRoot<TenantId>
 {
-    private Tenant(TenantId id, string companyName, string cnpj, string subdomain)
+    private Tenant(TenantId id, string companyName, string cnpj, string subdomain, SubscriptionTier tier, DateTime? subscriptionExpiresAtUtc)
         : base(id)
     {
         CompanyName = companyName;
         Cnpj = cnpj;
         Subdomain = subdomain;
         Status = TenantStatus.Active;
+        Tier = tier;
+        SubscriptionExpiresAtUtc = subscriptionExpiresAtUtc;
         CreatedAtUtc = DateTime.UtcNow;
     }
 
@@ -26,6 +28,7 @@ public sealed class Tenant : AggregateRoot<TenantId>
         Subdomain = string.Empty;
         EncryptedConnectionString = string.Empty;
         Status = TenantStatus.Trial;
+        Tier = SubscriptionTier.Trial;
         CreatedAtUtc = DateTime.UtcNow;
     }
 
@@ -55,6 +58,16 @@ public sealed class Tenant : AggregateRoot<TenantId>
     public TenantStatus Status { get; private set; }
 
     /// <summary>
+    /// Gets the tenant subscription tier level.
+    /// </summary>
+    public SubscriptionTier Tier { get; private set; }
+
+    /// <summary>
+    /// Gets the UTC expiration date of the current subscription or trial period.
+    /// </summary>
+    public DateTime? SubscriptionExpiresAtUtc { get; private set; }
+
+    /// <summary>
     /// Gets the UTC creation timestamp.
     /// </summary>
     public DateTime CreatedAtUtc { get; private set; }
@@ -65,8 +78,15 @@ public sealed class Tenant : AggregateRoot<TenantId>
     /// <param name="companyName">Company legal name.</param>
     /// <param name="cnpj">CNPJ digits-only string.</param>
     /// <param name="subdomain">Tenant subdomain.</param>
+    /// <param name="tier">Optional initial subscription tier. Defaults to Trial.</param>
+    /// <param name="subscriptionExpiresAtUtc">Optional subscription expiration date. Defaults to 14 days from now if Trial.</param>
     /// <returns>A successful result with a new tenant or a validation failure.</returns>
-    public static Result<Tenant> Create(string companyName, string cnpj, string subdomain)
+    public static Result<Tenant> Create(
+        string companyName,
+        string cnpj,
+        string subdomain,
+        SubscriptionTier tier = SubscriptionTier.Trial,
+        DateTime? subscriptionExpiresAtUtc = null)
     {
         if (string.IsNullOrWhiteSpace(companyName))
         {
@@ -84,7 +104,8 @@ public sealed class Tenant : AggregateRoot<TenantId>
         }
 
         var normalizedSubdomain = subdomain.Trim().ToLowerInvariant();
-        var tenant = new Tenant(TenantId.New(), companyName.Trim(), cnpj, normalizedSubdomain);
+        var defaultExpiration = subscriptionExpiresAtUtc ?? (tier == SubscriptionTier.Trial ? DateTime.UtcNow.AddDays(14) : null);
+        var tenant = new Tenant(TenantId.New(), companyName.Trim(), cnpj, normalizedSubdomain, tier, defaultExpiration);
         return Result<Tenant>.Success(tenant);
     }
 
@@ -101,6 +122,61 @@ public sealed class Tenant : AggregateRoot<TenantId>
         }
 
         EncryptedConnectionString = encryptedConnectionString;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Upgrades or modifies the tenant's subscription tier.
+    /// </summary>
+    /// <param name="newTier">The target subscription tier.</param>
+    /// <param name="expiresAtUtc">Optional new expiration timestamp in UTC.</param>
+    /// <returns>A success result or validation error.</returns>
+    public Result UpgradeSubscription(SubscriptionTier newTier, DateTime? expiresAtUtc = null)
+    {
+        Tier = newTier;
+        SubscriptionExpiresAtUtc = expiresAtUtc;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Extends the active trial period for the tenant.
+    /// </summary>
+    /// <param name="newExpirationUtc">New expiration timestamp which must be in the future.</param>
+    /// <returns>A success result or validation error.</returns>
+    public Result ExtendTrial(DateTime newExpirationUtc)
+    {
+        if (newExpirationUtc <= DateTime.UtcNow)
+        {
+            return Result.Failure(Error.Validation("Tenant.InvalidExpirationDate", "Trial expiration date must be in the future."));
+        }
+
+        SubscriptionExpiresAtUtc = newExpirationUtc;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Suspends tenant operations.
+    /// </summary>
+    /// <param name="reason">Suspension reason description.</param>
+    /// <returns>A success result or validation error.</returns>
+    public Result Suspend(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return Result.Failure(Error.Validation("Tenant.SuspensionReasonRequired", "Suspension reason is required."));
+        }
+
+        Status = TenantStatus.Suspended;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Reactivates a suspended tenant.
+    /// </summary>
+    /// <returns>A success result.</returns>
+    public Result Reactivate()
+    {
+        Status = TenantStatus.Active;
         return Result.Success();
     }
 }

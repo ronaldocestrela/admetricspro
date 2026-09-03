@@ -8,18 +8,27 @@ Documentar o fluxo da Subfase 1.2 para provisionamento dinamico de banco de tena
 
 Campos principais:
 
-- Id (TenantId)
-- CompanyName
-- Cnpj
-- Subdomain
-- EncryptedConnectionString
-- Status
-- CreatedAtUtc
+- Id (TenantId - GUID fortemente tipado)
+- CompanyName (string, max 200)
+- Cnpj (string, 14 dígitos numéricos, único)
+- Subdomain (string, max 80, único)
+- EncryptedConnectionString (string, max 2000, AES-256)
+- Status (TenantStatus: Trial, Active, Suspended, Cancelled)
+- Tier (SubscriptionTier: Trial, Starter, Pro, Enterprise)
+- SubscriptionExpiresAtUtc (DateTime?, nullable)
+- CreatedAtUtc (DateTime, UTC)
 
-Restricoes:
+Restrições:
 
-- Cnpj unico
-- Subdomain unico
+- Cnpj único
+- Subdomain único
+
+Métodos de Ciclo de Vida:
+
+- `UpgradeSubscription(SubscriptionTier newTier, DateTime? expiresAtUtc)`
+- `ExtendTrial(DateTime newExpirationUtc)`
+- `Suspend(string reason)`
+- `Reactivate()`
 
 ## Fluxo de Provisionamento
 
