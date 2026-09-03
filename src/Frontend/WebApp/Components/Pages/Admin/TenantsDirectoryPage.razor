@@ -1,0 +1,278 @@
+@page "/admin/tenants"
+@using WebApp.Components.Backoffice
+@using WebApp.Models
+@using WebApp.Services
+@inject ITenantDirectoryService TenantDirectoryService
+
+<div class="tenants-directory-page">
+    <div class="page-header">
+        <div class="header-content">
+            <span class="page-category">Backoffice Global &middot; Super Admin</span>
+            <h1 class="page-title">Diretório 360º de Inquilinos</h1>
+            <p class="page-description">
+                Governança centralizada de assinantes, controle do ciclo de vida e monitoramento operacional de bancos dedicados.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-primary" @onclick="LoadTenantsAsync" disabled="@_isLoading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                <span>Atualizar Catálogo</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Banner de Notificação de Operação -->
+    @if (!string.IsNullOrWhiteSpace(_notificationMessage))
+    {
+        <div class="alert-banner alert-@(_isNotificationError ? "error" : "success")">
+            <div class="alert-content">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    @if (_isNotificationError)
+                    {
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    }
+                    else
+                    {
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    }
+                </svg>
+                <span>@_notificationMessage</span>
+            </div>
+            <button class="btn-close-alert" @onclick="ClearNotification">×</button>
+        </div>
+    }
+
+    <!-- Cards de KPI de Governança -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrapper blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <div class="kpi-info">
+                <span class="kpi-label">Total de Inquilinos</span>
+                <span class="kpi-value">@TotalTenantsCount</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon-wrapper green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <div class="kpi-info">
+                <span class="kpi-label">Inquilinos Ativos</span>
+                <span class="kpi-value">@ActiveTenantsCount</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon-wrapper amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <div class="kpi-info">
+                <span class="kpi-label">Suspensos / Em Risco</span>
+                <span class="kpi-value">@SuspendedTenantsCount</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon-wrapper purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+            </div>
+            <div class="kpi-info">
+                <span class="kpi-label">Ad Spend Consolidado</span>
+                <span class="kpi-value">@TotalAdSpend.ToString("C2", new System.Globalization.CultureInfo("pt-BR"))</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Área Principal com Grid e Ficha 360º Drawer -->
+    <div class="directory-layout @(_selectedTenant360 is not null ? "with-details" : "")">
+        <div class="grid-section">
+            <TenantsGrid Tenants="_tenants"
+                         IsLoading="_isLoading"
+                         OnSelectTenant="HandleTenantSelected"
+                         OnSuspendTenant="PromptSuspendTenant"
+                         OnReactivateTenant="HandleReactivateTenant" />
+        </div>
+
+        @if (_selectedTenant360 is not null)
+        {
+            <aside class="details-drawer">
+                <TenantDetailsCard Tenant="_selectedTenant360"
+                                   OnClose="CloseDetails"
+                                   OnSuspendClick="PromptSuspendFromCard"
+                                   OnReactivateClick="HandleReactivateFromCard" />
+            </aside>
+        }
+    </div>
+
+    <!-- Diálogo de Validação Dupla para Suspensão Forçada -->
+    <ConfirmActionDialog IsOpen="_isSuspendDialogOpen"
+                         Title="@($"Suspender Operações: {_tenantToSuspend?.CompanyName}")"
+                         Message="A suspensão interromperá o acesso de todos os usuários deste inquilino, congelando regras de automação e pausando as sincronizações de campanhas."
+                         ExpectedConfirmationText="@(_tenantToSuspend?.Subdomain ?? string.Empty)"
+                         RequireReason="true"
+                         IsProcessing="_isActionProcessing"
+                         OnConfirm="ExecuteSuspendTenant"
+                         OnCancel="CloseSuspendDialog" />
+</div>
+
+@code {
+    private IReadOnlyList<TenantDirectoryItemViewModel> _tenants = Array.Empty<TenantDirectoryItemViewModel>();
+    private Tenant360DetailsViewModel? _selectedTenant360;
+    private TenantDirectoryItemViewModel? _tenantToSuspend;
+    private bool _isLoading = true;
+    private bool _isSuspendDialogOpen;
+    private bool _isActionProcessing;
+    private string? _notificationMessage;
+    private bool _isNotificationError;
+
+    private int TotalTenantsCount => _tenants.Count;
+    private int ActiveTenantsCount => _tenants.Count(t => string.Equals(t.Status, "Active", StringComparison.OrdinalIgnoreCase));
+    private int SuspendedTenantsCount => _tenants.Count(t => string.Equals(t.Status, "Suspended", StringComparison.OrdinalIgnoreCase) || string.Equals(t.Status, "Delinquent", StringComparison.OrdinalIgnoreCase));
+    private decimal TotalAdSpend => _tenants.Sum(t => t.SunkAdSpend);
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTenantsAsync();
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        _isLoading = true;
+        var result = await TenantDirectoryService.GetTenantsAsync();
+
+        if (result.IsSuccess)
+        {
+            _tenants = result.Value;
+        }
+        else
+        {
+            ShowNotification(result.Error.Description, isError: true);
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task HandleTenantSelected(TenantDirectoryItemViewModel item)
+    {
+        var result = await TenantDirectoryService.GetTenant360DetailsAsync(item.Id);
+        if (result.IsSuccess)
+        {
+            _selectedTenant360 = result.Value;
+        }
+        else
+        {
+            ShowNotification(result.Error.Description, isError: true);
+        }
+    }
+
+    private void CloseDetails()
+    {
+        _selectedTenant360 = null;
+    }
+
+    private void PromptSuspendTenant(TenantDirectoryItemViewModel item)
+    {
+        _tenantToSuspend = item;
+        _isSuspendDialogOpen = true;
+    }
+
+    private void PromptSuspendFromCard(Guid tenantId)
+    {
+        var tenant = _tenants.FirstOrDefault(t => t.Id == tenantId);
+        if (tenant is not null)
+        {
+            PromptSuspendTenant(tenant);
+        }
+    }
+
+    private async Task ExecuteSuspendTenant(string reason)
+    {
+        if (_tenantToSuspend is null) return;
+
+        _isActionProcessing = true;
+        var result = await TenantDirectoryService.SuspendTenantAsync(_tenantToSuspend.Id, reason);
+
+        if (result.IsSuccess)
+        {
+            ShowNotification($"Inquilino '{_tenantToSuspend.CompanyName}' suspenso com sucesso.", isError: false);
+            _isSuspendDialogOpen = false;
+            _selectedTenant360 = null;
+            await LoadTenantsAsync();
+        }
+        else
+        {
+            ShowNotification(result.Error.Description, isError: true);
+        }
+
+        _isActionProcessing = false;
+    }
+
+    private async Task HandleReactivateTenant(TenantDirectoryItemViewModel item)
+    {
+        _isActionProcessing = true;
+        var result = await TenantDirectoryService.ReactivateTenantAsync(item.Id);
+
+        if (result.IsSuccess)
+        {
+            ShowNotification($"Inquilino '{item.CompanyName}' reativado com sucesso.", isError: false);
+            _selectedTenant360 = null;
+            await LoadTenantsAsync();
+        }
+        else
+        {
+            ShowNotification(result.Error.Description, isError: true);
+        }
+
+        _isActionProcessing = false;
+    }
+
+    private async Task HandleReactivateFromCard(Guid tenantId)
+    {
+        var tenant = _tenants.FirstOrDefault(t => t.Id == tenantId);
+        if (tenant is not null)
+        {
+            await HandleReactivateTenant(tenant);
+        }
+    }
+
+    private void CloseSuspendDialog()
+    {
+        _isSuspendDialogOpen = false;
+        _tenantToSuspend = null;
+    }
+
+    private void ShowNotification(string message, bool isError)
+    {
+        _notificationMessage = message;
+        _isNotificationError = isError;
+    }
+
+    private void ClearNotification()
+    {
+        _notificationMessage = null;
+    }
+}

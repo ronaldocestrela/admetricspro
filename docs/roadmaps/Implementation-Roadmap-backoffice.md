@@ -50,9 +50,10 @@ Disponibilização da visualização cadastral completa e controle do ciclo de v
 * [x] **2.1.4 (Documentação Viva):** Atualizar `docs/modules/backoffice-tenants.md` com os payloads de entrada, saídas e possíveis erros de negócio mapeados.
 
 ### Subfase 2.2: Interface de Diretório 360º no Blazor Server
-* **2.2.1 (TDD - bUnit):** Escrever testes de componentes para a tabela de listagem de tenants (`TenantsGrid.razor`) com suporte a filtros por status (Ativo, Trial, Inadimplente, Suspenso, Cancelado).
-* **2.2.2:** Implementar a visualização da ficha completa da empresa: dados fiscais (CNPJ/Razão Social), plano contratado, total de workspaces cadastrados e volume de ad spend sincronizado.
-* **2.2.3:** Desenvolver diálogos de confirmação com validação dupla para ações destrutivas (suspensão forçada e desconexão de tenant).
+* [x] **2.2.1 (TDD - bUnit):** Escrever testes de componentes para a tabela de listagem de tenants (`TenantsGrid.razor`) com suporte a filtros por status (Ativo, Trial, Inadimplente, Suspenso, Cancelado).
+* [x] **2.2.2:** Implementar a visualização da ficha completa da empresa: dados fiscais (CNPJ/Razão Social), plano contratado, total de workspaces cadastrados e volume de ad spend sincronizado.
+* [x] **2.2.3:** Desenvolver diálogos de confirmação com validação dupla para ações destrutivas (suspensão forçada e desconexão de tenant).
+* [x] **2.2.4 (Documentação Viva):** Criar `docs/modules/backoffice-directory-360.md` especificando os componentes Blazor, regras de validação dupla e contratos de serviço sob o padrão `Result<T>`.
 
 ---
 

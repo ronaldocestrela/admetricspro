@@ -1,4 +1,7 @@
+using Master.Application.DependencyInjection;
+using Master.Infrastructure.Extensions;
 using WebApp.Components;
+using WebApp.Services;
 using WebApp.State;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,7 +10,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb")
+    ?? "Server=localhost;Database=MasterCatalog;Trusted_Connection=True;TrustServerCertificate=True;";
+
+builder.Services.AddMasterCatalog(masterConnectionString);
+builder.Services.AddMasterApplication();
+
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
+builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
 
 var app = builder.Build();
 

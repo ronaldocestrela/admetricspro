@@ -1,0 +1,191 @@
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleBackdropClick">
+        <div class="confirm-action-dialog" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="dialog-icon-wrapper danger-glow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
+                <div class="dialog-title-wrapper">
+                    <h3 class="dialog-title">@Title</h3>
+                    <p class="dialog-subtitle">Ação crítica com impacto operacional imediato</p>
+                </div>
+                <button class="btn-dialog-close" @onclick="HandleCancel" disabled="@IsProcessing">×</button>
+            </div>
+
+            <div class="dialog-body">
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="dialog-alert-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <p class="dialog-message">@Message</p>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(ExpectedConfirmationText))
+                {
+                    <div class="form-group">
+                        <label class="form-label">
+                            Digite <span class="expected-text-badge">@ExpectedConfirmationText</span> para confirmar:
+                        </label>
+                        <input type="text"
+                               class="form-control confirmation-text-input"
+                               placeholder="Digite exatamente o identificador acima"
+                               value="@_typedConfirmationText"
+                               @oninput="HandleConfirmationTextInput"
+                               disabled="@IsProcessing" />
+                    </div>
+                }
+
+                @if (RequireReason)
+                {
+                    <div class="form-group">
+                        <label class="form-label">
+                            Justificativa formal obrigatória (mínimo de 5 caracteres):
+                        </label>
+                        <textarea class="form-control reason-input"
+                                  rows="3"
+                                  placeholder="Informe o motivo formal da intervenção técnica ou suspensão..."
+                                  value="@_reason"
+                                  @oninput="HandleReasonInput"
+                                  disabled="@IsProcessing"></textarea>
+                        <span class="field-hint">Esta justificativa será registrada de forma imutável na trilha de auditoria do MasterDb.</span>
+                    </div>
+                }
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn-dialog btn-dialog-cancel"
+                        @onclick="HandleCancel"
+                        disabled="@IsProcessing">
+                    <span>Cancelar</span>
+                </button>
+
+                <button class="btn-dialog btn-dialog-confirm btn-danger"
+                        @onclick="HandleConfirm"
+                        disabled="@(!IsConfirmEnabled || IsProcessing)">
+                    @if (IsProcessing)
+                    {
+                        <span class="spinner-inline"></span>
+                        <span>Processando...</span>
+                    }
+                    else
+                    {
+                        <span>Confirmar Ação Destrutiva</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _typedConfirmationText = string.Empty;
+    private string _reason = string.Empty;
+
+    /// <summary>
+    /// Indica se o diálogo modal está visível.
+    /// </summary>
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    /// <summary>
+    /// Título descritivo exibido no cabeçalho do diálogo.
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "Ação Destrutiva";
+
+    /// <summary>
+    /// Mensagem explicativa ou de advertência sobre o impacto operacional da ação.
+    /// </summary>
+    [Parameter]
+    public string? Message { get; set; }
+
+    /// <summary>
+    /// Texto de correspondência exata que o usuário deve digitar para destravar o botão de confirmação.
+    /// </summary>
+    [Parameter]
+    public string ExpectedConfirmationText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Define se o preenchimento de uma justificativa formal é obrigatório.
+    /// </summary>
+    [Parameter]
+    public bool RequireReason { get; set; } = true;
+
+    /// <summary>
+    /// Indica se uma requisição assíncrona está em andamento.
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    /// <summary>
+    /// Callback emitido ao confirmar a ação, transmitindo a justificativa formal preenchida.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnConfirm { get; set; }
+
+    /// <summary>
+    /// Callback emitido ao descartar ou fechar o diálogo.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private bool IsConfirmEnabled
+    {
+        get
+        {
+            var isTextValid = string.IsNullOrWhiteSpace(ExpectedConfirmationText) ||
+                string.Equals(_typedConfirmationText.Trim(), ExpectedConfirmationText.Trim(), StringComparison.OrdinalIgnoreCase);
+
+            var isReasonValid = !RequireReason || (!string.IsNullOrWhiteSpace(_reason) && _reason.Trim().Length >= 5);
+
+            return isTextValid && isReasonValid;
+        }
+    }
+
+    private void HandleConfirmationTextInput(ChangeEventArgs e)
+    {
+        _typedConfirmationText = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void HandleReasonInput(ChangeEventArgs e)
+    {
+        _reason = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task HandleConfirm()
+    {
+        if (!IsConfirmEnabled || IsProcessing) return;
+
+        await OnConfirm.InvokeAsync(_reason.Trim());
+        ResetForm();
+    }
+
+    private async Task HandleCancel()
+    {
+        if (IsProcessing) return;
+
+        ResetForm();
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await HandleCancel();
+    }
+
+    private void ResetForm()
+    {
+        _typedConfirmationText = string.Empty;
+        _reason = string.Empty;
+    }
+}
