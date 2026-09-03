@@ -72,11 +72,12 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 
 ### Subfase 3.1: Resolução de Tenant Dinâmica
 
-* **3.1.1 (TDD - Red):** Escrever testes para o middleware de tenant validando os canais de extração de identidade:
-* Leitura via CNAME/Subdomínio (ex.: `agencia-alfa.app.com`).
-* Leitura via Header HTTP `X-Tenant-Id`.
-* Leitura via Claim em Token JWT.
-* **3.1.2 (TDD - Green):** Implementar o serviço `TenantContextAccessor` com interface `ITenantContext` injetada por escopo (Scoped).
+* **3.1.1 (TDD - Concluído):** Escrever testes para o middleware de tenant validando os canais de extração de identidade:
+  * Leitura via CNAME/Subdomínio (ex.: `agencia-alfa.app.com` e hosts de desenvolvimento).
+  * Leitura via Header HTTP `X-Tenant-Id` (com suporte a GUID e slug).
+  * Leitura via Claim em Token JWT (`tenant_id` e standard Microsoft).
+* **3.1.2 (TDD - Concluído):** Implementar o serviço `TenantContextAccessor` com interface `ITenantContext` injetada por escopo (`Scoped`) e propagação assíncrona segura.
+* **3.1.3 (Documentação Viva - Concluído):** Criação do ADR `docs/adr/0006-dynamic-tenant-resolution-pipeline.md` e atualização de `docs/modules/building-blocks.md`.
 
 ### Subfase 3.2: Persistência com EF Core 10 e Catálogo Master
 

@@ -200,3 +200,34 @@ public sealed class BudgetLimit : ValueObject
   - `Task<int> CommitAsync(CancellationToken cancellationToken = default);`
 - Retorna o número de registros afetados na base de dados.
 
+---
+
+## 8. Subsistema de MultiTenancy — Resolução Dinâmica de Contexto
+
+Este subsistema gerencia a extração, identificação e propagação do inquilino (Tenant) ativo por requisição HTTP.
+
+### 8.1 Contratos (`BuildingBlocks.Application.MultiTenancy`)
+- **`ITenantContext`**: Interface somente leitura injetada por escopo (`Scoped`) nos serviços e handlers de negócio:
+  - `Guid? TenantId`: Identificador único do tenant (quando fornecido via GUID).
+  - `string? Subdomain`: Subdomínio ou slug alfanumérico do tenant.
+  - `string? RawIdentifier`: Valor bruto extraído do canal de entrada.
+  - `TenantResolutionSource Source`: Canal de origem (`None`, `Header`, `JwtClaim`, `Subdomain`).
+  - `bool IsResolved`: Indica se o tenant foi validado e está presente no contexto atual.
+- **`ITenantContextAccessor`**: Provedor do contexto no escopo da requisição.
+
+### 8.2 Canais de Extração (`BuildingBlocks.Infrastructure.MultiTenancy.Strategies`)
+1. **Header HTTP (`HeaderTenantIdentificationStrategy`)**:
+   - Header configurável (`X-Tenant-Id`). Suporta tanto GUID quanto slug/subdomínio.
+2. **Claim JWT (`JwtClaimTenantIdentificationStrategy`)**:
+   - Extrai do usuário autenticado a claim `tenant_id` ou o schema padrão Microsoft (`http://schemas.microsoft.com/identity/claims/tenantid`).
+3. **Subdomínio / CNAME (`SubdomainTenantIdentificationStrategy`)**:
+   - Extrai o subdomínio da URL (ex.: `agencia-alfa.admetricspro.com` ou `cliente.localhost:5000`) baseado em lista configurável de `BaseDomains`.
+   - Ignora automaticamente subdomínios reservados (`www`, `api`, `admin`, `app`, `mail`).
+
+### 8.3 Middleware e Registro
+- **`TenantIdentificationMiddleware`**: Executa a cadeia de estratégias em ordem de precedência configurável (`Header` > `JwtClaim` > `Subdomain`) e popula o `ITenantContextAccessor`.
+- **Extensões de DI**:
+  - `services.AddMultiTenancy(options => ...)`: Registra os serviços como `Scoped` e estratégias como `Transient`.
+  - `app.UseTenantResolution()`: Adiciona o middleware ao pipeline ASP.NET Core.
+
+
