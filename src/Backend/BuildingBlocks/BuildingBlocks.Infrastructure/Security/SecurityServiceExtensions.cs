@@ -17,6 +17,7 @@ public static class SecurityServiceExtensions
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IImpersonationContextAccessor, ImpersonationContextAccessor>();
+        services.AddScoped<IImpersonationContext>(sp => sp.GetRequiredService<IImpersonationContextAccessor>().Current);
         services.AddScoped<IBillingDataMasker, BillingDataMasker>();
         return services;
     }

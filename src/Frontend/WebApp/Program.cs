@@ -19,6 +19,12 @@ builder.Services.AddMasterApplication();
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
 builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
 builder.Services.AddScoped<IPlanManagementService, PlanManagementService>();
+builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
+builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client =>
+{
+    var baseUri = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:7001";
+    client.BaseAddress = new Uri(baseUri);
+});
 
 var app = builder.Build();
 

@@ -85,9 +85,9 @@ Permite que técnicos de suporte acessem o ambiente do tenant para reproduzir in
 * [x] **4.1.3:** Inclusão da política de segurança que oculta dados bancários e dados de faturamento durante o modo impersonation.
 
 ### Subfase 4.2: Auditoria Master e Sinalização Visual
-* **4.2.1 (TDD - Red):** Testes de integração validando que toda operação realizada no modo impersonation recebe a tag `performed_by_superadmin` na tabela de auditoria global imutável.
-* **4.2.2:** Componente Blazor `ImpersonationBanner.razor` exibindo tarja de aviso destacada no topo da interface durante toda a sessão de impersonação com botão de encerramento imediato.
-* **4.2.3 (Documentação Viva):** Escrever especificações completas em `docs/modules/backoffice-impersonation.md`.
+* [x] **4.2.1 (TDD - Red):** Testes de integração validando que toda operação realizada no modo impersonation recebe a tag `performed_by_superadmin` na tabela de auditoria global imutável.
+* [x] **4.2.2:** Componente Blazor `ImpersonationBanner.razor` exibindo tarja de aviso destacada no topo da interface durante toda a sessão de impersonação com botão de encerramento imediato.
+* [x] **4.2.3 (Documentação Viva):** Escrever especificações completas em `docs/modules/backoffice-impersonation.md`.
 
 ---
 

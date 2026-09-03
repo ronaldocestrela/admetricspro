@@ -44,6 +44,7 @@ public static class MasterDatabaseMigrationExtensions
             {
                 sqlOptions.MigrationsAssembly(typeof(MasterDbContext).Assembly.FullName);
             });
+            options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
 
         services.AddSingleton<IEncryptionService>(_ => new AesEncryptionService(encryptionKey ?? DefaultEncryptionKey));
@@ -55,6 +56,9 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
         services.AddScoped<IImpersonationSessionRepository, ImpersonationSessionRepository>();
         services.AddScoped<IImpersonationTokenService, JwtImpersonationTokenService>();
+        services.AddScoped<Master.Application.Auditing.IMasterAuditRepository, MasterAuditRepository>();
+        services.AddScoped<Master.Application.Auditing.IMasterAuditService, Master.Application.Auditing.MasterAuditService>();
+        services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(Master.Application.Auditing.AuditImpersonationBehavior<,>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

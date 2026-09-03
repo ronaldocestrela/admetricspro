@@ -30,7 +30,7 @@ public sealed class ImpersonationEndpointTests : IClassFixture<WebApplicationFac
         _factory = factory;
     }
 
-    private HttpClient CreateTestClient(Tenant? tenant)
+    private HttpClient CreateTestClient(Tenant? tenant, ImpersonationSession? session = null)
     {
         return _factory.WithWebHostBuilder(builder =>
         {
@@ -38,7 +38,8 @@ public sealed class ImpersonationEndpointTests : IClassFixture<WebApplicationFac
             {
                 services.AddScoped<IDunningEngineService, FakeDunningEngineService>();
                 services.AddScoped<ITenantRepository>(_ => new FakeTenantRepository(tenant));
-                services.AddScoped<IImpersonationSessionRepository>(_ => new FakeImpersonationSessionRepository());
+                services.AddScoped<IImpersonationSessionRepository>(_ => new FakeImpersonationSessionRepository(session));
+                services.AddScoped<Master.Application.Auditing.IMasterAuditService, FakeMasterAuditService>();
                 services.AddScoped<IUnitOfWork>(_ => new FakeUnitOfWork());
             });
         }).CreateClient();
@@ -125,6 +126,50 @@ public sealed class ImpersonationEndpointTests : IClassFixture<WebApplicationFac
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    /// <summary>
+    /// Verifies that POST /api/v1/tenants/{tenantId}/impersonate/{sessionId}/terminate returns HTTP 200 when session exists.
+    /// </summary>
+    [Fact]
+    public async Task TerminateImpersonation_ShouldReturnOk_WhenSessionExists()
+    {
+        // Arrange
+        var tenant = Tenant.Create("Beta Inc", "11222333000181", "beta").Value;
+        var session = ImpersonationSession.Create(
+            tenant.Id,
+            Guid.NewGuid(),
+            "INC-12345",
+            "Atendimento de suporte para verificação",
+            30,
+            DateTime.UtcNow).Value;
+
+        var client = CreateTestClient(tenant, session);
+        var request = new TerminateImpersonationApiRequest("Atendimento finalizado com sucesso");
+
+        // Act
+        var response = await client.PostAsJsonAsync($"/api/v1/tenants/{tenant.Id.Value}/impersonate/{session.Id}/terminate", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    /// <summary>
+    /// Verifies that POST terminate returns HTTP 404 when session does not exist.
+    /// </summary>
+    [Fact]
+    public async Task TerminateImpersonation_ShouldReturnNotFound_WhenSessionDoesNotExist()
+    {
+        // Arrange
+        var tenant = Tenant.Create("Beta Inc", "11222333000181", "beta").Value;
+        var client = CreateTestClient(tenant, null);
+        var request = new TerminateImpersonationApiRequest("Fechamento");
+
+        // Act
+        var response = await client.PostAsJsonAsync($"/api/v1/tenants/{tenant.Id.Value}/impersonate/{Guid.NewGuid()}/terminate", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     private sealed class FakeTenantRepository : ITenantRepository
     {
         private readonly Tenant? _tenant;
@@ -156,14 +201,37 @@ public sealed class ImpersonationEndpointTests : IClassFixture<WebApplicationFac
 
     private sealed class FakeImpersonationSessionRepository : IImpersonationSessionRepository
     {
+        private readonly ImpersonationSession? _session;
+
+        public FakeImpersonationSessionRepository(ImpersonationSession? session = null)
+        {
+            _session = session;
+        }
+
         public Task AddAsync(ImpersonationSession entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<ImpersonationSession?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<ImpersonationSession?>(null);
+        public Task<ImpersonationSession?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(_session);
         public void Update(ImpersonationSession entity) { }
         public void Remove(ImpersonationSession entity) { }
         public Task<IReadOnlyList<ImpersonationSession>> GetActiveByTenantIdAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ImpersonationSession>>(Array.Empty<ImpersonationSession>());
+            Task.FromResult<IReadOnlyList<ImpersonationSession>>(_session != null ? new[] { _session } : Array.Empty<ImpersonationSession>());
         public Task<ImpersonationSession?> GetActiveSessionByIdAsync(Guid sessionId, DateTime referenceUtc, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ImpersonationSession?>(null);
+            Task.FromResult(_session);
+    }
+
+    private sealed class FakeMasterAuditService : Master.Application.Auditing.IMasterAuditService
+    {
+        public Task<Result<Guid>> RecordAsync(
+            string action,
+            string resource,
+            string? resourceId = null,
+            string? details = null,
+            Guid? tenantId = null,
+            string? ipAddress = null,
+            IEnumerable<string>? additionalTags = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<Guid>.Success(Guid.NewGuid()));
+        }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

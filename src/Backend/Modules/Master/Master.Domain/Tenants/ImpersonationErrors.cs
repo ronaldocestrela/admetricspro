@@ -41,4 +41,11 @@ public static class ImpersonationErrors
     public static readonly Error SessionRevoked = Error.Failure(
         "Impersonation.SessionRevoked",
         "The requested impersonation session has been revoked.");
+
+    /// <summary>
+    /// Error returned when an impersonation session was not found.
+    /// </summary>
+    public static readonly Error SessionNotFound = Error.NotFound(
+        "Impersonation.SessionNotFound",
+        "The requested impersonation session was not found.");
 }

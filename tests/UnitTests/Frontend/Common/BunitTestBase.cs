@@ -16,12 +16,27 @@ public abstract class BunitTestBase : BunitContext
     protected TenantStateProvider TenantStateProvider { get; }
 
     /// <summary>
-    /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com o provedor de tenant registrado.
+    /// Instância do provedor de estado de impersonation utilizada nos testes.
+    /// </summary>
+    protected ImpersonationStateProvider ImpersonationStateProvider { get; }
+
+    /// <summary>
+    /// Mock do serviço de cliente de impersonation.
+    /// </summary>
+    protected WebApp.Services.IImpersonationClientService ImpersonationClientService { get; }
+
+    /// <summary>
+    /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com os provedores registrados.
     /// </summary>
     protected BunitTestBase()
     {
         TenantStateProvider = new TenantStateProvider();
+        ImpersonationStateProvider = new ImpersonationStateProvider();
+        ImpersonationClientService = NSubstitute.Substitute.For<WebApp.Services.IImpersonationClientService>();
+
         Services.AddSingleton<ITenantStateProvider>(TenantStateProvider);
+        Services.AddSingleton<IImpersonationStateProvider>(ImpersonationStateProvider);
+        Services.AddSingleton<WebApp.Services.IImpersonationClientService>(ImpersonationClientService);
     }
 
     /// <summary>

@@ -3,6 +3,7 @@
 @inject ITenantStateProvider TenantStateProvider
 
 <div class="app-shell" style="@TenantStateProvider.CurrentTenant.Branding.ToCssVariables()">
+    <ImpersonationBanner />
     <AppHeader OnToggleSidebar="ToggleSidebar" />
 
     <div class="app-body-container">

@@ -239,5 +239,42 @@ public sealed class MasterDbContextModelTests
         ticketProp!.IsNullable.Should().BeFalse();
         ticketProp.GetMaxLength().Should().Be(50);
     }
+
+    /// <summary>
+    /// Verifies that MasterAuditEntry entity maps to the 'MasterAuditLogs' table with appropriate primary key and constraints.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldMapMasterAuditEntryToMasterAuditLogsTableWithPrimaryKeyAndIndexes()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Master.Domain.Auditing.MasterAuditEntry));
+
+        // Assert
+        entityType.Should().NotBeNull();
+        entityType!.GetTableName().Should().Be("MasterAuditLogs");
+
+        var primaryKey = entityType.FindPrimaryKey();
+        primaryKey.Should().NotBeNull();
+        primaryKey!.Properties.Should().ContainSingle(p => p.Name == nameof(Master.Domain.Auditing.MasterAuditEntry.Id));
+
+        var actionProp = entityType.FindProperty(nameof(Master.Domain.Auditing.MasterAuditEntry.Action));
+        actionProp.Should().NotBeNull();
+        actionProp!.IsNullable.Should().BeFalse();
+        actionProp.GetMaxLength().Should().Be(150);
+
+        var resourceProp = entityType.FindProperty(nameof(Master.Domain.Auditing.MasterAuditEntry.Resource));
+        resourceProp.Should().NotBeNull();
+        resourceProp!.IsNullable.Should().BeFalse();
+        resourceProp.GetMaxLength().Should().Be(100);
+
+        var superAdminProp = entityType.FindProperty(nameof(Master.Domain.Auditing.MasterAuditEntry.SuperAdminId));
+        superAdminProp.Should().NotBeNull();
+        superAdminProp!.IsNullable.Should().BeTrue();
+
+        var isImpersonatedProp = entityType.FindProperty(nameof(Master.Domain.Auditing.MasterAuditEntry.IsImpersonated));
+        isImpersonatedProp.Should().NotBeNull();
+        isImpersonatedProp!.IsNullable.Should().BeFalse();
+    }
 }
 

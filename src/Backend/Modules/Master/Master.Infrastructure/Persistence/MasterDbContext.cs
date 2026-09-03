@@ -1,3 +1,4 @@
+using Master.Domain.Auditing;
 using Master.Domain.Plans;
 using Master.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,18 @@ public sealed class MasterDbContext : DbContext
     /// Gets the impersonation sessions catalog set.
     /// </summary>
     public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
+
+    /// <summary>
+    /// Gets the master audit logs catalog set.
+    /// </summary>
+    public DbSet<MasterAuditEntry> AuditLogs => Set<MasterAuditEntry>();
+
+    /// <inheritdoc />
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        optionsBuilder.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+    }
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

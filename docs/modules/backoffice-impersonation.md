@@ -82,6 +82,44 @@ O recurso de **Impersonation Seguro ("Shadow Mode")** permite que operadores de 
 }
 ```
 
+### 2.2 Encerramento de Sessão de Impersonation
+- **Rota:** `POST /api/v1/tenants/{tenantId}/impersonate/{sessionId}/terminate`
+- **Sumário OpenAPI:** `Encerra imediatamente uma sessão de impersonation (Shadow Mode) ativa`
+- **Autenticação:** Requer credenciais de operador corporativo (SuperAdmin / Suporte Nível 1).
+
+#### Exemplo de Payload de Entrada (`TerminateImpersonationApiRequest`):
+```json
+{
+  "reason": "Atendimento técnico concluído e reprodução de erro finalizada com sucesso."
+}
+```
+
+#### Exemplo de Resposta de Sucesso (HTTP 200 OK):
+```json
+{
+  "isSuccess": true,
+  "isFailure": false,
+  "error": {
+    "code": "",
+    "description": "",
+    "type": 0
+  }
+}
+```
+
+#### Exemplo de Resposta de Sessão Não Encontrada (HTTP 404 NotFound):
+```json
+{
+  "isSuccess": false,
+  "isFailure": true,
+  "error": {
+    "code": "Impersonation.SessionNotFound",
+    "description": "The requested impersonation session was not found.",
+    "type": 2
+  }
+}
+```
+
 ---
 
 ## 3. Especificação das Claims do Token JWT
@@ -113,9 +151,59 @@ Quando a requisição contém `is_impersonated=true`, o serviço `IBillingDataMa
 
 ---
 
-## 5. Casos de Borda e Erros Mapeados
+## 5. Auditoria Master Imutável e Tagging de Shadow Mode
+
+Todas as operações e comandos executados sob o contexto de Shadow Mode são automaticamente persistidos de forma indelével na tabela `MasterAuditLogs` do Catálogo Master:
+
+### 5.1 Esquema da Entidade `MasterAuditEntry`
+- **Tabela:** `MasterAuditLogs`
+- **Imutabilidade:** Estritamente *append-only* (sem suporte a comandos de `UPDATE` ou `DELETE` no domínio).
+- **Campos Principais:**
+  - `Id` (Guid PK): Identificador único da linha de auditoria.
+  - `TenantId` (Guid?): Identificador do tenant sob operação.
+  - `Action` (string, max 150): Nome da ação executada (ex.: `"Workspace.UpdateBudgetLimit"`, `"Impersonation.Terminated"`).
+  - `Resource` (string, max 100): Tipo do recurso afetado (ex.: `"Workspace"`, `"Campaign"`, `"ImpersonationSession"`).
+  - `ResourceId` (string?, max 200): Identificador do recurso manipulado.
+  - `Details` (string?, max 4000): Justificativa técnica, sumário ou payload informativo.
+  - `IsImpersonated` (bool): Flag booleana indicando intervenção sob Shadow Mode.
+  - `SuperAdminId` (Guid?): Identificador do SuperAdmin executor da intervenção.
+  - `SupportTicketId` (string?, max 50): Código do ticket do chamado de suporte associado.
+  - `ImpersonationSessionId` (Guid?): Identificador da sessão em `ImpersonationSessions`.
+  - `IpAddress` (string?, max 45): IP de origem da requisição.
+  - `CreatedAtUtc` (datetime2): Timestamp UTC de auditoria.
+  - `Tags` (string JSON array, max 2000): Tags associadas ao evento.
+
+### 5.2 Tag Obrigatória: `performed_by_superadmin`
+Sempre que `IsImpersonated == true`:
+- A validação de domínio em `MasterAuditEntry.Record(...)` exige obrigatoriamente `SuperAdminId`, `SupportTicketId` e `ImpersonationSessionId`.
+- A tag `performed_by_superadmin` (`MasterAuditTags.PerformedBySuperadmin`) é inserida na coleção `Tags`.
+- O interceptador `AuditImpersonationBehavior<TRequest, TResponse>` no pipeline do MediatR e o serviço `IMasterAuditService` garantem a captura automática e transparente para todos os módulos sem acoplamento.
+
+---
+
+## 6. Sinalização Visual no Frontend com `ImpersonationBanner.razor`
+
+Para prevenir erros de intervenção inadvertida em contas reais de clientes e assegurar total transparência durante atendimentos:
+
+### 6.1 Componente e Comportamento
+- **Localização:** `src/Frontend/WebApp/Components/Shared/ImpersonationBanner.razor`.
+- **Posicionamento:** Fixado de forma proeminente no topo do shell principal (`MainLayout.razor`), acima do cabeçalho institucional (`AppHeader`).
+- **Design de Segurança:**
+  - Fundo contrastante escuro/âmbar (`#1c1917` a `#291807`) com borda inferior em ouro/âmbar (`#f59e0b`).
+  - Indicador pulsante em vermelho (`pulse-ring`) sinalizando auditoria ativa em tempo real.
+  - Badge em destaque: `"🛡️ MODO SHADOW ATIVO (ACESSO AUDITADO)"`.
+  - Exibição do número do chamado (`SupportTicketId`), ID do operador e tempo restante até a expiração automática.
+- **Botão de Encerramento Imediato:**
+  - Botão `"Encerrar Sessão"` com indicador de progresso (spinner) e prevenção de múltiplos cliques (`disabled`).
+  - Dispara a chamada para `IImpersonationClientService.TerminateSessionAsync` que aciona a revogação no backend.
+  - Notifica `IImpersonationStateProvider` limpando a sessão e retornando o frontend ao estado corporativo normal.
+
+---
+
+## 7. Casos de Borda e Erros Mapeados
 
 - **Tenant Suspenso:** Se o tenant estiver inativo ou bloqueado por inadimplência, a emissão retorna `Impersonation.TenantInactive`.
 - **Token Expirado:** Chamadas que utilizem o token após a expiração são rejeitadas com erro tipado `ImpersonationToken.Expired`.
 - **Token Adulterado:** Se a assinatura ou claims forem modificadas, o serviço de validação rejeita com `ImpersonationToken.Invalid`.
-- **Revogação de Sessão:** A entidade `ImpersonationSession` permite o encerramento imediato do acesso pelo administrador via comando de revogação.
+- **Revogação de Sessão:** A entidade `ImpersonationSession` permite o encerramento imediato do acesso via comando `TerminateImpersonationSessionCommand`.
+- **Tentativa de Encerramento Repetido:** Se a sessão já estiver revogada, a API retorna erro tipado `ImpersonationErrors.SessionRevoked`.

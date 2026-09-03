@@ -71,4 +71,43 @@ public sealed class TenantsController : ControllerBase
 
         return Ok(Result<ImpersonateTenantResponse>.Success(result.Value));
     }
+
+    /// <summary>
+    /// Encerra imediatamente uma sessão de Shadow Mode ativa, revogando seu acesso e registrando na trilha de auditoria global.
+    /// </summary>
+    /// <param name="tenantId">Identificador do tenant sob impersonação.</param>
+    /// <param name="sessionId">Identificador único da sessão a ser revogada.</param>
+    /// <param name="request">Carga opcional contendo justificativa de encerramento.</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+    /// <returns>Resultado da operação.</returns>
+    [HttpPost("{tenantId:guid}/impersonate/{sessionId:guid}/terminate")]
+    [EndpointSummary("Encerra imediatamente uma sessão de impersonation (Shadow Mode) ativa")]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<Result>> TerminateImpersonation(
+        [FromRoute] Guid tenantId,
+        [FromRoute] Guid sessionId,
+        [FromBody] TerminateImpersonationApiRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var command = new Master.Application.Tenants.Commands.TerminateImpersonationSession.TerminateImpersonationSessionCommand(
+            tenantId,
+            sessionId,
+            request?.Reason);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(result),
+                ErrorType.Validation => UnprocessableEntity(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return Ok(result);
+    }
 }
