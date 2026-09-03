@@ -117,6 +117,6 @@ Consolidação da suíte de testes de ponta a ponta, documentação viva interat
 * [x] **6.1.2:** Validar se todos os endpoints administrativos contêm anotações semânticas (`[EndpointSummary]`, `[ProducesResponseType]`) e exemplos estruturados do retorno `Result<T>`.
 
 ### Subfase 6.2: Validação de Conformidade com o AGENTS.md
-* **6.2.1:** Auditoria estrita da presença da tag XML `<summary>` em todas as classes, interfaces e records implementados no Backoffice.
-* **6.2.2:** Execução completa da suíte de testes (Unitários, Integração e Aceitação) garantindo 100% de sucesso sem testes pulados ou flaky.
-* **6.2.3:** Verificação dos registros de ADRs atualizados na pasta `docs/adr/`.
+* [x] **6.2.1:** Auditoria estrita da presença da tag XML `<summary>` em todas as classes, interfaces e records implementados no Backoffice via testes automatizados `XmlDocumentationComplianceTests` e `FrontendDocumentationComplianceTests`.
+* [x] **6.2.2:** Execução completa da suíte de testes (Unitários, Integração e Aceitação) garantindo 100% de sucesso (438 testes verdes) sem testes pulados ou flaky.
+* [x] **6.2.3:** Verificação dos registros de ADRs atualizados na pasta `docs/adr/`, introdução do ADR `0017-compliance-architecture-and-quality-gates.md` e índice central em `docs/adr/README.md`.

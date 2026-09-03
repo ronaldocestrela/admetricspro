@@ -35,6 +35,7 @@
     <ProjectReference Include="..\..\..\src\Backend\Modules\Master\Master.Domain\Master.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\Backend\Modules\Master\Master.Application\Master.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Backend\Modules\Master\Master.Infrastructure\Master.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Backend\WebApi\WebApi.csproj" />
   </ItemGroup>
 
 </Project>
