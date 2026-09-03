@@ -93,3 +93,32 @@ A injeção de estilo customizado ocorre em tempo real via variáveis CSS declar
 2. **Badge de Organização:** Identificação textual do tenant/workspace ativo na barra superior.
 3. **Dados Institucionais no Rodapé:** Exibição da razão social ou nome da agência contratante.
 4. **Supressão de Marca (`ShowPoweredBy = false`):** Quando desativado, remove por completo o selo *"Powered by AdMetricsPro"* do `AppFooter`.
+
+---
+
+## 4. Testes de Componentes com bUnit
+
+A suíte de testes do frontend reside em `tests/UnitTests/Frontend/` e utiliza o framework **bUnit** integrado com **xUnit** e **FluentAssertions**, assegurando testes atômicos e isolados de renderização e estado no Blazor Server (.NET 10).
+
+### 4.1 Estrutura de Testes
+
+```text
+tests/UnitTests/Frontend/
+├── Common/
+│   └── BunitTestBase.cs                    # Base com BunitContext e DI de ITenantStateProvider
+├── Components/
+│   ├── Layout/
+│   │   └── MainLayoutTests.cs              # Testes do shell mestre, CSS variables e sidebar toggle
+│   └── Shared/
+│       ├── AppHeaderTests.cs               # Testes de logo, fallback textual, badge e avatar
+│       ├── AppSidebarTests.cs              # Testes de expansão/colapso e links dos módulos
+│       └── AppFooterTests.cs               # Testes de copyright e chave ShowPoweredBy
+└── State/
+    └── TenantStateProviderTests.cs         # Testes unitários do container de estado e eventos
+```
+
+### 4.2 Práticas de Teste de Componentes
+1. **Base de Teste Centralizada (`BunitTestBase`):** Herda de `BunitContext` e registra automaticamente uma instância de `ITenantStateProvider` no container de injeção de dependência (`Services`).
+2. **Validação de Reatividade White-Label:** Testa se o disparo de eventos de alteração de tenant (`SetTenant`) propaga a re-renderização imediata de estilos (`style="--tenant-primary: ..."`) e logos sem necessidade de recarregar a página.
+3. **Asserções Semânticas:** Utiliza o modelo DOM do AngleSharp exposto pelo bUnit (`cut.Find(...)`, `cut.FindAll(...)`, `ClassList`) para validar estrutura HTML e acessibilidade.
+

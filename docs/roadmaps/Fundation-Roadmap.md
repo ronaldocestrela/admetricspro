@@ -119,7 +119,7 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 * **5.1.2 (Concluído):** Configurar layout corporativo responsivo padrão (`MainLayout`, `AppHeader`, `AppSidebar`, `AppFooter`) com slots dinâmicos para customização White-Label (logo, cores institucionais via CSS Custom Properties).
 * **5.1.3 (TDD - Concluído):** Implementar o `TenantStateProvider` com interface `ITenantStateProvider` injetado com ciclo de vida Scoped por circuito SignalR para propagar a identidade do tenant ativo na sessão Blazor.
 
-### Subfase 5.2: Suíte de Testes Frontend com bUnit
+### Subfase 5.2: Suíte de Testes Frontend com bUnit [Concluída]
 
-* **5.2.1:** Configurar projeto `tests/UnitTests/Frontend/` com suporte a **bUnit** e biblioteca de asserções.
-* **5.2.2 (TDD):** Escrever o primeiro teste de componente em bUnit para validar que o layout renderiza corretamente a identidade visual e o nome do tenant injetado no estado.
+* **5.2.1 (Concluído):** Configurar projeto `tests/UnitTests/Frontend/` com suporte a **bUnit** e biblioteca de asserções.
+* **5.2.2 (TDD - Concluído):** Escrever o primeiro teste de componente em bUnit para validar que o layout renderiza corretamente a identidade visual e o nome do tenant injetado no estado.
