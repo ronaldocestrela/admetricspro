@@ -6,7 +6,7 @@ namespace BuildingBlocks.Domain.Primitives;
 /// <param name="Code">Stable machine-readable error code.</param>
 /// <param name="Description">Human-readable error description.</param>
 /// <param name="Type">Semantic classification of the error.</param>
-public sealed record Error(string Code, string Description, ErrorType Type = ErrorType.Failure)
+public record Error(string Code, string Description, ErrorType Type = ErrorType.Failure)
 {
     /// <summary>
     /// Represents the absence of an error.

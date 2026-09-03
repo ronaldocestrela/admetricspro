@@ -255,5 +255,31 @@ Este subsistema gerencia a extração, identificação e propagação do inquili
   - `Task<Result<TContext>> CreateDbContextAsync(Guid tenantId, CancellationToken cancellationToken = default);`
 - **`ITenantConnectionHolder`**: Armazenamento com escopo de requisição (`Scoped`) para reaproveitamento imediato da connection string no mesmo ciclo HTTP.
 
+---
 
+## 10. Mensageria In-Memory & Pipeline de Validação (`BuildingBlocks.Application.Messaging` / `Behaviors`)
 
+O AdMetricsPro implementa comunicação inter-módulos desacoplada através do mediador in-memory MediatR, reforçando o isolamento do monólito modular e a regra estrita de não lançar exceções para fluxos de negócio e validação.
+
+### 10.1 Contratos CQRS Tipados (`BuildingBlocks.Application.Messaging`)
+- **`ICommand`**: Comando assíncrono sem payload que retorna obrigatoriamente `Result`.
+- **`ICommand<TResponse>`**: Comando assíncrono que retorna obrigatoriamente `Result<TResponse>`.
+- **`ICommandHandler<TCommand>`**: Manipulador de comando retornando `Result`.
+- **`ICommandHandler<TCommand, TResponse>`**: Manipulador de comando retornando `Result<TResponse>`.
+- **`IQuery<TResponse>`**: Consulta que retorna obrigatoriamente `Result<TResponse>`.
+- **`IQueryHandler<TQuery, TResponse>`**: Manipulador de consulta retornando `Result<TResponse>`.
+- **`DomainEventNotification<TDomainEvent>`**: Envelope que encapsula `IDomainEvent` em uma `INotification` do MediatR.
+- **`IDomainEventHandler<TDomainEvent>`**: Manipulador de eventos de domínio in-memory desacoplado.
+
+### 10.2 Pipeline Behavior de Validação (`ValidationBehavior<TRequest, TResponse>`)
+- Intercepta requisições MediatR e executa todos os validadores `IValidator<TRequest>` do `FluentValidation` registrados.
+- **Zero Exceções**: Em caso de violação de regra, o pipeline é abortado imediatamente e convertido em envelopes de erro tipados:
+  - Para `ICommand`: Retorna `Result.Failure(ValidationError)`.
+  - Para `ICommand<TResponse>` ou `IQuery<TResponse>`: Constrói dinamicamente `Result<TResponse>.Failure(ValidationError)` utilizando instanciadores compilados e cacheados em memória para alta performance.
+- **`ValidationError` (`BuildingBlocks.Domain.Primitives`)**: Especialização de `Error` contendo `IReadOnlyDictionary<string, string[]> Errors` agrupando os erros por propriedade.
+
+### 10.3 Injeção de Dependências Fluente (`BuildingBlocks.Application.DependencyInjection`)
+```csharp
+services.AddMessaging(typeof(MyModuleApplication).Assembly);
+```
+- Registra o logging fundamental, escaneia o container para handlers CQRS, registra os validadores do `FluentValidation` e ativa o `ValidationBehavior` globalmente.

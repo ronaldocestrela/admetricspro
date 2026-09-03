@@ -96,10 +96,11 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 
 ## Fase 4: Setup da WebApi, In-Memory Mediator & OpenAPI/Scalar
 
-### Subfase 4.1: Mensageria In-Memory (MediatR)
+### Subfase 4.1: Mensageria In-Memory (MediatR) [Concluída]
 
-* **4.1.1:** Configurar injeção de dependência do `MediatR` para comunicação desacoplada entre módulos.
-* **4.1.2 (TDD):** Implementar pipeline behavior genérico para validação de entrada usando `FluentValidation`, convertendo automaticamente quebras de regras de validação em envelopes `Result<T>.Failure(Error.Validation(...))`.
+* **4.1.1 (Concluído):** Configurar contratos CQRS (`ICommand`, `ICommand<TResponse>`, `IQuery<TResponse>`, `IDomainEventHandler<TEvent>`) e injeção de dependência do `MediatR` com logging e descoberta automática via extensão fluente `AddMessaging()`.
+* **4.1.2 (TDD - Concluído):** Implementar pipeline behavior genérico `ValidationBehavior<TRequest, TResponse>` para validação de entrada usando `FluentValidation`, convertendo automaticamente quebras de regras em envelopes `Result<T>.Failure(ValidationError)` sem lançar exceções.
+* **4.1.3 (Documentação Viva - Concluído):** Registro do ADR `docs/adr/0009-in-memory-messaging-and-validation-pipeline.md` e atualização de `docs/modules/building-blocks.md`.
 
 ### Subfase 4.2: Exposição de Contratos com OpenAPI e Scalar UI
 
