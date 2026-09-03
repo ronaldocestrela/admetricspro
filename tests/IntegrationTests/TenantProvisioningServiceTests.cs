@@ -71,6 +71,7 @@ public sealed class TenantProvisioningServiceTests
 
         await DatabaseShouldExistAsync(_fixture.ConnectionString, tenantDatabaseName);
         await TenantSchemaMarkerTableShouldExistAsync(decryptedConnection);
+        await MigrationHistoryTableShouldExistAsync(decryptedConnection);
     }
 
     /// <summary>
@@ -149,6 +150,17 @@ public sealed class TenantProvisioningServiceTests
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(1) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'TenantSchemaMarkers'";
+
+        var count = Convert.ToInt32(await command.ExecuteScalarAsync(), null);
+        count.Should().BeGreaterThan(0);
+    }
+
+    private static async Task MigrationHistoryTableShouldExistAsync(string tenantConnectionString)
+    {
+        await using var connection = new SqlConnection(tenantConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(1) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '__EFMigrationsHistory'";
 
         var count = Convert.ToInt32(await command.ExecuteScalarAsync(), null);
         count.Should().BeGreaterThan(0);

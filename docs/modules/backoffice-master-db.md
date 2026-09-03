@@ -30,15 +30,23 @@ Métodos de Ciclo de Vida:
 - `Suspend(string reason)`
 - `Reactivate()`
 
-## Fluxo de Provisionamento
+## Fluxo de Provisionamento de Tenant
 
 1. Validar dados de entrada do tenant.
-2. Verificar conflitos de CNPJ e subdominio no MasterDb.
-3. Gerar nome fisico do banco do tenant a partir do subdominio sanitizado.
-4. Criar banco no SQL Server, se inexistente.
-5. Aplicar schema inicial do tenant no banco dedicado.
+2. Verificar conflitos de CNPJ e subdomínio no MasterDb.
+3. Gerar nome físico do banco do tenant a partir do subdomínio sanitizado.
+4. Criar banco no SQL Server (`CREATE DATABASE`), se inexistente.
+5. Aplicar schema operacional do tenant via `tenantContext.Database.MigrateAsync()` (gerando `__EFMigrationsHistory`).
 6. Criptografar a connection string do tenant com AES-256.
 7. Persistir tenant no MasterDb e executar commit via UnitOfWork.
+
+## Pipeline de Migrações Automáticas (MasterDb)
+
+O catálogo central (`MasterDbContext`) possui runner dedicado (`IMasterDatabaseMigrationRunner`) acionado na inicialização:
+
+- **Startup Hook:** Invocado no boot da aplicação via `host.ApplyMasterDatabaseMigrationsAsync()` ou `MasterDatabaseMigrationHostedService`.
+- **Idempotência:** Aplica apenas migrações pendentes via `_masterDbContext.Database.MigrateAsync()`.
+- **Envelope de Retorno:** Retorna `Result.Success()` em caso de êxito e `Result.Failure(Error.Unexpected("MasterMigration.ExecutionFailed", ...))` em falhas técnicas, evitando exceções não tratadas.
 
 ## Exemplo de Entrada
 

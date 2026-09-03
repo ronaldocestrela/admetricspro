@@ -68,7 +68,7 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 
 ---
 
-## Fase 3: Isolamento Multi-Tenant & SQL Server (Database-per-Tenant) [Em andamento]
+## Fase 3: Isolamento Multi-Tenant & SQL Server (Database-per-Tenant) [Concluída]
 
 ### Subfase 3.1: Resolução de Tenant Dinâmica [Concluída]
 
@@ -79,17 +79,18 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 * **3.1.2 (TDD - Concluído):** Implementar o serviço `TenantContextAccessor` com interface `ITenantContext` injetada por escopo (`Scoped`) e propagação assíncrona segura.
 * **3.1.3 (Documentação Viva - Concluído):** Criação do ADR `docs/adr/0006-dynamic-tenant-resolution-pipeline.md` e atualização de `docs/modules/building-blocks.md`.
 
-### Subfase 3.2: Persistência com EF Core 10 e Catálogo Master
+### Subfase 3.2: Persistência com EF Core 10 e Catálogo Master [Concluída]
 
 * **3.2.1 (TDD - Concluído):** Configurar `MasterDbContext` com a entidade `Tenant` mapeada no SQL Server, contendo chaves, dados de assinatura (`SubscriptionTier`, `SubscriptionExpiresAtUtc`) e credencial de conexão criptografada.
 * **3.2.2 (TDD - Concluído):** Implementar serviço de criptografia simétrica AES-256 (`AesEncryptionService`) para gravação segura das Connection Strings dos bancos de inquilino com cobertura unitária exaustiva.
 * **3.2.3 (TDD - Concluído):** Implementar contrato `ITenantConnectionResolver`, implementação com cache seguro `CachedTenantConnectionResolver` e fábrica dinâmica `ITenantDbContextFactory<TenantDbContext>` para instanciação assíncrona do `TenantDbContext` contextual.
 * **3.2.4 (Documentação Viva - Concluído):** Criação do ADR `docs/adr/0007-tenant-connection-resolver-and-dynamic-dbcontext.md` e atualização de `docs/modules/backoffice-master-db.md` e `docs/modules/building-blocks.md`.
 
-### Subfase 3.3: Pipeline de Migrações Automáticas
+### Subfase 3.3: Pipeline de Migrações Automáticas [Concluída]
 
-* **3.3.1:** Configurar hook de inicialização na WebApi para aplicar automaticamente `masterContext.Database.MigrateAsync()` no startup.
-* **3.3.2:** Implementar o serviço `ITenantProvisioningService` capaz de criar um novo banco SQL Server sob demanda e disparar `tenantContext.Database.MigrateAsync()` no provisionamento de novos assinantes.
+* **3.3.1 (TDD - Concluído):** Configurar hook de inicialização do MasterDb via `IMasterDatabaseMigrationRunner`, extensões `ApplyMasterDatabaseMigrationsAsync()` e hosted service `MasterDatabaseMigrationHostedService` aplicando `masterContext.Database.MigrateAsync()` com pattern `Result`.
+* **3.3.2 (TDD - Concluído):** Implementar/refatorar o serviço `ITenantProvisioningService` criando dinamicamente o banco dedicado no SQL Server e disparando estritamente `tenantContext.Database.MigrateAsync()` (gerando `__EFMigrationsHistory` nativo) no provisionamento de novos inquilinos.
+* **3.3.3 (Documentação Viva - Concluído):** Criação do ADR `docs/adr/0008-automatic-migrations-pipeline-and-tenant-provisioning.md` e atualização da especificação em `docs/modules/backoffice-master-db.md`.
 
 ---
 

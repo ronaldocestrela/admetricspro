@@ -138,14 +138,24 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
 
     private static async Task<Result> ApplyTenantSchemaAsync(string tenantConnectionString, CancellationToken cancellationToken)
     {
-        var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
-            .UseSqlServer(tenantConnectionString)
-            .Options;
+        try
+        {
+            var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
+                .UseSqlServer(tenantConnectionString)
+                .Options;
 
-        await using var tenantContext = new TenantOperationalDbContext(options);
-        await tenantContext.Database.EnsureCreatedAsync(cancellationToken);
-        await tenantContext.Database.MigrateAsync(cancellationToken);
-        return Result.Success();
+            await using var tenantContext = new TenantOperationalDbContext(options);
+            await tenantContext.Database.MigrateAsync(cancellationToken);
+            return Result.Success();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return Result.Failure(Error.Failure("Tenant.MigrationFailed", "Tenant database migration was cancelled."));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("Tenant.MigrationFailed", $"Failed to apply tenant database schema migration: {ex.Message}"));
+        }
     }
 
     private static string BuildTenantDatabaseName(string subdomain)
