@@ -4,6 +4,7 @@ using Master.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog;
 
 [DbContext(typeof(MasterDbContext))]
-partial class MasterDbContextModelSnapshot : ModelSnapshot
+[Migration("20260903140000_Add_TenantDunningStage")]
+partial class Add_TenantDunningStage
 {
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
@@ -102,13 +105,13 @@ partial class MasterDbContextModelSnapshot : ModelSnapshot
                     .HasMaxLength(30)
                     .HasColumnType("nvarchar(30)");
 
-                b.Property<DateTime?>("SubscriptionExpiresAtUtc")
-                    .HasColumnType("datetime2");
-
                 b.Property<string>("Subdomain")
                     .IsRequired()
                     .HasMaxLength(80)
                     .HasColumnType("nvarchar(80)");
+
+                b.Property<DateTime?>("SubscriptionExpiresAtUtc")
+                    .HasColumnType("datetime2");
 
                 b.Property<string>("Tier")
                     .IsRequired()

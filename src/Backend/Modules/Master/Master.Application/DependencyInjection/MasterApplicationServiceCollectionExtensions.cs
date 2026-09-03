@@ -19,6 +19,7 @@ public static class MasterApplicationServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddMessaging(typeof(MasterApplicationServiceCollectionExtensions).Assembly);
+        services.AddScoped<Billing.Dunning.IDunningEngineService, Billing.Dunning.DunningEngineService>();
 
         return services;
     }

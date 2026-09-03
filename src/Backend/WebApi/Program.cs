@@ -17,6 +17,10 @@ var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb
 
 builder.Services.AddMasterCatalog(masterConnectionString);
 builder.Services.AddMasterApplication();
+builder.Services.AddDunningBackgroundService(options =>
+{
+    builder.Configuration.GetSection(Master.Infrastructure.Services.DunningOptions.SectionName).Bind(options);
+});
 
 var app = builder.Build();
 

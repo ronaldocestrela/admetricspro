@@ -58,6 +58,29 @@ public static class MasterDatabaseMigrationExtensions
     }
 
     /// <summary>
+    /// Registers the background dunning service and its configuration options.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">Optional configuration delegate for dunning options.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddDunningBackgroundService(
+        this IServiceCollection services,
+        Action<DunningOptions>? configure = null)
+    {
+        if (configure != null)
+        {
+            services.Configure(configure);
+        }
+        else
+        {
+            services.AddOptions<DunningOptions>();
+        }
+
+        services.AddHostedService<DunningBackgroundService>();
+        return services;
+    }
+
+    /// <summary>
     /// Registers the master database migration runner in the service collection.
     /// </summary>
     /// <param name="services">The service collection.</param>

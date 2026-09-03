@@ -60,6 +60,16 @@ public sealed class TenantEntityTypeConfiguration : IEntityTypeConfiguration<Ten
             .IsRequired();
 
         builder
+            .Property(tenant => tenant.DunningStage)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
+        builder
+            .Property(tenant => tenant.PaymentDueDateUtc)
+            .IsRequired(false);
+
+        builder
             .Property(tenant => tenant.SubscriptionExpiresAtUtc)
             .IsRequired(false);
 

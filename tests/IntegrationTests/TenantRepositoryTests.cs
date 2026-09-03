@@ -59,6 +59,49 @@ public sealed class TenantRepositoryTests
         reloaded.Cnpj.Should().Be("12345678000190");
     }
 
+    /// <summary>
+    /// Verifies that GetTenantsForDunningEvaluationAsync returns tenants with overdue dates and persists DunningStage correctly.
+    /// </summary>
+    [Fact]
+    public async Task GetTenantsForDunningEvaluationAsync_ShouldReturnTenantsRequiringDunning()
+    {
+        var masterDatabaseName = $"Master_Dunning_{Guid.NewGuid():N}";
+        var masterConnectionString = WithDatabase(_fixture.ConnectionString, masterDatabaseName);
+        await EnsureDatabaseCreatedAsync(masterConnectionString);
+
+        var options = new DbContextOptionsBuilder<MasterDbContext>()
+            .UseSqlServer(masterConnectionString)
+            .Options;
+
+        await using var dbContext = new MasterDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var tenant1 = Tenant.Create("Tenant Overdue", "12345678000191", "tenant-overdue").Value;
+        tenant1.SetEncryptedConnectionString("enc-1");
+        var dueDate = DateTime.UtcNow.AddDays(-5);
+        tenant1.MarkPaymentOverdue(dueDate);
+        tenant1.EvaluateDunningStage(DateTime.UtcNow);
+
+        var tenant2 = Tenant.Create("Tenant Regular", "12345678000192", "tenant-regular").Value;
+        tenant2.SetEncryptedConnectionString("enc-2");
+
+        var repository = new TenantRepository(dbContext);
+        IUnitOfWork unitOfWork = new UnitOfWork(dbContext);
+
+        await repository.AddAsync(tenant1, CancellationToken.None);
+        await repository.AddAsync(tenant2, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        // Act
+        var overdueList = await repository.GetTenantsForDunningEvaluationAsync(CancellationToken.None);
+
+        // Assert
+        overdueList.Should().ContainSingle(t => t.Id == tenant1.Id);
+        var loaded = overdueList.Single(t => t.Id == tenant1.Id);
+        loaded.DunningStage.Should().Be(DunningStage.AutomationsDisabled);
+        loaded.PaymentDueDateUtc.Should().NotBeNull();
+    }
+
     private static async Task EnsureDatabaseCreatedAsync(string connectionString)
     {
         await using var connection = new SqlConnection(new SqlConnectionStringBuilder(connectionString)

@@ -227,6 +227,14 @@ public sealed class CachedTenantConnectionResolverTests
 
         public void Update(Tenant entity) => _tenants[entity.Id.Value] = entity;
         public void Remove(Tenant entity) => _tenants.Remove(entity.Id.Value);
+
+        public Task<IReadOnlyList<Tenant>> GetTenantsForDunningEvaluationAsync(CancellationToken cancellationToken = default)
+        {
+            var list = _tenants.Values
+                .Where(t => t.PaymentDueDateUtc != null || t.DunningStage != DunningStage.None)
+                .ToList();
+            return Task.FromResult<IReadOnlyList<Tenant>>(list);
+        }
     }
 
     private sealed class FakeTenantContextAccessor : ITenantContextAccessor

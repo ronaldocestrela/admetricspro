@@ -69,9 +69,9 @@ Parametrização das regras de precificação, cotas estruturais e políticas au
 * [x] **3.1.5 (Documentação Viva):** Criar `docs/modules/backoffice-plans.md` documentando comandos, queries, modelo de Result<T> e endpoints OpenAPI/Scalar.
 
 ### Subfase 3.2: Régua de Inadimplência e Bloqueio Progressivo (Dunning Engine)
-* **3.2.1 (TDD - Red):** Testes unitários validando a política de suspensão progressiva baseada em dias de atraso (D+3: desativação de automações; D+7: bloqueio de relatórios; D+14: bloqueio de login).
-* **3.2.2 (TDD - Green):** Implementar o motor de dunning disparado via background service in-memory que processa o status financeiro e emite o evento `TenantGracePeriodExceededEvent`.
-* **3.2.3 (Documentação Viva):** Registrar o ADR `docs/adr/0003-dunning-and-tenant-lifecycle.md` e atualizar os documentos de integração financeira.
+* [x] **3.2.1 (TDD - Red):** Testes unitários validando a política de suspensão progressiva baseada em dias de atraso (D+3: desativação de automações; D+7: bloqueio de relatórios; D+14: bloqueio de login).
+* [x] **3.2.2 (TDD - Green):** Implementar o motor de dunning disparado via background service in-memory que processa o status financeiro e emite o evento `TenantGracePeriodExceededEvent`.
+* [x] **3.2.3 (Documentação Viva):** Registrar o ADR `docs/adr/0011-dunning-and-tenant-lifecycle.md` e atualizar os documentos de integração financeira (`docs/modules/backoffice-dunning.md`).
 
 ---
 

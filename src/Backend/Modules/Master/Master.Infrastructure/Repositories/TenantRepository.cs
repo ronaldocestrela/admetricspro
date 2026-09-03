@@ -51,4 +51,14 @@ public sealed class TenantRepository : ITenantRepository
     {
         _masterDbContext.Tenants.Remove(entity);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Tenant>> GetTenantsForDunningEvaluationAsync(CancellationToken cancellationToken = default)
+    {
+        var tenants = await _masterDbContext.Tenants
+            .Where(t => t.PaymentDueDateUtc != null || t.DunningStage != DunningStage.None)
+            .ToListAsync(cancellationToken);
+
+        return tenants;
+    }
 }

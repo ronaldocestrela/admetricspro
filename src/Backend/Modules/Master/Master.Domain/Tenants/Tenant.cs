@@ -1,5 +1,6 @@
 using BuildingBlocks.Domain.Abstractions;
 using BuildingBlocks.Domain.Primitives;
+using Master.Domain.Tenants.Events;
 
 namespace Master.Domain.Tenants;
 
@@ -17,6 +18,8 @@ public sealed class Tenant : AggregateRoot<TenantId>
         Status = TenantStatus.Active;
         Tier = tier;
         SubscriptionExpiresAtUtc = subscriptionExpiresAtUtc;
+        DunningStage = DunningStage.None;
+        PaymentDueDateUtc = null;
         CreatedAtUtc = DateTime.UtcNow;
     }
 
@@ -29,6 +32,8 @@ public sealed class Tenant : AggregateRoot<TenantId>
         EncryptedConnectionString = string.Empty;
         Status = TenantStatus.Trial;
         Tier = SubscriptionTier.Trial;
+        DunningStage = DunningStage.None;
+        PaymentDueDateUtc = null;
         CreatedAtUtc = DateTime.UtcNow;
     }
 
@@ -61,6 +66,16 @@ public sealed class Tenant : AggregateRoot<TenantId>
     /// Gets the tenant subscription tier level.
     /// </summary>
     public SubscriptionTier Tier { get; private set; }
+
+    /// <summary>
+    /// Gets the current dunning stage of the tenant.
+    /// </summary>
+    public DunningStage DunningStage { get; private set; }
+
+    /// <summary>
+    /// Gets the UTC payment due timestamp if the tenant has an overdue invoice.
+    /// </summary>
+    public DateTime? PaymentDueDateUtc { get; private set; }
 
     /// <summary>
     /// Gets the UTC expiration date of the current subscription or trial period.
@@ -177,6 +192,65 @@ public sealed class Tenant : AggregateRoot<TenantId>
     public Result Reactivate()
     {
         Status = TenantStatus.Active;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Marks the tenant as having an overdue invoice with a specific due date.
+    /// </summary>
+    /// <param name="dueDateUtc">The UTC timestamp when payment was due.</param>
+    /// <returns>A successful result.</returns>
+    public Result MarkPaymentOverdue(DateTime dueDateUtc)
+    {
+        PaymentDueDateUtc = dueDateUtc;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Evaluates the tenant's dunning stage against a reference UTC timestamp, updating operational status and raising domain events when thresholds are exceeded.
+    /// </summary>
+    /// <param name="referenceUtc">The reference UTC timestamp.</param>
+    /// <returns>A successful result.</returns>
+    public Result EvaluateDunningStage(DateTime referenceUtc)
+    {
+        var previousStage = DunningStage;
+        var newStage = DunningPolicy.EvaluateStage(PaymentDueDateUtc, referenceUtc);
+
+        DunningStage = newStage;
+
+        if (newStage == DunningStage.LoginBlocked && Status != TenantStatus.Suspended)
+        {
+            Status = TenantStatus.Suspended;
+        }
+
+        if (PaymentDueDateUtc.HasValue && newStage > DunningStage.None && (newStage != previousStage || previousStage == DunningStage.None))
+        {
+            var daysOverdue = DunningPolicy.CalculateDaysOverdue(PaymentDueDateUtc.Value, referenceUtc);
+            RaiseDomainEvent(new TenantGracePeriodExceededEvent(
+                Id,
+                previousStage,
+                newStage,
+                daysOverdue,
+                PaymentDueDateUtc.Value));
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Regularizes tenant financial standing, clearing overdue dates and restoring active status if previously suspended.
+    /// </summary>
+    /// <returns>A successful result.</returns>
+    public Result RegularizePayment()
+    {
+        DunningStage = DunningStage.None;
+        PaymentDueDateUtc = null;
+
+        if (Status == TenantStatus.Suspended)
+        {
+            Status = TenantStatus.Active;
+        }
+
         return Result.Success();
     }
 }
