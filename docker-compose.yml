@@ -1,0 +1,15 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: admetricspro-sqlserver
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd!}
+    ports:
+      - "${MSSQL_PORT:-1433}:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql/data
+
+volumes:
+  sqlserver-data:

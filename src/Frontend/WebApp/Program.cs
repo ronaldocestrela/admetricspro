@@ -1,10 +1,15 @@
+using BuildingBlocks.Infrastructure.Configuration;
 using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
 using WebApp.Components;
 using WebApp.Services;
 using WebApp.State;
 
+// Carrega variáveis do arquivo .env no ambiente de processo e no pipeline de configuração
+DotEnvLoader.Load();
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddDotEnvFile();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

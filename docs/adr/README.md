@@ -25,6 +25,7 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0015](file:///home/rony/LPR/AdMetricsPro/docs/adr/0015-feature-flags-and-operational-kill-switches.md) | Sistema de Feature Flags Determinístico e Kill Switches Operacionais | Aceito | 2026-09-03 |
 | [0016](file:///home/rony/LPR/AdMetricsPro/docs/adr/0016-openapi-and-scalar-corporate-documentation.md) | Documentação de Contratos OpenAPI v1 e Interface Interativa Scalar UI | Aceito | 2026-09-03 |
 | [0017](file:///home/rony/LPR/AdMetricsPro/docs/adr/0017-compliance-architecture-and-quality-gates.md) | Testes Automatizados de Conformidade Arquitetural e Guardrails do AGENTS.md | Aceito | 2026-09-03 |
+| [0018](file:///home/rony/LPR/AdMetricsPro/docs/adr/0018-dotenv-configuration-and-secrets-management.md) | Gestão de Segredos e Configurações Sensíveis via Arquivo .env | Aceito | 2026-09-03 |
 
 ---
 

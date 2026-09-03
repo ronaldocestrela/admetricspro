@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Backend\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\Backend\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\Backend\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Backend\Modules\Master\Master.Application\Master.Application.csproj" />
     <ProjectReference Include="..\..\Backend\Modules\Master\Master.Infrastructure\Master.Infrastructure.csproj" />
   </ItemGroup>

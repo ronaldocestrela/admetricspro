@@ -1,9 +1,14 @@
+using BuildingBlocks.Infrastructure.Configuration;
 using BuildingBlocks.Infrastructure.Security;
 using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
 using WebApi.Extensions;
 
+// Carrega variáveis do arquivo .env no ambiente de processo e no pipeline de configuração
+DotEnvLoader.Load();
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddDotEnvFile();
 
 // Configuração de serviços
 builder.Services.Configure<RouteOptions>(options =>
