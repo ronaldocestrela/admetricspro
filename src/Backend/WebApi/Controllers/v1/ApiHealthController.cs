@@ -38,6 +38,7 @@ public sealed class ApiHealthController : ControllerBase
     [HttpGet]
     [EndpointSummary("Obtém o resumo operacional consolidado de cotas de APIs e conexões")]
     [ProducesResponseType(typeof(Result<ApiHealthOverviewDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<ApiHealthOverviewDto>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Result<ApiHealthOverviewDto>>> GetOverview(CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(new GetApiHealthOverviewQuery(), cancellationToken);
@@ -56,6 +57,7 @@ public sealed class ApiHealthController : ControllerBase
     [HttpGet("connections")]
     [EndpointSummary("Lista conexões de APIs de inquilinos com filtros")]
     [ProducesResponseType(typeof(Result<IReadOnlyList<TenantApiConnectionDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<TenantApiConnectionDto>>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Result<IReadOnlyList<TenantApiConnectionDto>>>> GetConnections(
         [FromQuery] AdPlatform? platform = null,
         [FromQuery] ApiConnectionStatus? status = null,
@@ -79,6 +81,7 @@ public sealed class ApiHealthController : ControllerBase
     [HttpPost("usage")]
     [EndpointSummary("Registra consumo de operações contra a cota de uma API")]
     [ProducesResponseType(typeof(Result<PlatformQuotaStatusDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<PlatformQuotaStatusDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Result<PlatformQuotaStatusDto>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<Result<PlatformQuotaStatusDto>>> RecordUsage(
         [FromBody] RecordUsageApiRequest request,
@@ -92,7 +95,11 @@ public sealed class ApiHealthController : ControllerBase
 
         if (result.IsFailure)
         {
-            return UnprocessableEntity(result);
+            return result.Error.Type switch
+            {
+                ErrorType.Validation => UnprocessableEntity(result),
+                _ => BadRequest(result)
+            };
         }
 
         return Ok(result);

@@ -35,6 +35,7 @@ public sealed class BillingController : ControllerBase
     [EndpointSummary("Executa o ciclo da régua de inadimplência e suspensão progressiva (Dunning Engine)")]
     [ProducesResponseType(typeof(Result<DunningExecutionSummaryResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Result<DunningExecutionSummaryResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<DunningExecutionSummaryResponse>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<Result<DunningExecutionSummaryResponse>>> ExecuteDunningCycle(
         [FromBody] ExecuteDunningApiRequest? request = null,
         CancellationToken cancellationToken = default)
@@ -44,7 +45,11 @@ public sealed class BillingController : ControllerBase
 
         if (result.IsFailure)
         {
-            return BadRequest(Result<DunningExecutionSummaryResponse>.Failure(result.Error));
+            return result.Error.Type switch
+            {
+                ErrorType.Validation => UnprocessableEntity(Result<DunningExecutionSummaryResponse>.Failure(result.Error)),
+                _ => BadRequest(Result<DunningExecutionSummaryResponse>.Failure(result.Error))
+            };
         }
 
         var response = new DunningExecutionSummaryResponse(

@@ -80,6 +80,7 @@ public sealed class PlansController : ControllerBase
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<Result<Guid>>> CreatePlan(
         [FromBody] CreatePlanApiRequest request,
         CancellationToken cancellationToken = default)
@@ -105,6 +106,7 @@ public sealed class PlansController : ControllerBase
             {
                 ErrorType.Conflict => Conflict(result),
                 ErrorType.NotFound => NotFound(result),
+                ErrorType.Validation => UnprocessableEntity(result),
                 _ => BadRequest(result)
             };
         }
@@ -125,6 +127,7 @@ public sealed class PlansController : ControllerBase
     [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(Result), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<Result>> UpdatePlan(
         Guid id,
         [FromBody] UpdatePlanApiRequest request,
@@ -151,6 +154,7 @@ public sealed class PlansController : ControllerBase
             {
                 ErrorType.Conflict => Conflict(result),
                 ErrorType.NotFound => NotFound(result),
+                ErrorType.Validation => UnprocessableEntity(result),
                 _ => BadRequest(result)
             };
         }

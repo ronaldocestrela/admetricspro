@@ -113,8 +113,8 @@ Controle centralizado da saúde das integrações com Meta, Google, Bing e TikTo
 Consolidação da suíte de testes de ponta a ponta, documentação viva interativa e validação dos critérios de aceite.
 
 ### Subfase 6.1: Documentação OpenAPI e Scalar UI
-* **6.1.1:** Configurar a exposição interativa do Scalar em `/scalar/v1` com autenticação corporativa habilitada.
-* **6.1.2:** Validar se todos os endpoints administrativos contêm anotações semânticas (`[EndpointSummary]`, `[ProducesResponseType]`) e exemplos estruturados do retorno `Result<T>`.
+* [x] **6.1.1:** Configurar a exposição interativa do Scalar em `/scalar/v1` com autenticação corporativa habilitada.
+* [x] **6.1.2:** Validar se todos os endpoints administrativos contêm anotações semânticas (`[EndpointSummary]`, `[ProducesResponseType]`) e exemplos estruturados do retorno `Result<T>`.
 
 ### Subfase 6.2: Validação de Conformidade com o AGENTS.md
 * **6.2.1:** Auditoria estrita da presença da tag XML `<summary>` em todas as classes, interfaces e records implementados no Backoffice.
