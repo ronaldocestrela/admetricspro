@@ -1,0 +1,52 @@
+@inject ITenantStateProvider TenantStateProvider
+
+<header class="app-header">
+    <div class="header-left">
+        <button class="mobile-sidebar-toggle" @onclick="ToggleSidebar" aria-label="Alternar menu de navegação">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+
+        <a href="/" class="tenant-brand">
+            @if (!string.IsNullOrEmpty(TenantStateProvider.CurrentTenant.Branding.LogoUrl))
+            {
+                <img src="@TenantStateProvider.CurrentTenant.Branding.LogoUrl" 
+                     alt="@TenantStateProvider.CurrentTenant.Name" 
+                     class="tenant-logo" />
+            }
+            else
+            {
+                <span class="tenant-brand-text">@TenantStateProvider.CurrentTenant.Name</span>
+            }
+        </a>
+
+        <span class="tenant-badge">@TenantStateProvider.CurrentTenant.Name</span>
+    </div>
+
+    <div class="header-right">
+        <div class="user-profile-widget">
+            <div class="user-avatar" title="@TenantStateProvider.CurrentTenant.Name">
+                @(TenantStateProvider.CurrentTenant.Name.Length > 0 ? TenantStateProvider.CurrentTenant.Name[0].ToString().ToUpper() : "U")
+            </div>
+        </div>
+    </div>
+</header>
+
+@code {
+    /// <summary>
+    /// EventCallback disparado quando o botão de alternância do menu mobile é acionado.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnToggleSidebar { get; set; }
+
+    private async Task ToggleSidebar()
+    {
+        if (OnToggleSidebar.HasDelegate)
+        {
+            await OnToggleSidebar.InvokeAsync();
+        }
+    }
+}

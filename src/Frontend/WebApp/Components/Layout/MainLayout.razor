@@ -1,0 +1,49 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject ITenantStateProvider TenantStateProvider
+
+<div class="app-shell" style="@TenantStateProvider.CurrentTenant.Branding.ToCssVariables()">
+    <AppHeader OnToggleSidebar="ToggleSidebar" />
+
+    <div class="app-body-container">
+        <AppSidebar IsOpen="_isSidebarOpen" />
+
+        <main class="app-main-content content-with-sidebar">
+            @Body
+        </main>
+    </div>
+
+    <AppFooter />
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Ocorreu um erro inesperado no processamento da página.
+    <a href="." class="reload">Recarregar</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool _isSidebarOpen;
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        TenantStateProvider.OnTenantChanged += HandleTenantChanged;
+    }
+
+    private void ToggleSidebar()
+    {
+        _isSidebarOpen = !_isSidebarOpen;
+    }
+
+    private void HandleTenantChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantStateProvider.OnTenantChanged -= HandleTenantChanged;
+    }
+}

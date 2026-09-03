@@ -1,0 +1,155 @@
+@page "/"
+@inject ITenantStateProvider TenantStateProvider
+
+<PageTitle>Dashboard | @TenantStateProvider.CurrentTenant.Name</PageTitle>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Painel Unificado de Performance</h1>
+        <p class="dashboard-subtitle">
+            Ambiente multitenant ativo para <strong>@TenantStateProvider.CurrentTenant.Name</strong>
+            @if (!string.IsNullOrEmpty(TenantStateProvider.CurrentTenant.CustomDomain))
+            {
+                <span class="custom-domain-tag">(@TenantStateProvider.CurrentTenant.CustomDomain)</span>
+            }
+        </p>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-platform">
+                <span class="platform-badge meta">Meta Ads</span>
+                <span class="status-indicator active"></span>
+            </div>
+            <div class="metric-value">R$ 42.850,00</div>
+            <div class="metric-label">Investimento no Mês</div>
+            <div class="metric-sublabel positive">+12.4% vs mês anterior</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-platform">
+                <span class="platform-badge google">Google Ads</span>
+                <span class="status-indicator active"></span>
+            </div>
+            <div class="metric-value">R$ 68.320,00</div>
+            <div class="metric-label">Investimento no Mês</div>
+            <div class="metric-sublabel positive">+8.1% vs mês anterior</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-platform">
+                <span class="platform-badge tiktok">TikTok Ads</span>
+                <span class="status-indicator active"></span>
+            </div>
+            <div class="metric-value">R$ 19.450,00</div>
+            <div class="metric-label">Investimento no Mês</div>
+            <div class="metric-sublabel positive">+24.7% vs mês anterior</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-platform">
+                <span class="platform-badge bing">Bing Ads</span>
+                <span class="status-indicator active"></span>
+            </div>
+            <div class="metric-value">R$ 7.910,00</div>
+            <div class="metric-label">Investimento no Mês</div>
+            <div class="metric-sublabel neutral">0.0% vs mês anterior</div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .dashboard-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+    }
+
+    .dashboard-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        margin-top: 0.25rem;
+    }
+
+    .custom-domain-tag {
+        color: var(--tenant-accent);
+        font-size: 0.85rem;
+        margin-left: 0.5rem;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .metric-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        transition: transform var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--border-hover);
+    }
+
+    .metric-platform {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .platform-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.6rem;
+        border-radius: var(--radius-sm);
+        text-transform: uppercase;
+    }
+
+    .platform-badge.meta { background: rgba(24, 119, 242, 0.15); color: #3b82f6; }
+    .platform-badge.google { background: rgba(234, 67, 53, 0.15); color: #ef4444; }
+    .platform-badge.tiktok { background: rgba(254, 44, 85, 0.15); color: #f43f5e; }
+    .platform-badge.bing { background: rgba(0, 164, 239, 0.15); color: #0ea5e9; }
+
+    .status-indicator.active {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #10b981;
+        box-shadow: 0 0 8px #10b981;
+    }
+
+    .metric-value {
+        font-size: 1.625rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.01em;
+    }
+
+    .metric-label {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    .metric-sublabel {
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-top: 0.75rem;
+    }
+
+    .metric-sublabel.positive { color: #10b981; }
+    .metric-sublabel.neutral { color: var(--text-muted); }
+</style>

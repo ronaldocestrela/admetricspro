@@ -113,11 +113,11 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 
 ## Fase 5: Setup do Frontend Blazor Server (.NET 10) & Tooling de Testes
 
-### Subfase 5.1: Estruturação do Projeto Blazor Server
+### Subfase 5.1: Estruturação do Projeto Blazor Server [Concluída]
 
-* **5.1.1:** Criar projeto Blazor Server interativo na pasta `src/Frontend/WebApp/`.
-* **5.1.2:** Configurar layout corporativo responsivo padrão com slots dinâmicos para customização White-Label (logo, cores institucionais).
-* **5.1.3:** Implementar o `TenantStateProvider` injetado na árvore de componentes para propagar a identidade do tenant ativo na sessão Blazor.
+* **5.1.1 (Concluído):** Criar projeto Blazor Server interativo na pasta `src/Frontend/WebApp/` com modo `InteractiveServer` em .NET 10 integrado à solution.
+* **5.1.2 (Concluído):** Configurar layout corporativo responsivo padrão (`MainLayout`, `AppHeader`, `AppSidebar`, `AppFooter`) com slots dinâmicos para customização White-Label (logo, cores institucionais via CSS Custom Properties).
+* **5.1.3 (TDD - Concluído):** Implementar o `TenantStateProvider` com interface `ITenantStateProvider` injetado com ciclo de vida Scoped por circuito SignalR para propagar a identidade do tenant ativo na sessão Blazor.
 
 ### Subfase 5.2: Suíte de Testes Frontend com bUnit
 

@@ -1,0 +1,18 @@
+@inject ITenantStateProvider TenantStateProvider
+
+<footer class="app-footer">
+    <div class="footer-left">
+        <span class="footer-company">
+            &copy; @DateTime.UtcNow.Year @(TenantStateProvider.CurrentTenant.Branding.CompanyName ?? TenantStateProvider.CurrentTenant.Name). Todos os direitos reservados.
+        </span>
+    </div>
+
+    @if (TenantStateProvider.CurrentTenant.Branding.ShowPoweredBy)
+    {
+        <div class="footer-right">
+            <span class="powered-by-tag">
+                Powered by <span class="brand-accent">AdMetricsPro</span>
+            </span>
+        </div>
+    }
+</footer>
