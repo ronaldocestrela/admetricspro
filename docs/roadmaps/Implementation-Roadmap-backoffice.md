@@ -31,11 +31,11 @@ Nesta fase inicial, estabelece-se a infraestrutura de dados para o catálogo cen
 * **1.1.5 (Documentação Viva):** Criar `docs/modules/backoffice-master-db.md` detalhando o schema e registrar o ADR `docs/adr/0002-database-per-tenant-strategy.md`.
 
 ### Subfase 1.2: Engine de Provisionamento Dinâmico de Bancos de Tenant
-* **1.2.1 (TDD - Red):** Escrever testes de integração para o serviço `ITenantProvisioningService` validando a criação de um novo banco SQL Server com nome sanitizado (ex: `Tenant_GUID`) e aplicação de migrações do `TenantDbContext`.
-* **1.2.2 (TDD - Green):** Implementar o `TenantProvisioningService` utilizando comandos estruturados com retorno do padrão `Result<TenantId>`.
-* **1.2.3:** Implementar o repositório `ITenantRepository` com métodos `AddAsync`, `GetByIdAsync` e `CommitAsync` respeitando `CancellationToken`.
-* **1.2.4:** Configurar a criptografia de chave simétrica para armazenamento seguro da Connection String de cada tenant no `MasterDb`.
-* **1.2.5 (Documentação Viva):** Adicionar documentação XML `<summary>` em todos os métodos do `ITenantProvisioningService`.
+* [x] **1.2.1 (TDD - Red):** Escrever testes de integração e unitários para o serviço `ITenantProvisioningService` validando a criação de um novo banco SQL Server com nome sanitizado (ex: `Tenant_{subdomain}`) e aplicação de migrações do `TenantDbContext` via `Database.MigrateAsync()`.
+* [x] **1.2.2 (TDD - Green):** Implementar o `TenantProvisioningService` utilizando comandos estruturados (`ProvisionTenantCommand`) com retorno estrito do padrão `Result<TenantId>`.
+* [x] **1.2.3:** Implementar o repositório `ITenantRepository` com métodos `AddAsync`, `GetByIdAsync`, `GetBySubdomainAsync` e `CommitAsync` via `IUnitOfWork` respeitando `CancellationToken`.
+* [x] **1.2.4:** Configurar a criptografia de chave simétrica (AES-256) para armazenamento seguro da Connection String de cada tenant no `MasterDb`.
+* [x] **1.2.5 (Documentação Viva):** Adicionar documentação XML `<summary>` em todas as classes, métodos e contratos do provisionamento e criar a especificação completa em `docs/modules/backoffice-provisioning.md`.
 
 ---
 

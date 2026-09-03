@@ -41,13 +41,40 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
     }
 
     /// <inheritdoc />
-    public async Task<Result<TenantId>> ProvisionTenantDatabaseAsync(
+    public Task<Result<TenantId>> ProvisionTenantDatabaseAsync(
         string companyName,
         string cnpj,
         string subdomain,
         CancellationToken cancellationToken)
     {
-        var normalizedSubdomain = subdomain.Trim().ToLowerInvariant();
+        return ProvisionTenantDatabaseAsync(
+            new ProvisionTenantCommand(companyName, cnpj, subdomain),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<TenantId>> ProvisionTenantDatabaseAsync(
+        ProvisionTenantCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (command is null)
+        {
+            return Result<TenantId>.Failure(
+                Error.Validation("Tenant.CommandRequired", "Provisioning command cannot be null."));
+        }
+
+        var tenantCreationResult = Tenant.Create(
+            command.CompanyName,
+            command.Cnpj,
+            command.Subdomain,
+            command.Tier);
+
+        if (tenantCreationResult.IsFailure)
+        {
+            return Result<TenantId>.Failure(tenantCreationResult.Error);
+        }
+
+        var normalizedSubdomain = (command.Subdomain ?? string.Empty).Trim().ToLowerInvariant();
 
         var subdomainInUse = await _masterDbContext.Tenants
             .AnyAsync(tenant => tenant.Subdomain == normalizedSubdomain, cancellationToken);
@@ -58,17 +85,11 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         }
 
         var cnpjInUse = await _masterDbContext.Tenants
-            .AnyAsync(tenant => tenant.Cnpj == cnpj, cancellationToken);
+            .AnyAsync(tenant => tenant.Cnpj == command.Cnpj, cancellationToken);
         if (cnpjInUse)
         {
             return Result<TenantId>.Failure(
                 Error.Conflict("Tenant.CnpjAlreadyExists", "CNPJ already exists in master catalog."));
-        }
-
-        var tenantCreationResult = Tenant.Create(companyName, cnpj, subdomain);
-        if (tenantCreationResult.IsFailure)
-        {
-            return Result<TenantId>.Failure(tenantCreationResult.Error);
         }
 
         var tenant = tenantCreationResult.Value;
