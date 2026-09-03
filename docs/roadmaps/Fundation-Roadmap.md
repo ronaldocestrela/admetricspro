@@ -102,12 +102,12 @@ Construção das abstrações essenciais e tipos utilitários sem acoplamento ex
 * **4.1.2 (TDD - Concluído):** Implementar pipeline behavior genérico `ValidationBehavior<TRequest, TResponse>` para validação de entrada usando `FluentValidation`, convertendo automaticamente quebras de regras em envelopes `Result<T>.Failure(ValidationError)` sem lançar exceções.
 * **4.1.3 (Documentação Viva - Concluído):** Registro do ADR `docs/adr/0009-in-memory-messaging-and-validation-pipeline.md` e atualização de `docs/modules/building-blocks.md`.
 
-### Subfase 4.2: Exposição de Contratos com OpenAPI e Scalar UI
+### Subfase 4.2: Exposição de Contratos com OpenAPI e Scalar UI [Concluída]
 
-* **4.2.1:** Ativar o gerador OpenAPI nativo do ASP.NET Core 10 (`AddOpenApi()`).
-* **4.2.2:** Adicionar pacote do Scalar e registrar a rota `/scalar/v1` em `Program.cs`.
-* **4.2.3:** Criar um endpoint de health check `GET /api/v1/health` retornando envelope `Result<HealthStatusResponse>` documentado via atributos `[EndpointSummary]` e `[ProducesResponseType]`.
-* **4.2.4 (Documentação Viva):** Criar `docs/adr/0001-modular-monolith-net10.md` e validar se o build conclui com zero alertas de XML documentation.
+* **4.2.1 (Concluído):** Ativar o gerador OpenAPI nativo do ASP.NET Core 10 (`AddOpenApi()`).
+* **4.2.2 (Concluído):** Adicionar pacote do Scalar e registrar a rota `/scalar/v1` em `Program.cs`.
+* **4.2.3 (TDD - Concluído):** Criar um endpoint de health check `GET /api/v1/health` retornando envelope `Result<HealthStatusResponse>` documentado via atributos `[EndpointSummary]` e `[ProducesResponseType]`.
+* **4.2.4 (Documentação Viva - Concluído):** Criar `docs/adr/0001-modular-monolith-net10.md` e validar se o build conclui com zero alertas de XML documentation.
 
 ---
 
