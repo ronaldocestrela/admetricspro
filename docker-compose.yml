@@ -9,7 +9,7 @@ services:
     ports:
       - "${MSSQL_PORT:-1433}:1433"
     volumes:
-      - sqlserver-data:/var/opt/mssql/data
+      - sqlserver-data-admetricspro:/var/opt/mssql/data
 
 volumes:
-  sqlserver-data:
+  sqlserver-data-admetricspro:
