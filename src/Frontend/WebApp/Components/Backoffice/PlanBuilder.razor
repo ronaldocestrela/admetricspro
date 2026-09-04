@@ -29,7 +29,7 @@
             </div>
         }
 
-        <EditForm Model="CurrentModel" OnValidSubmit="HandleSubmitAsync">
+        <EditForm Model="CurrentModel" OnValidSubmit="HandleSubmitAsync" FormName="PlanBuilderForm">
             <DataAnnotationsValidator />
 
             <!-- Seção 1: Identificação Comercial & Tier -->
@@ -263,14 +263,15 @@
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    private PlanFormViewModel CurrentModel { get; set; } = new();
+    [SupplyParameterFromForm(FormName = "PlanBuilderForm")]
+    private PlanFormViewModel CurrentModel { get; set; } = default!;
     private bool _isSaving;
     private string? _errorMessage;
 
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
-        CurrentModel = Model ?? new PlanFormViewModel();
+        CurrentModel = Model ?? CurrentModel ?? new PlanFormViewModel();
         _errorMessage = null;
     }
 

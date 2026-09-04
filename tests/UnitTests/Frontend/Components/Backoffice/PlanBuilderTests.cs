@@ -1,6 +1,7 @@
 using Bunit;
 using FluentAssertions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using UnitTests.Frontend.Common;
@@ -45,6 +46,20 @@ public sealed class PlanBuilderTests : BunitTestBase
         cut.Find("input[name='MaxWorkspaces']").Should().NotBeNull();
         cut.Find("input[name='MonthlyAdSpendCap']").Should().NotBeNull();
         cut.Find("button[type='submit']").TextContent.Should().Contain("Salvar Plano");
+    }
+
+    /// <summary>
+    /// Verifies that the form renders the required FormName handler attribute for Blazor SSR/Interactive compatibility.
+    /// </summary>
+    [Fact]
+    public void PlanBuilder_ShouldIncludeFormNameHandler_ToPreventPostDisambiguationError()
+    {
+        // Act
+        var cut = Render<PlanBuilder>();
+
+        // Assert
+        var editForm = cut.FindComponent<EditForm>();
+        editForm.Instance.FormName.Should().Be("PlanBuilderForm");
     }
 
     /// <summary>
