@@ -1,6 +1,8 @@
 using BuildingBlocks.Infrastructure.Configuration;
+using BuildingBlocks.Infrastructure.Security;
 using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
+using Master.Infrastructure.Services;
 using WebApp.Components;
 using WebApp.Services;
 using WebApp.State;
@@ -20,6 +22,11 @@ var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb
 
 builder.Services.AddMasterCatalog(masterConnectionString);
 builder.Services.AddMasterApplication();
+builder.Services.AddSecurityServices();
+builder.Services.Configure<ImpersonationJwtOptions>(options =>
+{
+    builder.Configuration.GetSection(ImpersonationJwtOptions.SectionName).Bind(options);
+});
 
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
 builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
