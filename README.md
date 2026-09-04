@@ -82,6 +82,7 @@ docker compose up -d
 Tanto o **Backend (WebApi)** quanto o **Frontend (WebApp)** e os testes leem o arquivo `.env` automaticamente no startup, resolvendo:
 - `ConnectionStrings__MasterDb`: Cadeia de conexão do banco de dados `MasterCatalog`.
 - `DatabaseMigrations__ApplyMasterMigrationsOnStartup`: Quando `true`, executa migrações no startup da WebApi.
+- `SuperAdmin__Email`, `SuperAdmin__Password`, `SuperAdmin__FullName`, `SuperAdmin__Role`: Credenciais semeadas no startup para o usuário SuperAdmin do Backoffice.
 - `ImpersonationJwt__SecretKey`: Chave criptográfica simétrica HMAC-SHA256 para tokens de Shadow Mode.
 - `Api__BaseUrl`: URL da API consumida pelo Blazor Server (`https://localhost:7001` ou `http://localhost:5000`).
 
@@ -99,7 +100,7 @@ Os arquivos de configuração padrão já estão preparados para o ambiente de d
 }
 ```
 
-> 💡 **Dica:** Ativar `"ApplyMasterMigrationsOnStartup": true` faz com que o WebApi aplique automaticamente todas as migrações do catálogo `MasterCatalog` na inicialização!
+> 💡 **Dica:** Ativar `"ApplyMasterMigrationsOnStartup": true` faz com que o WebApi aplique automaticamente todas as migrações do catálogo `MasterCatalog` na inicialização e semeie o usuário `SuperAdmin` a partir do `.env`!
 
 #### Frontend (`src/Frontend/WebApp/appsettings.Development.json` ou `appsettings.json`)
 ```json
@@ -134,9 +135,37 @@ Por padrão, a API será iniciada e estará acessível em:
 
 ---
 
-### 5. Executar o Frontend (Blazor WebApp)
+### 5. Executar o Backoffice Dedicado (Blazor Server - BackofficeApp)
 
-Em outro terminal, inicie a aplicação Blazor:
+O Backoffice é uma **aplicação administrativa separada e protegida**, com autenticação via ASP.NET Core Identity e papéis de acesso (`SuperAdmin` e `SupportTechnician`).
+
+Em outro terminal, inicie a aplicação de Backoffice:
+
+```bash
+dotnet run --project src/Frontend/BackofficeApp/BackofficeApp.csproj
+```
+
+O Backoffice estará disponível em:
+- **HTTP:** `http://localhost:5002`
+- **HTTPS:** `https://localhost:7002`
+
+#### Credenciais Padrão (.env):
+- **E-mail:** `admin@admetricspro.local` (ou configurado em `SuperAdmin__Email`)
+- **Senha:** `SuperAdmin@2026!` (ou configurada em `SuperAdmin__Password`)
+
+#### Rotas Principais do Backoffice (Todas Protegidas por Autenticação):
+- **Login Executivo:** `/login`
+- **Dashboard Operacional:** `/` e `/dashboard` (`RequireBackofficeAccess`)
+- **Diretório 360° de Inquilinos:** `/tenants` (`SuperAdmin`)
+- **Gestão de Planos & Cotas:** `/plans` (`SuperAdmin`)
+- **Monitor de Saúde & Rate Limits:** `/api-health` (`SuperAdmin,SupportTechnician`)
+- **Feature Flags & Kill Switches:** `/feature-flags` (`SuperAdmin`)
+
+---
+
+### 6. Executar o Portal do Cliente / Tenant (Blazor WebApp)
+
+Em outro terminal, inicie a aplicação Blazor do cliente/inquilino:
 
 ```bash
 dotnet run --project src/Frontend/WebApp/WebApp.csproj
@@ -146,12 +175,8 @@ O portal estará disponível em:
 - **HTTP:** `http://localhost:5130`
 - **HTTPS:** `https://localhost:7285`
 
-#### Rotas Principais do Frontend:
+#### Rotas Principais do Portal:
 - **Dashboard Unificado de Performance:** `/`
-- **Backoffice — Diretório 360° de Inquilinos:** `/admin/tenants` (busca, status, Shadow Mode/Impersonação, provisionamento)
-- **Backoffice — Gestão de Planos & Cotas:** `/admin/plans` (planos comerciais, limites de gastos, assentos, features)
-- **Backoffice — Monitor de Rate Limits & Saúde de APIs:** `/admin/api-health` (Meta, Google, Bing, TikTok, limiares de 80%)
-- **Backoffice — Feature Flags & Kill Switches Operacionais:** `/admin/feature-flags` (disjuntores de emergência e rollouts)
 
 ---
 
@@ -205,7 +230,8 @@ dotnet test
 │   │   │   └── Master/             # Catálogo central: Inquilinos, Planos, Dunning, Flags, Audit
 │   │   └── WebApi/                 # Host ASP.NET Core 10, OpenAPI, Scalar UI, Controllers
 │   └── Frontend/
-│       └── WebApp/                 # Blazor Server 10 (Components, Pages, State, White-Label)
+│       ├── WebApp/                 # Blazor Server 10 (Portal do Tenant, White-Label)
+│       └── BackofficeApp/          # Blazor Server 10 (Backoffice Dedicado, Identity, SuperAdmin)
 └── tests/
     ├── UnitTests/                  # Testes unitários (Backend e Frontend via bUnit)
     ├── IntegrationTests/           # Testes de persistência com Testcontainers MSSQL

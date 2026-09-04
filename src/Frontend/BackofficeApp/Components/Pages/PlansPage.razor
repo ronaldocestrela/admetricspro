@@ -1,0 +1,13 @@
+@page "/plans"
+@attribute [Authorize(Roles = "SuperAdmin")]
+
+<PageTitle>Planos e Precificação — Backoffice AdMetricsPro</PageTitle>
+
+<div class="plans-page">
+    <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 24px; font-weight: 700; color: #F9FAFB; margin-bottom: 4px;">Gestão de Planos &amp; Limites</h1>
+        <p style="font-size: 14px; color: var(--text-secondary);">Configuração de planos de assinatura, quotas operacionais e regras de cobrança.</p>
+    </div>
+
+    <PlanBuilder />
+</div>

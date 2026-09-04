@@ -1,0 +1,31 @@
+<Router AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(BackofficeLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    <BackofficeApp.Components.Pages.AccessDeniedPage />
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#0B0F19; color:#9CA3AF;">
+                    <p>Verificando credenciais e privilégios corporativos...</p>
+                </div>
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(BackofficeLayout)">
+            <div style="padding: 40px; text-align: center; color: #9CA3AF;">
+                <h2 style="color: #F9FAFB; margin-bottom: 8px;">Página Não Encontrada</h2>
+                <p>O recurso solicitado não existe no console Backoffice.</p>
+                <a href="/" class="btn-logout" style="display:inline-block; margin-top:16px;">Ir para o Dashboard</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

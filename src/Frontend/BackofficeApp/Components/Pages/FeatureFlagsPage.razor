@@ -1,0 +1,13 @@
+@page "/feature-flags"
+@attribute [Authorize(Roles = "SuperAdmin")]
+
+<PageTitle>Feature Flags &amp; Kill Switches — Backoffice AdMetricsPro</PageTitle>
+
+<div class="feature-flags-page">
+    <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 24px; font-weight: 700; color: #F9FAFB; margin-bottom: 4px;">Feature Flags &amp; Kill Switches Operacionais</h1>
+        <p style="font-size: 14px; color: var(--text-secondary);">Controle dinâmico de liberação de funcionalidades e desativação emergencial de integrações.</p>
+    </div>
+
+    <FeatureFlagsDashboard />
+</div>

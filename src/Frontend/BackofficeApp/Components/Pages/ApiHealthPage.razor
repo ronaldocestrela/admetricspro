@@ -1,0 +1,13 @@
+@page "/api-health"
+@attribute [Authorize(Roles = "SuperAdmin,SupportTechnician")]
+
+<PageTitle>Saúde das APIs &amp; Rate Limits — Backoffice AdMetricsPro</PageTitle>
+
+<div class="api-health-page">
+    <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 24px; font-weight: 700; color: #F9FAFB; margin-bottom: 4px;">Monitor de Integrações &amp; Rate Limits</h1>
+        <p style="font-size: 14px; color: var(--text-secondary);">Telemetria em tempo real do consumo de cotas das APIs de anúncios (Meta, Google, Bing, TikTok).</p>
+    </div>
+
+    <ApiHealthDashboard />
+</div>

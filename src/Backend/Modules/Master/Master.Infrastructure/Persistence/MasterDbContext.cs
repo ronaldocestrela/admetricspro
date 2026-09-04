@@ -3,14 +3,16 @@ using Master.Domain.FeatureFlags;
 using Master.Domain.Integrations;
 using Master.Domain.Plans;
 using Master.Domain.Tenants;
+using Master.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Master.Infrastructure.Persistence;
 
 /// <summary>
-/// Central catalog context containing tenant metadata and connection information.
+/// Central catalog context containing tenant metadata, identity operators, and connection information.
 /// </summary>
-public sealed class MasterDbContext : DbContext
+public sealed class MasterDbContext : IdentityDbContext<MasterUser, MasterRole, Guid>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="MasterDbContext"/> class.
@@ -66,6 +68,8 @@ public sealed class MasterDbContext : DbContext
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.Ignore<Microsoft.AspNetCore.Identity.IdentityPasskeyData>();
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MasterDbContext).Assembly);
     }
 }

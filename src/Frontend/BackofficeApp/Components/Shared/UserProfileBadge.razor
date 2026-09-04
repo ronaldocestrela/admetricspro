@@ -1,0 +1,41 @@
+@using System.Security.Claims
+
+<AuthorizeView>
+    <Authorized>
+        <div class="user-profile-badge">
+            <div class="user-avatar" title="@context.User.Identity?.Name">
+                @GetInitials(context.User.Identity?.Name)
+            </div>
+            <div class="user-info">
+                <span class="user-name">@(context.User.Identity?.Name ?? "Operador")</span>
+                <span class="user-role">@GetUserRole(context.User)</span>
+            </div>
+            <a href="/api/auth/logout" class="btn-logout" title="Encerrar Sessão Segura">
+                Sair
+            </a>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <a href="/login" class="btn-logout">Entrar</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "AD";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
+        }
+        return name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
+    }
+
+    private static string GetUserRole(ClaimsPrincipal user)
+    {
+        if (user.IsInRole("SuperAdmin")) return "SUPER ADMIN";
+        if (user.IsInRole("SupportTechnician")) return "SUPORTE TÉCNICO";
+        return "OPERADOR";
+    }
+}

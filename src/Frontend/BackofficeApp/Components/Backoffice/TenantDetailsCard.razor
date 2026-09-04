@@ -1,0 +1,187 @@
+@using BackofficeApp.Models
+
+@if (Tenant is not null)
+{
+    <div class="tenant-details-card">
+        <div class="card-header">
+            <div class="header-titles">
+                <div class="header-badge-row">
+                    <span class="status-badge status-@Tenant.Status.ToLowerInvariant()">@TranslateStatus(Tenant.Status)</span>
+                    <span class="tier-badge tier-@Tenant.Tier.ToLowerInvariant()">@Tenant.Tier</span>
+                </div>
+                <h2 class="card-title">@Tenant.CompanyName</h2>
+                <span class="card-subtitle">Identificador de subdomínio: <strong>@Tenant.Subdomain</strong></span>
+            </div>
+            <button class="btn-card-close" @onclick="OnClose" title="Fechar Ficha 360º">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <div class="card-body">
+            <!-- Seção 1: Dados Fiscais e Cadastrais -->
+            <div class="card-section">
+                <h4 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    Dados Fiscais & Cadastrais
+                </h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Razão Social</span>
+                        <span class="info-value">@Tenant.CompanyName</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">CNPJ</span>
+                        <span class="info-value cnpj-text">@Tenant.FormattedCnpj</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Subdomínio de Acesso</span>
+                        <span class="info-value font-mono">@($"{Tenant.Subdomain}.admetricspro.com.br")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">CNAME Customizado</span>
+                        <span class="info-value font-mono">@(Tenant.CustomDomain ?? "Não configurado")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 2: Dados Contratuais e Vigência -->
+            <div class="card-section">
+                <h4 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    Assinatura & Ciclo de Vida
+                </h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Plano de Contratação</span>
+                        <span class="info-value font-semibold">Tier @Tenant.Tier</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Data de Provisionamento</span>
+                        <span class="info-value">@Tenant.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm") UTC</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Vigência da Assinatura</span>
+                        <span class="info-value">
+                            @(Tenant.SubscriptionExpiresAtUtc.HasValue 
+                                ? Tenant.SubscriptionExpiresAtUtc.Value.ToString("dd/MM/yyyy") 
+                                : "Assinatura Contínua / Indeterminada")
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status Operacional</span>
+                        <span class="info-value">
+                            <span class="status-indicator-dot status-@Tenant.Status.ToLowerInvariant()"></span>
+                            @TranslateStatus(Tenant.Status)
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 3: Métricas Operacionais 360º -->
+            <div class="card-section">
+                <h4 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M18 20V10"></path>
+                        <path d="M12 20V4"></path>
+                        <path d="M6 20v-6"></path>
+                    </svg>
+                    Métricas Operacionais 360º
+                </h4>
+                <div class="metrics-360-grid">
+                    <div class="metric-card">
+                        <span class="metric-number">@Tenant.WorkspacesCount</span>
+                        <span class="metric-title">Workspaces Ativos</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-number highlight-green">@Tenant.SunkAdSpend.ToString("C2", new System.Globalization.CultureInfo("pt-BR"))</span>
+                        <span class="metric-title">Ad Spend Sincronizado</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-number">@Tenant.ActiveIntegrationsCount</span>
+                        <span class="metric-title">Canais Conectados</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-number">@Tenant.TotalCampaignsCount</span>
+                        <span class="metric-title">Campanhas Ativas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            @if (!Tenant.IsSuspended)
+            {
+                <button class="btn-card-action btn-card-suspend"
+                        @onclick="() => OnSuspendClick.InvokeAsync(Tenant.Id)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                    </svg>
+                    <span>Suspender Tenant</span>
+                </button>
+            }
+            else
+            {
+                <button class="btn-card-action btn-card-reactivate"
+                        @onclick="() => OnReactivateClick.InvokeAsync(Tenant.Id)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    <span>Reativar Operações</span>
+                </button>
+            }
+
+            <button class="btn-card-secondary" @onclick="OnClose">
+                <span>Fechar</span>
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Objeto com dados consolidados da ficha 360º do inquilino.
+    /// </summary>
+    [Parameter]
+    public Tenant360DetailsViewModel? Tenant { get; set; }
+
+    /// <summary>
+    /// Callback disparado ao fechar a visualização do card.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    /// <summary>
+    /// Callback disparado ao solicitar a suspensão a partir do card 360º.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Guid> OnSuspendClick { get; set; }
+
+    /// <summary>
+    /// Callback disparado ao solicitar a reativação a partir do card 360º.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Guid> OnReactivateClick { get; set; }
+
+    private static string TranslateStatus(string status) => status switch
+    {
+        "Active" => "Ativo",
+        "Trial" => "Trial",
+        "Delinquent" => "Inadimplente",
+        "Suspended" => "Suspenso",
+        "Cancelled" => "Cancelado",
+        _ => status
+    };
+}

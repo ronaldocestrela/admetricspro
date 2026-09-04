@@ -1,0 +1,56 @@
+@page "/tenants"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@inject ITenantDirectoryService TenantDirectoryService
+
+<PageTitle>Diretório de Tenants 360º — Backoffice AdMetricsPro</PageTitle>
+
+<div class="tenants-directory-page">
+    <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 24px; font-weight: 700; color: #F9FAFB; margin-bottom: 4px;">Diretório Global de Tenants</h1>
+        <p style="font-size: 14px; color: var(--text-secondary);">Governança, ciclo de vida e monitoramento de assinantes multi-tenant.</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="alert-error" role="alert" style="margin-bottom: 20px;">
+            <span>@_errorMessage</span>
+        </div>
+    }
+
+    <div style="display: grid; grid-template-columns: @(_selectedTenant != null ? "1fr 400px" : "1fr"); gap: 24px;">
+        <div>
+            <TenantsGrid OnTenantSelected="HandleTenantSelected" />
+        </div>
+
+        @if (_selectedTenant != null)
+        {
+            <div>
+                <TenantDetailsCard Details="_selectedTenant" OnClose="HandleCloseDetails" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private Tenant360DetailsViewModel? _selectedTenant;
+    private string? _errorMessage;
+
+    private async Task HandleTenantSelected(TenantDirectoryItemViewModel tenant)
+    {
+        _errorMessage = null;
+        var result = await TenantDirectoryService.GetTenant360DetailsAsync(tenant.Id);
+        if (result.IsSuccess)
+        {
+            _selectedTenant = result.Value;
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+
+    private void HandleCloseDetails()
+    {
+        _selectedTenant = null;
+    }
+}

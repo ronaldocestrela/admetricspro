@@ -1,0 +1,251 @@
+@using BackofficeApp.Models
+
+<div class="tenants-grid-container">
+    <div class="grid-toolbar">
+        <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text"
+                   class="search-input"
+                   placeholder="Buscar por razão social, CNPJ ou subdomínio..."
+                   value="@_searchTerm"
+                   @oninput="HandleSearchInput" />
+            @if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                <button class="clear-search-btn" @onclick="ClearSearch" title="Limpar busca">×</button>
+            }
+        </div>
+
+        <div class="filters-group">
+            <div class="filter-item">
+                <label for="statusFilter" class="filter-label">Status:</label>
+                <select id="statusFilter" class="filter-select status-filter" value="@_selectedStatus" @onchange="HandleStatusChange">
+                    <option value="">Todos os status</option>
+                    <option value="Active">Ativo</option>
+                    <option value="Trial">Trial</option>
+                    <option value="Delinquent">Inadimplente</option>
+                    <option value="Suspended">Suspenso</option>
+                    <option value="Cancelled">Cancelado</option>
+                </select>
+            </div>
+
+            <div class="filter-item">
+                <label for="tierFilter" class="filter-label">Plano:</label>
+                <select id="tierFilter" class="filter-select tier-filter" value="@_selectedTier" @onchange="HandleTierChange">
+                    <option value="">Todos os planos</option>
+                    <option value="Trial">Trial</option>
+                    <option value="Starter">Starter</option>
+                    <option value="Pro">Pro</option>
+                    <option value="Enterprise">Enterprise</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="grid-loading-indicator">
+            <div class="spinner"></div>
+            <span>Carregando diretório de inquilinos...</span>
+        </div>
+    }
+    else if (!FilteredTenants.Any())
+    {
+        <div class="grid-empty-state">
+            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <h3>Nenhum inquilino encontrado</h3>
+            <p>Nenhum resultado corresponde aos critérios de pesquisa e filtros selecionados.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="tenants-table">
+                <thead>
+                    <tr>
+                        <th>Empresa</th>
+                        <th>CNPJ</th>
+                        <th>Subdomínio</th>
+                        <th>Status</th>
+                        <th>Plano</th>
+                        <th>Workspaces</th>
+                        <th>Ad Spend Sincronizado</th>
+                        <th class="text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var tenant in FilteredTenants)
+                    {
+                        <tr class="tenant-row">
+                            <td class="col-company">
+                                <div class="company-info">
+                                    <span class="company-name">@tenant.CompanyName</span>
+                                    <span class="created-date">Provisionado em @tenant.CreatedAtUtc.ToString("dd/MM/yyyy")</span>
+                                </div>
+                            </td>
+                            <td class="col-cnpj">
+                                <span class="cnpj-badge">@tenant.FormattedCnpj</span>
+                            </td>
+                            <td class="col-subdomain">
+                                <span class="subdomain-tag">@tenant.Subdomain</span>
+                            </td>
+                            <td class="col-status">
+                                <span class="status-badge status-@tenant.Status.ToLowerInvariant()">
+                                    @TranslateStatus(tenant.Status)
+                                </span>
+                            </td>
+                            <td class="col-tier">
+                                <span class="tier-badge tier-@tenant.Tier.ToLowerInvariant()">
+                                    @tenant.Tier
+                                </span>
+                            </td>
+                            <td class="col-workspaces">
+                                <span class="workspace-count">@tenant.WorkspacesCount</span>
+                            </td>
+                            <td class="col-spend">
+                                <span class="ad-spend-value">@tenant.SunkAdSpend.ToString("C2", new System.Globalization.CultureInfo("pt-BR"))</span>
+                            </td>
+                            <td class="col-actions text-right">
+                                <div class="action-buttons">
+                                    <button class="btn-action btn-view-details"
+                                            title="Ver Ficha 360º"
+                                            @onclick="() => OnSelectTenant.InvokeAsync(tenant)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                        <span>Ficha 360º</span>
+                                    </button>
+
+                                    @if (!string.Equals(tenant.Status, "Suspended", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <button class="btn-action btn-suspend-tenant"
+                                                title="Suspender Operações do Inquilino"
+                                                @onclick="() => OnSuspendTenant.InvokeAsync(tenant)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                                            </svg>
+                                            <span>Suspender</span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn-action btn-reactivate-tenant"
+                                                title="Reativar Inquilino"
+                                                @onclick="() => OnReactivateTenant.InvokeAsync(tenant)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <polyline points="23 4 23 10 17 10"></polyline>
+                                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                            </svg>
+                                            <span>Reativar</span>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="grid-footer">
+            <span class="results-count">Exibindo <strong>@FilteredTenants.Count()</strong> de <strong>@(Tenants?.Count ?? 0)</strong> inquilinos</span>
+        </div>
+    }
+</div>
+
+@code {
+    private string _searchTerm = string.Empty;
+    private string _selectedStatus = string.Empty;
+    private string _selectedTier = string.Empty;
+
+    /// <summary>
+    /// Lista de inquilinos a serem apresentados na tabela.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<TenantDirectoryItemViewModel>? Tenants { get; set; }
+
+    /// <summary>
+    /// Indica se os dados estão em fase de carregamento assíncrono.
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    /// <summary>
+    /// Callback emitido ao selecionar um tenant para visualização da ficha 360º.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TenantDirectoryItemViewModel> OnSelectTenant { get; set; }
+
+    /// <summary>
+    /// Callback emitido ao solicitar a suspensão forçada de um tenant.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TenantDirectoryItemViewModel> OnSuspendTenant { get; set; }
+
+    /// <summary>
+    /// Callback emitido ao solicitar a reativação de um tenant.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TenantDirectoryItemViewModel> OnReactivateTenant { get; set; }
+
+    private IEnumerable<TenantDirectoryItemViewModel> FilteredTenants
+    {
+        get
+        {
+            if (Tenants is null) return Enumerable.Empty<TenantDirectoryItemViewModel>();
+
+            return Tenants.Where(t =>
+            {
+                var matchesSearch = string.IsNullOrWhiteSpace(_searchTerm) ||
+                    t.CompanyName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    t.Cnpj.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    t.Subdomain.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase);
+
+                var matchesStatus = string.IsNullOrWhiteSpace(_selectedStatus) ||
+                    string.Equals(t.Status, _selectedStatus, StringComparison.OrdinalIgnoreCase);
+
+                var matchesTier = string.IsNullOrWhiteSpace(_selectedTier) ||
+                    string.Equals(t.Tier, _selectedTier, StringComparison.OrdinalIgnoreCase);
+
+                return matchesSearch && matchesStatus && matchesTier;
+            });
+        }
+    }
+
+    private void HandleSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void HandleStatusChange(ChangeEventArgs e)
+    {
+        _selectedStatus = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void HandleTierChange(ChangeEventArgs e)
+    {
+        _selectedTier = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void ClearSearch()
+    {
+        _searchTerm = string.Empty;
+    }
+
+    private static string TranslateStatus(string status) => status switch
+    {
+        "Active" => "Ativo",
+        "Trial" => "Trial",
+        "Delinquent" => "Inadimplente",
+        "Suspended" => "Suspenso",
+        "Cancelled" => "Cancelado",
+        _ => status
+    };
+}

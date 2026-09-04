@@ -6,6 +6,7 @@ using Master.Application.Services;
 using Master.Infrastructure.Persistence;
 using Master.Infrastructure.Repositories;
 using Master.Infrastructure.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -57,6 +58,7 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<IImpersonationSessionRepository, ImpersonationSessionRepository>();
         services.AddScoped<IImpersonationTokenService, JwtImpersonationTokenService>();
         services.AddMemoryCache();
+        services.AddSecurityServices();
         services.AddScoped<Master.Application.Auditing.IMasterAuditRepository, MasterAuditRepository>();
         services.AddScoped<Master.Application.Auditing.IMasterAuditService, Master.Application.Auditing.MasterAuditService>();
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(Master.Application.Auditing.AuditImpersonationBehavior<,>));
@@ -65,6 +67,29 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<Master.Application.Integrations.Services.IApiQuotaTrackerService, Master.Infrastructure.Integrations.InMemoryApiQuotaTracker>();
         services.AddScoped<Master.Application.FeatureFlags.Repositories.IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<Master.Application.FeatureFlags.Services.IFeatureFlagService, Master.Application.FeatureFlags.Services.FeatureFlagService>();
+
+        // Registros de Identidade do ASP.NET Core Identity e Autenticação do Backoffice
+        services.AddDataProtection();
+        services.AddIdentityCore<Master.Infrastructure.Identity.MasterUser>(options =>
+        {
+            options.Password.RequireDigit = true;
+            options.Password.RequiredLength = 8;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = true;
+            options.Password.RequireLowercase = true;
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        })
+        .AddRoles<Master.Infrastructure.Identity.MasterRole>()
+        .AddEntityFrameworkStores<MasterDbContext>()
+        .AddDefaultTokenProviders();
+
+        services.AddOptions<Master.Infrastructure.Configuration.SuperAdminSeedOptions>()
+            .BindConfiguration(Master.Infrastructure.Configuration.SuperAdminSeedOptions.SectionName);
+
+        services.AddScoped<Master.Application.Users.Services.IBackofficeAuthService, MasterBackofficeAuthService>();
+        services.AddScoped<Master.Application.Users.Services.IMasterIdentitySeeder, MasterIdentitySeeder>();
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }
@@ -115,7 +140,23 @@ public static class MasterDatabaseMigrationExtensions
     {
         using var scope = host.Services.CreateScope();
         var runner = scope.ServiceProvider.GetRequiredService<IMasterDatabaseMigrationRunner>();
-        return await runner.ApplyMigrationsAsync(cancellationToken);
+        var migrationResult = await runner.ApplyMigrationsAsync(cancellationToken);
+        if (migrationResult.IsFailure)
+        {
+            return migrationResult;
+        }
+
+        var seeder = scope.ServiceProvider.GetService<Master.Application.Users.Services.IMasterIdentitySeeder>();
+        if (seeder != null)
+        {
+            var seedResult = await seeder.SeedSuperAdminAsync(cancellationToken);
+            if (seedResult.IsFailure)
+            {
+                return seedResult;
+            }
+        }
+
+        return Result.Success();
     }
 }
 

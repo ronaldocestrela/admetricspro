@@ -118,5 +118,22 @@ Consolidação da suíte de testes de ponta a ponta, documentação viva interat
 
 ### Subfase 6.2: Validação de Conformidade com o AGENTS.md
 * [x] **6.2.1:** Auditoria estrita da presença da tag XML `<summary>` em todas as classes, interfaces e records implementados no Backoffice via testes automatizados `XmlDocumentationComplianceTests` e `FrontendDocumentationComplianceTests`.
-* [x] **6.2.2:** Execução completa da suíte de testes (Unitários, Integração e Aceitação) garantindo 100% de sucesso (438 testes verdes) sem testes pulados ou flaky.
-* [x] **6.2.3:** Verificação dos registros de ADRs atualizados na pasta `docs/adr/`, introdução do ADR `0017-compliance-architecture-and-quality-gates.md` e índice central em `docs/adr/README.md`.
+* [x] **6.2.2:** Execução completa da suíte de testes (Unitários, Integração e Aceitação) garantindo 100% de sucesso sem testes pulados ou flaky.
+* [x] **6.2.3:** Verificação dos registros de ADRs atualizados na pasta `docs/adr/`, introdução do ADR `0017-compliance-architecture-and-quality-gates.md` e índice central em `docs/adr/README.md`.
+
+---
+
+## Fase 7: Autenticação com ASP.NET Core Identity & Backoffice Dedicado (BackofficeApp)
+
+Isolamento do console Backoffice como aplicação Blazor Server independente (`src/Frontend/BackofficeApp`) e segurança corporativa com ASP.NET Core Identity no `MasterDb`.
+
+### Subfase 7.1: Identity no MasterDb & Seed via .env (Backend)
+* [x] **7.1.1 (TDD - Red):** Testes unitários para `AuthenticateBackofficeUserCommand`, validador e `MasterIdentitySeederTests`.
+* [x] **7.1.2 (TDD - Green):** Implementação de `MasterUser`, `MasterRole`, `MasterBackofficeAuthService` e migração EF Core `Add_MasterIdentityAndUsers` no `MasterDbContext`.
+* [x] **7.1.3:** Mecanismo de seed idempotente a partir das variáveis `SuperAdmin__*` do `.env` e integração com `ApplyMasterDatabaseMigrationsAsync`.
+
+### Subfase 7.2: Aplicação Dedicada BackofficeApp & Telas Protegidas (Frontend)
+* [x] **7.2.1:** Criação da aplicação autônoma `src/Frontend/BackofficeApp` em porta própria (HTTPS 7002 / HTTP 5002) com layout executivo dark mode.
+* [x] **7.2.2:** Proteção global de rotas com `<AuthorizeRouteView>`, tela de login (`/login`), tela de acesso negado (`/access-denied`) e atributos `[Authorize(Roles = "SuperAdmin")]`.
+* [x] **7.2.3 (TDD - bUnit):** Testes de componentes bUnit para `LoginPage` e `UserProfileBadge` em `tests/UnitTests/Frontend`.
+* [x] **7.2.4 (Documentação Viva):** Especificação completa em `docs/modules/backoffice-authentication.md` e registro do ADR `docs/adr/0019-backoffice-identity-framework-and-authentication.md`.
