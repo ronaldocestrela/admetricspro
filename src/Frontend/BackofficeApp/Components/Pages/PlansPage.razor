@@ -1,13 +1,385 @@
 @page "/plans"
 @attribute [Authorize(Roles = "SuperAdmin")]
+@using BackofficeApp.Components.Backoffice
+@using BackofficeApp.Models
+@using BackofficeApp.Services
+@using Master.Application.Plans.DTOs
+@using Master.Domain.Tenants
+@inject IPlanManagementService PlanService
 
-<PageTitle>Planos e Precificação — Backoffice AdMetricsPro</PageTitle>
+<PageTitle>Planos &amp; Limites — Backoffice AdMetricsPro</PageTitle>
 
 <div class="plans-page">
-    <div style="margin-bottom: 24px;">
-        <h1 style="font-size: 24px; font-weight: 700; color: #F9FAFB; margin-bottom: 4px;">Gestão de Planos &amp; Limites</h1>
-        <p style="font-size: 14px; color: var(--text-secondary);">Configuração de planos de assinatura, quotas operacionais e regras de cobrança.</p>
+    <div class="page-header">
+        <div class="header-content">
+            <span class="page-category">Backoffice Global &middot; Billing Master</span>
+            <h1 class="page-title">Gestão de Planos &amp; Limites</h1>
+            <p class="page-description">
+                Configuração centralizada de tiers comerciais, quotas operacionais de assentos, workspaces, ad spend cap e recursos avançados.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-primary" @onclick="LoadPlansAsync" disabled="@_isLoading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                <span>Atualizar Catálogo</span>
+            </button>
+
+            @if (!_isBuilderOpen)
+            {
+                <button class="btn-primary btn-new-plan" @onclick="OpenNewPlanModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    <span>Novo Plano</span>
+                </button>
+            }
+        </div>
     </div>
 
-    <PlanBuilder />
+    <!-- Banner de Notificação de Operação -->
+    @if (!string.IsNullOrWhiteSpace(_notificationMessage))
+    {
+        <div class="alert-banner alert-@(_isNotificationError ? "error" : "success")">
+            <div class="alert-content">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                    @if (_isNotificationError)
+                    {
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    }
+                    else
+                    {
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    }
+                </svg>
+                <span>@_notificationMessage</span>
+            </div>
+            <button class="btn-close-alert" @onclick="ClearNotification">×</button>
+        </div>
+    }
+
+    <!-- Cards de KPI de Governança de Planos -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrapper blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    <line x1="2" y1="10" x2="22" y2="10"></line>
+                </svg>
+            </div>
+            <div class="kpi-info">
+                <span class="kpi-label">Total de Planos</span>
+                <span class="kpi-value">@TotalPlansCount</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon-wrapper green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <div class="kpi-info">
+                <span class="kpi-label">Planos Ativos</span>
+                <span class="kpi-value">@ActivePlansCount</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon-wrapper purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+            </div>
+            <div class="kpi-info">
+                <span class="kpi-label">Recursos com IA</span>
+                <span class="kpi-value">@AiPlansCount</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon-wrapper amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+            </div>
+            <div class="kpi-info">
+                <span class="kpi-label">Maior Ad Spend Cap</span>
+                <span class="kpi-value">@MaxSpendCap.ToString("C0", new System.Globalization.CultureInfo("pt-BR"))</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Área de Criação e Edição (PlanBuilder) -->
+    @if (_isBuilderOpen)
+    {
+        <div class="builder-drawer mb-4">
+            <PlanBuilder Model="_selectedPlanForEdit"
+                         OnSaveSuccess="HandleSaveSuccess"
+                         OnCancel="HandleCancelBuilder" />
+        </div>
+    }
+
+    <!-- Catálogo de Planos Cadastrados -->
+    <div class="plans-catalog-card">
+        <div class="catalog-header">
+            <div class="catalog-title-group">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18" class="text-primary">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <h3>Catálogo de Planos Cadastrados</h3>
+            </div>
+            <span class="plans-count-badge">Total: @TotalPlansCount</span>
+        </div>
+
+        <div class="catalog-body">
+            @if (_isLoading)
+            {
+                <div class="grid-loading-indicator">
+                    <div class="spinner"></div>
+                    <span>Carregando catálogo de planos...</span>
+                </div>
+            }
+            else if (_plans == null || _plans.Count == 0)
+            {
+                <div class="empty-catalog-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="48" height="48">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                    <h4>Nenhum plano cadastrado</h4>
+                    <p>Clique em "Novo Plano" para configurar os primeiros tiers comerciais da plataforma.</p>
+                    <button class="btn-primary btn-create-first-plan" @onclick="OpenNewPlanModal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <span>Criar Primeiro Plano</span>
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="tenants-table plans-table">
+                        <thead>
+                            <tr>
+                                <th>Plano &amp; Tier</th>
+                                <th>Mensalidade</th>
+                                <th>Assentos</th>
+                                <th>Workspaces</th>
+                                <th>Teto Ad Spend</th>
+                                <th>Recursos Habilitados</th>
+                                <th>Status</th>
+                                <th class="text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var plan in _plans)
+                            {
+                                <tr class="tenant-row plan-row">
+                                    <td class="col-plan">
+                                        <div class="plan-info">
+                                            <div class="plan-name-tier">
+                                                <span class="plan-name">@plan.Name</span>
+                                                <span class="tier-badge tier-@plan.Tier.ToLowerInvariant()">@plan.Tier</span>
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(plan.Description))
+                                            {
+                                                <span class="plan-desc">@plan.Description</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="col-price">
+                                        <div class="price-container">
+                                            <span class="price-value">R$ @plan.MonthlyPrice.ToString("N2", new System.Globalization.CultureInfo("pt-BR"))</span>
+                                            @if (plan.AnnualDiscountPercentage > 0)
+                                            {
+                                                <span class="discount-pill">@plan.AnnualDiscountPercentage% desc. anual</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="col-seats">
+                                        <span class="quota-pill">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                            </svg>
+                                            @plan.MaxSeats
+                                        </span>
+                                    </td>
+                                    <td class="col-workspaces">
+                                        <span class="quota-pill">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+                                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                            </svg>
+                                            @plan.MaxWorkspaces
+                                        </span>
+                                    </td>
+                                    <td class="col-spend">
+                                        <span class="ad-spend-value">
+                                            @plan.MonthlyAdSpendCap.ToString("C0", new System.Globalization.CultureInfo("pt-BR"))
+                                        </span>
+                                    </td>
+                                    <td class="col-features">
+                                        <div class="features-tag-list">
+                                            @if (plan.HasWhiteLabel)
+                                            {
+                                                <span class="feature-tag feature-wl" title="White-Label Habilitado">WL</span>
+                                            }
+                                            @if (plan.HasCustomCname)
+                                            {
+                                                <span class="feature-tag feature-cname" title="CNAME Próprio Habilitado">CNAME</span>
+                                            }
+                                            @if (plan.HasAiCopilot)
+                                            {
+                                                <span class="feature-tag feature-ai" title="Copiloto IA Habilitado">IA</span>
+                                            }
+                                            @if (plan.HasCrossNetworkAutomations)
+                                            {
+                                                <span class="feature-tag feature-auto" title="Automações Cross-Network Habilitadas">Auto</span>
+                                            }
+                                            @if (!plan.HasWhiteLabel && !plan.HasCustomCname && !plan.HasAiCopilot && !plan.HasCrossNetworkAutomations)
+                                            {
+                                                <span class="feature-tag-muted">Básico</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="col-status">
+                                        <span class="status-badge status-@(plan.IsActive ? "active" : "suspended")">
+                                            @(plan.IsActive ? "Ativo" : "Inativo")
+                                        </span>
+                                    </td>
+                                    <td class="col-actions text-right">
+                                        <button class="btn-action btn-edit-plan"
+                                                title="Editar Parâmetros do Plano"
+                                                @onclick="() => OpenEditPlanModal(plan)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                            <span>Editar</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
 </div>
+
+@code {
+    private IReadOnlyList<PlanDto>? _plans;
+    private bool _isLoading = true;
+    private bool _isBuilderOpen;
+    private PlanFormViewModel? _selectedPlanForEdit;
+    private string? _notificationMessage;
+    private bool _isNotificationError;
+
+    private int TotalPlansCount => _plans?.Count ?? 0;
+    private int ActivePlansCount => _plans?.Count(p => p.IsActive) ?? 0;
+    private int AiPlansCount => _plans?.Count(p => p.HasAiCopilot) ?? 0;
+    private decimal MaxSpendCap => _plans != null && _plans.Count > 0 ? _plans.Max(p => p.MonthlyAdSpendCap) : 0m;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlansAsync();
+    }
+
+    private async Task LoadPlansAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await PlanService.GetPlansAsync(includeInactive: true);
+            if (result.IsSuccess)
+            {
+                _plans = result.Value;
+            }
+            else
+            {
+                ShowNotification(result.Error.Description, isError: true);
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenNewPlanModal()
+    {
+        _selectedPlanForEdit = new PlanFormViewModel();
+        _isBuilderOpen = true;
+        ClearNotification();
+    }
+
+    private void OpenEditPlanModal(PlanDto plan)
+    {
+        Enum.TryParse<SubscriptionTier>(plan.Tier, out var parsedTier);
+
+        _selectedPlanForEdit = new PlanFormViewModel
+        {
+            PlanId = plan.Id,
+            Name = plan.Name,
+            Description = plan.Description,
+            Tier = parsedTier,
+            MonthlyPrice = plan.MonthlyPrice,
+            AnnualDiscountPercentage = plan.AnnualDiscountPercentage,
+            MaxSeats = plan.MaxSeats,
+            MaxWorkspaces = plan.MaxWorkspaces,
+            MonthlyAdSpendCap = plan.MonthlyAdSpendCap,
+            HasWhiteLabel = plan.HasWhiteLabel,
+            HasCustomCname = plan.HasCustomCname,
+            HasAiCopilot = plan.HasAiCopilot,
+            HasCrossNetworkAutomations = plan.HasCrossNetworkAutomations
+        };
+
+        _isBuilderOpen = true;
+        ClearNotification();
+    }
+
+    private async Task HandleSaveSuccess(PlanFormViewModel model)
+    {
+        _isBuilderOpen = false;
+        _selectedPlanForEdit = null;
+        ShowNotification($"Plano '{model.Name}' salvo com sucesso!", isError: false);
+
+        await LoadPlansAsync();
+    }
+
+    private void HandleCancelBuilder()
+    {
+        _isBuilderOpen = false;
+        _selectedPlanForEdit = null;
+    }
+
+    private void ShowNotification(string message, bool isError)
+    {
+        _notificationMessage = message;
+        _isNotificationError = isError;
+    }
+
+    private void ClearNotification()
+    {
+        _notificationMessage = null;
+        _isNotificationError = false;
+    }
+}

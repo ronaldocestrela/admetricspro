@@ -17,9 +17,10 @@ Toda a arquitetura opera sob o padrão estrito `Result` / `Result<T>` sem lança
 
 ```mermaid
 flowchart TD
-    subgraph UI ["Frontend (Blazor Server)"]
-        PP[PlansPage.razor<br/>/admin/plans]
+    subgraph UI ["Frontend Backoffice (Blazor Server)"]
+        PP[PlansPage.razor<br/>/plans]
         PB[PlanBuilder.razor<br/>Formulário Interativo]
+        PCAT[Catálogo de Planos<br/>Tabela 360º & KPIs]
         PS[IPlanManagementService<br/>PlanManagementService]
     end
 

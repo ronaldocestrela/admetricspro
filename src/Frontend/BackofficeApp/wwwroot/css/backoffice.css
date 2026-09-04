@@ -1225,3 +1225,325 @@ body {
     cursor: not-allowed;
 }
 
+/* ==========================================================================
+   Plans Management & Pricing Catalog (Billing Master)
+   ========================================================================== */
+
+.plans-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.plans-catalog-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+}
+
+.catalog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background-color: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.catalog-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.catalog-title-group h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.plans-count-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    background-color: var(--bg-surface-elevated);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    font-weight: 500;
+}
+
+.empty-catalog-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+}
+
+.empty-catalog-state svg {
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.empty-catalog-state h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.empty-catalog-state p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    max-width: 420px;
+    margin-bottom: 1.5rem;
+}
+
+/* Tabela de Planos */
+.plans-table th {
+    white-space: nowrap;
+}
+
+.plan-row:hover {
+    background-color: rgba(99, 102, 241, 0.04);
+}
+
+.plan-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.plan-name-tier {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.plan-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+}
+
+.plan-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.price-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.price-value {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+}
+
+.discount-pill {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #34d399;
+}
+
+.quota-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    background-color: var(--bg-surface-elevated);
+    border: 1px solid var(--border-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.quota-pill svg {
+    color: var(--text-secondary);
+}
+
+.features-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3125rem;
+}
+
+.feature-tag {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+}
+
+.feature-wl {
+    background-color: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.feature-cname {
+    background-color: rgba(14, 165, 233, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(14, 165, 233, 0.35);
+}
+
+.feature-ai {
+    background-color: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.feature-auto {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.feature-tag-muted {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Harmonização do PlanBuilder com o Tema Executivo Dark */
+.builder-drawer {
+    animation: fadeInSlideDown 0.2s ease-out;
+}
+
+@keyframes fadeInSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.plan-builder-container {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-soft) !important;
+    color: var(--text-primary) !important;
+    overflow: hidden;
+}
+
+.plan-builder-container .card-header {
+    background-color: var(--bg-surface) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.plan-builder-container .card-header h5 {
+    color: var(--text-primary) !important;
+}
+
+.plan-builder-container .card-header small {
+    color: var(--text-secondary) !important;
+}
+
+.plan-builder-container .card-body {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+}
+
+.plan-builder-container label,
+.plan-builder-container .form-label {
+    color: var(--text-secondary) !important;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.plan-builder-container input.form-control,
+.plan-builder-container select.form-select,
+.plan-builder-container textarea.form-control {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.plan-builder-container input.form-control:focus,
+.plan-builder-container select.form-select:focus,
+.plan-builder-container textarea.form-control:focus {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
+    outline: none !important;
+}
+
+.plan-builder-container .input-group-text {
+    background-color: var(--bg-surface-elevated) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-secondary) !important;
+}
+
+.plan-builder-container .form-check-label {
+    color: var(--text-primary) !important;
+}
+
+.plan-builder-container .form-check-input {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-color) !important;
+}
+
+.plan-builder-container .form-check-input:checked {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.plan-builder-container hr {
+    border-color: var(--border-color) !important;
+    opacity: 0.5;
+}
+
+.plan-builder-container .btn-cancel {
+    background-color: transparent !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-secondary) !important;
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.plan-builder-container .btn-cancel:hover {
+    color: var(--text-primary) !important;
+    border-color: var(--border-hover) !important;
+    background-color: var(--bg-surface-elevated) !important;
+}
+
+.plan-builder-container button[type="submit"] {
+    background-color: var(--primary-color) !important;
+    border: 1px solid var(--primary-color) !important;
+    color: #ffffff !important;
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.plan-builder-container button[type="submit"]:hover:not(:disabled) {
+    background-color: var(--primary-hover) !important;
+}
+
