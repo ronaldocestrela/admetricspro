@@ -1,13 +1,50 @@
 @page "/feature-flags"
 @attribute [Authorize(Roles = "SuperAdmin")]
+@using BackofficeApp.Components.Backoffice
 
 <PageTitle>Feature Flags &amp; Kill Switches — Backoffice AdMetricsPro</PageTitle>
 
 <div class="feature-flags-page">
-    <div style="margin-bottom: 24px;">
-        <h1 style="font-size: 24px; font-weight: 700; color: #F9FAFB; margin-bottom: 4px;">Feature Flags &amp; Kill Switches Operacionais</h1>
-        <p style="font-size: 14px; color: var(--text-secondary);">Controle dinâmico de liberação de funcionalidades e desativação emergencial de integrações.</p>
+    <div class="page-header">
+        <div class="header-content">
+            <span class="page-category">Backoffice Global &middot; Governança Operacional</span>
+            <h1 class="page-title">Feature Flags &amp; Kill Switches Operacionais</h1>
+            <p class="page-description">
+                Controle dinâmico de liberação de funcionalidades, ativação gradual de rollouts e disjuntores para contenção emergencial de falhas.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-primary" @onclick="RefreshFlagsAsync" disabled="@_isRefreshing">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                <span>Atualizar Flags</span>
+            </button>
+        </div>
     </div>
 
-    <FeatureFlagsDashboard />
+    <FeatureFlagsDashboard @ref="_dashboardRef" />
 </div>
+
+@code {
+    private FeatureFlagsDashboard? _dashboardRef;
+    private bool _isRefreshing;
+
+    private async Task RefreshFlagsAsync()
+    {
+        if (_dashboardRef is not null)
+        {
+            _isRefreshing = true;
+            try
+            {
+                await _dashboardRef.LoadFlagsAsync();
+            }
+            finally
+            {
+                _isRefreshing = false;
+            }
+        }
+    }
+}
+

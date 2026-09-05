@@ -83,37 +83,59 @@
         </section>
 
         <!-- 2. KPIs de Conectividade de Tokens -->
-        <section class="section-kpis">
+        <section class="section-kpis kpi-grid">
             <div class="kpi-card kpi-total">
+                <div class="kpi-icon-wrapper blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                </div>
                 <div class="kpi-info">
                     <span class="kpi-label">Total de Integrações</span>
                     <span class="kpi-value">@_overview.TotalConnections</span>
                 </div>
-                <div class="kpi-icon blue">🌐</div>
             </div>
 
             <div class="kpi-card kpi-connected">
+                <div class="kpi-icon-wrapper green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
                 <div class="kpi-info">
                     <span class="kpi-label">Tokens Ativos &amp; Saudáveis</span>
                     <span class="kpi-value">@_overview.ConnectedCount</span>
                 </div>
-                <div class="kpi-icon green">✅</div>
             </div>
 
             <div class="kpi-card kpi-expiring">
+                <div class="kpi-icon-wrapper amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
                 <div class="kpi-info">
                     <span class="kpi-label">Vencendo em até 7 Dias</span>
                     <span class="kpi-value">@_overview.ExpiringSoonCount</span>
                 </div>
-                <div class="kpi-icon amber">⏳</div>
             </div>
 
             <div class="kpi-card kpi-issues">
+                <div class="kpi-icon-wrapper red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
                 <div class="kpi-info">
                     <span class="kpi-label">Expirados ou Revogados</span>
                     <span class="kpi-value">@(_overview.ExpiredCount + _overview.RevokedOrDisconnectedCount)</span>
                 </div>
-                <div class="kpi-icon red">⚠️</div>
             </div>
         </section>
 
@@ -252,7 +274,10 @@
         await LoadDataAsync();
     }
 
-    private async Task LoadDataAsync()
+    /// <summary>
+    /// Carrega os dados operacionais de telemetria das APIs e conexões de inquilinos.
+    /// </summary>
+    public async Task LoadDataAsync()
     {
         _isLoading = true;
         try

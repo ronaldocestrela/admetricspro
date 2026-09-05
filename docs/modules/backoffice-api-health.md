@@ -229,14 +229,31 @@ Além do consumo global das cotas de desenvolvedor, o módulo monitora os tokens
 
 ---
 
-## 4. Componente Visual Blazor: `ApiHealthDashboard.razor`
+## 4. Componente Visual Blazor: `ApiHealthPage.razor` e `ApiHealthDashboard.razor`
 
-O componente é renderizado na página de administração `/admin/api-health` e é composto por:
-1. **Quotas Cards Grid:** Quatro cards dedicados (Meta, Google, TikTok, Bing). Cada card renderiza:
-   - Medidor de consumo numérico e barra de progresso horizontal com transição suave.
+A funcionalidade é disponibilizada no Backoffice Executivo na rota `/api-health` (e `/admin/api-health` em WebApp), seguindo o **Design System Executivo do Backoffice** (`backoffice.css`):
+
+1. **Topologia de Cabeçalho Executivo (`.page-header`):**
+   - `.page-category`: `"Backoffice Global · Operação & Conectividade"`.
+   - `.page-title`: `"Monitor de Integrações & Rate Limits"`.
+   - `.page-description`: Resumo em tempo real do monitoramento de limites de taxa.
+   - `.header-actions`: Botão primário com ícone SVG (`.btn-primary`) para atualização e recarregamento da telemetria sob demanda.
+
+2. **Quotas Cards Grid (`.quotas-grid`):** Quatro cards com fundo `--bg-card` e elevação (Meta, Google, TikTok, Bing). Cada card renderiza:
+   - Ícone estilizado com gradiente oficial da plataforma de anúncios.
+   - Medidor de consumo numérico e barra de progresso horizontal (`.progress-track`, `.progress-bar`) com marcador explícito de 80% (`.threshold-marker.threshold-80`).
    - Indicador visual contextual:
-     - **Verde (< 80%):** Operação regular.
-     - **Âmbar / Amarelo (80% a 94.9%):** Badge `"⚠️ ALERTA PREVENTIVO (80%+)"` pulsante com borda alaranjada.
-     - **Vermelho (>= 95%):** Badge `"🚨 CRÍTICO (95%+)"` com alerta sonoro/visual.
-2. **KPIs de Saúde dos Inquilinos:** Quatro contadores agregados (Conectados, Vencendo em 7 dias, Expirados, Revogados).
-3. **Filtros e Grid de Inquilinos:** Seletor de plataforma e status, tabela responsiva exibindo nome do tenant, plataforma, identificador da conta, badge com cor semântica do token e data de expiração calculada.
+     - **Verde (< 80%):** Operação regular (`.bar-normal`, `.status-pill.quota-normal`).
+     - **Âmbar / Amarelo (80% a 94.9%):** Badge pulsante `"⚠️ ALERTA PREVENTIVO (80%+)"` (`.badge-quota-warning`) com borda iluminada.
+     - **Vermelho (>= 95%):** Badge `"🚨 CRÍTICO (95%+)"` (`.badge-quota-warning.badge-critical`) com borda avermelhada pulsante.
+
+3. **KPIs de Saúde dos Tokens (`.kpi-grid`, `.kpi-card`):**
+   - Substituição de emojis por ícones vetoriais SVG padronizados em `.kpi-icon-wrapper`:
+     - **Total de Integrações:** Wrapper azul com globo vetorial.
+     - **Tokens Ativos & Saudáveis:** Wrapper verde com check circunscrito.
+     - **Vencendo em até 7 Dias (D-7):** Wrapper âmbar com relógio de expiração.
+     - **Expirados ou Revogados:** Wrapper vermelho com triângulo de atenção.
+
+4. **Tabela de Credenciais de Inquilinos (`.connections-table`):**
+   - Container em `--bg-card` com borda sutil, filtros com selects padronizados (`.filter-select`), linhas com hover executivo, tags de plataforma (`.platform-tag`) e badges pill de status (`.badge-status`).
+

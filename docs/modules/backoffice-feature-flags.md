@@ -203,3 +203,30 @@ Base URL: `/api/v1/admin/feature-flags`
 | `FeatureFlag.KeyRequired` | A chave identificadora da flag é obrigatória. |
 | `FeatureFlag.DuplicateKey` | Já existe uma flag cadastrada com a chave informada no MasterDb. |
 | `FeatureFlag.TenantListRequired` | Para estratégias `TenantList`, ao menos um inquilino deve ser configurado. |
+
+---
+
+## 5. Interface Visual do Backoffice: `FeatureFlagsPage.razor` e `FeatureFlagsDashboard.razor`
+
+A página é disponibilizada na rota `/feature-flags` (e `/admin/feature-flags` em WebApp), incorporando o **Design System Executivo do Backoffice** (`backoffice.css`):
+
+1. **Topologia de Cabeçalho Executivo (`.page-header`):**
+   - `.page-category`: `"Backoffice Global · Governança Operacional"`.
+   - `.page-title`: `"Feature Flags & Kill Switches Operacionais"`.
+   - `.page-description`: Controle centralizado de disjuntores de segurança e rollouts progressivos.
+   - `.header-actions`: Botão de ação primária com ícone SVG (`.btn-primary`) para atualização do catálogo.
+
+2. **Banner de Congelamento Operacional de Emergência (`.freeze-alert-banner`):**
+   - Exibido dinamicamente quando um ou mais Kill Switches estão armados.
+   - Ícone vetorial SVG pulsante (`.alert-icon-pulse`), contorno vermelho de advertência com sombra luminosa e listagem de switches ativos com autor e motivo.
+
+3. **Grade de Disjuntores de Emergência (`.kill-switches-grid`):**
+   - Cartões estruturados (`.kill-switch-card`) com indicador de estado (`.badge-safe` ou `.badge-danger`).
+   - Identificador técnico em monospace (`.ks-key`), nome, descrição e detalhes do disparo (quando ativo).
+   - Botões de corte emergencial (`.btn-ks-freeze`) e restauração (`.btn-ks-restore`) acoplados ao diálogo modal de confirmação com dupla checagem (`ConfirmActionDialog`).
+
+4. **Tabela de Feature Flags Funcionais (`.flags-table`):**
+   - Barra de pesquisa integrada com input estilizado (`.search-input`).
+   - Badges de segmentação (`.targeting-badge` para Global, Rollout % e Allowlist).
+   - Toggle switch visual com transição suave e slider de ajuste fino de percentual de rollout (`.rollout-slider`).
+

@@ -1,13 +1,50 @@
 @page "/api-health"
 @attribute [Authorize(Roles = "SuperAdmin,SupportTechnician")]
+@using BackofficeApp.Components.Backoffice
 
 <PageTitle>Saúde das APIs &amp; Rate Limits — Backoffice AdMetricsPro</PageTitle>
 
 <div class="api-health-page">
-    <div style="margin-bottom: 24px;">
-        <h1 style="font-size: 24px; font-weight: 700; color: #F9FAFB; margin-bottom: 4px;">Monitor de Integrações &amp; Rate Limits</h1>
-        <p style="font-size: 14px; color: var(--text-secondary);">Telemetria em tempo real do consumo de cotas das APIs de anúncios (Meta, Google, Bing, TikTok).</p>
+    <div class="page-header">
+        <div class="header-content">
+            <span class="page-category">Backoffice Global &middot; Operação &amp; Conectividade</span>
+            <h1 class="page-title">Monitor de Integrações &amp; Rate Limits</h1>
+            <p class="page-description">
+                Telemetria em tempo real do consumo de cotas das APIs de anúncios (Meta, Google, Bing, TikTok) com trava preventiva de 80%.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-primary" @onclick="RefreshDashboardAsync" disabled="@_isRefreshing">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                <span>Atualizar Telemetria</span>
+            </button>
+        </div>
     </div>
 
-    <ApiHealthDashboard />
+    <ApiHealthDashboard @ref="_dashboardRef" />
 </div>
+
+@code {
+    private ApiHealthDashboard? _dashboardRef;
+    private bool _isRefreshing;
+
+    private async Task RefreshDashboardAsync()
+    {
+        if (_dashboardRef is not null)
+        {
+            _isRefreshing = true;
+            try
+            {
+                await _dashboardRef.LoadDataAsync();
+            }
+            finally
+            {
+                _isRefreshing = false;
+            }
+        }
+    }
+}
+
