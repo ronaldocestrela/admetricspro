@@ -1,7 +1,11 @@
 using BuildingBlocks.Infrastructure.Configuration;
+using BuildingBlocks.Infrastructure.MultiTenancy;
+using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Security;
 using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
+using Tenants.Application.DependencyInjection;
+using Tenants.Infrastructure.DependencyInjection;
 using WebApi.Extensions;
 
 // Carrega variáveis do arquivo .env no ambiente de processo e no pipeline de configuração
@@ -24,6 +28,10 @@ var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb
 builder.Services.AddMasterCatalog(masterConnectionString);
 builder.Services.AddMasterApplication();
 builder.Services.AddSecurityServices();
+builder.Services.AddMultiTenancy();
+builder.Services.AddTenantPersistence<TenantDbContext>();
+builder.Services.AddTenantsApplication();
+builder.Services.AddTenantsInfrastructure(builder.Configuration);
 builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
 {
     builder.Configuration.GetSection(Master.Infrastructure.Services.ImpersonationJwtOptions.SectionName).Bind(options);
@@ -51,6 +59,7 @@ if (app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOn
 // Pipeline de middlewares HTTP
 app.UseOpenApiAndScalar();
 
+app.UseTenantResolution();
 app.UseRouting();
 
 app.MapControllers();

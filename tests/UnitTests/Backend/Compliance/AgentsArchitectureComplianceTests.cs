@@ -17,6 +17,7 @@ public sealed class AgentsArchitectureComplianceTests
     private static readonly Assembly InfrastructureAssembly = typeof(Master.Infrastructure.Persistence.MasterDbContext).Assembly;
     private static readonly Assembly BuildingBlocksDomainAssembly = typeof(BuildingBlocks.Domain.Primitives.Result).Assembly;
     private static readonly Assembly BuildingBlocksApplicationAssembly = typeof(BuildingBlocks.Application.Behaviors.ValidationBehavior<,>).Assembly;
+    private static readonly Assembly TenantsApplicationAssembly = typeof(global::Tenants.Application.Auth.Commands.AuthenticateTenantUser.AuthenticateTenantUserCommand).Assembly;
 
     /// <summary>
     /// AGENTS.md Seção 1 (Princípio 5) e Seção 3.1:
@@ -30,6 +31,7 @@ public sealed class AgentsArchitectureComplianceTests
         var handlerInterfaceType = typeof(IRequestHandler<,>);
 
         var handlerTypes = ApplicationAssembly.GetExportedTypes()
+            .Concat(TenantsApplicationAssembly.GetExportedTypes())
             .Where(t => !t.IsAbstract && !t.IsInterface)
             .Where(t => t.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == handlerInterfaceType))
             .ToList();
@@ -93,21 +95,24 @@ public sealed class AgentsArchitectureComplianceTests
     /// AGENTS.md Seção 1 (Princípio 2):
     /// A camada de Aplicação não deve referenciar a camada de Infraestrutura ou WebApi diretamente.
     /// </summary>
-    [Fact]
-    public void ApplicationLayer_MustNotReferenceInfrastructureOrWebApi()
+    [Theory]
+    [InlineData("Master.Application", "Master.Infrastructure")]
+    [InlineData("Tenants.Application", "Tenants.Infrastructure")]
+    public void ApplicationLayer_MustNotReferenceInfrastructureOrWebApi(string applicationAssemblyName, string forbiddenInfrastructureName)
     {
         // Arrange
-        var referencedAssemblies = ApplicationAssembly.GetReferencedAssemblies()
+        var assembly = applicationAssemblyName == "Master.Application" ? ApplicationAssembly : TenantsApplicationAssembly;
+        var referencedAssemblies = assembly.GetReferencedAssemblies()
             .Select(a => a.Name)
             .Where(n => n is not null)
             .ToList();
 
         // Assert
-        referencedAssemblies.Should().NotContain(name => name!.Contains("Master.Infrastructure"),
-            "Master.Application não pode referenciar diretamente Master.Infrastructure.");
+        referencedAssemblies.Should().NotContain(name => name!.Contains(forbiddenInfrastructureName),
+            $"{applicationAssemblyName} não pode referenciar diretamente {forbiddenInfrastructureName}.");
 
         referencedAssemblies.Should().NotContain(name => name!.Contains("WebApi"),
-            "Master.Application não pode referenciar WebApi.");
+            $"{applicationAssemblyName} não pode referenciar WebApi.");
     }
 
     /// <summary>

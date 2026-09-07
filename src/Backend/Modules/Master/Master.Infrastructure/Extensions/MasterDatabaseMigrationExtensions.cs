@@ -55,6 +55,7 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<IPlanReadOnlyRepository, PlanReadOnlyRepository>();
         services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
+        services.AddScoped<BuildingBlocks.Application.MultiTenancy.ITenantConnectionResolver, CachedTenantConnectionResolver>();
         services.AddScoped<IImpersonationSessionRepository, ImpersonationSessionRepository>();
         services.AddScoped<IImpersonationTokenService, JwtImpersonationTokenService>();
         services.AddMemoryCache();

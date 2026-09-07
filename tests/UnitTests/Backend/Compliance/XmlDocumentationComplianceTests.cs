@@ -19,6 +19,8 @@ public sealed class XmlDocumentationComplianceTests
         typeof(Master.Domain.Tenants.Tenant).Assembly,
         typeof(Master.Application.Tenants.Commands.CreateTenant.CreateTenantCommand).Assembly,
         typeof(Master.Infrastructure.Persistence.MasterDbContext).Assembly,
+        typeof(global::Tenants.Application.Auth.Commands.AuthenticateTenantUser.AuthenticateTenantUserCommand).Assembly,
+        typeof(global::Tenants.Infrastructure.Auth.TenantAuthService).Assembly,
         typeof(Program).Assembly
     ];
 
@@ -33,6 +35,8 @@ public sealed class XmlDocumentationComplianceTests
     [InlineData("Master.Domain")]
     [InlineData("Master.Application")]
     [InlineData("Master.Infrastructure")]
+    [InlineData("Tenants.Application")]
+    [InlineData("Tenants.Infrastructure")]
     [InlineData("WebApi")]
     public void Assembly_PublicTypesAndMembers_MustHaveXmlDocumentationSummary(string assemblyName)
     {

@@ -35,6 +35,8 @@
     <ProjectReference Include="..\..\..\src\Backend\Modules\Master\Master.Domain\Master.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\Backend\Modules\Master\Master.Application\Master.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Backend\Modules\Master\Master.Infrastructure\Master.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Backend\Modules\Tenants\Tenants.Application\Tenants.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Backend\Modules\Tenants\Tenants.Infrastructure\Tenants.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Backend\WebApi\WebApi.csproj" />
   </ItemGroup>
 

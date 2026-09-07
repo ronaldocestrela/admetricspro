@@ -69,13 +69,15 @@ graph TD
 
 **Objetivo:** Permitir que o gestor da agência faça login no seu ambiente dedicado (seja por subdomínio ou e-mail/senha).
 
-#### Subfase 2.1: Serviço de Autenticação de Inquilino (`TenantAuthService`)
-1. **TDD (Red):** Testes unitários para `AuthenticateTenantUserCommand`:
-   * Identificar o tenant contextual (via subdomínio na URL ou header).
-   * Validar credenciais contra `TenantDbContext.TenantUsers`.
-   * Bloquear usuários inativos ou com senha incorreta.
-   * Emitir claims de identidade: `UserId`, `Email`, `FullName`, `TenantId`, `Role` (`Owner`).
-2. **TDD (Green):** Implementar `AuthenticateTenantUserCommandHandler` e geração de token JWT assinado.
+#### Subfase 2.1: Serviço de Autenticação de Inquilino (`TenantAuthService`) — [CONCLUÍDO]
+1. [x] **TDD (Red):** Testes unitários para `AuthenticateTenantUserCommandValidator`, `AuthenticateTenantUserCommandHandler`, `TenantAuthService` e `TenantJwtTokenService`:
+   * Identificar o tenant contextual (via subdomínio na URL, header `X-Tenant-Id` ou parâmetro no comando).
+   * Validar credenciais contra `TenantDbContext.TenantUsers` via `ITenantDbContextFactory` e `ITenantConnectionResolver`.
+   * Bloquear inquilinos inativos/suspensos (`Tenant.Inactive`) e contas de usuário inativas (`Auth.AccountInactive`) ou com senha incorreta via `IPasswordHasher` (`Auth.InvalidCredentials`).
+   * Emitir claims de identidade: `UserId` (`sub`), `Email`, `FullName` (`name`), `TenantId` (`tenant_id`), `TenantSubdomain` (`tenant_subdomain`), `Role` (`Owner`).
+2. [x] **TDD (Green):** Módulo `Tenants.Application` e `Tenants.Infrastructure` criados em .NET 10. `AuthenticateTenantUserCommandHandler`, `TenantAuthService` e `TenantJwtTokenService` implementados retornando o padrão estrito `Result<T>`.
+3. [x] **Endpoint Web API:** Exposição de `POST /api/v1/tenants/auth/login` em `TenantAuthController` documentado via OpenAPI/Scalar com `[EndpointSummary]` e códigos de status HTTP semânticos (200, 400, 401, 422).
+4. [x] **Documentação & Compliance:** Documento `/docs/modules/tenants-authentication.md` criado com exemplos JSON e regras de segurança; 100% de conformidade com comentários XML e testes de arquitetura do `AGENTS.md`. 100% dos 692 testes da solução passando com sucesso.
 
 #### Subfase 2.2: Tela de Login do Inquilino (`/login` no `WebApp`)
 1. **Componente `TenantLoginPage.razor`:**
