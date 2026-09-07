@@ -62,6 +62,8 @@ sequenceDiagram
         Svc->>SqlSvr: CREATE DATABASE [Tenant_{subdomain}]
         Svc->>Mig: Database.MigrateAsync()
         Note over Mig,SqlSvr: Executa migrations operacionais e cria __EFMigrationsHistory
+        Svc->>SqlSvr: SeedTenantInitialAdminAsync()
+        Note over Svc,SqlSvr: Semeia TenantBranding inicial e TenantUser (Owner) com hash PBKDF2
     end
 
     rect rgb(255, 255, 240)
@@ -90,24 +92,40 @@ O comando estruturado reside no namespace `Master.Application.Services`:
 /// <summary>
 /// Structured command representing input parameters for provisioning a dedicated tenant database.
 /// </summary>
-/// <param name="CompanyName">Legal or commercial name of the tenant enterprise.</param>
-/// <param name="Cnpj">CNPJ digits-only identifier (exactly 14 numeric characters).</param>
-/// <param name="Subdomain">Designated routing subdomain for tenant isolation.</param>
-/// <param name="Tier">Initial subscription tier. Defaults to <see cref="SubscriptionTier.Trial"/>.</param>
 public sealed record ProvisionTenantCommand(
     string CompanyName,
     string Cnpj,
     string Subdomain,
-    SubscriptionTier Tier = SubscriptionTier.Trial);
+    SubscriptionTier Tier = SubscriptionTier.Trial,
+    string? Segment = null,
+    string? MonthlyAdSpendRange = null,
+    string? BillingCycle = null,
+    string? CustomDomain = null,
+    string? PrimaryColor = null,
+    string? SecondaryColor = null,
+    string? AdminFullName = null,
+    string? AdminEmail = null,
+    string? AdminPhone = null,
+    string? AdminPassword = null);
 ```
 
-### Exemplo JSON de Entrada
+### Exemplo JSON de Entrada Completo (Onboarding)
 ```json
 {
   "companyName": "Agência Growth Digital",
   "cnpj": "12345678000190",
   "subdomain": "growth-digital",
-  "tier": "Trial"
+  "tier": "Pro",
+  "segment": "Agência de Performance",
+  "monthlyAdSpendRange": "R$ 20k a R$ 100k",
+  "billingCycle": "Monthly",
+  "customDomain": "ads.growthdigital.com.br",
+  "primaryColor": "#6366F1",
+  "secondaryColor": "#1E293B",
+  "adminFullName": "Juliana Costa",
+  "adminEmail": "juliana@growthdigital.com.br",
+  "adminPhone": "11977776666",
+  "adminPassword": "SuperSecurePassword#2026!"
 }
 ```
 

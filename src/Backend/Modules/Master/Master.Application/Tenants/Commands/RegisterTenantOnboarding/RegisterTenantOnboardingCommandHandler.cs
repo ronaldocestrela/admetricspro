@@ -36,7 +36,11 @@ public sealed class RegisterTenantOnboardingCommandHandler : ICommandHandler<Reg
             command.BillingCycle?.Trim(),
             command.CustomDomain?.Trim(),
             command.PrimaryColor?.Trim(),
-            command.SecondaryColor?.Trim());
+            command.SecondaryColor?.Trim(),
+            command.AdminFullName?.Trim(),
+            command.AdminEmail?.Trim(),
+            command.AdminPhone?.Trim(),
+            command.AdminPassword);
 
         var provisioningResult = await _provisioningService.ProvisionTenantDatabaseAsync(
             provisioningCommand,
@@ -52,11 +56,11 @@ public sealed class RegisterTenantOnboardingCommandHandler : ICommandHandler<Reg
         var accessUrl = $"https://{sanitizedSubdomain}.admetricspro.com.br/dashboard";
 
         var onboardingResult = new TenantOnboardingResult(
-            tenantId.Value,
+            tenantId!.Value,
             command.CompanyName.Trim(),
             sanitizedSubdomain,
             accessUrl,
-            command.AdminEmail.Trim().ToLowerInvariant(),
+            (command.AdminEmail ?? string.Empty).Trim().ToLowerInvariant(),
             command.Tier);
 
         return Result<TenantOnboardingResult>.Success(onboardingResult);

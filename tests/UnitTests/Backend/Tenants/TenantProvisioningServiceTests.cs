@@ -1,5 +1,7 @@
 using BuildingBlocks.Application.Persistence;
+using BuildingBlocks.Application.Security;
 using BuildingBlocks.Domain.Primitives;
+using BuildingBlocks.Domain.Tenants;
 using BuildingBlocks.Infrastructure.Security;
 using FluentAssertions;
 using Master.Application.Repositories;
@@ -31,6 +33,7 @@ public sealed class TenantProvisioningServiceTests : IDisposable
     private readonly ITenantRepository _tenantRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEncryptionService _encryptionService;
+    private readonly IPasswordHasher _passwordHasher;
     private readonly TenantProvisioningService _sut;
 
     /// <summary>
@@ -51,7 +54,8 @@ public sealed class TenantProvisioningServiceTests : IDisposable
         _tenantRepository = new TenantRepository(_masterDbContext);
         _unitOfWork = new UnitOfWork(_masterDbContext);
         _encryptionService = new AesEncryptionService(EncryptionKey);
-        _sut = new TenantProvisioningService(_masterDbContext, _tenantRepository, _unitOfWork, _encryptionService);
+        _passwordHasher = new PasswordHasher();
+        _sut = new TenantProvisioningService(_masterDbContext, _tenantRepository, _unitOfWork, _encryptionService, _passwordHasher);
     }
 
     /// <inheritdoc />
@@ -243,5 +247,188 @@ public sealed class TenantProvisioningServiceTests : IDisposable
         command.CustomDomain.Should().Be("ads.agencianova.com.br");
         command.PrimaryColor.Should().Be("#4f46e5");
         command.SecondaryColor.Should().Be("#0f172a");
+    }
+
+    /// <summary>
+    /// Verifies that ProvisionTenantCommand properly initializes admin credential properties.
+    /// </summary>
+    [Fact]
+    public void ProvisionTenantCommand_WithAdminCredentials_ShouldInitializeAllProperties()
+    {
+        // Arrange & Act
+        var command = new ProvisionTenantCommand(
+            "Agencia Nova",
+            "12345678000199",
+            "agencia-nova",
+            SubscriptionTier.Pro,
+            AdminFullName: "Carlos Mendes",
+            AdminEmail: "carlos@agencianova.com.br",
+            AdminPhone: "11987654321",
+            AdminPassword: "StrongPassword@2026!");
+
+        // Assert
+        command.AdminFullName.Should().Be("Carlos Mendes");
+        command.AdminEmail.Should().Be("carlos@agencianova.com.br");
+        command.AdminPhone.Should().Be("11987654321");
+        command.AdminPassword.Should().Be("StrongPassword@2026!");
+    }
+
+    /// <summary>
+    /// Verifies that SeedTenantInitialAdminAsync creates both Owner TenantUser and initial TenantBranding.
+    /// </summary>
+    [Fact]
+    public async Task SeedTenantInitialAdminAsync_ShouldCreateOwnerUserAndBranding_WhenAdminCredentialsProvided()
+    {
+        // Arrange
+        using var tenantConnection = new SqliteConnection("DataSource=:memory:");
+        tenantConnection.Open();
+
+        var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
+            .UseSqlite(tenantConnection)
+            .Options;
+
+        await using var tenantContext = new TenantOperationalDbContext(options);
+        await tenantContext.Database.EnsureCreatedAsync();
+
+        var command = new ProvisionTenantCommand(
+            "Agencia Prime",
+            "12345678000199",
+            "agencia-prime",
+            SubscriptionTier.Pro,
+            PrimaryColor: "#6366F1",
+            SecondaryColor: "#1E293B",
+            AdminFullName: "Mariana Silva",
+            AdminEmail: "mariana@agenciaprime.com.br",
+            AdminPhone: "11999998888",
+            AdminPassword: "SuperSecurePassword#123");
+
+        // Act
+        var result = await _sut.SeedTenantInitialAdminAsync(tenantContext, command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+
+        var seededUser = await tenantContext.TenantUsers.SingleOrDefaultAsync(u => u.Email == "mariana@agenciaprime.com.br");
+        seededUser.Should().NotBeNull();
+        seededUser!.FullName.Should().Be("Mariana Silva");
+        seededUser.Role.Should().Be(TenantRole.Owner);
+        seededUser.IsActive.Should().BeTrue();
+        seededUser.PhoneNumber.Should().Be("11999998888");
+        _passwordHasher.VerifyPassword(seededUser.PasswordHash, "SuperSecurePassword#123").Should().BeTrue();
+
+        var seededBranding = await tenantContext.TenantBranding.SingleOrDefaultAsync();
+        seededBranding.Should().NotBeNull();
+        seededBranding!.PrimaryColor.Should().Be("#6366F1");
+        seededBranding.SecondaryColor.Should().Be("#1E293B");
+    }
+
+    /// <summary>
+    /// Verifies that SeedTenantInitialAdminAsync falls back to corporate defaults when colors are omitted.
+    /// </summary>
+    [Fact]
+    public async Task SeedTenantInitialAdminAsync_ShouldUseDefaultColors_WhenBrandingColorsNotProvided()
+    {
+        // Arrange
+        using var tenantConnection = new SqliteConnection("DataSource=:memory:");
+        tenantConnection.Open();
+
+        var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
+            .UseSqlite(tenantConnection)
+            .Options;
+
+        await using var tenantContext = new TenantOperationalDbContext(options);
+        await tenantContext.Database.EnsureCreatedAsync();
+
+        var command = new ProvisionTenantCommand(
+            "Agencia Sem Cor",
+            "12345678000199",
+            "agencia-sem-cor",
+            AdminEmail: "owner@semcor.com",
+            AdminPassword: "Password123!");
+
+        // Act
+        var result = await _sut.SeedTenantInitialAdminAsync(tenantContext, command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+
+        var seededBranding = await tenantContext.TenantBranding.SingleOrDefaultAsync();
+        seededBranding.Should().NotBeNull();
+        seededBranding!.PrimaryColor.Should().Be("#4F46E5");
+        seededBranding.SecondaryColor.Should().Be("#0F172A");
+    }
+
+    /// <summary>
+    /// Verifies that SeedTenantInitialAdminAsync is idempotent and does not duplicate records.
+    /// </summary>
+    [Fact]
+    public async Task SeedTenantInitialAdminAsync_ShouldBeIdempotent_WhenCalledMultipleTimes()
+    {
+        // Arrange
+        using var tenantConnection = new SqliteConnection("DataSource=:memory:");
+        tenantConnection.Open();
+
+        var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
+            .UseSqlite(tenantConnection)
+            .Options;
+
+        await using var tenantContext = new TenantOperationalDbContext(options);
+        await tenantContext.Database.EnsureCreatedAsync();
+
+        var command = new ProvisionTenantCommand(
+            "Agencia Idempotente",
+            "12345678000199",
+            "agencia-idem",
+            AdminEmail: "owner@idem.com",
+            AdminPassword: "Password123!");
+
+        // Act
+        var firstResult = await _sut.SeedTenantInitialAdminAsync(tenantContext, command, CancellationToken.None);
+        var secondResult = await _sut.SeedTenantInitialAdminAsync(tenantContext, command, CancellationToken.None);
+
+        // Assert
+        firstResult.IsSuccess.Should().BeTrue();
+        secondResult.IsSuccess.Should().BeTrue();
+
+        var userCount = await tenantContext.TenantUsers.CountAsync();
+        userCount.Should().Be(1);
+
+        var brandingCount = await tenantContext.TenantBranding.CountAsync();
+        brandingCount.Should().Be(1);
+    }
+
+    /// <summary>
+    /// Verifies that SeedTenantInitialAdminAsync succeeds and only seeds branding when admin credentials are not provided.
+    /// </summary>
+    [Fact]
+    public async Task SeedTenantInitialAdminAsync_ShouldSucceedWithoutUser_WhenAdminCredentialsOmitted()
+    {
+        // Arrange
+        using var tenantConnection = new SqliteConnection("DataSource=:memory:");
+        tenantConnection.Open();
+
+        var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
+            .UseSqlite(tenantConnection)
+            .Options;
+
+        await using var tenantContext = new TenantOperationalDbContext(options);
+        await tenantContext.Database.EnsureCreatedAsync();
+
+        var command = new ProvisionTenantCommand(
+            "Agencia Sem Admin",
+            "12345678000199",
+            "agencia-sem-admin");
+
+        // Act
+        var result = await _sut.SeedTenantInitialAdminAsync(tenantContext, command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+
+        var userCount = await tenantContext.TenantUsers.CountAsync();
+        userCount.Should().Be(0);
+
+        var seededBranding = await tenantContext.TenantBranding.SingleOrDefaultAsync();
+        seededBranding.Should().NotBeNull();
     }
 }

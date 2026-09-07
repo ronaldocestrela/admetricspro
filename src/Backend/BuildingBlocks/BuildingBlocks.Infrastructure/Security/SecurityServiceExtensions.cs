@@ -19,6 +19,7 @@ public static class SecurityServiceExtensions
         services.AddScoped<IImpersonationContextAccessor, ImpersonationContextAccessor>();
         services.AddScoped<IImpersonationContext>(sp => sp.GetRequiredService<IImpersonationContextAccessor>().Current);
         services.AddScoped<IBillingDataMasker, BillingDataMasker>();
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
         return services;
     }
 }

@@ -192,5 +192,9 @@ public sealed class RegisterTenantOnboardingCommandTests
         capturedCommand.CustomDomain.Should().Be("ads.vanguarda.com.br");
         capturedCommand.PrimaryColor.Should().Be("#4f46e5");
         capturedCommand.SecondaryColor.Should().Be("#0f172a");
+        capturedCommand.AdminFullName.Should().Be("Carlos Mendes");
+        capturedCommand.AdminEmail.Should().Be("carlos@vanguarda.com");
+        capturedCommand.AdminPhone.Should().Be("11987654321");
+        capturedCommand.AdminPassword.Should().Be("Forte#2026!Key");
     }
 }

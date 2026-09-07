@@ -44,6 +44,7 @@ sequenceDiagram
     Hdl->>Prov: ProvisionTenantDatabaseAsync(ProvisionTenantCommand)
     Prov->>Sql: CREATE DATABASE [Tenant_vanguarda]
     Prov->>Sql: Database.MigrateAsync() (EF Core 10)
+    Prov->>Sql: SeedTenantInitialAdminAsync() (TenantUser Owner com hash PBKDF2 e TenantBranding)
     Prov->>Mst: Grava Tenant com ConnectionString criptografada (AES-256)
     Hdl-->>UI: Result<TenantOnboardingResult> (Sucesso com URL)
     UI-->>User: Atualiza progresso para 100% e libera botão para o Dashboard
@@ -157,6 +158,16 @@ A partir da Subfase 1.1, todos os metadados cadastrais e de personalização col
 - `CustomDomain` (`nvarchar(255)`, opcional): Hostname CNAME configurado pelo assinante.
 - `PrimaryColor` (`nvarchar(50)`, opcional): Cor primária customizada em formato hexadecimal.
 - `SecondaryColor` (`nvarchar(50)`, opcional): Cor secundária customizada em formato hexadecimal.
+
+#### Semeamento Automático no Banco Dedicado do Inquilino (`TenantDbContext`):
+A partir da Subfase 1.3, o `TenantProvisioningService` executa o semeamento imediato e idempotente logo após o `MigrateAsync()`:
+1. **`TenantBranding`:**
+   - Registra as cores primária e secundária personalizadas informadas na etapa de identidade visual.
+   - Aplica fallbacks corporativos seguros (`#4F46E5` e `#0F172A`) caso as cores não tenham sido informadas.
+2. **`TenantUser` (Administrador / Owner):**
+   - Cria o usuário com o perfil `TenantRole.Owner` e `IsActive = true`.
+   - Hasheia a senha de forma criptograficamente segura via `IPasswordHasher` (PBKDF2 com salting dinâmico e HMAC-SHA256).
+   - Preenche `FullName`, `Email` normalizado em caixa baixa e `PhoneNumber` comercial.
 
 ---
 

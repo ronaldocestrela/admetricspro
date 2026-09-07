@@ -16,6 +16,10 @@ namespace Master.Application.Services;
 /// <param name="CustomDomain">Optional custom CNAME domain for white-label routing.</param>
 /// <param name="PrimaryColor">Optional primary theme hex color code.</param>
 /// <param name="SecondaryColor">Optional secondary theme hex color code.</param>
+/// <param name="AdminFullName">Optional full name of the initial tenant administrator (Owner).</param>
+/// <param name="AdminEmail">Optional corporate email address of the initial tenant administrator (Owner).</param>
+/// <param name="AdminPhone">Optional contact phone number of the initial tenant administrator.</param>
+/// <param name="AdminPassword">Optional plain text password for initial administrator seeding with secure hashing.</param>
 public sealed record ProvisionTenantCommand(
     string CompanyName,
     string Cnpj,
@@ -26,7 +30,11 @@ public sealed record ProvisionTenantCommand(
     string? BillingCycle = null,
     string? CustomDomain = null,
     string? PrimaryColor = null,
-    string? SecondaryColor = null);
+    string? SecondaryColor = null,
+    string? AdminFullName = null,
+    string? AdminEmail = null,
+    string? AdminPhone = null,
+    string? AdminPassword = null);
 
 /// <summary>
 /// Provisions dedicated tenant databases in SQL Server and applies schema migrations.

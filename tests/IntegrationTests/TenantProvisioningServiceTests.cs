@@ -1,8 +1,11 @@
 using BuildingBlocks.Application.Persistence;
+using BuildingBlocks.Application.Security;
+using BuildingBlocks.Domain.Tenants;
 using BuildingBlocks.Infrastructure.Security;
 using FluentAssertions;
 using IntegrationTests.Infrastructure;
 using Master.Application.Repositories;
+using Master.Application.Services;
 using Master.Infrastructure.Persistence;
 using Master.Infrastructure.Repositories;
 using Master.Infrastructure.Services;
@@ -102,6 +105,75 @@ public sealed class TenantProvisioningServiceTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Tenant.DatabaseAlreadyExists");
+    }
+
+    /// <summary>
+    /// Provisions a tenant database with onboarding credentials and branding, verifying that Owner user and branding are seeded in the dedicated database.
+    /// </summary>
+    [Fact]
+    public async Task ProvisionTenantDatabaseAsync_WithAdminAndBranding_ShouldSeedOwnerUserAndBranding()
+    {
+        // Arrange
+        var masterDatabaseName = $"Master_{Guid.NewGuid():N}";
+        var masterConnectionString = WithDatabase(_fixture.ConnectionString, masterDatabaseName);
+        await EnsureDatabaseCreatedAsync(masterConnectionString);
+
+        var options = new DbContextOptionsBuilder<MasterDbContext>()
+            .UseSqlServer(masterConnectionString)
+            .Options;
+
+        await using var masterDbContext = new MasterDbContext(options);
+        await masterDbContext.Database.EnsureCreatedAsync();
+
+        ITenantRepository tenantRepository = new TenantRepository(masterDbContext);
+        IUnitOfWork unitOfWork = new UnitOfWork(masterDbContext);
+        IEncryptionService encryptionService = new AesEncryptionService(EncryptionKey);
+        IPasswordHasher passwordHasher = new PasswordHasher();
+
+        var service = new TenantProvisioningService(masterDbContext, tenantRepository, unitOfWork, encryptionService, passwordHasher);
+
+        var command = new ProvisionTenantCommand(
+            "Agencia Gamma",
+            "12345678000192",
+            "agencia-gamma",
+            PrimaryColor: "#6366F1",
+            SecondaryColor: "#1E293B",
+            AdminFullName: "Juliana Costa",
+            AdminEmail: "juliana@agenciagamma.com.br",
+            AdminPhone: "11977776666",
+            AdminPassword: "Integracao#2026!");
+
+        // Act
+        var result = await service.ProvisionTenantDatabaseAsync(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+
+        var persistedTenant = await masterDbContext.Tenants.SingleOrDefaultAsync(t => t.Id == result.Value);
+        persistedTenant.Should().NotBeNull();
+
+        var decryptedConnection = encryptionService.Decrypt(persistedTenant!.EncryptedConnectionString);
+
+        var tenantOptions = new DbContextOptionsBuilder<TenantOperationalDbContext>()
+            .UseSqlServer(decryptedConnection)
+            .Options;
+
+        await using var tenantContext = new TenantOperationalDbContext(tenantOptions);
+
+        // Branding assertion
+        var branding = await tenantContext.TenantBranding.SingleOrDefaultAsync();
+        branding.Should().NotBeNull();
+        branding!.PrimaryColor.Should().Be("#6366F1");
+        branding.SecondaryColor.Should().Be("#1E293B");
+
+        // User assertion
+        var adminUser = await tenantContext.TenantUsers.SingleOrDefaultAsync(u => u.Email == "juliana@agenciagamma.com.br");
+        adminUser.Should().NotBeNull();
+        adminUser!.FullName.Should().Be("Juliana Costa");
+        adminUser.Role.Should().Be(TenantRole.Owner);
+        adminUser.IsActive.Should().BeTrue();
+        adminUser.PhoneNumber.Should().Be("11977776666");
+        passwordHasher.VerifyPassword(adminUser.PasswordHash, "Integracao#2026!").Should().BeTrue();
     }
 
     private static async Task EnsureDatabaseCreatedAsync(string connectionString)

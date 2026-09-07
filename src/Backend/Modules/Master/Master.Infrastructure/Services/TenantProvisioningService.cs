@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using BuildingBlocks.Application.Persistence;
+using BuildingBlocks.Application.Security;
 using BuildingBlocks.Domain.Primitives;
+using BuildingBlocks.Domain.Tenants;
 using BuildingBlocks.Infrastructure.Security;
 using Master.Application.Repositories;
 using Master.Application.Services;
@@ -20,6 +22,7 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
     private readonly ITenantRepository _tenantRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEncryptionService _encryptionService;
+    private readonly IPasswordHasher _passwordHasher;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TenantProvisioningService"/> class.
@@ -33,11 +36,30 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         ITenantRepository tenantRepository,
         IUnitOfWork unitOfWork,
         IEncryptionService encryptionService)
+        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, new PasswordHasher())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TenantProvisioningService"/> class with cryptographic password hasher.
+    /// </summary>
+    /// <param name="masterDbContext">Master catalog context.</param>
+    /// <param name="tenantRepository">Tenant repository abstraction.</param>
+    /// <param name="unitOfWork">Unit of work for commit coordination.</param>
+    /// <param name="encryptionService">Encryption service for connection string storage.</param>
+    /// <param name="passwordHasher">Cryptographic password hasher for operational tenant user accounts.</param>
+    public TenantProvisioningService(
+        MasterDbContext masterDbContext,
+        ITenantRepository tenantRepository,
+        IUnitOfWork unitOfWork,
+        IEncryptionService encryptionService,
+        IPasswordHasher passwordHasher)
     {
         _masterDbContext = masterDbContext;
         _tenantRepository = tenantRepository;
         _unitOfWork = unitOfWork;
         _encryptionService = encryptionService;
+        _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
     }
 
     /// <inheritdoc />
@@ -121,6 +143,12 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
             return Result<TenantId>.Failure(applySchemaResult.Error);
         }
 
+        var seedResult = await SeedTenantInitialAdminAsync(tenantDbConnectionString, command, cancellationToken);
+        if (seedResult.IsFailure)
+        {
+            return Result<TenantId>.Failure(seedResult.Error);
+        }
+
         var encryptedConnectionString = _encryptionService.Encrypt(tenantDbConnectionString);
         var setConnectionStringResult = tenant.SetEncryptedConnectionString(encryptedConnectionString);
         if (setConnectionStringResult.IsFailure)
@@ -162,6 +190,118 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         await createCommand.ExecuteNonQueryAsync(cancellationToken);
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Semeia o usuário administrador inicial (Owner) e a identidade visual (TenantBranding) no banco de dados operacional dedicado do tenant.
+    /// </summary>
+    /// <param name="tenantConnectionString">String de conexão com o banco de dados dedicado do tenant.</param>
+    /// <param name="command">Comando estruturado de provisionamento contendo credenciais e branding.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Retorna <see cref="Result.Success()"/> em caso de sucesso ou falha semântica tipada.</returns>
+    public async Task<Result> SeedTenantInitialAdminAsync(
+        string tenantConnectionString,
+        ProvisionTenantCommand command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
+                .UseSqlServer(tenantConnectionString)
+                .Options;
+
+            await using var tenantContext = new TenantOperationalDbContext(options);
+            return await SeedTenantInitialAdminAsync(tenantContext, command, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return Result.Failure(Error.Failure("Tenant.SeedCancelled", "Tenant database seeding was cancelled."));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("Tenant.SeedFailed", $"Failed to seed tenant initial admin or branding: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Executa o semeamento de registros operacionais iniciais no contexto dedicado do tenant de forma idempotente.
+    /// </summary>
+    /// <param name="tenantContext">Contexto operacional do tenant.</param>
+    /// <param name="command">Comando estruturado com dados do inquilino.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado semântico da operação.</returns>
+    public async Task<Result> SeedTenantInitialAdminAsync(
+        TenantOperationalDbContext tenantContext,
+        ProvisionTenantCommand command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // 1. Seed TenantBranding se ainda não existir
+            var brandingExists = await tenantContext.TenantBranding.AnyAsync(cancellationToken);
+            if (!brandingExists)
+            {
+                var primaryColor = string.IsNullOrWhiteSpace(command.PrimaryColor) ? "#4F46E5" : command.PrimaryColor.Trim();
+                var secondaryColor = string.IsNullOrWhiteSpace(command.SecondaryColor) ? "#0F172A" : command.SecondaryColor.Trim();
+
+                var brandingResult = TenantBranding.Create(
+                    Guid.NewGuid(),
+                    primaryColor,
+                    secondaryColor);
+
+                if (brandingResult.IsFailure)
+                {
+                    return Result.Failure(brandingResult.Error);
+                }
+
+                await tenantContext.TenantBranding.AddAsync(brandingResult.Value, cancellationToken);
+            }
+
+            // 2. Seed TenantUser (Owner) se email e senha foram fornecidos
+            if (!string.IsNullOrWhiteSpace(command.AdminEmail) && !string.IsNullOrWhiteSpace(command.AdminPassword))
+            {
+                var normalizedEmail = command.AdminEmail.Trim().ToLowerInvariant();
+                var userExists = await tenantContext.TenantUsers.AnyAsync(u => u.Email == normalizedEmail, cancellationToken);
+
+                if (!userExists)
+                {
+                    var passwordHash = _passwordHasher.HashPassword(command.AdminPassword);
+                    var fullName = string.IsNullOrWhiteSpace(command.AdminFullName)
+                        ? command.CompanyName.Trim()
+                        : command.AdminFullName.Trim();
+                    var phone = string.IsNullOrWhiteSpace(command.AdminPhone)
+                        ? null
+                        : command.AdminPhone.Trim();
+
+                    var userResult = TenantUser.Create(
+                        Guid.NewGuid(),
+                        fullName,
+                        normalizedEmail,
+                        phone,
+                        passwordHash,
+                        TenantRole.Owner,
+                        createdAtUtc: DateTime.UtcNow);
+
+                    if (userResult.IsFailure)
+                    {
+                        return Result.Failure(userResult.Error);
+                    }
+
+                    await tenantContext.TenantUsers.AddAsync(userResult.Value, cancellationToken);
+                }
+            }
+
+            await tenantContext.SaveChangesAsync(cancellationToken);
+            return Result.Success();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return Result.Failure(Error.Failure("Tenant.SeedCancelled", "Tenant database seeding was cancelled."));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("Tenant.SeedFailed", $"Failed to seed initial tenant data: {ex.Message}"));
+        }
     }
 
     private static async Task<Result> ApplyTenantSchemaAsync(string tenantConnectionString, CancellationToken cancellationToken)

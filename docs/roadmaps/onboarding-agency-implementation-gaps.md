@@ -58,9 +58,10 @@ graph TD
 3. [x] **Mapeamento EF Core:** Configurações fluentes `TenantUserEntityTypeConfiguration.cs` e `TenantBrandingEntityTypeConfiguration.cs` adicionadas em `BuildingBlocks.Infrastructure`, e `DbSet` correspondentes expostos no `TenantDbContext.cs`.
 4. [x] **Migração Operacional:** Migração `20260907110000_Add_TenantUserAndTenantBranding` gerada em `Master.Infrastructure` e `TenantOperationalDbContextModelSnapshot.cs` sincronizado para aplicação automática durante o provisionamento. 100% dos 575 testes passando com sucesso.
 
-#### Subfase 1.3: Semeador Automático no Provisionamento
-1. **TDD (Red):** Testar o método `SeedTenantInitialAdminAsync` garantindo que o usuário *Owner* seja criado no banco dedicado recém-provisionado com hash seguro (PBKDF2/Argon2 via `IPasswordHasher`).
-2. **TDD (Green):** Implementar a rotina no `TenantProvisioningService` para, imediatamente após o `tenantContext.Database.MigrateAsync()`, inserir o registro do `TenantUser` (Owner) e o `TenantBranding` inicial.
+#### Subfase 1.3: Semeador Automático no Provisionamento — [CONCLUÍDO]
+1. [x] **TDD (Red):** Testes unitários implementados em `PasswordHasherTests.cs` cobrindo geração de hash PBKDF2/HMAC-SHA256, salting dinâmico e validação de tempo constante. Testes de contrato em `ProvisionTenantCommand_WithAdminCredentials` e repasse em `RegisterTenantOnboardingCommandTests.cs`. Testes unitários em `TenantProvisioningServiceTests.cs` cobrindo `SeedTenantInitialAdminAsync` com isolamento por SQLite in-memory (Owner, role correta, hash verificado, branding com fallback e idempotência).
+2. [x] **TDD (Green):** Interface `IPasswordHasher` e implementação `PasswordHasher` registradas em `BuildingBlocks`. `ProvisionTenantCommand` expandido com `AdminFullName`, `AdminEmail`, `AdminPhone` e `AdminPassword`. Método `SeedTenantInitialAdminAsync` implementado no `TenantProvisioningService` e executado imediatamente após `tenantContext.Database.MigrateAsync()`.
+3. [x] **Teste de Integração (SQL Server Real):** Teste `ProvisionTenantDatabaseAsync_WithAdminAndBranding_ShouldSeedOwnerUserAndBranding` executado com sucesso via Testcontainers, atestando a persistência física das tabelas `TenantUsers` e `TenantBranding` no banco dedicado. 100% dos testes unitários, de integração e de compliance XML aprovados.
 
 ---
 
