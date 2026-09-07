@@ -1,5 +1,6 @@
 using BuildingBlocks.Infrastructure.Configuration;
 using WebApp.Components;
+using WebApp.Extensions;
 using WebApp.Services;
 using WebApp.State;
 
@@ -21,12 +22,18 @@ builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvid
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:7001";
 var apiUri = new Uri(apiBaseUrl);
 
-builder.Services.AddHttpClient<ITenantDirectoryService, TenantDirectoryService>(client => client.BaseAddress = apiUri);
-builder.Services.AddHttpClient<ITenantOnboardingClientService, TenantOnboardingClientService>(client => client.BaseAddress = apiUri);
-builder.Services.AddHttpClient<IPlanManagementService, PlanManagementService>(client => client.BaseAddress = apiUri);
-builder.Services.AddHttpClient<IApiHealthClientService, ApiHealthClientService>(client => client.BaseAddress = apiUri);
-builder.Services.AddHttpClient<IFeatureFlagClientService, FeatureFlagClientService>(client => client.BaseAddress = apiUri);
-builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<ITenantDirectoryService, TenantDirectoryService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<ITenantOnboardingClientService, TenantOnboardingClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IPlanManagementService, PlanManagementService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IApiHealthClientService, ApiHealthClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IFeatureFlagClientService, FeatureFlagClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 
