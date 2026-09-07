@@ -117,12 +117,17 @@ graph TD
 
 **Objetivo:** Implementar a hierarquia organizacional que sustenta o modelo de negócio de agências de tráfego pago.
 
-#### Subfase 4.1: Gestão de Workspaces (Clientes da Agência)
-1. **Agregado `Workspace`:**
+#### Subfase 4.1: Gestão de Workspaces (Clientes da Agência) — [CONCLUÍDO]
+1. [x] **Agregado `Workspace`:**
    * Entidade: `Id`, `Name`, `CnpjOrCpf`, `MonthlyAdSpendBudget`, `Segment`, `CreatedAtUtc`, `IsActive`.
-   * Validação de cotas: checar se o número de workspaces ativos respeita o teto do plano contratado (`Starter`: 3, `Pro`: 15, `Enterprise`: Ilimitado).
-2. **Comando `CreateWorkspaceCommand`:**
-   * Handler no módulo `Tenants`, repositório `IWorkspaceRepository`, persistência em `TenantDbContext`.
+   * Validação de cotas: checagem inter-módulos in-memory via MediatR (`GetTenantPlanLimitsQuery`), respeitando o teto do plano contratado (`Starter`: 3, `Pro`: 15, `Enterprise`: Ilimitado).
+2. [x] **Comandos e Consultas (`Tenants.Application`):**
+   * Handlers no módulo `Tenants`, repositório `IWorkspaceRepository`, `ITenantUnitOfWork` e persistência no `TenantDbContext`.
+   * Suporte a `CreateWorkspaceCommand`, `UpdateWorkspaceCommand`, `ToggleWorkspaceStatusCommand`, `GetWorkspacesQuery` e `GetWorkspaceByIdQuery`.
+3. [x] **Web API REST & OpenAPI/Scalar (`WorkspacesController`):**
+   * Endpoints `/api/v1/workspaces` com envelopes `Result<T>` padronizados e documentação OpenAPI.
+4. [x] **TDD & Cobertura Completa:**
+   * 32 testes unitários de domínio e aplicação e 4 testes de aceitação de endpoints; 100% de testes passando sem regressões. Documentação viva em `/docs/modules/tenants-workspaces.md`.
 
 #### Subfase 4.2: Gestão de Squads (Times Internos)
 1. **Agregado `Squad`:**

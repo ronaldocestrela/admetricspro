@@ -19,6 +19,7 @@ public static class TenantPersistenceServiceExtensions
     {
         services.AddScoped<ITenantConnectionHolder, TenantConnectionHolder>();
         services.AddScoped<ITenantDbContextFactory<TContext>, TenantDbContextFactory<TContext>>();
+        services.AddScoped<ITenantDbContextAccessor, TenantDbContextAccessor>();
         return services;
     }
 }

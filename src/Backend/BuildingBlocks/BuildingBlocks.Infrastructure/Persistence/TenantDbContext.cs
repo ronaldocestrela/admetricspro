@@ -32,6 +32,11 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<TenantBranding> TenantBranding => Set<TenantBranding>();
 
+    /// <summary>
+    /// Gets the operational workspaces table representing agency clients.
+    /// </summary>
+    public DbSet<Workspace> Workspaces => Set<Workspace>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,5 +51,6 @@ public class TenantDbContext : DbContext
 
         modelBuilder.ApplyConfiguration(new TenantUserEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new TenantBrandingEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new WorkspaceEntityTypeConfiguration());
     }
 }

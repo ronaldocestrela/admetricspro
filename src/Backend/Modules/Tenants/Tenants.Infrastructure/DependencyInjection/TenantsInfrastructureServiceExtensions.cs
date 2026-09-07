@@ -30,6 +30,8 @@ public static class TenantsInfrastructureServiceExtensions
 
         services.AddScoped<ITenantAuthService, TenantAuthService>();
         services.AddScoped<ITenantTokenService, TenantJwtTokenService>();
+        services.AddScoped<Tenants.Application.Workspaces.Repositories.IWorkspaceRepository, Tenants.Infrastructure.Workspaces.WorkspaceRepository>();
+        services.AddScoped<Tenants.Application.Persistence.ITenantUnitOfWork, Tenants.Infrastructure.Persistence.TenantUnitOfWork>();
 
         return services;
     }
