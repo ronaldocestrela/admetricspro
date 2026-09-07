@@ -185,6 +185,60 @@ public sealed class TenantAuthService : ITenantAuthService
         return Result<AuthenticatedTenantUserDto>.Success(dto);
     }
 
+    /// <inheritdoc />
+    public async Task<Result<TenantPublicBrandingDto>> GetPublicBrandingAsync(
+        string subdomain,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(subdomain))
+        {
+            return Result<TenantPublicBrandingDto>.Failure(
+                Error.Validation("Subdomain.Required", "O subdomínio do inquilino é obrigatório."));
+        }
+
+        var normalizedSubdomain = subdomain.Trim().ToLowerInvariant();
+        var tenant = await _tenantRepository.GetBySubdomainAsync(normalizedSubdomain, cancellationToken);
+        if (tenant is null)
+        {
+            return Result<TenantPublicBrandingDto>.Failure(
+                Error.NotFound("Tenant.NotFound", $"Inquilino com subdomínio '{normalizedSubdomain}' não foi localizado."));
+        }
+
+        if (tenant.Status == TenantStatus.Suspended || tenant.Status == TenantStatus.Cancelled)
+        {
+            return Result<TenantPublicBrandingDto>.Failure(
+                Error.Validation("Tenant.Inactive", $"O acesso do inquilino '{tenant.CompanyName}' está inativo ou suspenso."));
+        }
+
+        string? logoUrl = null;
+        try
+        {
+            var dbContextResult = await _tenantDbContextFactory.CreateDbContextAsync(tenant.Id.Value, cancellationToken);
+            if (dbContextResult.IsSuccess)
+            {
+                await using var tenantDbContext = dbContextResult.Value;
+                var branding = await tenantDbContext.TenantBranding.FirstOrDefaultAsync(cancellationToken);
+                logoUrl = branding?.LightLogoUrl;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Não foi possível carregar branding dedicado para inquilino {Subdomain}, usando fallback master.", normalizedSubdomain);
+        }
+
+        var dto = new TenantPublicBrandingDto(
+            TenantId: tenant.Id.Value,
+            CompanyName: tenant.CompanyName,
+            Subdomain: tenant.Subdomain,
+            CustomDomain: tenant.CustomDomain,
+            PrimaryColor: tenant.PrimaryColor,
+            SecondaryColor: tenant.SecondaryColor,
+            LogoUrl: logoUrl,
+            IsActive: true);
+
+        return Result<TenantPublicBrandingDto>.Success(dto);
+    }
+
     private (string? Subdomain, Guid? TenantId) ResolveTenantIdentity(string? subdomain, Guid? tenantId)
     {
         if (!string.IsNullOrWhiteSpace(subdomain))

@@ -79,13 +79,11 @@ graph TD
 3. [x] **Endpoint Web API:** Exposição de `POST /api/v1/tenants/auth/login` em `TenantAuthController` documentado via OpenAPI/Scalar com `[EndpointSummary]` e códigos de status HTTP semânticos (200, 400, 401, 422).
 4. [x] **Documentação & Compliance:** Documento `/docs/modules/tenants-authentication.md` criado com exemplos JSON e regras de segurança; 100% de conformidade com comentários XML e testes de arquitetura do `AGENTS.md`. 100% dos 692 testes da solução passando com sucesso.
 
-#### Subfase 2.2: Tela de Login do Inquilino (`/login` no `WebApp`)
-1. **Componente `TenantLoginPage.razor`:**
-   * Página dedicada nas rotas `/login`.
-   * Resolução automática do subdomínio: se acessado por `vanguarda.admetricspro.com.br`, carrega dinamicamente as cores e o nome da agência.
-   * Validação reativa de campos e retorno do padrão `Result`.
-2. **Autologin Pós-Provisionamento:**
-   * Opção no final do wizard de onboarding para realizar login transparente ou emitir o token de sessão antes de navegar para o cockpit.
+#### Subfase 2.2: Tela de Login do Inquilino (`/login` no `WebApp`) — [CONCLUÍDO]
+1. [x] **TDD (Red):** Testes unitários para `GetTenantPublicBrandingQueryHandlerTests` e `TenantAuthControllerTests` cobrindo o endpoint `GET /api/v1/tenants/auth/branding`. Testes unitários para `TenantAuthClientServiceTests` e `TenantSessionStateProviderTests`. Testes de tela bUnit em `TenantLoginPageTests` cobrindo renderização, resolução de subdomínio, validação reativa e redirecionamento.
+2. [x] **TDD (Green):** Endpoint `GET /api/v1/tenants/auth/branding` e query `GetTenantPublicBrandingQuery` implementados no backend. Cliente HTTP fortemente tipado `ITenantAuthClientService` / `TenantAuthClientService` e provedor de sessão `ITenantSessionStateProvider` / `TenantSessionStateProvider` implementados no `WebApp`.
+3. [x] **Componente `TenantLoginPage.razor`:** Tela de login responsiva em tema escuro com glassmorphism, suporte a detecção de subdomínio por URL host ou query parameter, injeção dinâmica de CSS variables de White-Label (`--tenant-primary`), validação reativa e retorno estrito do padrão `Result<T>`.
+4. [x] **Autologin Pós-Provisionamento:** `OnboardingPage.razor` atualizado para autenticar automaticamente as credenciais do novo gestor após a criação do banco de dados dedicado, gravando a sessão no circuito e direcionando o botão do modal de provisionamento diretamente para o `/dashboard`. 100% de conformidade XML e suíte de testes aprovada.
 
 ---
 

@@ -25,4 +25,14 @@ public interface ITenantAuthService
         Guid? tenantId = null,
         string? ipAddress = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Consulta pública dos dados de branding e identidade visual de um inquilino pelo seu subdomínio.
+    /// </summary>
+    /// <param name="subdomain">Subdomínio do inquilino (ex.: "vanguarda").</param>
+    /// <param name="cancellationToken">Token de cancelamento assíncrono.</param>
+    /// <returns>Resultado com os metadados públicos de marca ou falha de negócio.</returns>
+    Task<Result<TenantPublicBrandingDto>> GetPublicBrandingAsync(
+        string subdomain,
+        CancellationToken cancellationToken = default);
 }

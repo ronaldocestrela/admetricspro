@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\Backend\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\Backend\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Backend\Modules\Master\Master.Application\Master.Application.csproj" />
+    <ProjectReference Include="..\..\Backend\Modules\Tenants\Tenants.Application\Tenants.Application.csproj" />
   </ItemGroup>
 
 </Project>

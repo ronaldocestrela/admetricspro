@@ -7,6 +7,7 @@ using WebApp.Components.Onboarding;
 using WebApp.Components.Pages;
 using WebApp.Models;
 using WebApp.Services;
+using WebApp.State;
 using Xunit;
 
 namespace UnitTests.Frontend.Components.Onboarding;
@@ -18,9 +19,14 @@ namespace UnitTests.Frontend.Components.Onboarding;
 public sealed class OnboardingPageTests : BunitTestBase
 {
     private readonly ITenantOnboardingClientService _onboardingClientService = Substitute.For<ITenantOnboardingClientService>();
+    private readonly ITenantAuthClientService _authClientService = Substitute.For<ITenantAuthClientService>();
+    private readonly TenantStateProvider _tenantStateProvider = new();
+    private readonly TenantSessionStateProvider _sessionProvider;
 
     public OnboardingPageTests()
     {
+        _sessionProvider = new TenantSessionStateProvider(_tenantStateProvider);
+
         _onboardingClientService.CheckTaxDocumentAvailabilityAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(BuildingBlocks.Domain.Primitives.Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>.Success(
                 new Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse(
@@ -32,6 +38,9 @@ public sealed class OnboardingPageTests : BunitTestBase
                     "vanguarda", true)));
 
         Services.AddSingleton(_onboardingClientService);
+        Services.AddSingleton(_authClientService);
+        Services.AddSingleton<ITenantStateProvider>(_tenantStateProvider);
+        Services.AddSingleton<ITenantSessionStateProvider>(_sessionProvider);
     }
 
     /// <summary>

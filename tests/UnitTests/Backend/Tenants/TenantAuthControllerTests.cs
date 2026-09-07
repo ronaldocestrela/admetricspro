@@ -128,4 +128,74 @@ public sealed class TenantAuthControllerTests
         badRequestResult.Should().NotBeNull();
         badRequestResult!.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
     }
+
+    /// <summary>
+    /// Valida que GetPublicBranding com subdomínio válido retorna status 200 OK com Result de sucesso.
+    /// </summary>
+    [Fact]
+    public async Task GetPublicBranding_WithValidSubdomain_ShouldReturnOkWithResult()
+    {
+        // Arrange
+        var expectedDto = new TenantPublicBrandingDto(
+            TenantId: Guid.NewGuid(),
+            CompanyName: "Agência Vanguarda",
+            Subdomain: "vanguarda",
+            CustomDomain: null,
+            PrimaryColor: "#1E40AF",
+            SecondaryColor: "#F59E0B",
+            LogoUrl: null,
+            IsActive: true);
+
+        _sender.Send(Arg.Any<global::Tenants.Application.Auth.Queries.GetTenantPublicBranding.GetTenantPublicBrandingQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Result<TenantPublicBrandingDto>.Success(expectedDto));
+
+        // Act
+        var actionResult = await _controller.GetPublicBranding("vanguarda", CancellationToken.None);
+
+        // Assert
+        var okResult = actionResult.Result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        okResult!.StatusCode.Should().Be(StatusCodes.Status200OK);
+
+        var result = okResult.Value as Result<TenantPublicBrandingDto>;
+        result.Should().NotBeNull();
+        result!.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEquivalentTo(expectedDto);
+    }
+
+    /// <summary>
+    /// Valida que GetPublicBranding para inquilino inexistente retorna status 404 NotFound.
+    /// </summary>
+    [Fact]
+    public async Task GetPublicBranding_WhenNotFound_ShouldReturnNotFound()
+    {
+        // Arrange
+        _sender.Send(Arg.Any<global::Tenants.Application.Auth.Queries.GetTenantPublicBranding.GetTenantPublicBrandingQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Result<TenantPublicBrandingDto>.Failure(
+                Error.NotFound("Tenant.NotFound", "Inquilino não localizado.")));
+
+        // Act
+        var actionResult = await _controller.GetPublicBranding("inexistente", CancellationToken.None);
+
+        // Assert
+        var notFoundResult = actionResult.Result as NotFoundObjectResult;
+        notFoundResult.Should().NotBeNull();
+        notFoundResult!.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+    }
+
+    /// <summary>
+    /// Valida que GetPublicBranding com subdomínio vazio retorna status 400 BadRequest.
+    /// </summary>
+    [Fact]
+    public async Task GetPublicBranding_WhenSubdomainEmpty_ShouldReturnBadRequest()
+    {
+        // Act
+        var actionResult = await _controller.GetPublicBranding("", CancellationToken.None);
+
+        // Assert
+        var badRequestResult = actionResult.Result as BadRequestObjectResult;
+        badRequestResult.Should().NotBeNull();
+        badRequestResult!.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+    }
 }
+

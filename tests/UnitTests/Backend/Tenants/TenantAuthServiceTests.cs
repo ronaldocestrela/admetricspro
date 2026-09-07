@@ -318,4 +318,105 @@ public sealed class TenantAuthServiceTests : IDisposable
         result.Value.Branding!.AgencyName.Should().Be("Agência Vanguarda");
         result.Value.Branding!.PrimaryColor.Should().Be("#1E40AF");
     }
+
+    /// <summary>
+    /// Valida que GetPublicBrandingAsync com subdomínio válido e ativo retorna os dados públicos de branding.
+    /// </summary>
+    [Fact]
+    public async Task GetPublicBrandingAsync_WithValidSubdomain_ShouldReturnPublicBranding()
+    {
+        // Arrange
+        var tenant = Tenant.Create(
+            "Agência Vanguarda",
+            "12345678000195",
+            "vanguarda",
+            SubscriptionTier.Pro,
+            DateTime.UtcNow.AddMonths(3),
+            primaryColor: "#1E40AF",
+            secondaryColor: "#F59E0B").Value;
+
+        _tenantRepository.GetBySubdomainAsync("vanguarda", Arg.Any<CancellationToken>())
+            .Returns(tenant);
+
+        var sut = new TenantAuthService(
+            _tenantRepository,
+            _tenantContextAccessor,
+            _tenantDbContextFactory,
+            _passwordHasher,
+            _tokenService,
+            _logger);
+
+        // Act
+        var result = await sut.GetPublicBrandingAsync("vanguarda");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.CompanyName.Should().Be("Agência Vanguarda");
+        result.Value.Subdomain.Should().Be("vanguarda");
+        result.Value.PrimaryColor.Should().Be("#1E40AF");
+        result.Value.SecondaryColor.Should().Be("#F59E0B");
+        result.Value.IsActive.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Valida que GetPublicBrandingAsync com subdomínio inexistente retorna erro NotFound.
+    /// </summary>
+    [Fact]
+    public async Task GetPublicBrandingAsync_WithNonExistentSubdomain_ShouldReturnNotFound()
+    {
+        // Arrange
+        _tenantRepository.GetBySubdomainAsync("inexistente", Arg.Any<CancellationToken>())
+            .Returns((Tenant?)null);
+
+        var sut = new TenantAuthService(
+            _tenantRepository,
+            _tenantContextAccessor,
+            _tenantDbContextFactory,
+            _passwordHasher,
+            _tokenService,
+            _logger);
+
+        // Act
+        var result = await sut.GetPublicBrandingAsync("inexistente");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Tenant.NotFound");
+    }
+
+    /// <summary>
+    /// Valida que GetPublicBrandingAsync com subdomínio suspenso retorna erro Tenant.Inactive.
+    /// </summary>
+    [Fact]
+    public async Task GetPublicBrandingAsync_WithSuspendedTenant_ShouldReturnInactive()
+    {
+        // Arrange
+        var tenant = Tenant.Create(
+            "Agência Suspensa",
+            "12345678000195",
+            "suspensa",
+            SubscriptionTier.Pro,
+            DateTime.UtcNow.AddMonths(3)).Value;
+
+        tenant.Suspend("Inadimplência");
+
+        _tenantRepository.GetBySubdomainAsync("suspensa", Arg.Any<CancellationToken>())
+            .Returns(tenant);
+
+        var sut = new TenantAuthService(
+            _tenantRepository,
+            _tenantContextAccessor,
+            _tenantDbContextFactory,
+            _passwordHasher,
+            _tokenService,
+            _logger);
+
+        // Act
+        var result = await sut.GetPublicBrandingAsync("suspensa");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Tenant.Inactive");
+    }
 }
+

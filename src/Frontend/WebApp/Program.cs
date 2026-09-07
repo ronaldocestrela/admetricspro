@@ -16,12 +16,15 @@ builder.Services.AddRazorComponents()
 
 // Provedores de estado de sessão do circuito Blazor
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
+builder.Services.AddScoped<ITenantSessionStateProvider, TenantSessionStateProvider>();
 builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
 
 // Registro dos clientes HTTP fortemente tipados consumindo exclusivamente a Web API
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:7001";
 var apiUri = new Uri(apiBaseUrl);
 
+builder.Services.AddHttpClient<ITenantAuthClientService, TenantAuthClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<ITenantDirectoryService, TenantDirectoryService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<ITenantOnboardingClientService, TenantOnboardingClientService>(client => client.BaseAddress = apiUri)

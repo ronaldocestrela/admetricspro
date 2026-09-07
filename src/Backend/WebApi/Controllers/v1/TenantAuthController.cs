@@ -70,4 +70,43 @@ public sealed class TenantAuthController : ControllerBase
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// Obtém os dados públicos de branding e identidade visual de um inquilino pelo seu subdomínio para a tela de autenticação.
+    /// </summary>
+    /// <param name="subdomain">Subdomínio do inquilino a ser consultado.</param>
+    /// <param name="cancellationToken">Token de cancelamento assíncrono.</param>
+    /// <returns>Metadados visuais públicos de marca do inquilino.</returns>
+    [HttpGet("branding")]
+    [EndpointSummary("Obtém dados públicos de identificação e branding de um inquilino pelo seu subdomínio")]
+    [ProducesResponseType(typeof(Result<TenantPublicBrandingDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<TenantPublicBrandingDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<TenantPublicBrandingDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<TenantPublicBrandingDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<TenantPublicBrandingDto>>> GetPublicBranding(
+        [FromQuery] string subdomain,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(subdomain))
+        {
+            return BadRequest(Result<TenantPublicBrandingDto>.Failure(
+                Error.Validation("Subdomain.Required", "O parâmetro subdomínio é obrigatório.")));
+        }
+
+        var query = new Tenants.Application.Auth.Queries.GetTenantPublicBranding.GetTenantPublicBrandingQuery(subdomain);
+        var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(result),
+                ErrorType.Validation => UnprocessableEntity(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return Ok(result);
+    }
 }
+

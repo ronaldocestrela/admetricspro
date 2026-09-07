@@ -129,6 +129,36 @@ A autenticação de inquilinos opera sob o modelo **Database-per-Tenant**, onde 
 }
 ```
 
+### 3.2 Branding Público do Inquilino (`GET /api/v1/tenants/auth/branding`)
+
+Utilizado pela tela de login (`TenantLoginPage.razor`) para pré-carregar as cores da agência e o nome antes do envio das credenciais.
+
+#### Parâmetros de Consulta (Query String)
+* `subdomain` (string, obrigatório): Subdomínio do inquilino a ser resolvido (ex: `vanguarda`).
+
+#### Resposta de Sucesso (HTTP 200 - Envelope `Result<T>`)
+```json
+{
+  "isSuccess": true,
+  "isFailure": false,
+  "error": {
+    "code": null,
+    "description": null,
+    "type": 0
+  },
+  "value": {
+    "tenantId": "c5e8bd57-7492-4b54-8292-0ea97ac8c6a3",
+    "companyName": "Agência Vanguarda Digital",
+    "subdomain": "vanguarda",
+    "customDomain": null,
+    "primaryColor": "#1E40AF",
+    "secondaryColor": "#F59E0B",
+    "logoUrl": "https://cdn.admetricspro.com.br/logos/vanguarda-light.png",
+    "isActive": true
+  }
+}
+```
+
 ---
 
 ## 4. Variáveis de Ambiente e Configuração

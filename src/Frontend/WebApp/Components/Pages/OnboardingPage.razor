@@ -4,7 +4,10 @@
 @using WebApp.Components.Onboarding
 @using WebApp.Models
 @using WebApp.Services
+@using WebApp.State
 @inject ITenantOnboardingClientService OnboardingClientService
+@inject ITenantAuthClientService AuthClientService
+@inject ITenantSessionStateProvider SessionProvider
 @inject NavigationManager NavigationManager
 
 <PageTitle>Cadastro & Onboarding de Inquilino — AdMetricsPro</PageTitle>
@@ -240,7 +243,35 @@
 
         _provisioningProgress = 100;
         AddLog($"[10:00:05] IDENTITY: Credenciais emitidas para {_formModel.AdminEmail}... CONCLUÍDO!");
-        _accessUrl = result.Value.AccessUrl;
+
+        // Autologin transparente pós-provisionamento para acesso imediato ao cockpit
+        try
+        {
+            var loginModel = new TenantLoginModel
+            {
+                Email = _formModel.AdminEmail,
+                Password = _formModel.AdminPassword,
+                Subdomain = _formModel.GetSanitizedSubdomain(),
+                RememberMe = true
+            };
+
+            var authResult = await AuthClientService.LoginAsync(loginModel);
+            if (authResult.IsSuccess)
+            {
+                SessionProvider.SetSession(authResult.Value);
+                AddLog("[10:00:06] AUTHENTICATION: Sessão do gestor autenticada com sucesso no circuito... PRONTO!");
+                _accessUrl = "/dashboard";
+            }
+            else
+            {
+                _accessUrl = result.Value.AccessUrl;
+            }
+        }
+        catch
+        {
+            _accessUrl = result.Value.AccessUrl;
+        }
+
         _isProvisioningCompleted = true;
         _isSubmitting = false;
     }
