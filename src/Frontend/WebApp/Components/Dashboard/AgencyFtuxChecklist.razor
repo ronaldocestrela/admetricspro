@@ -1,0 +1,261 @@
+@using BuildingBlocks.Domain.Primitives
+@using Tenants.Application.Ftux.DTOs
+@using WebApp.Components.Dashboard.Modals
+@using WebApp.Services
+@inject ITenantFtuxClientService FtuxClientService
+
+<section class="ftux-checklist-container @(IsDismissed ? "ftux-dismissed" : "")" aria-label="Checklist de Onboarding da Agência">
+    <!-- Cabeçalho do Checklist com Progresso -->
+    <div class="ftux-checklist-header">
+        <div class="ftux-title-group">
+            <div class="ftux-badge-status">
+                <span class="pulse-dot"></span>
+                <span>Onboarding da Agência (FTUX)</span>
+            </div>
+            <h2 class="ftux-main-title">Configurações Essenciais para Começar</h2>
+            <p class="ftux-main-subtitle">
+                Complete as 4 etapas fundamentais para habilitar a ingestão de métricas e iniciar a operação.
+            </p>
+        </div>
+
+        <div class="ftux-progress-summary">
+            <div class="progress-labels">
+                <span class="progress-title">Progresso da Configuração</span>
+                <span class="progress-value" id="ftux-progress-percent">@(_status?.ProgressPercentage ?? 25)%</span>
+            </div>
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill" style="width: @(_status?.ProgressPercentage ?? 25)%;"></div>
+            </div>
+        </div>
+    </div>
+
+    @if (_status?.IsCompleted == true)
+    {
+        <div class="ftux-completion-banner" role="status">
+            <div class="completion-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <div class="completion-copy">
+                <h4 class="completion-title">Tudo pronto! Sua agência está 100% configurada</h4>
+                <p class="completion-desc">
+                    Você provisionou o ambiente, cadastrou cliente, conectou fontes de anúncios e estruturou seu time. Os dados consolidados já estão ativos no dashboard.
+                </p>
+            </div>
+            <button type="button" class="btn-dismiss" @onclick="ToggleDismiss" aria-label="Minimizar checklist">
+                @(IsDismissed ? "Expandir" : "Dispensar")
+            </button>
+        </div>
+    }
+
+    <!-- Grade dos 4 Passos Operacionais -->
+    <div class="ftux-steps-list">
+        <!-- Passo 1: Conta provisionada (sempre concluído) -->
+        <div class="ftux-step-row completed">
+            <div class="step-indicator">
+                <div class="step-check-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+            </div>
+            <div class="step-details">
+                <span class="step-number">Passo 1 de 4</span>
+                <h3 class="step-name">Conta provisionada e banco isolado criado</h3>
+                <p class="step-description">Seu ambiente operacional dedicado no SQL Server foi inicializado com segurança de ponta a ponta.</p>
+            </div>
+            <div class="step-action-area">
+                <span class="badge-done">Concluído</span>
+            </div>
+        </div>
+
+        <!-- Passo 2: 1º Cliente / Workspace -->
+        <div class="ftux-step-row @(_status?.Step2Completed == true ? "completed" : "")">
+            <div class="step-indicator">
+                @if (_status?.Step2Completed == true)
+                {
+                    <div class="step-check-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                }
+                else
+                {
+                    <div class="step-pending-circle">2</div>
+                }
+            </div>
+            <div class="step-details">
+                <span class="step-number">Passo 2 de 4</span>
+                <h3 class="step-name">Cadastre seu 1º Cliente (Workspace)</h3>
+                <p class="step-description">Agrupe contas de anúncios por cliente e defina o orçamento mensal de tráfego pago.</p>
+            </div>
+            <div class="step-action-area">
+                @if (_status?.Step2Completed == true)
+                {
+                    <span class="badge-done">Concluído</span>
+                }
+                else
+                {
+                    <button type="button"
+                            id="btn-step-workspace"
+                            class="btn-step-cta"
+                            @onclick="() => _showWorkspaceModal = true">
+                        <span>Cadastrar Cliente</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Passo 3: 1ª Conexão de Anúncios -->
+        <div class="ftux-step-row @(_status?.Step3Completed == true ? "completed" : "")">
+            <div class="step-indicator">
+                @if (_status?.Step3Completed == true)
+                {
+                    <div class="step-check-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                }
+                else
+                {
+                    <div class="step-pending-circle">3</div>
+                }
+            </div>
+            <div class="step-details">
+                <span class="step-number">Passo 3 de 4</span>
+                <h3 class="step-name">Conecte sua 1ª Conta de Anúncios</h3>
+                <p class="step-description">Vincule Meta Ads ou Google Ads (ou carregue dados demonstrativos para visualização imediata).</p>
+            </div>
+            <div class="step-action-area">
+                @if (_status?.Step3Completed == true)
+                {
+                    <span class="badge-done">Concluído</span>
+                }
+                else
+                {
+                    <button type="button"
+                            id="btn-step-connection"
+                            class="btn-step-cta highlight-pulse"
+                            @onclick="() => _showAdConnectionModal = true">
+                        <span>Conectar Anúncios</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Passo 4: Equipe ou Squad -->
+        <div class="ftux-step-row @(_status?.Step4Completed == true ? "completed" : "")">
+            <div class="step-indicator">
+                @if (_status?.Step4Completed == true)
+                {
+                    <div class="step-check-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                }
+                else
+                {
+                    <div class="step-pending-circle">4</div>
+                }
+            </div>
+            <div class="step-details">
+                <span class="step-number">Passo 4 de 4</span>
+                <h3 class="step-name">Convide um gestor ou crie seu 1º Squad</h3>
+                <p class="step-description">Adicione analistas de tráfego ou estruture células multidisciplinares com isolamento de carteira.</p>
+            </div>
+            <div class="step-action-area">
+                @if (_status?.Step4Completed == true)
+                {
+                    <span class="badge-done">Concluído</span>
+                }
+                else
+                {
+                    <button type="button"
+                            id="btn-step-team"
+                            class="btn-step-cta"
+                            @onclick="() => _showTeamModal = true">
+                        <span>Configurar Equipe</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modais Operacionais -->
+<WorkspaceQuickModal @bind-IsOpen="_showWorkspaceModal" OnWorkspaceCreated="LoadStatusAsync" />
+<AdConnectionQuickModal @bind-IsOpen="_showAdConnectionModal" OnConnectionCreated="LoadStatusAsync" />
+<TeamQuickModal @bind-IsOpen="_showTeamModal" OnTeamConfigured="LoadStatusAsync" />
+
+@code {
+    [Parameter]
+    public bool IsDismissed { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsDismissedChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<TenantFtuxStatusDto> OnStatusUpdated { get; set; }
+
+    private TenantFtuxStatusDto? _status;
+    private bool _showWorkspaceModal;
+    private bool _showAdConnectionModal;
+    private bool _showTeamModal;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatusAsync();
+    }
+
+    /// <summary>
+    /// Recarrega assincronamente os indicadores de progresso do FTUX via Web API.
+    /// </summary>
+    public async Task LoadStatusAsync()
+    {
+        var result = await FtuxClientService.GetFtuxStatusAsync();
+        if (result.IsSuccess)
+        {
+            _status = result.Value;
+            await OnStatusUpdated.InvokeAsync(_status);
+        }
+        else
+        {
+            // Fallback gracioso com valores padrão
+            _status = new TenantFtuxStatusDto(
+                IsProvisioned: true,
+                WorkspacesCount: 0,
+                ConnectedAdAccountsCount: 0,
+                TeamMembersCount: 1,
+                SquadsCount: 0,
+                Step1Completed: true,
+                Step2Completed: false,
+                Step3Completed: false,
+                Step4Completed: false,
+                ProgressPercentage: 25,
+                IsCompleted: false);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ToggleDismiss()
+    {
+        IsDismissed = !IsDismissed;
+        await IsDismissedChanged.InvokeAsync(IsDismissed);
+    }
+}

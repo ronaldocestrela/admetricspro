@@ -10,6 +10,7 @@ using Master.Domain.Tenants;
 using Master.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Master.Infrastructure.Services;
 
@@ -208,6 +209,7 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         {
             var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
                 .UseSqlServer(tenantConnectionString)
+                .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
                 .Options;
 
             await using var tenantContext = new TenantOperationalDbContext(options);
@@ -310,6 +312,7 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         {
             var options = new DbContextOptionsBuilder<TenantOperationalDbContext>()
                 .UseSqlServer(tenantConnectionString)
+                .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
                 .Options;
 
             await using var tenantContext = new TenantOperationalDbContext(options);

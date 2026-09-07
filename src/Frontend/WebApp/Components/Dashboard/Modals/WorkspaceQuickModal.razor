@@ -1,0 +1,171 @@
+@using BuildingBlocks.Domain.Primitives
+@using WebApp.Models
+@using WebApp.Services
+@inject IWorkspaceClientService WorkspaceClientService
+
+@if (IsOpen)
+{
+    <div class="modal-overlay" @onclick="CloseAsync" role="dialog" aria-modal="true" aria-labelledby="modal-workspace-title">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-workspace-title" class="modal-title">Cadastrar 1º Cliente</h3>
+                        <p class="modal-subtitle">Configure o primeiro workspace gerenciado da agência.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="CloseAsync" aria-label="Fechar modal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <form @onsubmit="HandleSubmitAsync" class="modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert-error" role="alert">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="workspace-name-input" class="form-label">Nome do Cliente / Empresa *</label>
+                    <input id="workspace-name-input"
+                           type="text"
+                           class="form-control"
+                           placeholder="Ex: Loja Alpha E-commerce"
+                           @bind="_name"
+                           required
+                           disabled="@_isSubmitting" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-half">
+                        <label for="workspace-doc-input" class="form-label">CNPJ ou CPF</label>
+                        <input id="workspace-doc-input"
+                               type="text"
+                               class="form-control"
+                               placeholder="12.345.678/0001-95"
+                               @bind="_cnpjOrCpf"
+                               disabled="@_isSubmitting" />
+                    </div>
+
+                    <div class="form-group col-half">
+                        <label for="workspace-budget-input" class="form-label">Orçamento Mensal de Mídia (R$)</label>
+                        <input id="workspace-budget-input"
+                               type="number"
+                               step="100"
+                               min="0"
+                               class="form-control"
+                               placeholder="5000"
+                               @bind="_monthlyBudget"
+                               disabled="@_isSubmitting" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="workspace-segment-input" class="form-label">Nicho / Segmento</label>
+                    <select id="workspace-segment-input"
+                            class="form-control"
+                            @bind="_segment"
+                            disabled="@_isSubmitting">
+                        <option value="E-commerce">E-commerce / Varejo Digital</option>
+                        <option value="Infoproduto">Infoproduto / Lançamentos</option>
+                        <option value="Negócio Local">Negócio Local / Franquia</option>
+                        <option value="Serviços B2B">Serviços / B2B</option>
+                        <option value="Imobiliário">Imobiliário / Construção</option>
+                        <option value="Outro">Outro Segmento</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" @onclick="CloseAsync" disabled="@_isSubmitting">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btn-save-workspace-modal" class="btn-primary" disabled="@_isSubmitting">
+                        @if (_isSubmitting)
+                        {
+                            <span class="spinner"></span>
+                            <span>Criando Workspace...</span>
+                        }
+                        else
+                        {
+                            <span>Salvar Cliente</span>
+                        }
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnWorkspaceCreated { get; set; }
+
+    private string _name = string.Empty;
+    private string _cnpjOrCpf = "12.345.678/0001-95";
+    private decimal _monthlyBudget = 5000m;
+    private string _segment = "E-commerce";
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private async Task CloseAsync()
+    {
+        _errorMessage = null;
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _errorMessage = "O nome do cliente é obrigatório.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        var model = new CreateWorkspaceModel(
+            _name.Trim(),
+            string.IsNullOrWhiteSpace(_cnpjOrCpf) ? "12.345.678/0001-95" : _cnpjOrCpf.Trim(),
+            _monthlyBudget,
+            _segment);
+
+        var result = await WorkspaceClientService.CreateWorkspaceAsync(model);
+
+        _isSubmitting = false;
+
+        if (result.IsSuccess)
+        {
+            _name = string.Empty;
+            await CloseAsync();
+            await OnWorkspaceCreated.InvokeAsync();
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+}

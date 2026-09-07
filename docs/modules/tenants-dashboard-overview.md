@@ -52,11 +52,14 @@ Grid responsivo com 6 indicadores de performance de tráfego em estado inicial z
 | **Cliques & Impressões** | `0 clics / 0 imp.` | Alcance unificado cross-network | Olho / Impressão |
 | **CPA Médio** | `R$ 0,00` | Custo por aquisição consolidado | Carrinho de compras |
 
-### 3.3 Trilha de Primeiros Passos (FTUX)
-Exibida como um banner elegante com iluminação sutil (radial gradient glow):
-1. **Etapa 1 — Conectar Redes de Anúncios:** Botão para `/integrations` para autenticar Meta, Google, TikTok ou Bing Ads.
-2. **Etapa 2 — Criar Primeiro Workspace:** Botão para `/workspaces` para cadastrar clientes com orçamentos dedicados.
-3. **Etapa 3 — Organizar Squads e Membros:** Botão para `/squads` para estruturar equipes com isolamento de carteira.
+### 3.3 Checklist Interativo de Primeiro Acesso (FTUX — `AgencyFtuxChecklist`)
+Na parte superior do dashboard, é renderizado o componente interativo `<AgencyFtuxChecklist />` (especificado detalhadamente em [tenant-ftux-wizard.md](file:///home/rony/LPR/AdMetricsPro/docs/modules/tenant-ftux-wizard.md)), conduzindo o gestor através de 4 passos essenciais com barra de progresso (0% a 100%):
+1. **Passo 1 — Banco e Ambiente Provisionados (25%):** Conclusão automática com a criação do banco dedicado.
+2. **Passo 2 — Cadastrar 1º Cliente / Workspace (25%):** Abertura do modal rápido `WorkspaceQuickModal`.
+3. **Passo 3 — Conectar 1ª Conta de Anúncios (25%):** Abertura do modal rápido `AdConnectionQuickModal` com modo demonstrativo imediato ("Carregar Dados Demonstrativos").
+4. **Passo 4 — Convidar Equipe ou Criar Squad (25%):** Abertura do modal rápido `TeamQuickModal` (convite por e-mail com RBAC ou criação de squad).
+
+Ao atingir 100%, o componente exibe um card de comemoração com opção de ocultar o checklist.
 
 ### 3.4 Monitoramento das Redes Suportadas
 Cards de status das 4 redes de anúncios nativas:

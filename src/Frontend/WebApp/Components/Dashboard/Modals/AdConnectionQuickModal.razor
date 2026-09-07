@@ -1,0 +1,177 @@
+@using BuildingBlocks.Domain.Primitives
+@using Tenants.Application.Workspaces.DTOs
+@using WebApp.Models
+@using WebApp.Services
+@inject ITenantFtuxClientService FtuxClientService
+@inject IWorkspaceClientService WorkspaceClientService
+
+@if (IsOpen)
+{
+    <div class="modal-overlay" @onclick="CloseAsync" role="dialog" aria-modal="true" aria-labelledby="modal-ad-title">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-ad-title" class="modal-title">Conectar Redes de Anúncios</h3>
+                        <p class="modal-subtitle">Vincule Meta Ads, Google Ads ou ative dados demonstrativos.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="CloseAsync" aria-label="Fechar modal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert-error" role="alert">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                <!-- Opção Destaque FTUX: Dados Demonstrativos -->
+                <div class="demo-box">
+                    <div class="demo-box-content">
+                        <div class="demo-badge">Recomendado para Teste Rápido</div>
+                        <h4 class="demo-title">Carregar Dados Demonstrativos (Modo Demonstração)</h4>
+                        <p class="demo-desc">
+                            Simule métricas consolidadas em tempo real (Meta Ads e Google Ads) para visualizar dashboards, relatórios e KPIs imediatamente sem aguardar homologação de APIs.
+                        </p>
+                    </div>
+                    <button type="button"
+                            id="btn-load-demo-ads"
+                            class="btn-demo-action"
+                            @onclick="HandleLoadDemoAsync"
+                            disabled="@_isSubmitting">
+                        @if (_isSubmitting)
+                        {
+                            <span class="spinner"></span>
+                            <span>Sincronizando...</span>
+                        }
+                        else
+                        {
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            <span>Ativar Demonstração</span>
+                        }
+                    </button>
+                </div>
+
+                <div class="divider-text">ou conecte uma conta real</div>
+
+                <!-- Grid de Plataformas OAuth2 -->
+                <div class="platforms-list">
+                    <div class="platform-item">
+                        <div class="platform-meta">
+                            <span class="platform-dot meta-color"></span>
+                            <span class="platform-label">Meta Ads (Facebook & Instagram)</span>
+                        </div>
+                        <a href="integrations" class="btn-connect-oauth">Conectar OAuth</a>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-meta">
+                            <span class="platform-dot google-color"></span>
+                            <span class="platform-label">Google Ads (Search, YouTube, Display)</span>
+                        </div>
+                        <a href="integrations" class="btn-connect-oauth">Conectar OAuth</a>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-meta">
+                            <span class="platform-dot tiktok-color"></span>
+                            <span class="platform-label">TikTok For Business</span>
+                        </div>
+                        <a href="integrations" class="btn-connect-oauth">Conectar OAuth</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" @onclick="CloseAsync" disabled="@_isSubmitting">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnConnectionCreated { get; set; }
+
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private async Task CloseAsync()
+    {
+        _errorMessage = null;
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task HandleLoadDemoAsync()
+    {
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        // Verifica ou obtém o primeiro workspace disponível
+        var workspacesResult = await WorkspaceClientService.GetWorkspacesAsync();
+        Guid targetWorkspaceId;
+
+        if (workspacesResult.IsSuccess && workspacesResult.Value.Count > 0)
+        {
+            targetWorkspaceId = workspacesResult.Value[0].Id;
+        }
+        else
+        {
+            // Se nenhum workspace existir, cria automaticamente o cliente demonstrativo inicial
+            var createResult = await WorkspaceClientService.CreateWorkspaceAsync(
+                new CreateWorkspaceModel("Cliente Demonstração E-commerce", "12.345.678/0001-95", 8000m, "E-commerce"));
+
+            if (createResult.IsFailure)
+            {
+                _errorMessage = $"Falha ao inicializar workspace: {createResult.Error.Description}";
+                _isSubmitting = false;
+                return;
+            }
+
+            targetWorkspaceId = createResult.Value;
+        }
+
+        var demoModel = new ConnectDemoAccountModel(targetWorkspaceId, "MetaAds");
+        var result = await FtuxClientService.ConnectDemoAccountAsync(demoModel);
+
+        _isSubmitting = false;
+
+        if (result.IsSuccess)
+        {
+            await CloseAsync();
+            await OnConnectionCreated.InvokeAsync();
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+}

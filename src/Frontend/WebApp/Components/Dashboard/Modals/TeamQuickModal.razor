@@ -1,0 +1,245 @@
+@using BuildingBlocks.Domain.Primitives
+@using WebApp.Models
+@using WebApp.Services
+@inject ITenantTeamClientService TeamClientService
+
+@if (IsOpen)
+{
+    <div class="modal-overlay" @onclick="CloseAsync" role="dialog" aria-modal="true" aria-labelledby="modal-team-title">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-team-title" class="modal-title">Estruturar Equipe da Agência</h3>
+                        <p class="modal-subtitle">Convide um gestor/analista ou configure uma célula/squad interno.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="CloseAsync" aria-label="Fechar modal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Abas de Alternância -->
+            <div class="tabs-nav">
+                <button type="button"
+                        class="tab-btn @(_activeTab == "member" ? "active" : "")"
+                        @onclick='() => _activeTab = "member"'>
+                    Convidar Colaborador
+                </button>
+                <button type="button"
+                        class="tab-btn @(_activeTab == "squad" ? "active" : "")"
+                        @onclick='() => _activeTab = "squad"'>
+                    Criar 1º Squad
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert-error" role="alert">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>@_errorMessage</span>
+                </div>
+            }
+
+            @if (_activeTab == "member")
+            {
+                <form @onsubmit="HandleInviteMemberAsync" class="modal-body">
+                    <div class="form-group">
+                        <label for="member-name-input" class="form-label">Nome Completo *</label>
+                        <input id="member-name-input"
+                               type="text"
+                               class="form-control"
+                               placeholder="Ex: Carlos Oliveira"
+                               @bind="_memberName"
+                               required
+                               disabled="@_isSubmitting" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="member-email-input" class="form-label">E-mail Corporativo *</label>
+                        <input id="member-email-input"
+                               type="email"
+                               class="form-control"
+                               placeholder="carlos@suaagencia.com.br"
+                               @bind="_memberEmail"
+                               required
+                               disabled="@_isSubmitting" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="member-role-select" class="form-label">Cargo / Nível de Acesso</label>
+                        <select id="member-role-select"
+                                class="form-control"
+                                @bind="_memberRole"
+                                disabled="@_isSubmitting">
+                            <option value="MediaManager">Gestor de Tráfego (Media Manager)</option>
+                            <option value="Analyst">Analista de Performance (Analyst)</option>
+                            <option value="Admin">Administrador Operacional (Admin)</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-cancel" @onclick="CloseAsync" disabled="@_isSubmitting">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btn-submit-member" class="btn-primary" disabled="@_isSubmitting">
+                            @if (_isSubmitting)
+                            {
+                                <span class="spinner"></span>
+                                <span>Cadastrando...</span>
+                            }
+                            else
+                            {
+                                <span>Convidar Colaborador</span>
+                            }
+                        </button>
+                    </div>
+                </form>
+            }
+            else
+            {
+                <form @onsubmit="HandleCreateSquadAsync" class="modal-body">
+                    <div class="form-group">
+                        <label for="squad-name-input" class="form-label">Nome do Squad / Time *</label>
+                        <input id="squad-name-input"
+                               type="text"
+                               class="form-control"
+                               placeholder="Ex: Squad Performance E-commerce"
+                               @bind="_squadName"
+                               required
+                               disabled="@_isSubmitting" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="squad-desc-input" class="form-label">Descrição / Escopo Operacional</label>
+                        <textarea id="squad-desc-input"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Responsável pela gestão de campanhas de tráfego pago para contas de e-commerce."
+                                  @bind="_squadDescription"
+                                  disabled="@_isSubmitting"></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-cancel" @onclick="CloseAsync" disabled="@_isSubmitting">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btn-submit-squad" class="btn-primary" disabled="@_isSubmitting">
+                            @if (_isSubmitting)
+                            {
+                                <span class="spinner"></span>
+                                <span>Criando Squad...</span>
+                            }
+                            else
+                            {
+                                <span>Criar Squad</span>
+                            }
+                        </button>
+                    </div>
+                </form>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnTeamConfigured { get; set; }
+
+    private string _activeTab = "member";
+    private string _memberName = string.Empty;
+    private string _memberEmail = string.Empty;
+    private string _memberRole = "MediaManager";
+
+    private string _squadName = string.Empty;
+    private string? _squadDescription;
+
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private async Task CloseAsync()
+    {
+        _errorMessage = null;
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task HandleInviteMemberAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_memberName) || string.IsNullOrWhiteSpace(_memberEmail))
+        {
+            _errorMessage = "Nome e e-mail são obrigatórios.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        var model = new InviteTenantUserModel(_memberName.Trim(), _memberEmail.Trim(), _memberRole);
+        var result = await TeamClientService.InviteUserAsync(model);
+
+        _isSubmitting = false;
+
+        if (result.IsSuccess)
+        {
+            _memberName = string.Empty;
+            _memberEmail = string.Empty;
+            await CloseAsync();
+            await OnTeamConfigured.InvokeAsync();
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task HandleCreateSquadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_squadName))
+        {
+            _errorMessage = "O nome do squad é obrigatório.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        var model = new CreateSquadModel(_squadName.Trim(), _squadDescription?.Trim());
+        var result = await TeamClientService.CreateSquadAsync(model);
+
+        _isSubmitting = false;
+
+        if (result.IsSuccess)
+        {
+            _squadName = string.Empty;
+            _squadDescription = null;
+            await CloseAsync();
+            await OnTeamConfigured.InvokeAsync();
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+}

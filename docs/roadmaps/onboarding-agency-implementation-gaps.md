@@ -158,16 +158,26 @@ graph TD
 Exibido no topo do `/dashboard` até que todas as 4 etapas fundamentais sejam concluídas (progresso 0% a 100%):
 
 ```text
-[ Progresso da Configuração: 25% ] 
- ├── [✓] Passo 1: Conta provisionada e ambiente isolado criado
- ├── [ ] Passo 2: Cadastre seu 1º Cliente (Workspace)
- ├── [ ] Passo 3: Conecte sua 1ª Conta de Anúncios (Meta ou Google Ads)
- └── [ ] Passo 4: Convide um gestor ou crie seu 1º Squad
+[ Progresso da Configuração: 25% - 100% ] 
+ ├── [✓] Passo 1: Conta provisionada e ambiente isolado criado (25%)
+ ├── [✓] Passo 2: Cadastre seu 1º Cliente (Workspace) (25%)
+ ├── [✓] Passo 3: Conecte sua 1ª Conta de Anúncios (Meta ou Google Ads) (25%)
+ └── [✓] Passo 4: Convide um gestor ou crie seu 1º Squad (25%)
 ```
 
-1. **Passo 2 — Assistente de 1º Workspace:** Modal rápido para criar o primeiro cliente com nome e orçamento.
-2. **Passo 3 — Assistente de 1ª Conexão:** Tela com botões OAuth2 de Meta Ads e Google Ads (com opção de "Carregar Dados Demonstrativos" para visualização imediata).
-3. **Passo 4 — Assistente de Equipe:** Modal para convidar colaboradores informando e-mail e cargo (Gestor ou Analista).
+1. [x] **Passo 1 — Ambiente Provisionado:** Identificação automática da criação do banco dedicado e usuário administrador inicial.
+2. [x] **Passo 2 — Assistente de 1º Workspace (`WorkspaceQuickModal`):** Modal rápido com validação oficial de CPF/CNPJ e orçamento mensal de mídia pago via API REST (`POST /api/v1/workspaces`).
+3. [x] **Passo 3 — Assistente de 1ª Conexão (`AdConnectionQuickModal`):** Interface de conexão rápida com botão destacado **"Carregar Dados Demonstrativos (Modo Demo)"** via API REST (`POST /api/v1/integrations/demo-account`) e suporte à entidade `ConnectedAdAccount`.
+4. [x] **Passo 4 — Assistente de Equipe (`TeamQuickModal`):** Modal em abas para convidar colaboradores via e-mail com RBAC (`POST /api/v1/tenants/users`) ou criar o 1º Squad de atendimento (`POST /api/v1/squads`).
+5. [x] **Componente Reativo Blazor Server (`AgencyFtuxChecklist`):**
+   - Integrado ao topo de `TenantDashboardPage.razor`.
+   - Consome a Web API via clientes HTTP tipados (`ITenantFtuxClientService`, `IWorkspaceClientService`, `ITenantTeamClientService`), respeitando estritamente o Princípio 9 do AGENTS.md (zero acesso direto ao banco no frontend).
+   - Notificações reativas de progresso e persistência no localStorage para fechamento/dispensa ao atingir 100%.
+6. [x] **TDD & Cobertura Completa:**
+   - Testes unitários de domínio, handlers de comando/consulta e DTOs.
+   - Testes de aceitação de Web API (`TenantFtuxEndpointTests`) validando retornos semânticos `Result<T>`.
+   - Testes unitários com bUnit no frontend (`AgencyFtuxChecklistTests` e `TenantDashboardPageTests`).
+   - Documentação viva em `/docs/modules/tenant-ftux-wizard.md` e ADR `/docs/adr/0022-agency-ftux-and-interactive-onboarding-wizard.md`.
 
 ---
 

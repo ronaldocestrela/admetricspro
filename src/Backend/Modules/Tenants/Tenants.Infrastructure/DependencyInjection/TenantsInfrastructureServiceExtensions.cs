@@ -34,6 +34,7 @@ public static class TenantsInfrastructureServiceExtensions
         services.AddScoped<Tenants.Application.Squads.Repositories.ISquadRepository, Tenants.Infrastructure.Squads.SquadRepository>();
         services.AddScoped<Tenants.Application.Users.Repositories.ITenantUserRepository, Tenants.Infrastructure.Users.TenantUserRepository>();
         services.AddScoped<Tenants.Application.Squads.Services.IUserPortfolioService, Tenants.Infrastructure.Squads.UserPortfolioService>();
+        services.AddScoped<Tenants.Application.Integrations.Repositories.IConnectedAdAccountRepository, Tenants.Infrastructure.Integrations.ConnectedAdAccountRepository>();
         services.AddScoped<Tenants.Application.Persistence.ITenantUnitOfWork, Tenants.Infrastructure.Persistence.TenantUnitOfWork>();
 
         return services;

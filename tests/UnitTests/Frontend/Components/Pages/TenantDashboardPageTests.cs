@@ -117,27 +117,27 @@ public sealed class TenantDashboardPageTests : BunitTestBase
     }
 
     /// <summary>
-    /// Valida que a seção de Empty State é exibida com os 3 atalhos de onboarding operacional (Integrations, Workspaces, Squads).
+    /// Valida que o checklist interativo de FTUX é exibido com os botões de ação operacional (Workspace, Conexão e Equipe).
     /// </summary>
     [Fact]
-    public void TenantDashboardPage_ShouldRenderEmptyStateWithActionShortcuts()
+    public void TenantDashboardPage_ShouldRenderFtuxChecklistWithActionButtons()
     {
         // Act
         var cut = Render<TenantDashboardPage>();
 
         // Assert
-        var emptyState = cut.Find(".dashboard-empty-state");
-        emptyState.Should().NotBeNull();
-        emptyState.TextContent.Should().Contain("Sua central de tráfego unificada está pronta");
+        var ftuxContainer = cut.Find(".ftux-checklist-container");
+        ftuxContainer.Should().NotBeNull();
+        ftuxContainer.TextContent.Should().Contain("Configurações Essenciais para Começar");
 
-        var integrationLink = cut.Find("a[href='integrations']");
-        integrationLink.Should().NotBeNull();
+        var workspaceBtn = cut.Find("#btn-step-workspace");
+        workspaceBtn.Should().NotBeNull();
 
-        var workspaceLink = cut.Find("a[href='workspaces']");
-        workspaceLink.Should().NotBeNull();
+        var connectionBtn = cut.Find("#btn-step-connection");
+        connectionBtn.Should().NotBeNull();
 
-        var squadsLink = cut.Find("a[href='squads']");
-        squadsLink.Should().NotBeNull();
+        var teamBtn = cut.Find("#btn-step-team");
+        teamBtn.Should().NotBeNull();
     }
 
     /// <summary>

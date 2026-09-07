@@ -1,5 +1,6 @@
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using WebApp.State;
 
 namespace UnitTests.Frontend.Common;
@@ -31,6 +32,21 @@ public abstract class BunitTestBase : BunitContext
     protected WebApp.Services.IImpersonationClientService ImpersonationClientService { get; }
 
     /// <summary>
+    /// Mock do serviço de cliente de FTUX.
+    /// </summary>
+    protected WebApp.Services.ITenantFtuxClientService TenantFtuxClientService { get; }
+
+    /// <summary>
+    /// Mock do serviço de cliente de Workspaces.
+    /// </summary>
+    protected WebApp.Services.IWorkspaceClientService WorkspaceClientService { get; }
+
+    /// <summary>
+    /// Mock do serviço de cliente de Squads/Team.
+    /// </summary>
+    protected WebApp.Services.ITenantTeamClientService TenantTeamClientService { get; }
+
+    /// <summary>
     /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com os provedores registrados.
     /// </summary>
     protected BunitTestBase()
@@ -39,11 +55,32 @@ public abstract class BunitTestBase : BunitContext
         TenantSessionStateProvider = new TenantSessionStateProvider(TenantStateProvider);
         ImpersonationStateProvider = new ImpersonationStateProvider();
         ImpersonationClientService = NSubstitute.Substitute.For<WebApp.Services.IImpersonationClientService>();
+        TenantFtuxClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantFtuxClientService>();
+        WorkspaceClientService = NSubstitute.Substitute.For<WebApp.Services.IWorkspaceClientService>();
+        TenantTeamClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantTeamClientService>();
+
+        TenantFtuxClientService.GetFtuxStatusAsync(NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<Tenants.Application.Ftux.DTOs.TenantFtuxStatusDto>.Success(
+                new Tenants.Application.Ftux.DTOs.TenantFtuxStatusDto(
+                    IsProvisioned: true,
+                    WorkspacesCount: 0,
+                    ConnectedAdAccountsCount: 0,
+                    TeamMembersCount: 1,
+                    SquadsCount: 0,
+                    Step1Completed: true,
+                    Step2Completed: false,
+                    Step3Completed: false,
+                    Step4Completed: false,
+                    ProgressPercentage: 25,
+                    IsCompleted: false)));
 
         Services.AddSingleton<ITenantStateProvider>(TenantStateProvider);
         Services.AddSingleton<ITenantSessionStateProvider>(TenantSessionStateProvider);
         Services.AddSingleton<IImpersonationStateProvider>(ImpersonationStateProvider);
         Services.AddSingleton<WebApp.Services.IImpersonationClientService>(ImpersonationClientService);
+        Services.AddSingleton<WebApp.Services.ITenantFtuxClientService>(TenantFtuxClientService);
+        Services.AddSingleton<WebApp.Services.IWorkspaceClientService>(WorkspaceClientService);
+        Services.AddSingleton<WebApp.Services.ITenantTeamClientService>(TenantTeamClientService);
     }
 
     /// <summary>

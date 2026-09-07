@@ -52,6 +52,11 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<SquadWorkspace> SquadWorkspaces => Set<SquadWorkspace>();
 
+    /// <summary>
+    /// Gets the operational connected ad accounts table representing marketing channels (Meta, Google, TikTok, Bing).
+    /// </summary>
+    public DbSet<ConnectedAdAccount> ConnectedAdAccounts => Set<ConnectedAdAccount>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,5 +75,6 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SquadEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new SquadMemberEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new SquadWorkspaceEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new ConnectedAdAccountEntityTypeConfiguration());
     }
 }
