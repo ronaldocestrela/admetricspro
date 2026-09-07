@@ -102,10 +102,14 @@ graph TD
    * Alerta superior amigável: *"Ambiente de Testes (Trial) — 14 dias restantes. [Ativar Plano Definitivo]"*, com ação de upgrade e capacidade de dispensar na sessão.
 4. [x] **TDD & Cobertura bUnit:** 11 novos testes criados em `TenantMainLayoutTests`, `TenantSidebarTests` e `TenantTrialBannerTests`; 100% de testes passando. Documentação viva registrada em `/docs/modules/tenants-dashboard-shell.md`.
 
-#### Subfase 3.2: Página de Visão Geral (`/dashboard`)
-1. **Componente `TenantDashboardPage.razor`:**
-   * Header com boas-vindas: *"Olá, [Nome do Gestor]! Bem-vindo à sua central de tráfego."*
-   * Cards de métricas zeradas (estado inicial vazio elegante / Empty State).
+#### Subfase 3.2: Página de Visão Geral (`/dashboard`) — [CONCLUÍDO]
+1. [x] **Componente `TenantDashboardPage.razor`:**
+   * Header operacional com boas-vindas: *"Olá, [Nome do Gestor]! Bem-vindo à sua central de tráfego."*, consumindo `ITenantSessionStateProvider` com fallback inteligente para "Gestor".
+   * Cards de métricas zeradas (estado inicial vazio elegante / Empty State): Investimento Total (`R$ 0,00`), Receita (`R$ 0,00`), ROAS (`0,00x`), MER (`0,00%`), Cliques & Impressões (`0 / 0`) e CPA Médio (`R$ 0,00`).
+   * Banner de onboarding FTUX (First-Time User Experience) com atalhos para conectar fontes de anúncios (`/integrations`), criar workspace (`/workspaces`) e estruturar times (`/squads`).
+   * Painel de monitoramento das 4 plataformas mandatárias de anúncios (Meta Ads, Google Ads, TikTok Ads e Bing Ads) em estado desconectado com ações rápidas.
+2. [x] **TDD & Cobertura bUnit:** 7 novos testes criados em `TenantDashboardPageTests.cs` cobrindo saudação, fallback, cards de métricas, empty state, redes suportadas e reatividade do circuito Blazor. 100% de testes passando.
+3. [x] **Documentação & Compliance:** Documento `/docs/modules/tenants-dashboard-overview.md` criado; conformidade total com regras de apresentação e isolamento do `AGENTS.md`.
 
 ---
 

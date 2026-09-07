@@ -1,0 +1,527 @@
+/* ==========================================================================
+   TenantDashboardPage Scoped Styles — Dark Mode & Glassmorphism
+   Consome variáveis CSS de White-Label (--tenant-primary, --tenant-accent, etc.)
+   ========================================================================== */
+
+.tenant-dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+/* --------------------------------------------------------------------------
+   Cabeçalho Operacional
+   -------------------------------------------------------------------------- */
+.dashboard-header-section {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 24px;
+}
+
+.dashboard-header-content {
+    flex: 1;
+    min-width: 280px;
+}
+
+.dashboard-welcome-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #F8FAFC;
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+}
+
+.dashboard-welcome-subtitle {
+    font-size: 14px;
+    color: #94A3B8;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.tenant-highlight {
+    color: #F1F5F9;
+    font-weight: 600;
+}
+
+.dashboard-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--tenant-primary, #2563EB);
+    color: #FFFFFF;
+    border: 1px solid transparent;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.btn-secondary {
+    background: rgba(30, 41, 59, 0.8);
+    color: #E2E8F0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.btn-secondary:hover {
+    background: rgba(51, 65, 85, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+/* --------------------------------------------------------------------------
+   Grid de Métricas Rápidas (KPI Cards)
+   -------------------------------------------------------------------------- */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.metric-card {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
+}
+
+.metric-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.metric-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #94A3B8;
+}
+
+.metric-icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-spend {
+    background: rgba(37, 99, 235, 0.15);
+    color: #60A5FA;
+}
+
+.icon-revenue {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+}
+
+.icon-roas {
+    background: rgba(168, 85, 247, 0.15);
+    color: #C084FC;
+}
+
+.icon-mer {
+    background: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
+}
+
+.icon-reach {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38BDF8;
+}
+
+.icon-cpa {
+    background: rgba(244, 63, 94, 0.15);
+    color: #FB7185;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #F8FAFC;
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+}
+
+.metric-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.metric-subtext {
+    font-size: 11px;
+    color: #64748B;
+}
+
+.metric-status-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #94A3B8;
+}
+
+/* --------------------------------------------------------------------------
+   Empty State & Trilha FTUX
+   -------------------------------------------------------------------------- */
+.dashboard-empty-state {
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+}
+
+.empty-state-banner {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+}
+
+.empty-state-visual {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.glow-orb {
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    background: radial-gradient(circle, var(--tenant-primary, #2563EB) 0%, transparent 70%);
+    opacity: 0.35;
+    filter: blur(20px);
+}
+
+.empty-state-icon {
+    position: relative;
+    z-index: 2;
+    color: var(--tenant-accent, #38BDF8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-state-copy {
+    flex: 1;
+    min-width: 280px;
+}
+
+.empty-state-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--tenant-accent, #38BDF8);
+    margin-bottom: 6px;
+}
+
+.empty-state-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #F8FAFC;
+    margin: 0 0 8px 0;
+}
+
+.empty-state-desc {
+    font-size: 14px;
+    color: #94A3B8;
+    line-height: 1.6;
+    margin: 0;
+    max-width: 900px;
+}
+
+/* Cards FTUX */
+.ftux-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.ftux-step-card {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.ftux-step-card:hover {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-2px);
+}
+
+.step-badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--tenant-accent, #38BDF8);
+    background: rgba(56, 189, 248, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 12px;
+    align-self: flex-start;
+}
+
+.step-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #F8FAFC;
+    margin: 0 0 6px 0;
+}
+
+.step-desc {
+    font-size: 13px;
+    color: #94A3B8;
+    line-height: 1.5;
+    margin: 0 0 20px 0;
+    flex: 1;
+}
+
+.btn-step-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #F1F5F9;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-step-action:hover {
+    background: var(--tenant-primary, #2563EB);
+    border-color: var(--tenant-primary, #2563EB);
+    color: #FFFFFF;
+}
+
+/* --------------------------------------------------------------------------
+   Painel de Redes de Anúncios Suportadas
+   -------------------------------------------------------------------------- */
+.dashboard-platforms-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.section-header {
+    margin-bottom: 4px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #F8FAFC;
+    margin: 0 0 4px 0;
+}
+
+.section-subtitle {
+    font-size: 13px;
+    color: #94A3B8;
+    margin: 0;
+}
+
+.platforms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.ad-platform-card {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: all 0.2s ease;
+}
+
+.ad-platform-card:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    transform: translateY(-2px);
+}
+
+.platform-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.platform-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.meta-bg {
+    background: rgba(24, 119, 242, 0.15);
+    color: #1877F2;
+}
+
+.google-bg {
+    background: rgba(234, 67, 53, 0.15);
+    color: #EA4335;
+}
+
+.tiktok-bg {
+    background: rgba(254, 44, 85, 0.15);
+    color: #FE2C55;
+}
+
+.bing-bg {
+    background: rgba(0, 131, 143, 0.15);
+    color: #00ACC1;
+}
+
+.platform-info {
+    flex: 1;
+}
+
+.platform-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #F8FAFC;
+    margin: 0;
+}
+
+.platform-sub {
+    font-size: 12px;
+    color: #64748B;
+}
+
+.platform-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    align-self: flex-start;
+}
+
+.platform-status-badge.disconnected {
+    background: rgba(148, 163, 184, 0.1);
+    color: #94A3B8;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #94A3B8;
+}
+
+.platform-action {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-connect {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #E2E8F0;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-connect:hover {
+    background: var(--tenant-primary, #2563EB);
+    border-color: var(--tenant-primary, #2563EB);
+    color: #FFFFFF;
+}
+
+/* --------------------------------------------------------------------------
+   Responsividade
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .dashboard-header-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .dashboard-header-actions {
+        width: 100%;
+    }
+
+    .btn-action {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .empty-state-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+}
