@@ -1,40 +1,63 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using BuildingBlocks.Domain.Primitives;
-using Master.Application.Plans.Commands.CreatePlan;
-using Master.Application.Plans.Commands.UpdatePlan;
 using Master.Application.Plans.DTOs;
-using Master.Application.Plans.Queries.GetPlanById;
-using Master.Application.Plans.Queries.GetPlans;
-using MediatR;
 using BackofficeApp.Models;
 
 namespace BackofficeApp.Services;
 
 /// <summary>
-/// Implementação do serviço de parametrização de planos para consumo dos componentes Blazor Server.
+/// Implementação do serviço de parametrização de planos para consumo dos componentes Blazor Server no Backoffice.
+/// Consome as rotas versionadas da Web API via cliente HTTP fortemente tipado.
 /// </summary>
 public sealed class PlanManagementService : IPlanManagementService
 {
-    private readonly ISender _sender;
+    private readonly HttpClient _httpClient;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="PlanManagementService"/>.
     /// </summary>
-    /// <param name="sender">Mediador de comandos e consultas in-memory.</param>
-    public PlanManagementService(ISender sender)
+    /// <param name="httpClient">Cliente HTTP configurado para acesso à Web API.</param>
+    public PlanManagementService(HttpClient httpClient)
     {
-        _sender = sender ?? throw new ArgumentNullException(nameof(sender));
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
     /// <inheritdoc />
-    public Task<Result<IReadOnlyList<PlanDto>>> GetPlansAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
+    public async Task<Result<IReadOnlyList<PlanDto>>> GetPlansAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
-        return _sender.Send(new GetPlansQuery(includeInactive), cancellationToken);
+        try
+        {
+            var response = await _httpClient.GetAsync($"/api/v1/plans?includeInactive={includeInactive}", cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<IReadOnlyList<PlanDto>>>(JsonOptions, cancellationToken);
+            return result ?? Result<IReadOnlyList<PlanDto>>.Failure(Error.Failure("Plans.FetchFailed", "Falha ao obter planos da API."));
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<PlanDto>>.Failure(Error.Failure("Plans.NetworkError", ex.Message));
+        }
     }
 
     /// <inheritdoc />
-    public Task<Result<PlanDto?>> GetPlanByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Result<PlanDto?>> GetPlanByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return _sender.Send(new GetPlanByIdQuery(id), cancellationToken);
+        try
+        {
+            var response = await _httpClient.GetAsync($"/api/v1/plans/{id}", cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<PlanDto>>(JsonOptions, cancellationToken);
+
+            if (result is null || result.IsFailure)
+            {
+                return Result<PlanDto?>.Failure(result?.Error ?? Error.NotFound("Plan.NotFound", "Plano não localizado na API."));
+            }
+
+            return Result<PlanDto?>.Success(result.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<PlanDto?>.Failure(Error.Failure("Plan.NetworkError", ex.Message));
+        }
     }
 
     /// <inheritdoc />
@@ -42,27 +65,33 @@ public sealed class PlanManagementService : IPlanManagementService
     {
         ArgumentNullException.ThrowIfNull(model);
 
-        var command = new CreatePlanCommand(
-            model.Name,
-            model.Description,
-            model.Tier,
-            model.MonthlyPrice,
-            model.AnnualDiscountPercentage,
-            model.MaxSeats,
-            model.MaxWorkspaces,
-            model.MonthlyAdSpendCap,
-            model.HasWhiteLabel,
-            model.HasCustomCname,
-            model.HasAiCopilot,
-            model.HasCrossNetworkAutomations);
-
-        var result = await _sender.Send(command, cancellationToken);
-        if (result.IsFailure)
+        try
         {
-            return Result<Guid>.Failure(result.Error);
-        }
+            var payload = new
+            {
+                Name = model.Name,
+                Description = model.Description,
+                Tier = model.Tier,
+                MonthlyPrice = model.MonthlyPrice,
+                AnnualDiscountPercentage = model.AnnualDiscountPercentage,
+                MaxSeats = model.MaxSeats,
+                MaxWorkspaces = model.MaxWorkspaces,
+                MonthlyAdSpendCap = model.MonthlyAdSpendCap,
+                HasWhiteLabel = model.HasWhiteLabel,
+                HasCustomCname = model.HasCustomCname,
+                HasAiCopilot = model.HasAiCopilot,
+                HasCrossNetworkAutomations = model.HasCrossNetworkAutomations
+            };
 
-        return Result<Guid>.Success(result.Value.Value);
+            var response = await _httpClient.PostAsJsonAsync("/api/v1/plans", payload, JsonOptions, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<Guid>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<Guid>.Failure(Error.Failure("Plan.CreateFailed", "Falha ao cadastrar plano na API."));
+        }
+        catch (Exception ex)
+        {
+            return Result<Guid>.Failure(Error.Failure("Plan.NetworkError", ex.Message));
+        }
     }
 
     /// <inheritdoc />
@@ -75,20 +104,31 @@ public sealed class PlanManagementService : IPlanManagementService
             return Result.Failure(Error.Validation("Plan.InvalidId", "O identificador do plano é obrigatório para atualização."));
         }
 
-        var command = new UpdatePlanCommand(
-            model.PlanId.Value,
-            model.Name,
-            model.Description,
-            model.MonthlyPrice,
-            model.AnnualDiscountPercentage,
-            model.MaxSeats,
-            model.MaxWorkspaces,
-            model.MonthlyAdSpendCap,
-            model.HasWhiteLabel,
-            model.HasCustomCname,
-            model.HasAiCopilot,
-            model.HasCrossNetworkAutomations);
+        try
+        {
+            var payload = new
+            {
+                Name = model.Name,
+                Description = model.Description,
+                MonthlyPrice = model.MonthlyPrice,
+                AnnualDiscountPercentage = model.AnnualDiscountPercentage,
+                MaxSeats = model.MaxSeats,
+                MaxWorkspaces = model.MaxWorkspaces,
+                MonthlyAdSpendCap = model.MonthlyAdSpendCap,
+                HasWhiteLabel = model.HasWhiteLabel,
+                HasCustomCname = model.HasCustomCname,
+                HasAiCopilot = model.HasAiCopilot,
+                HasCrossNetworkAutomations = model.HasCrossNetworkAutomations
+            };
 
-        return await _sender.Send(command, cancellationToken);
+            var response = await _httpClient.PutAsJsonAsync($"/api/v1/plans/{model.PlanId.Value}", payload, JsonOptions, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result>(JsonOptions, cancellationToken);
+
+            return result ?? Result.Failure(Error.Failure("Plan.UpdateFailed", "Falha ao atualizar plano na API."));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("Plan.NetworkError", ex.Message));
+        }
     }
 }

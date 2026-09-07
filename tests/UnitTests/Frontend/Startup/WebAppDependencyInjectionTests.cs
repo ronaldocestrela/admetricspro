@@ -1,9 +1,4 @@
-using BuildingBlocks.Application.Security;
-using BuildingBlocks.Infrastructure.Security;
 using FluentAssertions;
-using Master.Application.DependencyInjection;
-using Master.Infrastructure.Extensions;
-using Master.Infrastructure.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,12 +10,13 @@ namespace UnitTests.Frontend.Startup;
 
 /// <summary>
 /// Testes unitários para validar a integridade e resolução do contêiner de injeção de dependências do Blazor WebApp.
-/// Garante que nenhuma regressão de serviços faltando (como IImpersonationContext) cause falha no startup.
+/// Garante que o frontend seja estritamente desacoplado de banco de dados e resolva clientes HTTP tipados.
 /// </summary>
 public sealed class WebAppDependencyInjectionTests
 {
     /// <summary>
-    /// Valida que a árvore de injeção de dependências do WebApp constrói sem lançar exceções com ValidateOnBuild ativo.
+    /// Valida que a árvore de injeção de dependências do WebApp constrói sem lançar exceções com ValidateOnBuild ativo
+    /// e sem dependência de persistência ou DbContext no frontend.
     /// </summary>
     [Fact]
     public void BuildServiceProvider_WithValidateOnBuild_ShouldResolveAllRequiredServices()
@@ -29,31 +25,24 @@ public sealed class WebAppDependencyInjectionTests
         var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
         var inMemorySettings = new Dictionary<string, string?>
         {
-            { "ConnectionStrings:MasterDb", "Server=dummy;Database=MasterDb;Trusted_Connection=True;TrustServerCertificate=True;" },
-            { "Api:BaseUrl", "https://localhost:7001" },
-            { "ImpersonationJwt:SecretKey", "123456789012345678901234567890123456789012345678" }
+            { "Api:BaseUrl", "https://localhost:7001" }
         };
         builder.Configuration.AddInMemoryCollection(inMemorySettings);
 
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
-        builder.Services.AddMasterCatalog("Server=dummy;Database=MasterDb;Trusted_Connection=True;TrustServerCertificate=True;");
-        builder.Services.AddMasterApplication();
-        builder.Services.AddSecurityServices();
-        builder.Services.Configure<ImpersonationJwtOptions>(options =>
-        {
-            builder.Configuration.GetSection(ImpersonationJwtOptions.SectionName).Bind(options);
-        });
 
+        // Provedores de estado
         builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
-        builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
-        builder.Services.AddScoped<IPlanManagementService, PlanManagementService>();
-        builder.Services.AddScoped<IApiHealthClientService, ApiHealthClientService>();
-        builder.Services.AddScoped<IFeatureFlagClientService, FeatureFlagClientService>();
         builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
-        builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client =>
-        {
-            client.BaseAddress = new Uri("https://localhost:7001");
-        });
+
+        // Clientes HTTP da Web API
+        var apiUri = new Uri("https://localhost:7001");
+        builder.Services.AddHttpClient<ITenantDirectoryService, TenantDirectoryService>(client => client.BaseAddress = apiUri);
+        builder.Services.AddHttpClient<ITenantOnboardingClientService, TenantOnboardingClientService>(client => client.BaseAddress = apiUri);
+        builder.Services.AddHttpClient<IPlanManagementService, PlanManagementService>(client => client.BaseAddress = apiUri);
+        builder.Services.AddHttpClient<IApiHealthClientService, ApiHealthClientService>(client => client.BaseAddress = apiUri);
+        builder.Services.AddHttpClient<IFeatureFlagClientService, FeatureFlagClientService>(client => client.BaseAddress = apiUri);
+        builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client => client.BaseAddress = apiUri);
 
         // Act
         var act = () => builder.Services.BuildServiceProvider(new ServiceProviderOptions
@@ -67,18 +56,24 @@ public sealed class WebAppDependencyInjectionTests
     }
 
     /// <summary>
-    /// Valida que serviços críticos de segurança e contexto de impersonação são resolvidos dentro do escopo.
+    /// Valida que todos os serviços clientes de negócio são resolvidos dentro do escopo com instâncias HTTP tipadas.
     /// </summary>
     [Fact]
-    public void BuildServiceProvider_ShouldResolveSecurityAndImpersonationContext()
+    public void BuildServiceProvider_ShouldResolveAllClientServicesInScope()
     {
         // Arrange
         var services = new ServiceCollection();
-        services.AddMasterCatalog("Server=dummy;Database=MasterDb;Trusted_Connection=True;TrustServerCertificate=True;");
-        services.AddMasterApplication();
-        services.AddSecurityServices();
-        services.AddOptions();
-        services.Configure<ImpersonationJwtOptions>(_ => { });
+        services.AddLogging();
+        services.AddScoped<ITenantStateProvider, TenantStateProvider>();
+        services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
+
+        var apiUri = new Uri("https://localhost:7001");
+        services.AddHttpClient<ITenantDirectoryService, TenantDirectoryService>(client => client.BaseAddress = apiUri);
+        services.AddHttpClient<ITenantOnboardingClientService, TenantOnboardingClientService>(client => client.BaseAddress = apiUri);
+        services.AddHttpClient<IPlanManagementService, PlanManagementService>(client => client.BaseAddress = apiUri);
+        services.AddHttpClient<IApiHealthClientService, ApiHealthClientService>(client => client.BaseAddress = apiUri);
+        services.AddHttpClient<IFeatureFlagClientService, FeatureFlagClientService>(client => client.BaseAddress = apiUri);
+        services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client => client.BaseAddress = apiUri);
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions
         {
@@ -89,8 +84,13 @@ public sealed class WebAppDependencyInjectionTests
         using var scope = provider.CreateScope();
 
         // Act & Assert
-        scope.ServiceProvider.GetRequiredService<IImpersonationContextAccessor>().Should().NotBeNull();
-        scope.ServiceProvider.GetRequiredService<IImpersonationContext>().Should().NotBeNull();
-        scope.ServiceProvider.GetRequiredService<IBillingDataMasker>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<ITenantStateProvider>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<IImpersonationStateProvider>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<ITenantDirectoryService>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<ITenantOnboardingClientService>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<IPlanManagementService>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<IApiHealthClientService>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<IFeatureFlagClientService>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<IImpersonationClientService>().Should().NotBeNull();
     }
 }

@@ -1,53 +1,62 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using BuildingBlocks.Domain.Primitives;
-using Master.Application.Repositories;
-using Master.Application.Tenants.Commands.ReactivateTenant;
-using Master.Application.Tenants.Commands.SuspendTenant;
 using Master.Application.Tenants.Queries.GetTenantDetails;
-using Master.Domain.Tenants;
-using MediatR;
 using BackofficeApp.Models;
 
 namespace BackofficeApp.Services;
 
 /// <summary>
-/// Implementação do serviço de diretório 360º para consumo dos componentes do Blazor Server.
-/// Orquestra chamadas in-memory via MediatR e repositório otimizado de leitura do módulo Master.
+/// Implementação do serviço de diretório 360º para consumo dos componentes do Blazor Server no Backoffice.
+/// Consome as rotas versionadas da Web API via cliente HTTP fortemente tipado.
 /// </summary>
 public sealed class TenantDirectoryService : ITenantDirectoryService
 {
-    private readonly ISender _sender;
-    private readonly ITenantReadOnlyRepository _readOnlyRepository;
+    private readonly HttpClient _httpClient;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="TenantDirectoryService"/>.
     /// </summary>
-    /// <param name="sender">Mediador in-memory para envio de comandos e consultas.</param>
-    /// <param name="readOnlyRepository">Repositório de leitura direta de tenants.</param>
-    public TenantDirectoryService(ISender sender, ITenantReadOnlyRepository readOnlyRepository)
+    /// <param name="httpClient">Cliente HTTP configurado para acesso à Web API.</param>
+    public TenantDirectoryService(HttpClient httpClient)
     {
-        _sender = sender ?? throw new ArgumentNullException(nameof(sender));
-        _readOnlyRepository = readOnlyRepository ?? throw new ArgumentNullException(nameof(readOnlyRepository));
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
     /// <inheritdoc />
     public async Task<Result<IReadOnlyList<TenantDirectoryItemViewModel>>> GetTenantsAsync(CancellationToken cancellationToken = default)
     {
-        var tenants = await _readOnlyRepository.GetAllAsync(cancellationToken);
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/v1/tenants", cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<IReadOnlyList<TenantDetailsResponse>>>(JsonOptions, cancellationToken);
 
-        var viewModels = tenants.Select(t => new TenantDirectoryItemViewModel(
-            Id: t.Id,
-            CompanyName: t.CompanyName,
-            Cnpj: t.Cnpj,
-            Subdomain: t.Subdomain,
-            Status: t.Status,
-            Tier: t.Tier,
-            SubscriptionExpiresAtUtc: t.SubscriptionExpiresAtUtc,
-            CreatedAtUtc: t.CreatedAtUtc,
-            WorkspacesCount: 1, // Valor default/estimado até Fase de Workspaces
-            SunkAdSpend: 0m
-        )).ToList();
+            if (result is null || result.IsFailure)
+            {
+                return Result<IReadOnlyList<TenantDirectoryItemViewModel>>.Failure(
+                    result?.Error ?? Error.Failure("Tenants.FetchFailed", "Falha ao obter catálogo de inquilinos da API."));
+            }
 
-        return Result<IReadOnlyList<TenantDirectoryItemViewModel>>.Success(viewModels);
+            var viewModels = result.Value.Select(t => new TenantDirectoryItemViewModel(
+                Id: t.Id,
+                CompanyName: t.CompanyName,
+                Cnpj: t.Cnpj,
+                Subdomain: t.Subdomain,
+                Status: t.Status,
+                Tier: t.Tier,
+                SubscriptionExpiresAtUtc: t.SubscriptionExpiresAtUtc,
+                CreatedAtUtc: t.CreatedAtUtc,
+                WorkspacesCount: 1,
+                SunkAdSpend: 0m
+            )).ToList();
+
+            return Result<IReadOnlyList<TenantDirectoryItemViewModel>>.Success(viewModels);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<TenantDirectoryItemViewModel>>.Failure(Error.Failure("Tenants.NetworkError", ex.Message));
+        }
     }
 
     /// <inheritdoc />
@@ -58,30 +67,40 @@ public sealed class TenantDirectoryService : ITenantDirectoryService
             return Result<Tenant360DetailsViewModel>.Failure(Error.Validation("Tenant.InvalidId", "O identificador do tenant não pode ser vazio."));
         }
 
-        var result = await _sender.Send(new GetTenantDetailsQuery(new TenantId(tenantId)), cancellationToken);
-        if (result.IsFailure)
+        try
         {
-            return Result<Tenant360DetailsViewModel>.Failure(result.Error);
+            var response = await _httpClient.GetAsync($"/api/v1/tenants/{tenantId}", cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<TenantDetailsResponse>>(JsonOptions, cancellationToken);
+
+            if (result is null || result.IsFailure)
+            {
+                return Result<Tenant360DetailsViewModel>.Failure(
+                    result?.Error ?? Error.NotFound("Tenant.NotFound", "Inquilino não localizado na API."));
+            }
+
+            var details = result.Value;
+            var viewModel = new Tenant360DetailsViewModel(
+                Id: details.Id,
+                CompanyName: details.CompanyName,
+                Cnpj: details.Cnpj,
+                Subdomain: details.Subdomain,
+                CustomDomain: null,
+                Status: details.Status,
+                Tier: details.Tier,
+                SubscriptionExpiresAtUtc: details.SubscriptionExpiresAtUtc,
+                CreatedAtUtc: details.CreatedAtUtc,
+                WorkspacesCount: 1,
+                SunkAdSpend: 0m,
+                ActiveIntegrationsCount: 0,
+                TotalCampaignsCount: 0
+            );
+
+            return Result<Tenant360DetailsViewModel>.Success(viewModel);
         }
-
-        var details = result.Value;
-        var viewModel = new Tenant360DetailsViewModel(
-            Id: details.Id,
-            CompanyName: details.CompanyName,
-            Cnpj: details.Cnpj,
-            Subdomain: details.Subdomain,
-            CustomDomain: null,
-            Status: details.Status,
-            Tier: details.Tier,
-            SubscriptionExpiresAtUtc: details.SubscriptionExpiresAtUtc,
-            CreatedAtUtc: details.CreatedAtUtc,
-            WorkspacesCount: 1,
-            SunkAdSpend: 0m,
-            ActiveIntegrationsCount: 0,
-            TotalCampaignsCount: 0
-        );
-
-        return Result<Tenant360DetailsViewModel>.Success(viewModel);
+        catch (Exception ex)
+        {
+            return Result<Tenant360DetailsViewModel>.Failure(Error.Failure("Tenant.NetworkError", ex.Message));
+        }
     }
 
     /// <inheritdoc />
@@ -92,8 +111,18 @@ public sealed class TenantDirectoryService : ITenantDirectoryService
             return Result.Failure(Error.Validation("Tenant.InvalidId", "O identificador do tenant não pode ser vazio."));
         }
 
-        var command = new SuspendTenantCommand(new TenantId(tenantId), reason);
-        return await _sender.Send(command, cancellationToken);
+        try
+        {
+            var payload = new { Reason = reason };
+            var response = await _httpClient.PostAsJsonAsync($"/api/v1/tenants/{tenantId}/suspend", payload, JsonOptions, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result>(JsonOptions, cancellationToken);
+
+            return result ?? Result.Failure(Error.Failure("Tenant.SuspendFailed", "Falha ao suspender inquilino na API."));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("Tenant.NetworkError", ex.Message));
+        }
     }
 
     /// <inheritdoc />
@@ -104,7 +133,16 @@ public sealed class TenantDirectoryService : ITenantDirectoryService
             return Result.Failure(Error.Validation("Tenant.InvalidId", "O identificador do tenant não pode ser vazio."));
         }
 
-        var command = new ReactivateTenantCommand(new TenantId(tenantId));
-        return await _sender.Send(command, cancellationToken);
+        try
+        {
+            var response = await _httpClient.PostAsync($"/api/v1/tenants/{tenantId}/reactivate", null, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result>(JsonOptions, cancellationToken);
+
+            return result ?? Result.Failure(Error.Failure("Tenant.ReactivateFailed", "Falha ao reativar inquilino na API."));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("Tenant.NetworkError", ex.Message));
+        }
     }
 }

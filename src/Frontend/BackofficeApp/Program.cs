@@ -1,10 +1,7 @@
 using System.Security.Claims;
 using BuildingBlocks.Infrastructure.Configuration;
-using BuildingBlocks.Infrastructure.Security;
-using Master.Application.DependencyInjection;
 using Master.Application.Users.Services;
-using Master.Infrastructure.Extensions;
-using Master.Infrastructure.Identity;
+using Master.Domain.Users;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -43,44 +40,28 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("RequireSuperAdmin", policy =>
-        policy.RequireRole(MasterRole.SuperAdmin));
+        policy.RequireRole(MasterRoles.SuperAdmin));
 
     options.AddPolicy("RequireBackofficeAccess", policy =>
-        policy.RequireRole(MasterRole.SuperAdmin, MasterRole.SupportTechnician));
+        policy.RequireRole(MasterRoles.SuperAdmin, MasterRoles.SupportTechnician));
 });
 
-// Resolução de persistência no MasterDb
-var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb")
-    ?? "Server=localhost;Database=MasterCatalog;Trusted_Connection=True;TrustServerCertificate=True;";
-
-builder.Services.AddMasterCatalog(masterConnectionString);
-builder.Services.AddMasterApplication();
-builder.Services.AddSecurityServices();
-
-// Registros dos serviços administrativos de consumo do frontend
+// Provedores de estado do circuito Blazor no Backoffice
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
-builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
-builder.Services.AddScoped<IPlanManagementService, PlanManagementService>();
-builder.Services.AddScoped<IApiHealthClientService, ApiHealthClientService>();
-builder.Services.AddScoped<IFeatureFlagClientService, FeatureFlagClientService>();
 builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
-builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client =>
-{
-    var baseUri = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:7001";
-    client.BaseAddress = new Uri(baseUri);
-});
+
+// Resolução de serviços consumindo exclusivamente a Web API via HttpClient
+var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:7001";
+var apiUri = new Uri(apiBaseUrl);
+
+builder.Services.AddHttpClient<IBackofficeAuthService, BackofficeAuthClientService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<ITenantDirectoryService, TenantDirectoryService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<IPlanManagementService, PlanManagementService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<IApiHealthClientService, ApiHealthClientService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<IFeatureFlagClientService, FeatureFlagClientService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client => client.BaseAddress = apiUri);
 
 var app = builder.Build();
-
-// Aplicação de migrações e seed inicial do SuperAdmin quando habilitado
-if (app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOnStartup", false))
-{
-    var migrationResult = await app.ApplyMasterDatabaseMigrationsAsync();
-    if (migrationResult.IsFailure)
-    {
-        app.Logger.LogError("Falha ao aplicar migrações e seed do MasterDb no Backoffice: {Error}", migrationResult.Error.Description);
-    }
-}
 
 if (!app.Environment.IsDevelopment())
 {

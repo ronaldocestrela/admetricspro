@@ -22,6 +22,9 @@ O sistema é um **SaaS de Gestão Unificada de Tráfego Pago** (Meta Ads, Google
    - Comentários XML `<summary>`, `<param>`, `<returns>` em **todas** as classes, interfaces, métodos e records públicos.
    - Registros de Decisão Arquitetural (ADRs) versionados em `/docs/adr/`.
    - Documentação de APIs viva e interativa via **OpenAPI + Scalar UI** versionada por endpoint.
+9. **Frontend Estritamente de Apresentação (Zero Acesso Direto a Banco):**
+   - É terminantemente proibido que qualquer projeto frontend (`WebApp`, `BackofficeApp` ou qualquer camada de UI) referencie camadas de infraestrutura/persistência (`Infrastructure`), instancie `DbContext`, execute migrações de banco (`MigrateAsync`) ou despache comandos in-memory que alterem ou consultem bancos de dados diretamente.
+   - Todo e qualquer acesso a dados e comandos de negócio deve ser feito obrigatoriamente através da **ASP.NET Core Web API** via clientes HTTP fortemente tipados (`HttpClient`) tratando o padrão `Result<T>`.
 
 ---
 
@@ -129,7 +132,7 @@ public async Task<Result<Guid>> Handle(CreateRuleCommand command, CancellationTo
 ## 4. Frontend em Blazor Server (.NET 10)
 
 1. **Modo Interativo Server:** Toda a interface administrativa (painel do cliente e backoffice) opera em modo Blazor Server com conexões SignalR estáveis.
-2. **Consumo de Dados:** O frontend consome os serviços da aplicação via clientes HTTP fortemente tipados que tratam `Result<T>` ou serviços locais injetados por escopo.
+2. **Consumo de Dados Exclusivo via Web API:** O frontend consome todas as funcionalidades e dados da aplicação exclusivamente via clientes HTTP fortemente tipados (`HttpClient`) apontando para as rotas versionadas da Web API (`/api/v1/...`), tratando envelopes `Result<T>`. É expressamente proibida a injeção de `DbContext`, repositórios ou execução de migrações nos projetos de frontend.
 3. **Isolamento de Marca (White-Label):**
 * O layout raiz deve renderizar dinamicamente o tema (cores primárias, secundárias, favicon e logo) a partir do estado do Tenant carregado na sessão.
 * Resolução de rotas respeitando domínios CNAME personalizados cadastrados no Tenant.

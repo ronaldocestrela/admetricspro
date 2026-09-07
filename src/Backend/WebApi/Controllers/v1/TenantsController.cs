@@ -188,4 +188,113 @@ public sealed class TenantsController : ControllerBase
 
         return Ok(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>.Success(result.Value));
     }
+
+    /// <summary>
+    /// Lista todos os inquilinos registrados no catálogo Master para o diretório corporativo.
+    /// </summary>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Coleção com metadados e status de todos os inquilinos.</returns>
+    [HttpGet]
+    [EndpointSummary("Lista todos os inquilinos cadastrados no catálogo")]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<Master.Application.Tenants.Queries.GetTenantDetails.TenantDetailsResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Result<IReadOnlyList<Master.Application.Tenants.Queries.GetTenantDetails.TenantDetailsResponse>>>> GetTenants(
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new Master.Application.Tenants.Queries.GetTenants.GetTenantsQuery(), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Obtém a visão 360º detalhada de um inquilino pelo seu identificador único.
+    /// </summary>
+    /// <param name="tenantId">Identificador único do inquilino.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Dados consolidados do inquilino ou 404 se não encontrado.</returns>
+    [HttpGet("{tenantId:guid}")]
+    [EndpointSummary("Obtém os detalhes operacionais e de plano de um inquilino")]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Queries.GetTenantDetails.TenantDetailsResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Queries.GetTenantDetails.TenantDetailsResponse>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result<Master.Application.Tenants.Queries.GetTenantDetails.TenantDetailsResponse>>> GetTenantById(
+        [FromRoute] Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new Master.Application.Tenants.Queries.GetTenantDetails.GetTenantDetailsQuery(new TenantId(tenantId)),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Suspende temporariamente as operações e acessos de um inquilino.
+    /// </summary>
+    /// <param name="tenantId">Identificador único do inquilino a ser suspenso.</param>
+    /// <param name="request">Justificativa da suspensão.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado da operação.</returns>
+    [HttpPost("{tenantId:guid}/suspend")]
+    [EndpointSummary("Suspende as operações de um inquilino")]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result>> SuspendTenant(
+        [FromRoute] Guid tenantId,
+        [FromBody] SuspendTenantApiRequest request,
+        CancellationToken cancellationToken)
+    {
+        var reason = request?.Reason ?? "Suspensão solicitada pela administração";
+        var command = new Master.Application.Tenants.Commands.SuspendTenant.SuspendTenantCommand(new TenantId(tenantId), reason);
+
+        var result = await _sender.Send(command, cancellationToken);
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(result),
+                ErrorType.Validation => UnprocessableEntity(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Reativa um inquilino previamente suspenso, restaurando o acesso regular.
+    /// </summary>
+    /// <param name="tenantId">Identificador único do inquilino.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado da operação.</returns>
+    [HttpPost("{tenantId:guid}/reactivate")]
+    [EndpointSummary("Reativa um inquilino suspenso")]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result>> ReactivateTenant(
+        [FromRoute] Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        var command = new Master.Application.Tenants.Commands.ReactivateTenant.ReactivateTenantCommand(new TenantId(tenantId));
+
+        var result = await _sender.Send(command, cancellationToken);
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return Ok(result);
+    }
 }

@@ -1,8 +1,4 @@
 using BuildingBlocks.Infrastructure.Configuration;
-using BuildingBlocks.Infrastructure.Security;
-using Master.Application.DependencyInjection;
-using Master.Infrastructure.Extensions;
-using Master.Infrastructure.Services;
 using WebApp.Components;
 using WebApp.Services;
 using WebApp.State;
@@ -13,33 +9,24 @@ DotEnvLoader.Load();
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddDotEnvFile();
 
-// Add services to the container.
+// Registros de componentes interativos do Blazor Server
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb")
-    ?? "Server=localhost;Database=MasterCatalog;Trusted_Connection=True;TrustServerCertificate=True;";
-
-builder.Services.AddMasterCatalog(masterConnectionString);
-builder.Services.AddMasterApplication();
-builder.Services.AddSecurityServices();
-builder.Services.Configure<ImpersonationJwtOptions>(options =>
-{
-    builder.Configuration.GetSection(ImpersonationJwtOptions.SectionName).Bind(options);
-});
-
+// Provedores de estado de sessão do circuito Blazor
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
-builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
-builder.Services.AddScoped<ITenantOnboardingClientService, TenantOnboardingClientService>();
-builder.Services.AddScoped<IPlanManagementService, PlanManagementService>();
-builder.Services.AddScoped<IApiHealthClientService, ApiHealthClientService>();
-builder.Services.AddScoped<IFeatureFlagClientService, FeatureFlagClientService>();
 builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
-builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client =>
-{
-    var baseUri = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:7001";
-    client.BaseAddress = new Uri(baseUri);
-});
+
+// Registro dos clientes HTTP fortemente tipados consumindo exclusivamente a Web API
+var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? "https://localhost:7001";
+var apiUri = new Uri(apiBaseUrl);
+
+builder.Services.AddHttpClient<ITenantDirectoryService, TenantDirectoryService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<ITenantOnboardingClientService, TenantOnboardingClientService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<IPlanManagementService, PlanManagementService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<IApiHealthClientService, ApiHealthClientService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<IFeatureFlagClientService, FeatureFlagClientService>(client => client.BaseAddress = apiUri);
+builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client => client.BaseAddress = apiUri);
 
 var app = builder.Build();
 
@@ -47,7 +34,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
