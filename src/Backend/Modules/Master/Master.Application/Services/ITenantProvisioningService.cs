@@ -10,11 +10,23 @@ namespace Master.Application.Services;
 /// <param name="Cnpj">CNPJ digits-only identifier (exactly 14 numeric characters).</param>
 /// <param name="Subdomain">Designated routing subdomain for tenant isolation.</param>
 /// <param name="Tier">Initial subscription tier. Defaults to <see cref="SubscriptionTier.Trial"/>.</param>
+/// <param name="Segment">Optional market segment or business domain.</param>
+/// <param name="MonthlyAdSpendRange">Optional estimated monthly ad spend range.</param>
+/// <param name="BillingCycle">Optional subscription billing cycle frequency (Monthly or Annual).</param>
+/// <param name="CustomDomain">Optional custom CNAME domain for white-label routing.</param>
+/// <param name="PrimaryColor">Optional primary theme hex color code.</param>
+/// <param name="SecondaryColor">Optional secondary theme hex color code.</param>
 public sealed record ProvisionTenantCommand(
     string CompanyName,
     string Cnpj,
     string Subdomain,
-    SubscriptionTier Tier = SubscriptionTier.Trial);
+    SubscriptionTier Tier = SubscriptionTier.Trial,
+    string? Segment = null,
+    string? MonthlyAdSpendRange = null,
+    string? BillingCycle = null,
+    string? CustomDomain = null,
+    string? PrimaryColor = null,
+    string? SecondaryColor = null);
 
 /// <summary>
 /// Provisions dedicated tenant databases in SQL Server and applies schema migrations.

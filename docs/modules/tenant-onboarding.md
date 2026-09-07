@@ -118,9 +118,22 @@ sequenceDiagram
 | :--- | :--- | :--- |
 | `Tenant.CompanyNameRequired` | Validation | Razão Social é obrigatória (máx. 200 caracteres). |
 | `Tenant.InvalidCnpj` | Validation | CNPJ deve conter exatamente 14 dígitos numéricos válidos. |
+| `Tenant.InvalidSubdomain` | Validation | Subdomínio inválido ou contendo espaços em branco. |
+| `Tenant.InvalidColorHex` | Validation | Cor primária ou secundária fora do formato hexadecimal (`#RRGGBB` ou `#RGB`). |
+| `Tenant.InvalidCustomDomain` | Validation | Domínio CNAME personalizado contém protocolo (`http/https`) ou espaços. |
+| `Tenant.InvalidBillingCycle` | Validation | Ciclo de faturamento deve ser `Monthly` ou `Annual`. |
 | `Tenant.SubdomainAlreadyExists` | Conflict | O subdomínio informado já se encontra alocado por outro assinante. |
 | `Tenant.CnpjAlreadyExists` | Conflict | O CNPJ informado já possui um ambiente ativo no catálogo. |
 | `Tenant.DatabaseAlreadyExists` | Conflict | Instância física de banco SQL Server já existente. |
+
+#### Persistência no Catálogo Global (`MasterDb.Tenants`):
+A partir da Subfase 1.1, todos os metadados cadastrais e de personalização coletados no wizard são persistidos diretamente na entidade `Tenant` no catálogo central:
+- `Segment` (`nvarchar(100)`, opcional): Segmento de mercado (ex.: "Agência de Performance", "E-commerce").
+- `MonthlyAdSpendRange` (`nvarchar(100)`, opcional): Faixa estimada de investimento em anúncios.
+- `BillingCycle` (`nvarchar(50)`, opcional): Frequência do faturamento (`Monthly` ou `Annual`).
+- `CustomDomain` (`nvarchar(255)`, opcional): Hostname CNAME configurado pelo assinante.
+- `PrimaryColor` (`nvarchar(50)`, opcional): Cor primária customizada em formato hexadecimal.
+- `SecondaryColor` (`nvarchar(50)`, opcional): Cor secundária customizada em formato hexadecimal.
 
 ---
 

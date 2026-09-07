@@ -134,4 +134,152 @@ public sealed class TenantTests
         reactivateResult.IsSuccess.Should().BeTrue();
         tenant.Status.Should().Be(TenantStatus.Active);
     }
+
+    /// <summary>
+    /// Verifies tenant creation with optional onboarding profile and branding parameters.
+    /// </summary>
+    [Fact]
+    public void Create_WithProfileAndBranding_ShouldSetAllProperties()
+    {
+        // Act
+        var result = Tenant.Create(
+            companyName: "Vanguarda Digital",
+            cnpj: "12345678000195",
+            subdomain: "vanguarda",
+            tier: SubscriptionTier.Pro,
+            subscriptionExpiresAtUtc: null,
+            segment: "Agência de Performance",
+            monthlyAdSpendRange: "R$ 20k a R$ 100k",
+            billingCycle: "Monthly",
+            customDomain: "ads.vanguardadigital.com.br",
+            primaryColor: "#4f46e5",
+            secondaryColor: "#0f172a");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        var tenant = result.Value;
+        tenant.Segment.Should().Be("Agência de Performance");
+        tenant.MonthlyAdSpendRange.Should().Be("R$ 20k a R$ 100k");
+        tenant.BillingCycle.Should().Be("Monthly");
+        tenant.CustomDomain.Should().Be("ads.vanguardadigital.com.br");
+        tenant.PrimaryColor.Should().Be("#4f46e5");
+        tenant.SecondaryColor.Should().Be("#0f172a");
+    }
+
+    /// <summary>
+    /// Verifies tenant creation fails validation when primary or secondary color is not a valid hex code.
+    /// </summary>
+    [Theory]
+    [InlineData("invalid-color")]
+    [InlineData("#12")]
+    [InlineData("#GGGGGG")]
+    [InlineData("4f46e5")]
+    public void Create_WithInvalidHexColor_ShouldFailValidation(string invalidColor)
+    {
+        // Act
+        var result = Tenant.Create(
+            companyName: "Vanguarda Digital",
+            cnpj: "12345678000195",
+            subdomain: "vanguarda",
+            primaryColor: invalidColor);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Tenant.InvalidColorHex");
+    }
+
+    /// <summary>
+    /// Verifies tenant creation fails validation when custom domain contains protocol or whitespace.
+    /// </summary>
+    [Theory]
+    [InlineData("https://ads.vanguarda.com")]
+    [InlineData("http://ads.vanguarda.com")]
+    [InlineData("ads vanguarda com")]
+    public void Create_WithInvalidCustomDomain_ShouldFailValidation(string invalidDomain)
+    {
+        // Act
+        var result = Tenant.Create(
+            companyName: "Vanguarda Digital",
+            cnpj: "12345678000195",
+            subdomain: "vanguarda",
+            customDomain: invalidDomain);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Tenant.InvalidCustomDomain");
+    }
+
+    /// <summary>
+    /// Verifies UpdateBranding updates styling properties and normalizes valid values.
+    /// </summary>
+    [Fact]
+    public void UpdateBranding_WithValidValues_ShouldUpdateProperties()
+    {
+        // Arrange
+        var tenant = Tenant.Create("Agencia Beta", "12345678000190", "agencia-beta").Value;
+
+        // Act
+        var result = tenant.UpdateBranding("#00ff00", "#111111", "portal.agenciabeta.com.br");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        tenant.PrimaryColor.Should().Be("#00ff00");
+        tenant.SecondaryColor.Should().Be("#111111");
+        tenant.CustomDomain.Should().Be("portal.agenciabeta.com.br");
+    }
+
+    /// <summary>
+    /// Verifies UpdateBusinessProfile updates segment and ad spend range properties.
+    /// </summary>
+    [Fact]
+    public void UpdateBusinessProfile_WithValidValues_ShouldUpdateProperties()
+    {
+        // Arrange
+        var tenant = Tenant.Create("Agencia Beta", "12345678000190", "agencia-beta").Value;
+
+        // Act
+        var result = tenant.UpdateBusinessProfile("E-commerce", "Acima de R$ 100k");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        tenant.Segment.Should().Be("E-commerce");
+        tenant.MonthlyAdSpendRange.Should().Be("Acima de R$ 100k");
+    }
+
+    /// <summary>
+    /// Verifies SetBillingCycle updates the billing cycle and validates accepted cycles.
+    /// </summary>
+    [Fact]
+    public void SetBillingCycle_WithValidValues_ShouldUpdateBillingCycle()
+    {
+        // Arrange
+        var tenant = Tenant.Create("Agencia Beta", "12345678000190", "agencia-beta").Value;
+
+        // Act
+        var result = tenant.SetBillingCycle("Annual");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        tenant.BillingCycle.Should().Be("Annual");
+    }
+
+    /// <summary>
+    /// Verifies SetBillingCycle rejects unrecognized billing cycles.
+    /// </summary>
+    [Theory]
+    [InlineData("Weekly")]
+    [InlineData("InvalidCycle")]
+    [InlineData("")]
+    public void SetBillingCycle_WithInvalidCycle_ShouldReturnFailure(string invalidCycle)
+    {
+        // Arrange
+        var tenant = Tenant.Create("Agencia Beta", "12345678000190", "agencia-beta").Value;
+
+        // Act
+        var result = tenant.SetBillingCycle(invalidCycle);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Tenant.InvalidBillingCycle");
+    }
 }

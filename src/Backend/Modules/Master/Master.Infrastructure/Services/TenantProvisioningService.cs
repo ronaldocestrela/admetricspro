@@ -67,7 +67,14 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
             command.CompanyName,
             command.Cnpj,
             command.Subdomain,
-            command.Tier);
+            command.Tier,
+            subscriptionExpiresAtUtc: null,
+            segment: command.Segment,
+            monthlyAdSpendRange: command.MonthlyAdSpendRange,
+            billingCycle: command.BillingCycle,
+            customDomain: command.CustomDomain,
+            primaryColor: command.PrimaryColor,
+            secondaryColor: command.SecondaryColor);
 
         if (tenantCreationResult.IsFailure)
         {

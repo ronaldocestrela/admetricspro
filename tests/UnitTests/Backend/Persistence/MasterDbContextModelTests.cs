@@ -361,6 +361,51 @@ public sealed class MasterDbContextModelTests
         var killSwitchIndex = entityType.GetIndexes().FirstOrDefault(i => i.Properties.Any(p => p.Name == nameof(Master.Domain.FeatureFlags.FeatureFlag.IsKillSwitch)));
         killSwitchIndex.Should().NotBeNull();
     }
+
+    /// <summary>
+    /// Verifies that the Tenant entity configures profile and branding properties with correct nullability and length limits.
+    /// </summary>
+    [Fact]
+    public void Model_ShouldConfigureTenantProfileAndBrandingProperties()
+    {
+        // Arrange
+        var model = CreateModel();
+        var entityType = model.FindEntityType(typeof(Tenant))!;
+
+        // Assert - CustomDomain
+        var customDomainProp = entityType.FindProperty(nameof(Tenant.CustomDomain));
+        customDomainProp.Should().NotBeNull();
+        customDomainProp!.IsNullable.Should().BeTrue();
+        customDomainProp.GetMaxLength().Should().Be(255);
+
+        // Assert - PrimaryColor & SecondaryColor
+        var primaryColorProp = entityType.FindProperty(nameof(Tenant.PrimaryColor));
+        primaryColorProp.Should().NotBeNull();
+        primaryColorProp!.IsNullable.Should().BeTrue();
+        primaryColorProp.GetMaxLength().Should().Be(50);
+
+        var secondaryColorProp = entityType.FindProperty(nameof(Tenant.SecondaryColor));
+        secondaryColorProp.Should().NotBeNull();
+        secondaryColorProp!.IsNullable.Should().BeTrue();
+        secondaryColorProp.GetMaxLength().Should().Be(50);
+
+        // Assert - Segment & MonthlyAdSpendRange
+        var segmentProp = entityType.FindProperty(nameof(Tenant.Segment));
+        segmentProp.Should().NotBeNull();
+        segmentProp!.IsNullable.Should().BeTrue();
+        segmentProp.GetMaxLength().Should().Be(100);
+
+        var spendProp = entityType.FindProperty(nameof(Tenant.MonthlyAdSpendRange));
+        spendProp.Should().NotBeNull();
+        spendProp!.IsNullable.Should().BeTrue();
+        spendProp.GetMaxLength().Should().Be(100);
+
+        // Assert - BillingCycle
+        var billingCycleProp = entityType.FindProperty(nameof(Tenant.BillingCycle));
+        billingCycleProp.Should().NotBeNull();
+        billingCycleProp!.IsNullable.Should().BeTrue();
+        billingCycleProp.GetMaxLength().Should().Be(50);
+    }
 }
 
 

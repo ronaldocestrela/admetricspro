@@ -121,4 +121,48 @@ public sealed class RegisterTenantOnboardingCommandTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Tenant.SubdomainAlreadyExists");
     }
+
+    /// <summary>
+    /// Valida que o handler repassa os dados de perfil e identidade visual para o ProvisionTenantCommand.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenBrandingAndProfileProvided_ShouldForwardAllFieldsToProvisioningService()
+    {
+        // Arrange
+        ProvisionTenantCommand? capturedCommand = null;
+        _provisioningService.ProvisionTenantDatabaseAsync(
+            Arg.Do<ProvisionTenantCommand>(cmd => capturedCommand = cmd),
+            Arg.Any<CancellationToken>())
+            .Returns(Result<TenantId>.Success(TenantId.New()));
+
+        var handler = new RegisterTenantOnboardingCommandHandler(_provisioningService);
+        var command = new RegisterTenantOnboardingCommand(
+            "Vanguarda Digital",
+            "12345678000195",
+            "vanguarda",
+            "Agência de Performance",
+            "R$ 20k a R$ 100k",
+            SubscriptionTier.Pro,
+            "Monthly",
+            "Carlos Mendes",
+            "carlos@vanguarda.com",
+            "11987654321",
+            "Forte#2026!Key",
+            CustomDomain: "ads.vanguarda.com.br",
+            PrimaryColor: "#4f46e5",
+            SecondaryColor: "#0f172a");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Segment.Should().Be("Agência de Performance");
+        capturedCommand.MonthlyAdSpendRange.Should().Be("R$ 20k a R$ 100k");
+        capturedCommand.BillingCycle.Should().Be("Monthly");
+        capturedCommand.CustomDomain.Should().Be("ads.vanguarda.com.br");
+        capturedCommand.PrimaryColor.Should().Be("#4f46e5");
+        capturedCommand.SecondaryColor.Should().Be("#0f172a");
+    }
 }

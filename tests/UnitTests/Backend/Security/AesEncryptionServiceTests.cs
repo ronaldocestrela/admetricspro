@@ -159,8 +159,9 @@ public sealed class AesEncryptionServiceTests
         var cipherText = service.Encrypt("Valid connection string");
         var rawBytes = Convert.FromBase64String(cipherText);
 
-        // Tamper with the last byte
+        // Tamper with the padding block
         rawBytes[^1] = (byte)(rawBytes[^1] ^ 0xFF);
+        rawBytes[^2] = (byte)(rawBytes[^2] ^ 0xFF);
         var tamperedCipherText = Convert.ToBase64String(rawBytes);
 
         // Act

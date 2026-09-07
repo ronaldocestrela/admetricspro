@@ -74,6 +74,36 @@ public sealed class TenantEntityTypeConfiguration : IEntityTypeConfiguration<Ten
             .IsRequired(false);
 
         builder
+            .Property(tenant => tenant.CustomDomain)
+            .HasMaxLength(255)
+            .IsRequired(false);
+
+        builder
+            .Property(tenant => tenant.PrimaryColor)
+            .HasMaxLength(50)
+            .IsRequired(false);
+
+        builder
+            .Property(tenant => tenant.SecondaryColor)
+            .HasMaxLength(50)
+            .IsRequired(false);
+
+        builder
+            .Property(tenant => tenant.Segment)
+            .HasMaxLength(100)
+            .IsRequired(false);
+
+        builder
+            .Property(tenant => tenant.MonthlyAdSpendRange)
+            .HasMaxLength(100)
+            .IsRequired(false);
+
+        builder
+            .Property(tenant => tenant.BillingCycle)
+            .HasMaxLength(50)
+            .IsRequired(false);
+
+        builder
             .Property(tenant => tenant.CreatedAtUtc)
             .IsRequired();
     }

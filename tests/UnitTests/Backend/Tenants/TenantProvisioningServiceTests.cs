@@ -212,4 +212,36 @@ public sealed class TenantProvisioningServiceTests : IDisposable
         command.Subdomain.Should().Be("agencia-nova");
         command.Tier.Should().Be(SubscriptionTier.Trial);
     }
+
+    /// <summary>
+    /// Verifies that ProvisionTenantCommand properly initializes onboarding profile and branding properties.
+    /// </summary>
+    [Fact]
+    public void ProvisionTenantCommand_WithOnboardingProfile_ShouldInitializeAllProperties()
+    {
+        // Arrange & Act
+        var command = new ProvisionTenantCommand(
+            "Agencia Nova",
+            "12345678000199",
+            "agencia-nova",
+            SubscriptionTier.Pro,
+            Segment: "Agência de Performance",
+            MonthlyAdSpendRange: "R$ 20k a R$ 100k",
+            BillingCycle: "Monthly",
+            CustomDomain: "ads.agencianova.com.br",
+            PrimaryColor: "#4f46e5",
+            SecondaryColor: "#0f172a");
+
+        // Assert
+        command.CompanyName.Should().Be("Agencia Nova");
+        command.Cnpj.Should().Be("12345678000199");
+        command.Subdomain.Should().Be("agencia-nova");
+        command.Tier.Should().Be(SubscriptionTier.Pro);
+        command.Segment.Should().Be("Agência de Performance");
+        command.MonthlyAdSpendRange.Should().Be("R$ 20k a R$ 100k");
+        command.BillingCycle.Should().Be("Monthly");
+        command.CustomDomain.Should().Be("ads.agencianova.com.br");
+        command.PrimaryColor.Should().Be("#4f46e5");
+        command.SecondaryColor.Should().Be("#0f172a");
+    }
 }

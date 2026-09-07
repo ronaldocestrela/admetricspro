@@ -30,7 +30,13 @@ public sealed class RegisterTenantOnboardingCommandHandler : ICommandHandler<Reg
             command.CompanyName.Trim(),
             command.Cnpj.Trim(),
             command.Subdomain.Trim().ToLowerInvariant(),
-            command.Tier);
+            command.Tier,
+            command.Segment?.Trim(),
+            command.MonthlyAdSpendRange?.Trim(),
+            command.BillingCycle?.Trim(),
+            command.CustomDomain?.Trim(),
+            command.PrimaryColor?.Trim(),
+            command.SecondaryColor?.Trim());
 
         var provisioningResult = await _provisioningService.ProvisionTenantDatabaseAsync(
             provisioningCommand,
