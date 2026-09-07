@@ -36,3 +36,48 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* Blazor Server Error UI Global */
+#blazor-error-ui {
+    color-scheme: light dark;
+    background: #18181b;
+    color: #fca5a5;
+    border-top: 1px solid rgba(239, 68, 68, 0.4);
+    bottom: 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.75rem 1.5rem;
+    position: fixed;
+    width: 100%;
+    z-index: 99999;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+#blazor-error-ui .reload {
+    color: #60a5fa;
+    margin-left: 0.5rem;
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+#blazor-error-ui .reload:hover {
+    color: #93c5fd;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    color: #94a3b8;
+    transition: color 0.15s ease;
+}
+
+#blazor-error-ui .dismiss:hover {
+    color: #ffffff;
+}

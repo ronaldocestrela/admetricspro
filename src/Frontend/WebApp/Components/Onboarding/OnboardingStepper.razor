@@ -1,0 +1,79 @@
+@namespace WebApp.Components.Onboarding
+
+<div class="onboarding-stepper">
+    <div class="step-item @(CurrentStep == 1 ? "active" : CurrentStep > 1 ? "completed" : "")">
+        <div class="step-header">
+            <div class="step-indicator">
+                @if (CurrentStep > 1)
+                {
+                    <span>✓</span>
+                }
+                else
+                {
+                    <span>1</span>
+                }
+            </div>
+            <span class="step-title">1. Empresa</span>
+        </div>
+        <div class="step-bar"></div>
+    </div>
+
+    <div class="step-item @(CurrentStep == 2 ? "active" : CurrentStep > 2 ? "completed" : "")">
+        <div class="step-header">
+            <div class="step-indicator">
+                @if (CurrentStep > 2)
+                {
+                    <span>✓</span>
+                }
+                else
+                {
+                    <span>2</span>
+                }
+            </div>
+            <span class="step-title">2. Subdomínio & Identidade</span>
+        </div>
+        <div class="step-bar"></div>
+    </div>
+
+    <div class="step-item @(CurrentStep == 3 ? "active" : CurrentStep > 3 ? "completed" : "")">
+        <div class="step-header">
+            <div class="step-indicator">
+                @if (CurrentStep > 3)
+                {
+                    <span>✓</span>
+                }
+                else
+                {
+                    <span>3</span>
+                }
+            </div>
+            <span class="step-title">3. Plano & Recursos</span>
+        </div>
+        <div class="step-bar"></div>
+    </div>
+
+    <div class="step-item @(CurrentStep == 4 ? "active" : CurrentStep > 4 ? "completed" : "")">
+        <div class="step-header">
+            <div class="step-indicator">
+                @if (CurrentStep > 4)
+                {
+                    <span>✓</span>
+                }
+                else
+                {
+                    <span>4</span>
+                }
+            </div>
+            <span class="step-title">4. Administrador</span>
+        </div>
+        <div class="step-bar"></div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Passo ativo atual do assistente de onboarding (1 a 4).
+    /// </summary>
+    [Parameter]
+    public int CurrentStep { get; set; } = 1;
+}

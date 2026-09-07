@@ -1,0 +1,88 @@
+@namespace WebApp.Components.Landing
+
+<!--
+    SocialProofSection: Prova social e depoimentos de gestores de tráfego e agências parceiras.
+-->
+<section class="testimonials-section" id="depoimentos">
+    <div class="landing-container">
+        <div class="section-title-group">
+            <span class="section-category">Quem Confia &amp; Escala</span>
+            <h2 class="section-title">Resultados validados por grandes operações de mídia</h2>
+            <p class="section-description">
+                Descubra como agências e e-commerces líderes utilizam o AdMetric Pro para multiplicar sua eficiência.
+            </p>
+        </div>
+
+        <div class="testimonials-grid">
+            <!-- Testimonial 1 -->
+            <div class="testimonial-card">
+                <div>
+                    <div class="star-rating">
+                        @for (int i = 0; i < 5; i++)
+                        {
+                            <span class="material-symbols-outlined" style="font-size: 20px;">star</span>
+                        }
+                    </div>
+                    <p class="testimonial-quote">
+                        "O corte automático de criativos fatigados nos poupou mais de R$ 45.000 no primeiro mês de operação no Meta Ads. É uma ferramenta indispensável."
+                    </p>
+                </div>
+                <div class="author-info">
+                    <div class="author-avatar">MB</div>
+                    <div class="author-meta">
+                        <span class="author-name">Matheus Brandão</span>
+                        <span class="author-role">Head de Growth &middot; ScaleCommerce</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testimonial 2 -->
+            <div class="testimonial-card">
+                <div>
+                    <div class="star-rating">
+                        @for (int i = 0; i < 5; i++)
+                        {
+                            <span class="material-symbols-outlined" style="font-size: 20px;">star</span>
+                        }
+                    </div>
+                    <p class="testimonial-quote">
+                        "Gerenciamos 30 contas de clientes simultâneas. O isolamento multi-tenant com relatórios em white-label e visão consolidada de MER elevou o padrão da agência."
+                    </p>
+                </div>
+                <div class="author-info">
+                    <div class="author-avatar">CL</div>
+                    <div class="author-meta">
+                        <span class="author-name">Camila Lins</span>
+                        <span class="author-role">Diretora de Mídia &middot; Vektor Agência</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testimonial 3 -->
+            <div class="testimonial-card">
+                <div>
+                    <div class="star-rating">
+                        @for (int i = 0; i < 5; i++)
+                        {
+                            <span class="material-symbols-outlined" style="font-size: 20px;">star</span>
+                        }
+                    </div>
+                    <p class="testimonial-quote">
+                        "A sincronização em tempo real do TikTok com o Google nos deu a precisão que faltava na atribuição. O ROAS médio subiu de 2.8x para 4.3x."
+                    </p>
+                </div>
+                <div class="author-info">
+                    <div class="author-avatar">RS</div>
+                    <div class="author-meta">
+                        <span class="author-name">Rodrigo Silveira</span>
+                        <span class="author-role">CMO &middot; Nexus Infoprodutos</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    // Componente de exibição de depoimentos e validação social com clientes.
+}

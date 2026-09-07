@@ -1,0 +1,94 @@
+@namespace WebApp.Components.Onboarding
+@using WebApp.Models
+
+<aside class="live-preview-panel">
+    <div class="preview-badge-header">
+        <span class="preview-live-pill">
+            <span class="preview-live-dot"></span>
+            Live Tenant Environment
+        </span>
+        <span style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: #64748b;">
+            SQL Server Isolation
+        </span>
+    </div>
+
+    <!-- URL Preview Box -->
+    <div class="preview-url-box"><span>https://</span><span style="font-weight: 700; color: #4edea3;">@(string.IsNullOrWhiteSpace(Model.Subdomain) ? "sua-empresa" : Model.GetSanitizedSubdomain())</span><span>.admetricspro.com.br</span></div>
+
+    <!-- Mini Mockup do Dashboard com Custom Brand -->
+    <div class="preview-mockup-card" style="border-top: 3px solid @Model.PrimaryColor;">
+        <div class="mockup-header">
+            <div class="mockup-brand">
+                <div style="width: 20px; height: 20px; border-radius: 4px; background: @Model.PrimaryColor; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #fff; font-weight: 800;">
+                    @(string.IsNullOrWhiteSpace(Model.CompanyName) ? "A" : Model.CompanyName.Substring(0, 1).ToUpper())
+                </div>
+                <span style="color: #fff; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    @(string.IsNullOrWhiteSpace(Model.CompanyName) ? "Seu Workspace" : Model.CompanyName)
+                </span>
+            </div>
+            <span style="background: rgba(79, 70, 229, 0.2); color: #c3c0ff; font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 9999px; text-transform: uppercase;">
+                Plano @Model.Tier
+            </span>
+        </div>
+
+        <div class="mockup-kpi-grid">
+            <div class="mockup-kpi">
+                <span class="mockup-kpi-label">Investimento Total</span>
+                <span class="mockup-kpi-val" style="color: #4cd7f6;">R$ 48.250</span>
+            </div>
+            <div class="mockup-kpi">
+                <span class="mockup-kpi-label">ROAS Consolidado</span>
+                <span class="mockup-kpi-val" style="color: #4edea3;">4.85x</span>
+            </div>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.03); border-radius: 6px; padding: 0.5rem 0.75rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: #94a3b8;">
+            <span>Canais Ativos: Meta &bull; Google &bull; TikTok</span>
+            <span style="color: #4edea3;">● Sincronizado</span>
+        </div>
+    </div>
+
+    <!-- Selos de Segurança & Governança -->
+    <div class="compliance-seals">
+        <div class="seal-item">
+            <span class="seal-icon">🔒</span>
+            <span>Instância SQL Server Dedicada (Database-per-Tenant)</span>
+        </div>
+        <div class="seal-item">
+            <span class="seal-icon">🔑</span>
+            <span>Criptografia Simétrica AES-256 de Dados em Repouso</span>
+        </div>
+        <div class="seal-item">
+            <span class="seal-icon">🛡️</span>
+            <span>Conformidade Estrita com LGPD & GDPR</span>
+        </div>
+    </div>
+
+    <!-- Terminal de Telemetria de Infraestrutura -->
+    <div class="telemetry-terminal">
+        <div class="terminal-header">
+            <span class="terminal-btn red"></span>
+            <span class="terminal-btn yellow"></span>
+            <span class="terminal-btn green"></span>
+            <span class="terminal-title">provisioning-agent://master.catalog</span>
+        </div>
+        <div class="terminal-body">
+            <div class="terminal-line highlight">> Telemetry Stream Initialized</div>
+            <div class="terminal-line">> Validando disponibilidade de subdomínio...</div>
+            @if (!string.IsNullOrWhiteSpace(Model.Subdomain))
+            {
+                <div class="terminal-line success">> Alocação reservada: Tenant_@Model.GetSanitizedSubdomain()</div>
+                <div class="terminal-line">> Plano parametrizado: @Model.Tier (@Model.BillingCycle)</div>
+            }
+            else
+            {
+                <div class="terminal-line">> Aguardando definição de identificador exclusivo...</div>
+            }
+        </div>
+    </div>
+</aside>
+
+@code {
+    [Parameter, EditorRequired]
+    public TenantOnboardingFormModel Model { get; set; } = null!;
+}

@@ -30,6 +30,7 @@ builder.Services.Configure<ImpersonationJwtOptions>(options =>
 
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
 builder.Services.AddScoped<ITenantDirectoryService, TenantDirectoryService>();
+builder.Services.AddScoped<ITenantOnboardingClientService, TenantOnboardingClientService>();
 builder.Services.AddScoped<IPlanManagementService, PlanManagementService>();
 builder.Services.AddScoped<IApiHealthClientService, ApiHealthClientService>();
 builder.Services.AddScoped<IFeatureFlagClientService, FeatureFlagClientService>();

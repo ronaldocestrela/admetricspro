@@ -1,0 +1,110 @@
+@namespace WebApp.Components.Onboarding
+@using Master.Domain.Tenants
+@using WebApp.Models
+
+<div class="step-heading">
+    <h2>Plano & Recursos</h2>
+    <p>Escolha o plano ideal para sua operação. Todos incluem 14 dias de teste grátis sem cartão de crédito.</p>
+</div>
+
+<!-- Toggle Mensal / Anual -->
+<div style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; margin-bottom: 2rem;">
+    <button type="button"
+            class="btn-wizard-secondary"
+            style="padding: 0.4rem 1rem; font-size: 0.85rem; @(Model.BillingCycle == "Monthly" ? "background: #4f46e5; color: #ffffff; border-color: #c3c0ff;" : "")"
+            @onclick='() => SetBillingCycle("Monthly")'>
+        Mensal
+    </button>
+    <button type="button"
+            class="btn-wizard-secondary"
+            style="padding: 0.4rem 1rem; font-size: 0.85rem; @(Model.BillingCycle == "Annual" ? "background: #4f46e5; color: #ffffff; border-color: #c3c0ff;" : "")"
+            @onclick='() => SetBillingCycle("Annual")'>
+        Anual <span style="background: #005236; color: #4edea3; font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 9999px; margin-left: 0.35rem;">-20% OFF</span>
+    </button>
+</div>
+
+<!-- Grid de Planos -->
+<div class="plans-grid">
+    <!-- Starter -->
+    <div class="plan-card @(Model.Tier == SubscriptionTier.Starter ? "selected" : "")"
+         @onclick="() => SelectPlan(SubscriptionTier.Starter)">
+        <span class="plan-name">Starter</span>
+        <div class="plan-price">
+            @(Model.BillingCycle == "Annual" ? "R$ 157" : "R$ 197")<span>/mês</span>
+        </div>
+        <ul class="plan-features-list">
+            <li class="check">✓ Até 3 Workspaces</li>
+            <li class="check">✓ 2 Assentos de Usuário</li>
+            <li class="check">✓ Até R$ 50k Ad Spend</li>
+            <li class="check">✓ Meta + Google Ads</li>
+            <li>• Relatórios Padrão</li>
+        </ul>
+    </div>
+
+    <!-- Pro (Popular / Glow) -->
+    <div class="plan-card popular @(Model.Tier == SubscriptionTier.Pro ? "selected" : "")"
+         @onclick="() => SelectPlan(SubscriptionTier.Pro)">
+        <span class="plan-popular-badge">Mais Popular</span>
+        <span class="plan-name" style="color: #c3c0ff;">Pro</span>
+        <div class="plan-price" style="color: #4edea3;">
+            @(Model.BillingCycle == "Annual" ? "R$ 397" : "R$ 497")<span>/mês</span>
+        </div>
+        <ul class="plan-features-list">
+            <li class="check">✓ Até 15 Workspaces</li>
+            <li class="check">✓ 8 Assentos de Usuário</li>
+            <li class="check">✓ Até R$ 300k Ad Spend</li>
+            <li class="check">✓ Meta + Google + TikTok + Bing</li>
+            <li class="check">✓ Pacing & Overspending Lock</li>
+            <li class="check">✓ White-Label Completo</li>
+        </ul>
+    </div>
+
+    <!-- Enterprise -->
+    <div class="plan-card @(Model.Tier == SubscriptionTier.Enterprise ? "selected" : "")"
+         @onclick="() => SelectPlan(SubscriptionTier.Enterprise)">
+        <span class="plan-name">Enterprise</span>
+        <div class="plan-price">
+            @(Model.BillingCycle == "Annual" ? "R$ 1.032" : "R$ 1.290")<span>/mês</span>
+        </div>
+        <ul class="plan-features-list">
+            <li class="check">✓ Workspaces Ilimitados</li>
+            <li class="check">✓ Assentos Ilimitados</li>
+            <li class="check">✓ Sem teto de Ad Spend</li>
+            <li class="check">✓ Todas as 4 Redes + API</li>
+            <li class="check">✓ Copiloto de IA Preditiva</li>
+            <li class="check">✓ CNAME Próprio & Suporte VIP</li>
+        </ul>
+    </div>
+</div>
+
+<div style="text-align: center; color: #4edea3; font-size: 0.85rem; font-weight: 600;">
+    🛡️ Garantia de 14 dias de teste grátis com provisionamento instantâneo.
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TenantOnboardingFormModel Model { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnStateChanged { get; set; }
+
+    private async Task SelectPlan(SubscriptionTier tier)
+    {
+        Model.Tier = tier;
+        await NotifyChanged();
+    }
+
+    private async Task SetBillingCycle(string cycle)
+    {
+        Model.BillingCycle = cycle;
+        await NotifyChanged();
+    }
+
+    private async Task NotifyChanged()
+    {
+        if (OnStateChanged.HasDelegate)
+        {
+            await OnStateChanged.InvokeAsync();
+        }
+    }
+}

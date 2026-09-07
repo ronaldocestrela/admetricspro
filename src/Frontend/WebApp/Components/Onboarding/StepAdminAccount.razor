@@ -1,0 +1,103 @@
+@namespace WebApp.Components.Onboarding
+@using WebApp.Models
+
+<div class="step-heading">
+    <h2>Conta do Administrador Principal</h2>
+    <p>Configure as credenciais do gestor inicial com permissão de Super Usuário/Owner no ambiente dedicado.</p>
+</div>
+
+<div class="form-row">
+    <div class="form-group">
+        <label class="form-label" for="admin-fullname">Nome Completo do Gestor *</label>
+        <div class="input-with-icon">
+            <span class="input-icon">👤</span>
+            <input id="admin-fullname"
+                   type="text"
+                   class="custom-input"
+                   placeholder="Ex.: Carlos Mendes"
+                   @bind="Model.AdminFullName"
+                   @bind:after="OnFieldChanged" />
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="admin-email">E-mail Corporativo *</label>
+        <div class="input-with-icon">
+            <span class="input-icon">✉️</span>
+            <input id="admin-email"
+                   type="email"
+                   class="custom-input"
+                   placeholder="carlos@empresa.com.br"
+                   @bind="Model.AdminEmail"
+                   @bind:after="OnFieldChanged" />
+        </div>
+    </div>
+</div>
+
+<div class="form-group">
+    <label class="form-label" for="admin-phone">WhatsApp / Telefone Comercial *</label>
+    <div class="input-with-icon">
+        <span class="input-icon">📱</span>
+        <input id="admin-phone"
+               type="tel"
+               class="custom-input"
+               placeholder="(11) 98765-4321"
+               @bind="Model.AdminPhone"
+               @bind:after="OnFieldChanged" />
+    </div>
+    <small style="color: #64748b; font-size: 0.78rem;">Utilizado para alertas críticos de travas de overspending e segurança.</small>
+</div>
+
+<div class="form-row">
+    <div class="form-group">
+        <label class="form-label" for="admin-password">Senha de Acesso (Mín. 8 caracteres) *</label>
+        <div class="input-with-icon">
+            <span class="input-icon">🔒</span>
+            <input id="admin-password"
+                   type="password"
+                   class="custom-input"
+                   placeholder="••••••••••••"
+                   @bind="Model.AdminPassword"
+                   @bind:after="OnFieldChanged" />
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="confirm-password">Confirmar Senha *</label>
+        <div class="input-with-icon">
+            <span class="input-icon">🔒</span>
+            <input id="confirm-password"
+                   type="password"
+                   class="custom-input"
+                   placeholder="••••••••••••"
+                   @bind="Model.ConfirmPassword"
+                   @bind:after="OnFieldChanged" />
+        </div>
+    </div>
+</div>
+
+<div class="form-group" style="margin-top: 1rem;">
+    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.85rem; color: #94a3b8;">
+        <input type="checkbox"
+               id="accept-terms"
+               style="width: 16px; height: 16px; accent-color: #4f46e5;"
+               @bind="Model.AcceptTerms" />
+        <span>Concordo com os Termos de Serviço, Política de Privacidade e Tratamento Seguro de Dados (LGPD).</span>
+    </label>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TenantOnboardingFormModel Model { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnStateChanged { get; set; }
+
+    private async Task OnFieldChanged()
+    {
+        if (OnStateChanged.HasDelegate)
+        {
+            await OnStateChanged.InvokeAsync();
+        }
+    }
+}

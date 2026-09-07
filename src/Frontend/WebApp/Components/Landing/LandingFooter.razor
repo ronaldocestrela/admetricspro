@@ -1,0 +1,62 @@
+@namespace WebApp.Components.Landing
+
+<!--
+    LandingFooter: Rodapé institucional com links de governança, conformidade LGPD e dados corporativos.
+-->
+<footer class="landing-footer">
+    <div class="landing-container">
+        <div class="footer-top">
+            <div class="footer-brand-col">
+                <a href="/" class="landing-brand" style="margin-bottom: 1rem;">
+                    <div class="brand-icon-wrapper">
+                        <span class="material-symbols-outlined">insights</span>
+                    </div>
+                    <span>AdMetric <span class="brand-accent">Pro</span></span>
+                </a>
+                <p style="color: var(--lp-text-on-surface-variant); font-size: 0.9rem; line-height: 1.6;">
+                    SaaS de Gestão Unificada de Tráfego Pago com IA Preditiva, Isolamento Multitenant por Banco de Dados e Automação de Escala.
+                </p>
+            </div>
+
+            <div class="footer-links-group">
+                <div class="footer-col">
+                    <span class="footer-col-title">Produto</span>
+                    <a href="#recursos" class="footer-link">Recursos &amp; Automação</a>
+                    <a href="#integracoes" class="footer-link">Conectores de Mídia</a>
+                    <a href="#metricas-ia" class="footer-link">Cockpit Analítico</a>
+                    <a href="#precos" class="footer-link">Tabela de Planos</a>
+                </div>
+
+                <div class="footer-col">
+                    <span class="footer-col-title">Plataforma</span>
+                    <a href="/login" class="footer-link">Portal do Cliente</a>
+                    <a href="/api/v1/health" class="footer-link">Status da Infraestrutura</a>
+                    <a href="/docs" class="footer-link">Documentação de API</a>
+                    <a href="/changelog" class="footer-link">Notas de Versão</a>
+                </div>
+
+                <div class="footer-col">
+                    <span class="footer-col-title">Segurança &amp; Legal</span>
+                    <a href="/privacidade" class="footer-link">Política de Privacidade</a>
+                    <a href="/termos" class="footer-link">Termos de Serviço</a>
+                    <a href="/seguranca" class="footer-link">Conformidade LGPD</a>
+                    <a href="/suporte" class="footer-link">Central de Ajuda</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <span>&copy; @DateTime.UtcNow.Year AdMetricsPro. Todos os direitos reservados. Monólito Modular .NET 10.</span>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: var(--lp-secondary);">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--lp-secondary); display: inline-block;"></span>
+                    Sistemas Operacionais 100%
+                </span>
+            </div>
+        </div>
+    </div>
+</footer>
+
+@code {
+    // Componente de rodapé da Landing Page do AdMetricsPro.
+}

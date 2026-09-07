@@ -1,0 +1,245 @@
+@page "/register"
+@page "/onboarding"
+@layout WebApp.Components.Landing.LandingLayout
+@using WebApp.Components.Onboarding
+@using WebApp.Models
+@using WebApp.Services
+@inject ITenantOnboardingClientService OnboardingClientService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Cadastro & Onboarding de Inquilino — AdMetricsPro</PageTitle>
+
+<div class="onboarding-page-wrapper">
+    <!-- Navbar Minimalista Superior -->
+    <header class="onboarding-navbar">
+        <a href="/" class="onboarding-brand">
+            <div class="onboarding-brand-logo">A</div>
+            <span>AdMetric<span style="color: #4edea3;">Pro</span></span>
+        </a>
+        <div class="onboarding-nav-link">
+            Já possui uma conta? <a href="/login"><strong>Fazer Login</strong></a>
+        </div>
+    </header>
+
+    <!-- Container Principal Split-Screen -->
+    <div class="onboarding-split-container">
+        <!-- Coluna Esquerda: Wizard de Onboarding -->
+        <main class="onboarding-wizard-panel">
+            <OnboardingStepper CurrentStep="_currentStep" />
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="status-pill error" style="margin-bottom: 1.5rem; width: 100%; justify-content: flex-start;">
+                    <span>⚠️ @_errorMessage</span>
+                </div>
+            }
+
+            @switch (_currentStep)
+            {
+                case 1:
+                    <StepCompanyInfo Model="_formModel" OnStateChanged="StateHasChanged" />
+                    break;
+                case 2:
+                    <StepSubdomainIdentity Model="_formModel" OnStateChanged="StateHasChanged" />
+                    break;
+                case 3:
+                    <StepPlanSelection Model="_formModel" OnStateChanged="StateHasChanged" />
+                    break;
+                case 4:
+                    <StepAdminAccount Model="_formModel" OnStateChanged="StateHasChanged" />
+                    break;
+            }
+
+            <!-- Ações e Navegação do Wizard -->
+            <div class="wizard-actions">
+                @if (_currentStep > 1)
+                {
+                    <button type="button"
+                            class="btn-wizard-secondary"
+                            @onclick="PreviousStep">
+                        &larr; Voltar
+                    </button>
+                }
+                else
+                {
+                    <div></div>
+                }
+
+                @if (_currentStep < 4)
+                {
+                    <button type="button"
+                            class="btn-wizard-primary"
+                            @onclick="NextStep">
+                        <span>Avançar para @GetNextStepName() &rarr;</span>
+                    </button>
+                }
+                else
+                {
+                    <button type="button"
+                            class="btn-wizard-primary"
+                            disabled="@_isSubmitting"
+                            @onclick="SubmitOnboardingAsync">
+                        <span>Concluir Cadastro & Provisionar Banco &rarr;</span>
+                    </button>
+                }
+            </div>
+        </main>
+
+        <!-- Coluna Direita: Live Tenant Cockpit Preview -->
+        <LiveTenantPreviewCard Model="_formModel" />
+    </div>
+
+    <!-- Modal de Provisionamento em Tempo Real -->
+    <ProvisioningConsoleModal IsOpen="_isProvisioningModalOpen"
+                             IsCompleted="_isProvisioningCompleted"
+                             ProgressPercentage="_provisioningProgress"
+                             Logs="_provisioningLogs"
+                             RedirectUrl="@_accessUrl" />
+</div>
+
+@code {
+    private int _currentStep = 1;
+    private TenantOnboardingFormModel _formModel = new();
+    private string? _errorMessage;
+    private bool _isSubmitting;
+
+    // Estado do Modal de Telemetria de Infraestrutura
+    private bool _isProvisioningModalOpen;
+    private bool _isProvisioningCompleted;
+    private int _provisioningProgress;
+    private List<string> _provisioningLogs = new();
+    private string _accessUrl = "/dashboard";
+
+    private string GetNextStepName() => _currentStep switch
+    {
+        1 => "Subdomínio & Marca",
+        2 => "Planos & Recursos",
+        3 => "Administrador",
+        _ => "Conclusão"
+    };
+
+    private void PreviousStep()
+    {
+        _errorMessage = null;
+        if (_currentStep > 1)
+        {
+            _currentStep--;
+        }
+    }
+
+    private void NextStep()
+    {
+        _errorMessage = null;
+
+        // Validação da Etapa 1
+        if (_currentStep == 1)
+        {
+            if (string.IsNullOrWhiteSpace(_formModel.CompanyName))
+            {
+                _errorMessage = "Por favor, informe a Razão Social ou Nome Fantasia.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_formModel.Cnpj) || _formModel.GetSanitizedCnpj().Length != 14)
+            {
+                _errorMessage = "Por favor, informe um CNPJ válido com 14 dígitos.";
+                return;
+            }
+        }
+
+        // Validação da Etapa 2
+        if (_currentStep == 2)
+        {
+            var sanitized = _formModel.GetSanitizedSubdomain();
+            if (string.IsNullOrWhiteSpace(sanitized) || sanitized.Length < 3)
+            {
+                _errorMessage = "Por favor, informe um subdomínio válido com no mínimo 3 caracteres.";
+                return;
+            }
+        }
+
+        if (_currentStep < 4)
+        {
+            _currentStep++;
+        }
+    }
+
+    private async Task SubmitOnboardingAsync()
+    {
+        _errorMessage = null;
+
+        // Validações finais da Etapa 4
+        if (string.IsNullOrWhiteSpace(_formModel.AdminFullName))
+        {
+            _errorMessage = "Por favor, informe o nome completo do gestor.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_formModel.AdminEmail) || !_formModel.AdminEmail.Contains('@'))
+        {
+            _errorMessage = "Por favor, informe um e-mail corporativo válido.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_formModel.AdminPassword) || _formModel.AdminPassword.Length < 8)
+        {
+            _errorMessage = "A senha deve conter no mínimo 8 caracteres.";
+            return;
+        }
+
+        if (_formModel.AdminPassword != _formModel.ConfirmPassword)
+        {
+            _errorMessage = "As senhas não coincidem.";
+            return;
+        }
+
+        if (!_formModel.AcceptTerms)
+        {
+            _errorMessage = "É obrigatório aceitar os termos de serviço para prosseguir.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _isProvisioningModalOpen = true;
+        _isProvisioningCompleted = false;
+        _provisioningProgress = 15;
+        _provisioningLogs.Clear();
+
+        AddLog("[10:00:01] INITIATING: Validando invariantes de domínio e integridade de CNPJ...");
+        await Task.Delay(400);
+
+        _provisioningProgress = 35;
+        AddLog($"[10:00:02] INFRASTRUCTURE: Criando banco de dados isolado no SQL Server: Tenant_{_formModel.GetSanitizedSubdomain()}...");
+        await Task.Delay(400);
+
+        var result = await OnboardingClientService.RegisterTenantAsync(_formModel);
+
+        if (result.IsFailure)
+        {
+            _isSubmitting = false;
+            _isProvisioningModalOpen = false;
+            _errorMessage = result.Error.Description;
+            return;
+        }
+
+        _provisioningProgress = 65;
+        AddLog("[10:00:03] MIGRATING: Aplicando migrações estruturais do TenantDbContext (EF Core 10)... OK");
+        await Task.Delay(400);
+
+        _provisioningProgress = 85;
+        AddLog("[10:00:04] SECURITY: Criptografando connection string com AES-256 e gravando no MasterDb... OK");
+        await Task.Delay(400);
+
+        _provisioningProgress = 100;
+        AddLog($"[10:00:05] IDENTITY: Credenciais emitidas para {_formModel.AdminEmail}... CONCLUÍDO!");
+        _accessUrl = result.Value.AccessUrl;
+        _isProvisioningCompleted = true;
+        _isSubmitting = false;
+    }
+
+    private void AddLog(string log)
+    {
+        _provisioningLogs.Add(log);
+        StateHasChanged();
+    }
+}

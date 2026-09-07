@@ -110,4 +110,82 @@ public sealed class TenantsController : ControllerBase
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// Verifica em tempo real se um subdomínio desejado está disponível para alocação de novo tenant.
+    /// </summary>
+    /// <param name="subdomain">Subdomínio pretendido pelo novo assinante.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Status de disponibilidade, motivo em caso de recusa e eventuais sugestões.</returns>
+    [HttpGet("check-subdomain")]
+    [EndpointSummary("Verifica a disponibilidade de um subdomínio para cadastro de novo tenant")]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Queries.CheckSubdomainAvailability.SubdomainAvailabilityResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Queries.CheckSubdomainAvailability.SubdomainAvailabilityResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<Result<Master.Application.Tenants.Queries.CheckSubdomainAvailability.SubdomainAvailabilityResponse>>> CheckSubdomain(
+        [FromQuery] string subdomain,
+        CancellationToken cancellationToken)
+    {
+        var query = new Master.Application.Tenants.Queries.CheckSubdomainAvailability.CheckSubdomainAvailabilityQuery(subdomain);
+        var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Submete o cadastro completo de um novo tenant, disparando a engine de provisionamento de banco SQL Server dedicado.
+    /// </summary>
+    /// <param name="request">Dados corporativos, de plano, White-Label e credenciais do gestor.</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+    /// <returns>Resultado com identificador do tenant, subdomínio ativo e URL de acesso ao painel.</returns>
+    [HttpPost("onboarding")]
+    [EndpointSummary("Registra e provisiona um novo inquilino com banco dedicado e credenciais do administrador")]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>>> RegisterOnboarding(
+        [FromBody] TenantOnboardingApiRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequest(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>.Failure(
+                Error.Validation("Request.Null", "O corpo da requisição não pode ser nulo.")));
+        }
+
+        var command = new Master.Application.Tenants.Commands.RegisterTenantOnboarding.RegisterTenantOnboardingCommand(
+            request.CompanyName,
+            request.Cnpj,
+            request.Subdomain,
+            request.Segment,
+            request.MonthlyAdSpendRange,
+            request.Tier,
+            request.BillingCycle,
+            request.AdminFullName,
+            request.AdminEmail,
+            request.AdminPhone,
+            request.AdminPassword,
+            request.CustomDomain,
+            request.PrimaryColor,
+            request.SecondaryColor);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.Conflict => Conflict(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>.Failure(result.Error)),
+                ErrorType.Validation => UnprocessableEntity(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>.Failure(result.Error)),
+                _ => BadRequest(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>.Failure(result.Error))
+            };
+        }
+
+        return Ok(Result<Master.Application.Tenants.Commands.RegisterTenantOnboarding.TenantOnboardingResult>.Success(result.Value));
+    }
 }

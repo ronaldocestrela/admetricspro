@@ -1,0 +1,60 @@
+@namespace WebApp.Components.Landing
+
+<!--
+    LandingNavbar: Cabeçalho institucional fixo com navegação suave, logotipo oficial e CTAs de ação rápida.
+-->
+<header class="landing-header">
+    <div class="landing-container landing-header-inner">
+        <a href="/" class="landing-brand">
+            <div class="brand-icon-wrapper">
+                <span class="material-symbols-outlined">insights</span>
+            </div>
+            <span>AdMetric <span class="brand-accent">Pro</span></span>
+        </a>
+
+        <nav class="landing-nav-links">
+            <a href="#recursos" class="landing-nav-link">Recursos</a>
+            <a href="#integracoes" class="landing-nav-link">Integrações</a>
+            <a href="#metricas-ia" class="landing-nav-link">Métricas &amp; IA</a>
+            <a href="#depoimentos" class="landing-nav-link">Casos de Sucesso</a>
+            <a href="#precos" class="landing-nav-link">Preços</a>
+        </nav>
+
+        <div class="landing-header-actions">
+            <a href="/login" class="btn-login">Entrar</a>
+            <a href="/register" class="btn-signup">Começar Teste Grátis</a>
+            <button type="button" class="btn-mobile-menu" @onclick="ToggleMobileMenu" aria-label="Alternar menu de navegação">
+                <span class="material-symbols-outlined">@(_isMobileMenuOpen ? "close" : "menu")</span>
+            </button>
+        </div>
+    </div>
+
+    @if (_isMobileMenuOpen)
+    {
+        <div class="mobile-nav-dropdown">
+            <a href="#recursos" class="mobile-nav-link" @onclick="CloseMobileMenu">Recursos</a>
+            <a href="#integracoes" class="mobile-nav-link" @onclick="CloseMobileMenu">Integrações</a>
+            <a href="#metricas-ia" class="mobile-nav-link" @onclick="CloseMobileMenu">Métricas &amp; IA</a>
+            <a href="#depoimentos" class="mobile-nav-link" @onclick="CloseMobileMenu">Casos de Sucesso</a>
+            <a href="#precos" class="mobile-nav-link" @onclick="CloseMobileMenu">Preços</a>
+            <div class="mobile-nav-actions">
+                <a href="/login" class="btn-login" style="text-align: center;">Entrar</a>
+                <a href="/register" class="btn-signup" style="text-align: center; width: 100%;">Começar Teste Grátis</a>
+            </div>
+        </div>
+    }
+</header>
+
+@code {
+    private bool _isMobileMenuOpen;
+
+    private void ToggleMobileMenu()
+    {
+        _isMobileMenuOpen = !_isMobileMenuOpen;
+    }
+
+    private void CloseMobileMenu()
+    {
+        _isMobileMenuOpen = false;
+    }
+}

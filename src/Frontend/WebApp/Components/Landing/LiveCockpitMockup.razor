@@ -1,0 +1,174 @@
+@namespace WebApp.Components.Landing
+
+<!--
+    LiveCockpitMockup: Mockup interativo e glassmorphic do painel de operações em tempo real com KPIs e gráfico vetorial SVG.
+-->
+<section class="cockpit-section" id="metricas-ia">
+    <div class="landing-container">
+        <div class="cockpit-glow"></div>
+
+        <!-- AI Floating Alert Pill -->
+        <div class="ai-floating-pill-container">
+            <div class="ai-floating-pill">
+                <div class="ai-icon-box">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">auto_awesome</span>
+                </div>
+                <div class="ai-pill-text">
+                    <span class="ai-pill-badge">IA Otimizou em Tempo Real</span>
+                    <span style="color: #ffffff;">
+                        <strong style="color: var(--lp-secondary);">R$ 3.200</strong> pausados em criativos fatigados (+14.2% em ROI)
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Glassmorphic Viewport -->
+        <div class="cockpit-viewport">
+            <!-- Toolbar -->
+            <div class="cockpit-toolbar">
+                <div class="toolbar-left">
+                    <div class="toolbar-chip">
+                        <span class="chip-status-dot"></span>
+                        <strong style="color: #ffffff;">Workspace Principal</strong>
+                        <span style="color: var(--lp-text-on-surface-variant); font-weight: normal;">/ Multi-Channel Scale</span>
+                    </div>
+                    <div class="toolbar-chip" style="background: var(--lp-bg-surface-high);">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">calendar_today</span>
+                        <span>Últimos 30 Dias (01 Mai - 31 Mai)</span>
+                    </div>
+                </div>
+
+                <div class="toolbar-right">
+                    <span class="toolbar-chip" style="font-size: 0.75rem;">
+                        <span class="material-symbols-outlined" style="font-size: 14px; color: var(--lp-tertiary);">sync</span>
+                        Sync ao vivo: 12s atrás
+                    </span>
+                    <button type="button" class="toolbar-chip" style="background: var(--lp-bg-surface-highest); cursor: pointer; border: none; font-weight: 600;">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">tune</span>
+                        Filtros Avançados
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4 Essential KPI Cards -->
+            <div class="kpi-grid">
+                <!-- KPI 1: Investimento Total -->
+                <div class="kpi-metric-card">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Investimento Total</span>
+                        <div class="kpi-icon">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">payments</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="kpi-value">R$ 428.500<span style="font-size: 0.9rem; color: var(--lp-text-on-surface-variant); font-weight: normal;">,00</span></div>
+                        <div class="kpi-trend trend-positive">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">trending_up</span>
+                            <span>+12.4% vs mês anterior</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI 2: Receita Gerada -->
+                <div class="kpi-metric-card">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Receita Gerada</span>
+                        <div class="kpi-icon" style="color: var(--lp-secondary);">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">attach_money</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="kpi-value">R$ 1.842.550<span style="font-size: 0.9rem; color: var(--lp-text-on-surface-variant); font-weight: normal;">,00</span></div>
+                        <div class="kpi-trend trend-positive">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">trending_up</span>
+                            <span>+31.8% vs mês anterior</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI 3: ROAS Médio Consolidado -->
+                <div class="kpi-metric-card" style="border-color: rgba(16, 185, 129, 0.25);">
+                    <div class="kpi-header">
+                        <span class="kpi-label">ROAS Médio Consolidado</span>
+                        <span style="background: rgba(16, 185, 129, 0.2); color: var(--lp-secondary); font-family: var(--lp-font-mono); font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 9999px;">+24.0%</span>
+                    </div>
+                    <div>
+                        <div class="kpi-value" style="color: var(--lp-secondary);">4.30<span style="font-size: 0.9rem; color: var(--lp-text-on-surface-variant); font-weight: normal;">x</span></div>
+                        <div class="kpi-trend trend-highlight">
+                            <span>Alvo contratado: 3.50x</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI 4: CPA Médio Multi-Canal -->
+                <div class="kpi-metric-card">
+                    <div class="kpi-header">
+                        <span class="kpi-label">CPA Médio Multi-Canal</span>
+                        <div class="kpi-icon" style="color: var(--lp-tertiary);">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">track_changes</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="kpi-value">R$ 18,40</div>
+                        <div class="kpi-trend trend-positive">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">trending_down</span>
+                            <span>-15.2% no custo de aquisição</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversion Graph & Live Optimization Matrix -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <span class="chart-title">Curva de Conversão &amp; Eficiência por Plataforma</span>
+                    <div class="chart-legend">
+                        <span class="legend-item"><span class="legend-dot-meta"></span> Meta Ads</span>
+                        <span class="legend-item"><span class="legend-dot-google"></span> Google Ads</span>
+                        <span class="legend-item"><span class="legend-dot-tiktok"></span> TikTok Ads</span>
+                    </div>
+                </div>
+
+                <!-- Inline SVG Chart Vector Presentation -->
+                <svg class="analytical-chart" viewBox="0 0 900 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="gradMeta" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3" />
+                            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0" />
+                        </linearGradient>
+                        <linearGradient id="gradTiktok" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.25" />
+                            <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.0" />
+                        </linearGradient>
+                    </defs>
+
+                    <!-- Horizontal Grid Guide Lines -->
+                    <line x1="0" y1="40" x2="900" y2="40" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4" />
+                    <line x1="0" y1="90" x2="900" y2="90" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4" />
+                    <line x1="0" y1="140" x2="900" y2="140" stroke="rgba(255,255,255,0.05)" stroke-dasharray="4 4" />
+
+                    <!-- Area Fill Gradient Meta -->
+                    <path d="M0,130 C150,110 300,140 450,80 C600,20 750,50 900,30 L900,180 L0,180 Z" fill="url(#gradMeta)" />
+
+                    <!-- TikTok Line Wave -->
+                    <path d="M0,150 C150,130 300,160 450,110 C600,60 750,80 900,60" stroke="#f43f5e" stroke-width="2.5" stroke-linecap="round" />
+
+                    <!-- Google Line Wave -->
+                    <path d="M0,140 C150,135 300,120 450,95 C600,70 750,60 900,45" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 4" />
+
+                    <!-- Meta Line Wave -->
+                    <path d="M0,130 C150,110 300,140 450,80 C600,20 750,50 900,30" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" />
+
+                    <!-- Key Data Point Pin -->
+                    <circle cx="450" cy="80" r="5" fill="#3b82f6" stroke="#ffffff" stroke-width="2" />
+                    <circle cx="900" cy="30" r="5" fill="#10b981" stroke="#ffffff" stroke-width="2" />
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    // Componente de visualização em tempo real do Cockpit Analítico do AdMetricsPro.
+    // Renderiza cartões com indicadores de desempenho chave e o gráfico vetorial multicanal.
+}

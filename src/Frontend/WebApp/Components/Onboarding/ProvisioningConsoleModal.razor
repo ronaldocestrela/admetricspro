@@ -1,0 +1,74 @@
+@namespace WebApp.Components.Onboarding
+
+@if (IsOpen)
+{
+    <div class="modal-overlay">
+        <div class="provisioning-modal-card">
+            <div class="provisioning-spinner-wrapper">
+                @if (IsCompleted)
+                {
+                    <div style="width: 90px; height: 90px; border-radius: 50%; background: rgba(78, 222, 163, 0.15); border: 3px solid #4edea3; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #4edea3;">
+                        ✓
+                    </div>
+                }
+                else
+                {
+                    <div class="provisioning-spinner"></div>
+                    <div class="provisioning-percent">@ProgressPercentage%</div>
+                }
+            </div>
+
+            <h2 class="provisioning-modal-title">
+                @(IsCompleted ? "Ambiente Provisionado com Sucesso!" : "Provisionando Infraestrutura Dedicada")
+            </h2>
+
+            <p class="provisioning-modal-desc">
+                @(IsCompleted 
+                    ? "Seu banco de dados dedicado e chaves de segurança foram gerados com 100% de integridade." 
+                    : "Aguarde enquanto nossa engine de infraestrutura orquestra seu banco SQL Server e chaves criptográficas.")
+            </p>
+
+            <!-- Console de Logs da Infraestrutura -->
+            <div class="telemetry-terminal" style="text-align: left; margin-bottom: 2rem;">
+                <div class="terminal-header">
+                    <span class="terminal-btn red"></span>
+                    <span class="terminal-btn yellow"></span>
+                    <span class="terminal-btn green"></span>
+                    <span class="terminal-title">provisioning-runner://worker-01.internal</span>
+                </div>
+                <div class="terminal-body" style="max-height: 180px;">
+                    @foreach (var log in Logs)
+                    {
+                        <div class="terminal-line @(log.Contains("OK") || log.Contains("CONCLUÍDO") || log.Contains("SUCESSO") ? "success" : log.StartsWith(">") ? "highlight" : "")">
+                            @log
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (IsCompleted)
+            {
+                <a href="@RedirectUrl" class="btn-wizard-primary" style="justify-content: center; text-decoration: none; width: 100%;">
+                    <span>Acessar Meu Cockpit no AdMetricsPro &rarr;</span>
+                </a>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public bool IsCompleted { get; set; }
+
+    [Parameter]
+    public int ProgressPercentage { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> Logs { get; set; } = Array.Empty<string>();
+
+    [Parameter]
+    public string RedirectUrl { get; set; } = "/dashboard";
+}

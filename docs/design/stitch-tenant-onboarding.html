@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tenant Registration &amp; Onboarding - AdMetricsPro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "surface-bright": "#0e3d55",
+          "on-secondary-container": "#003e59",
+          "secondary": "#85cfff",
+          "tertiary": "#ccd2ff",
+          "on-error": "#690005",
+          "secondary-container": "#03aef2",
+          "inverse-surface": "#c7e7ff",
+          "on-secondary-fixed": "#001e2e",
+          "tertiary-fixed": "#dee0ff",
+          "surface-container-lowest": "#00101b",
+          "on-surface": "#c7e7ff",
+          "on-error-container": "#ffdad6",
+          "surface": "#001522",
+          "tertiary-container": "#a8b4ff",
+          "on-background": "#c7e7ff",
+          "inverse-on-surface": "#00344c",
+          "surface-variant": "#063951",
+          "surface-container-low": "#001e2e",
+          "error-container": "#93000a",
+          "on-primary-fixed-variant": "#004d64",
+          "inverse-primary": "#006684",
+          "on-surface-variant": "#bcc8d0",
+          "background": "#001522",
+          "surface-container-high": "#002d43",
+          "on-secondary-fixed-variant": "#004c6c",
+          "on-secondary": "#00344c",
+          "on-tertiary": "#07218a",
+          "primary-fixed": "#bde9ff",
+          "error": "#ffb4ab",
+          "primary": "#97deff",
+          "on-tertiary-fixed": "#00105b",
+          "surface-container-highest": "#063951",
+          "primary-container": "#00c8fe",
+          "secondary-fixed-dim": "#85cfff",
+          "outline-variant": "#3c494f",
+          "surface-container": "#002234",
+          "on-primary-fixed": "#001f2a",
+          "on-primary": "#003546",
+          "outline": "#86939a",
+          "on-tertiary-container": "#2b3ea3",
+          "on-primary-container": "#005067",
+          "secondary-fixed": "#c7e7ff",
+          "on-tertiary-fixed-variant": "#283ca1",
+          "surface-dim": "#001522",
+          "primary-fixed-dim": "#66d3ff",
+          "surface-tint": "#66d3ff",
+          "tertiary-fixed-dim": "#bac3ff"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "space-sm": "0.75rem",
+          "max-container-width": "96rem",
+          "space-xs": "0.5rem",
+          "space-xl": "2rem",
+          "space-2xl": "3rem",
+          "space-2xs": "0.25rem",
+          "gutter-desktop": "1.5rem",
+          "space-lg": "1.5rem",
+          "sidebar-width-collapsed": "4.5rem",
+          "gutter-mobile": "1rem",
+          "space-3xl": "4rem",
+          "sidebar-width-expanded": "16rem",
+          "space-md": "1rem"
+        },
+        "fontFamily": {
+          "metric-kpi": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-xl-mobile": [
+            "Plus Jakarta Sans"
+          ],
+          "label-badge": [
+            "JetBrains Mono"
+          ],
+          "body-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "body-md": [
+            "Plus Jakarta Sans"
+          ],
+          "display-hero-mobile": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-xl": [
+            "Plus Jakarta Sans"
+          ],
+          "display-hero": [
+            "Plus Jakarta Sans"
+          ],
+          "label-data": [
+            "JetBrains Mono"
+          ],
+          "headline-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-md": [
+            "Plus Jakarta Sans"
+          ],
+          "body-sm": [
+            "Plus Jakarta Sans"
+          ]
+        },
+        "fontSize": {
+          "metric-kpi": [
+            "32px",
+            {
+              "lineHeight": "36px",
+              "letterSpacing": "-0.03em",
+              "fontWeight": "700"
+            }
+          ],
+          "headline-xl-mobile": [
+            "26px",
+            {
+              "lineHeight": "34px",
+              "letterSpacing": "-0.02em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-badge": [
+            "11px",
+            {
+              "lineHeight": "14px",
+              "letterSpacing": "0.02em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-lg": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "letterSpacing": "-0.005em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg": [
+            "24px",
+            {
+              "lineHeight": "32px",
+              "letterSpacing": "-0.02em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-md": [
+            "14px",
+            {
+              "lineHeight": "20px",
+              "letterSpacing": "0em",
+              "fontWeight": "400"
+            }
+          ],
+          "display-hero-mobile": [
+            "32px",
+            {
+              "lineHeight": "40px",
+              "letterSpacing": "-0.02em",
+              "fontWeight": "700"
+            }
+          ],
+          "headline-xl": [
+            "36px",
+            {
+              "lineHeight": "44px",
+              "letterSpacing": "-0.025em",
+              "fontWeight": "700"
+            }
+          ],
+          "display-hero": [
+            "48px",
+            {
+              "lineHeight": "56px",
+              "letterSpacing": "-0.03em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-data": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "500"
+            }
+          ],
+          "headline-sm": [
+            "16px",
+            {
+              "lineHeight": "24px",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-md": [
+            "20px",
+            {
+              "lineHeight": "28px",
+              "letterSpacing": "-0.015em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-sm": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0em",
+              "fontWeight": "400"
+            }
+          ]
+        }
+      },
+    },
+  }
+</script>
+<style>
+  body {
+    background-color: theme('colors.background');
+    color: theme('colors.on-background');
+  }
+  .input-tech {
+    background-color: #0A0E17;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+    transition: all 0.2s ease;
+  }
+  .input-tech:focus {
+    outline: none;
+    border-color: theme('colors.primary-container');
+    box-shadow: 0 0 0 3px rgba(0, 200, 254, 0.25);
+  }
+  .card-tech {
+    background-color: #0E131F;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, #00C8FE 0%, #04AEF2 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    color: #001522;
+  }
+  .glass-card {
+    background-color: rgba(14, 19, 31, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 24px -2px rgba(0, 200, 254, 0.15);
+  }
+  .terminal-window {
+    background: rgba(10, 14, 23, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .terminal-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #a8b4ff; /* tertiary-container */
+  }
+  .pulse-dot {
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+</style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md overflow-x-hidden selection:bg-primary-container selection:text-surface">
+<!-- TopNavBar (Shared Component Translation) -->
+<header class="docked full-width top-0 bg-transparent flex justify-between items-center w-full px-gutter-desktop py-space-md max-w-max-container-width mx-auto border-b border-white/5 absolute z-50">
+<div class="flex items-center gap-4">
+<img alt="AdMetricsPro Logo" class="h-8 w-8 rounded-md" src="https://lh3.googleusercontent.com/aida/AEtjO1Wk8QQU3KqvsD1DUj113o1R4d0cxah-l5o79az17j1Pgmx2zrqXNWcDvw7um8219a3-1QuZOS1BAqPZVT9npgVgSG3YjrlnrJkwqGkQlR741luSXT2JC8oDz3fPWXjwTPKblz7-SfoLGM1DfMcpdyfjNG2KQc1rLhXiSl4HKHnTAtbNAQncyO8Yk_67kSATJDQtz3G9EJy_J9qr6RS1W8E6xu9mq4mFvsVw5Ins-K33ERPnILSPbRIIfgkn"/>
+<span class="font-headline-md text-headline-md font-bold text-primary">AdMetricsPro</span>
+</div>
+<div class="flex items-center gap-6">
+<nav class="hidden md:flex gap-6">
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Support</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Documentation</a>
+</nav>
+<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Already have an account? <span class="text-primary font-medium">Sign in</span></a>
+</div>
+</header>
+<!-- Main Layout -->
+<main class="flex-1 flex flex-col lg:flex-row w-full h-screen pt-20">
+<!-- Left Column: Onboarding Wizard (60%) -->
+<div class="w-full lg:w-3/5 p-8 lg:p-12 xl:p-16 overflow-y-auto bg-surface relative">
+<!-- Radial Glow Background -->
+<div class="absolute top-0 left-0 w-full h-full pointer-events-none" style="background: radial-gradient(circle at top left, rgba(0, 200, 254, 0.05) 0%, transparent 60%);"></div>
+<div class="max-w-3xl mx-auto relative z-10">
+<!-- Header -->
+<div class="mb-10">
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">Tenant Registration &amp; Onboarding</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Configure your dedicated environment and workspace preferences.</p>
+</div>
+<!-- Stepper -->
+<div class="flex items-center mb-12 border-b border-white/10 pb-6">
+<!-- Step 1 -->
+<div class="flex flex-col items-center flex-1 relative">
+<div class="w-8 h-8 rounded-full bg-surface-variant border border-primary/30 flex items-center justify-center text-primary mb-2">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<span class="font-label-data text-label-data text-on-surface-variant">Company Data</span>
+<div class="absolute top-4 left-[50%] w-full h-[1px] bg-white/10"></div>
+</div>
+<!-- Step 2 (Active) -->
+<div class="flex flex-col items-center flex-1 relative">
+<div class="w-8 h-8 rounded-full bg-primary-container/20 border-2 border-primary-container flex items-center justify-center text-primary-container mb-2">
+<span class="font-label-badge text-label-badge">2</span>
+</div>
+<span class="font-label-data text-label-data text-primary-container">Subdomain &amp; Identity</span>
+<div class="absolute top-4 left-[50%] w-full h-[1px] bg-white/10"></div>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center flex-1 relative">
+<div class="w-8 h-8 rounded-full bg-[#0A0E17] border border-white/10 flex items-center justify-center text-on-surface-variant mb-2">
+<span class="font-label-badge text-label-badge">3</span>
+</div>
+<span class="font-label-data text-label-data text-on-surface-variant">Plans &amp; Resources</span>
+<div class="absolute top-4 left-[50%] w-full h-[1px] bg-white/10"></div>
+</div>
+<!-- Step 4 -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-8 h-8 rounded-full bg-[#0A0E17] border border-white/10 flex items-center justify-center text-on-surface-variant mb-2">
+<span class="font-label-badge text-label-badge">4</span>
+</div>
+<span class="font-label-data text-label-data text-on-surface-variant">Admin Account</span>
+</div>
+</div>
+<!-- Form Section -->
+<div class="space-y-8">
+<!-- Company & CNPJ Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-data text-label-data text-on-surface uppercase tracking-wider">Company Name</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant">business</span>
+<input class="input-tech w-full rounded-md py-2.5 pl-10 pr-3 font-body-md text-on-surface" type="text" value="Agência Vanguarda Digital"/>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-data text-label-data text-on-surface uppercase tracking-wider">CNPJ</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant">badge</span>
+<input class="input-tech w-full rounded-md py-2.5 pl-10 pr-10 font-body-md text-on-surface" placeholder="00.000.000/0000-00" type="text" value="12.345.678/0001-90"/>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-emerald-400 text-[20px]">check_circle</span>
+</div>
+</div>
+</div>
+<!-- Subdomain -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<label class="font-label-data text-label-data text-on-surface uppercase tracking-wider">Dedicated Subdomain</label>
+<span class="font-label-badge text-label-badge text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-sm border border-emerald-400/20">Subdomain Available</span>
+</div>
+<div class="flex rounded-md shadow-sm">
+<span class="inline-flex items-center px-4 rounded-l-md border border-r-0 border-white/10 bg-[#0A0E17]/50 font-label-data text-label-data text-on-surface-variant">https://</span>
+<input class="input-tech flex-1 block w-full rounded-none min-w-0 font-body-md text-on-surface py-2.5 px-3 focus:z-10" type="text" value="vanguarda"/>
+<span class="inline-flex items-center px-4 rounded-r-md border border-l-0 border-white/10 bg-[#0A0E17]/50 font-label-data text-label-data text-on-surface-variant">.admetricspro.com.br</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">This will be your dedicated workspace URL.</p>
+</div>
+<!-- Branding -->
+<div class="card-tech rounded-lg p-6 mt-8">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-6 border-b border-white/10 pb-4">White-Label Branding</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Logos -->
+<div>
+<label class="font-label-data text-label-data text-on-surface uppercase tracking-wider mb-3 block">Workspace Logo</label>
+<div class="border border-dashed border-white/20 rounded-lg bg-[#0A0E17] hover:bg-[#0A0E17]/80 transition-colors cursor-pointer p-6 flex flex-col items-center justify-center text-center gap-2 group">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">cloud_upload</span>
+</div>
+<span class="font-label-data text-label-data text-on-surface">Drop SVG or PNG here</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Max 2MB (Dark &amp; Light supported)</span>
+</div>
+</div>
+<!-- Colors -->
+<div>
+<label class="font-label-data text-label-data text-on-surface uppercase tracking-wider mb-3 block">Theme Colors</label>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 rounded-md border border-white/10 bg-[#0A0E17]">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-md bg-[#4f46e5] border border-white/20"></div>
+<span class="font-body-sm text-body-sm text-on-surface">Primary Accent</span>
+</div>
+<span class="font-label-data text-label-data text-on-surface-variant">#4F46E5</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-md border border-white/10 bg-[#0A0E17]">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-md bg-[#38bdf8] border border-white/20"></div>
+<span class="font-body-sm text-body-sm text-on-surface">Secondary Acccent</span>
+</div>
+<span class="font-label-data text-label-data text-on-surface-variant">#38BDF8</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Subscription -->
+<div>
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Subscription Plan</h3>
+<div class="flex items-center bg-[#0A0E17] rounded-full p-1 border border-white/10">
+<button class="font-label-data text-label-data px-4 py-1.5 rounded-full text-on-surface-variant hover:text-on-surface transition-colors">Monthly</button>
+<button class="font-label-data text-label-data px-4 py-1.5 rounded-full bg-surface-variant text-on-surface border border-white/5 flex items-center gap-2">
+                  Annual <span class="text-primary-container text-[10px]">-20%</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Starter -->
+<div class="card-tech rounded-lg p-5 border border-white/10 hover:border-white/30 transition-colors cursor-pointer flex flex-col relative">
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">Starter</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Basic analytics</p>
+<div class="mt-auto">
+<span class="font-headline-lg text-headline-lg text-on-surface">$99</span><span class="font-body-sm text-body-sm text-on-surface-variant">/mo</span>
+</div>
+</div>
+<!-- Pro (Selected) -->
+<div class="card-tech rounded-lg p-5 border-2 border-primary-container relative flex flex-col cursor-pointer" style="box-shadow: 0 0 20px rgba(0, 200, 254, 0.15), inset 0 1px 0 rgba(255,255,255,0.1);">
+<div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary-container text-[#001522] font-label-badge text-label-badge px-2 py-0.5 rounded-full">POPULAR</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">Pro</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Full multi-channel</p>
+<div class="mt-auto">
+<span class="font-headline-lg text-headline-lg text-on-surface">$299</span><span class="font-body-sm text-body-sm text-on-surface-variant">/mo</span>
+</div>
+<div class="absolute top-4 right-4 w-5 h-5 rounded-full bg-primary-container flex items-center justify-center text-[#001522]">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+</div>
+<!-- Enterprise -->
+<div class="card-tech rounded-lg p-5 border border-white/10 hover:border-white/30 transition-colors cursor-pointer flex flex-col relative opacity-70">
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">Enterprise</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Custom deployment</p>
+<div class="mt-auto">
+<span class="font-headline-lg text-headline-lg text-on-surface">Custom</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="pt-8 border-t border-white/10 flex items-center justify-between mt-12">
+<button class="font-label-data text-label-data text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+              Back
+            </button>
+<button class="btn-primary font-headline-sm text-headline-sm font-semibold px-6 py-3 rounded-md flex items-center gap-2 transition-transform hover:scale-[1.02]">
+              Complete Registration &amp; Provision Database
+              <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Live Preview (40%) -->
+<div class="hidden lg:flex w-2/5 bg-[#080B11] border-l border-white/5 relative items-center justify-center p-8 overflow-hidden">
+<!-- Shader/Animation Background -->
+
+<!-- Preview Container -->
+<div class="relative w-full max-w-md z-10 flex flex-col">
+<!-- Glassmorphic Card -->
+<div class="glass-card rounded-xl overflow-hidden flex flex-col">
+<!-- Card Header -->
+<div class="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-emerald-400 pulse-dot"></div>
+<span class="font-label-data text-label-data text-on-surface">Live Tenant Preview</span>
+</div>
+<div class="bg-primary-container/20 text-primary-container font-label-badge text-label-badge px-2 py-1 rounded-sm border border-primary-container/30">
+              PRO PLAN
+            </div>
+</div>
+<!-- Browser Bar Mockup -->
+<div class="bg-[#0A0E17] p-3 border-b border-white/10 flex items-center gap-4">
+<div class="flex gap-1.5">
+<div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+<div class="w-3 h-3 rounded-full bg-amber-500/50"></div>
+<div class="w-3 h-3 rounded-full bg-green-500/50"></div>
+</div>
+<div class="flex-1 bg-white/5 rounded-md py-1.5 px-3 flex items-center gap-2 border border-white/5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">lock</span>
+<span class="font-label-data text-label-data text-on-surface-variant truncate">https://vanguarda.admetricspro.com.br</span>
+</div>
+</div>
+<!-- Mini Dashboard Content -->
+<div class="p-6 bg-surface flex-1">
+<!-- Mock Top Bar -->
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-2">
+<!-- User Logo Preview -->
+<div class="w-8 h-8 rounded bg-[#4f46e5] flex items-center justify-center font-headline-sm text-headline-sm font-bold text-white">V</div>
+<div class="h-4 w-24 bg-white/10 rounded"></div>
+</div>
+<div class="flex gap-2">
+<div class="w-6 h-6 rounded-full bg-white/5"></div>
+<div class="w-6 h-6 rounded-full bg-white/5"></div>
+</div>
+</div>
+<!-- Mock KPI Cards -->
+<div class="grid grid-cols-2 gap-3 mb-6">
+<div class="card-tech rounded-md p-3">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-[14px] text-blue-400">campaign</span>
+<div class="h-2 w-12 bg-white/10 rounded"></div>
+</div>
+<div class="font-metric-kpi text-headline-md text-on-surface mb-1">2.4x</div>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-400 w-[60%]"></div>
+</div>
+</div>
+<div class="card-tech rounded-md p-3">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-[14px] text-red-400">trending_up</span>
+<div class="h-2 w-12 bg-white/10 rounded"></div>
+</div>
+<div class="font-metric-kpi text-headline-md text-on-surface mb-1">$12k</div>
+<div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-[#4f46e5] w-[80%]"></div>
+</div>
+</div>
+</div>
+<!-- Mock Chart Area -->
+<div class="card-tech rounded-md h-24 p-3 flex flex-col justify-end relative overflow-hidden">
+<div class="absolute top-3 left-3 h-2 w-20 bg-white/10 rounded"></div>
+<!-- Simulated Chart Bars -->
+<div class="flex items-end gap-1 h-12 w-full mt-auto opacity-50">
+<div class="flex-1 bg-[#4f46e5] h-[30%] rounded-t-sm"></div>
+<div class="flex-1 bg-[#38bdf8] h-[50%] rounded-t-sm"></div>
+<div class="flex-1 bg-[#4f46e5] h-[40%] rounded-t-sm"></div>
+<div class="flex-1 bg-[#38bdf8] h-[70%] rounded-t-sm"></div>
+<div class="flex-1 bg-[#4f46e5] h-[60%] rounded-t-sm"></div>
+<div class="flex-1 bg-[#38bdf8] h-[90%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container h-[100%] rounded-t-sm" style="box-shadow: 0 0 10px rgba(0,200,254,0.5);"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Trust Seals -->
+<div class="mt-6 flex flex-wrap items-center justify-center gap-4 text-on-surface-variant font-label-data text-label-data">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">database</span>
+<span>Dedicated SQL Server</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">enhanced_encryption</span>
+<span>AES-256</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>LGPD / GDPR</span>
+</div>
+</div>
+<!-- Terminal Console -->
+<div class="absolute -bottom-32 left-0 w-full terminal-window rounded-t-lg p-4 h-32 flex flex-col shadow-2xl transition-transform duration-500 transform translate-y-0 group hover:-translate-y-4">
+<div class="flex items-center gap-2 mb-2 border-b border-white/5 pb-2">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">terminal</span>
+<span class="font-label-badge text-label-badge text-on-surface-variant">Provisioning Status</span>
+</div>
+<div class="terminal-text flex flex-col gap-1 overflow-hidden">
+<div class="text-emerald-400">[10:00:01] Validating domain 'vanguarda'... OK</div>
+<div class="text-emerald-400">[10:00:02] Allocating dedicated schema... OK</div>
+<div class="text-amber-400">[10:00:03] Awaiting user confirmation to spin up resources...</div>
+<div class="animate-pulse">_</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

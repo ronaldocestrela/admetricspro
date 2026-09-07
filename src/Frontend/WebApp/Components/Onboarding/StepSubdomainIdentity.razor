@@ -1,0 +1,133 @@
+@namespace WebApp.Components.Onboarding
+@using WebApp.Models
+@using WebApp.Services
+@inject ITenantOnboardingClientService OnboardingClientService
+
+<div class="step-heading">
+    <h2>Subdomínio Dedicado & Marca</h2>
+    <p>Defina o endereço exclusivo de isolamento e a personalização White-Label da sua organização.</p>
+</div>
+
+<div class="form-group">
+    <label class="form-label" for="subdomain-input">Subdomínio de Acesso Exclusivo *</label>
+    <div class="subdomain-group">
+        <input id="subdomain-input"
+               type="text"
+               class="subdomain-input"
+               placeholder="sua-empresa"
+               @bind="Model.Subdomain"
+               @bind:after="CheckSubdomainAsync" />
+        <span class="subdomain-suffix">.admetricspro.com.br</span>
+    </div>
+
+    @if (_isCheckingSubdomain)
+    {
+        <div class="status-pill warning">
+            <span>Checando disponibilidade...</span>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_subdomainStatusMessage))
+    {
+        <div class="status-pill @(_isSubdomainAvailable ? "success" : "error")">
+            <span>@(_isSubdomainAvailable ? "✓" : "⚠") @_subdomainStatusMessage</span>
+        </div>
+    }
+</div>
+
+<div class="form-group">
+    <label class="form-label" for="custom-domain-input">Domínio Personalizado CNAME (Opcional)</label>
+    <div class="input-with-icon">
+        <span class="input-icon">🌐</span>
+        <input id="custom-domain-input"
+               type="text"
+               class="custom-input"
+               placeholder="Ex.: analytics.suaempresa.com.br"
+               @bind="Model.CustomDomain"
+               @bind:after="OnFieldChanged" />
+    </div>
+    <small style="color: #64748b; font-size: 0.78rem; margin-top: 0.25rem;">
+        Permite que seus clientes acessem relatórios diretamente em seu domínio próprio corporativo.
+    </small>
+</div>
+
+<div class="form-group">
+    <label class="form-label">Paleta de Cores da Marca (White-Label)</label>
+    <div class="color-swatches-grid">
+        <div class="color-swatch-item">
+            <input type="color"
+                   id="primary-color"
+                   style="width: 28px; height: 28px; border: none; background: transparent; cursor: pointer;"
+                   @bind="Model.PrimaryColor"
+                   @bind:after="OnFieldChanged" />
+            <label for="primary-color" class="color-hex-text">Primária: @Model.PrimaryColor</label>
+        </div>
+
+        <div class="color-swatch-item">
+            <input type="color"
+                   id="secondary-color"
+                   style="width: 28px; height: 28px; border: none; background: transparent; cursor: pointer;"
+                   @bind="Model.SecondaryColor"
+                   @bind:after="OnFieldChanged" />
+            <label for="secondary-color" class="color-hex-text">Secundária: @Model.SecondaryColor</label>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TenantOnboardingFormModel Model { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnStateChanged { get; set; }
+
+    private bool _isCheckingSubdomain;
+    private bool _isSubdomainAvailable = true;
+    private string? _subdomainStatusMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Model.Subdomain))
+        {
+            await CheckSubdomainAsync();
+        }
+    }
+
+    private async Task CheckSubdomainAsync()
+    {
+        var sanitized = Model.GetSanitizedSubdomain();
+        if (string.IsNullOrWhiteSpace(sanitized) || sanitized.Length < 3)
+        {
+            _subdomainStatusMessage = "Informe pelo menos 3 caracteres.";
+            _isSubdomainAvailable = false;
+            await OnFieldChanged();
+            return;
+        }
+
+        _isCheckingSubdomain = true;
+        var checkResult = await OnboardingClientService.CheckSubdomainAvailabilityAsync(sanitized);
+        _isCheckingSubdomain = false;
+
+        if (checkResult.IsSuccess && checkResult.Value.IsAvailable)
+        {
+            _isSubdomainAvailable = true;
+            _subdomainStatusMessage = "Subdomínio reservado para sua instância!";
+        }
+        else
+        {
+            _isSubdomainAvailable = false;
+            _subdomainStatusMessage = checkResult.IsSuccess 
+                ? checkResult.Value.Reason 
+                : "Não foi possível validar o subdomínio.";
+        }
+
+        await OnFieldChanged();
+    }
+
+    private async Task OnFieldChanged()
+    {
+        if (OnStateChanged.HasDelegate)
+        {
+            await OnStateChanged.InvokeAsync();
+        }
+    }
+}

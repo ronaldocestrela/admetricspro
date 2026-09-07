@@ -1,0 +1,85 @@
+@namespace WebApp.Components.Onboarding
+@using WebApp.Models
+
+<div class="step-heading">
+    <h2>Dados Corporativos & Fiscais</h2>
+    <p>Identifique sua organização para dimensionamento da infraestrutura dedicada do AdMetricsPro.</p>
+</div>
+
+<div class="form-group">
+    <label class="form-label" for="company-name">Razão Social ou Nome Fantasia *</label>
+    <div class="input-with-icon">
+        <span class="input-icon">🏢</span>
+        <input id="company-name"
+               type="text"
+               class="custom-input"
+               placeholder="Ex.: Agência Vanguarda Digital Ltda"
+               @bind="Model.CompanyName"
+               @bind:after="OnFieldChanged" />
+    </div>
+</div>
+
+<div class="form-row">
+    <div class="form-group">
+        <label class="form-label" for="company-cnpj">CNPJ da Empresa (14 dígitos) *</label>
+        <div class="input-with-icon">
+            <span class="input-icon">📋</span>
+            <input id="company-cnpj"
+                   type="text"
+                   class="custom-input"
+                   placeholder="00.000.000/0000-00"
+                   maxlength="18"
+                   @bind="Model.Cnpj"
+                   @bind:after="OnFieldChanged" />
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="company-segment">Segmento de Mercado</label>
+        <select id="company-segment"
+                class="custom-input no-icon"
+                @bind="Model.Segment"
+                @bind:after="OnFieldChanged">
+            <option value="Agência de Performance">Agência de Tráfego / Performance</option>
+            <option value="E-commerce / D2C">E-commerce / D2C</option>
+            <option value="Infoprodutos / Lançamentos">Infoprodutos / Lançamentos</option>
+            <option value="Empresa B2B / SaaS">Empresa B2B / SaaS</option>
+            <option value="Outro">Outro Segmento</option>
+        </select>
+    </div>
+</div>
+
+<div class="form-group">
+    <label class="form-label" for="ad-spend-range">Investimento Mensal Médio em Tráfego Pago</label>
+    <select id="ad-spend-range"
+            class="custom-input no-icon"
+            @bind="Model.MonthlyAdSpendRange"
+            @bind:after="OnFieldChanged">
+        <option value="Até R$ 20.000 / mês">Até R$ 20.000 / mês</option>
+        <option value="R$ 20.000 a R$ 100.000 / mês">R$ 20.000 a R$ 100.000 / mês</option>
+        <option value="R$ 100.000 a R$ 500.000 / mês">R$ 100.000 a R$ 500.000 / mês</option>
+        <option value="Acima de R$ 500.000 / mês">Acima de R$ 500.000 / mês</option>
+    </select>
+</div>
+
+@code {
+    /// <summary>
+    /// Modelo de dados compartilhado do formulário de onboarding.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public TenantOnboardingFormModel Model { get; set; } = null!;
+
+    /// <summary>
+    /// Callback disparado quando campos são atualizados para sincronizar com o live preview.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnStateChanged { get; set; }
+
+    private async Task OnFieldChanged()
+    {
+        if (OnStateChanged.HasDelegate)
+        {
+            await OnStateChanged.InvokeAsync();
+        }
+    }
+}
