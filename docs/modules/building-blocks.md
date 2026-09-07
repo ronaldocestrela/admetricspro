@@ -249,11 +249,19 @@ Este subsistema gerencia a extração, identificação e propagação do inquili
 - Retém a string decifrada por até 30 minutos de inatividade (Sliding) e 4 horas absolutas.
 
 ### 9.3 `TenantDbContext` & `ITenantDbContextFactory<TContext>` (`BuildingBlocks.Infrastructure.Persistence`)
-- **`TenantDbContext`**: Contexto base para bancos de dados isolados por inquilino, contendo a tabela de verificação `TenantSchemaMarkers`.
+- **`TenantDbContext`**: Contexto base para bancos de dados isolados por inquilino, contendo as tabelas operacionais fundamentais:
+  - `TenantSchemaMarkers`: Tabela de marcação e validação do pipeline de migração do tenant.
+  - `TenantUsers`: Usuários cadastrados no inquilino (`TenantUser`), incluindo o proprietário (*Owner*), administradores, líderes de squad, gestores de mídia, analistas e convidados (definidos pelo enum `TenantRole`).
+  - `TenantBranding`: Identidade visual customizada do tenant (`TenantBranding`), contendo paleta de cores primária e secundária (hexadecimal), URLs de logomarca (temas claro e escuro) e favicon.
 - **`ITenantDbContextFactory<TContext>`**: Fábrica dinâmica que instancia DbContexts operacionais conectando ao banco correto com 100% de suporte assíncrono:
   - `Task<Result<TContext>> CreateDbContextAsync(CancellationToken cancellationToken = default);`
   - `Task<Result<TContext>> CreateDbContextAsync(Guid tenantId, CancellationToken cancellationToken = default);`
 - **`ITenantConnectionHolder`**: Armazenamento com escopo de requisição (`Scoped`) para reaproveitamento imediato da connection string no mesmo ciclo HTTP.
+
+### 9.4 Entidades Operacionais do Tenant (`BuildingBlocks.Domain.Tenants`)
+- **`TenantRole`**: Enum que padroniza os níveis de acesso internos (`Owner = 1`, `Admin = 2`, `SquadLeader = 3`, `MediaManager = 4`, `Analyst = 5`, `Guest = 6`).
+- **`TenantUser`**: Agregado de usuário operacional do tenant, governado pelo padrão estrito `Result<T>`, validando tamanho, unicidade de e-mail e invariantes cadastrais.
+- **`TenantBranding`**: Entidade que armazena parâmetros visuais de White-Label com validações de regex para cores hexadecimais e URLs HTTP/HTTPS absolutas.
 
 ---
 

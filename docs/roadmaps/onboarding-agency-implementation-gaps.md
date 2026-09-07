@@ -52,10 +52,11 @@ graph TD
 3. [x] **Mapeamento EF Core:** `TenantEntityTypeConfiguration.cs` atualizado no `Master.Infrastructure` com limites estritos (`HasMaxLength`) e nulabilidade; migração `20260907100000_Add_TenantOnboardingProfileAndBranding` criada e `MasterDbContextModelSnapshot.cs` sincronizado.
 4. [x] **Atualização do Provisioning:** `ProvisionTenantCommand` e `TenantProvisioningService` atualizados para gravar esses metadados no `MasterDb`; `RegisterTenantOnboardingCommandHandler` atualizado para repassar 100% dos dados coletados no formulário de onboarding. Suíte de testes de compliance arquitetural e XML executada com sucesso.
 
-#### Subfase 1.2: Modelagem Inicial do Banco do Tenant (`TenantDbContext`)
-1. **Entidade `TenantUser`:** Criar entidade com `Id`, `FullName`, `Email`, `PhoneNumber`, `PasswordHash`, `Role` (enum `TenantRole`: Owner, Admin, SquadLeader, MediaManager, Analyst, Guest), `IsActive`, `CreatedAtUtc`.
-2. **Entidade `TenantBranding`:** Criar entidade para guardar paleta de cores (`PrimaryColor`, `SecondaryColor`), URL de logomarca claro/escuro e favicon.
-3. **Mapeamento no `TenantDbContext`:** Configurar tabelas `TenantUsers` e `TenantBranding` no EF Core e atualizar a migração base do banco de tenant.
+#### Subfase 1.2: Modelagem Inicial do Banco do Tenant (`TenantDbContext`) — [CONCLUÍDO]
+1. [x] **TDD (Red):** Testes unitários implementados em `TenantUserTests.cs` e `TenantBrandingTests.cs` cobrindo todas as invariantes e validações das entidades (formatos hexadecimais, e-mail regex, restrições de tamanho, hashing seguro e ciclo de ativação). Testes de modelo em `TenantDbContextModelTests.cs` cobrindo restrições de colunas, índices únicos e conversões.
+2. [x] **TDD (Green):** Entidades `TenantUser`, `TenantBranding` e enum `TenantRole` criadas no Kernel compartilhado (`BuildingBlocks.Domain/Tenants`) seguindo o padrão `Result<T>` sem exceptions e documentação XML `<summary>` integral.
+3. [x] **Mapeamento EF Core:** Configurações fluentes `TenantUserEntityTypeConfiguration.cs` e `TenantBrandingEntityTypeConfiguration.cs` adicionadas em `BuildingBlocks.Infrastructure`, e `DbSet` correspondentes expostos no `TenantDbContext.cs`.
+4. [x] **Migração Operacional:** Migração `20260907110000_Add_TenantUserAndTenantBranding` gerada em `Master.Infrastructure` e `TenantOperationalDbContextModelSnapshot.cs` sincronizado para aplicação automática durante o provisionamento. 100% dos 575 testes passando com sucesso.
 
 #### Subfase 1.3: Semeador Automático no Provisionamento
 1. **TDD (Red):** Testar o método `SeedTenantInitialAdminAsync` garantindo que o usuário *Owner* seja criado no banco dedicado recém-provisionado com hash seguro (PBKDF2/Argon2 via `IPasswordHasher`).

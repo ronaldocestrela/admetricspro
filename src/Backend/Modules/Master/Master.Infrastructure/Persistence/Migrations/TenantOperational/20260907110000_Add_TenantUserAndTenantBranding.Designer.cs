@@ -4,6 +4,7 @@ using Master.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Master.Infrastructure.Persistence.Migrations.TenantOperational;
 
 [DbContext(typeof(TenantOperationalDbContext))]
-partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
+[Migration("20260907110000_Add_TenantUserAndTenantBranding")]
+partial class Add_TenantUserAndTenantBranding
 {
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder

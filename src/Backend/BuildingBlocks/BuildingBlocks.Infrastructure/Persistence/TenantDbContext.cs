@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 
 namespace BuildingBlocks.Infrastructure.Persistence;
@@ -21,6 +22,16 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<TenantSchemaMarker> TenantSchemaMarkers => Set<TenantSchemaMarker>();
 
+    /// <summary>
+    /// Gets the operational tenant users table.
+    /// </summary>
+    public DbSet<TenantUser> TenantUsers => Set<TenantUser>();
+
+    /// <summary>
+    /// Gets the operational tenant branding configuration table.
+    /// </summary>
+    public DbSet<TenantBranding> TenantBranding => Set<TenantBranding>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,5 +43,8 @@ public class TenantDbContext : DbContext
             builder.HasKey(marker => marker.Id);
             builder.Property(marker => marker.Name).HasMaxLength(200).IsRequired();
         });
+
+        modelBuilder.ApplyConfiguration(new TenantUserEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new TenantBrandingEntityTypeConfiguration());
     }
 }
