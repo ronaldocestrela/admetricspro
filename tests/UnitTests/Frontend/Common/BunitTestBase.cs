@@ -16,6 +16,11 @@ public abstract class BunitTestBase : BunitContext
     protected TenantStateProvider TenantStateProvider { get; }
 
     /// <summary>
+    /// Instância do provedor de estado de sessão do tenant utilizada nos testes de renderização.
+    /// </summary>
+    protected TenantSessionStateProvider TenantSessionStateProvider { get; }
+
+    /// <summary>
     /// Instância do provedor de estado de impersonation utilizada nos testes.
     /// </summary>
     protected ImpersonationStateProvider ImpersonationStateProvider { get; }
@@ -31,10 +36,12 @@ public abstract class BunitTestBase : BunitContext
     protected BunitTestBase()
     {
         TenantStateProvider = new TenantStateProvider();
+        TenantSessionStateProvider = new TenantSessionStateProvider(TenantStateProvider);
         ImpersonationStateProvider = new ImpersonationStateProvider();
         ImpersonationClientService = NSubstitute.Substitute.For<WebApp.Services.IImpersonationClientService>();
 
         Services.AddSingleton<ITenantStateProvider>(TenantStateProvider);
+        Services.AddSingleton<ITenantSessionStateProvider>(TenantSessionStateProvider);
         Services.AddSingleton<IImpersonationStateProvider>(ImpersonationStateProvider);
         Services.AddSingleton<WebApp.Services.IImpersonationClientService>(ImpersonationClientService);
     }

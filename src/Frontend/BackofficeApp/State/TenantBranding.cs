@@ -40,6 +40,6 @@ public record TenantBranding(
     /// <returns>Bloco de estilos formatado com as variáveis CSS de marca.</returns>
     public string ToCssVariables()
     {
-        return $"--tenant-primary: {PrimaryColor}; --tenant-secondary: {SecondaryColor}; --tenant-accent: {AccentColor};";
+        return $"--tenant-primary-color: {PrimaryColor}; --tenant-primary: {PrimaryColor}; --tenant-secondary-color: {SecondaryColor}; --tenant-secondary: {SecondaryColor}; --tenant-accent-color: {AccentColor}; --tenant-accent: {AccentColor};";
     }
 }

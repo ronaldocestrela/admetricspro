@@ -1,0 +1,137 @@
+@namespace WebApp.Components.Layout
+@inject ITenantStateProvider TenantStateProvider
+
+<aside class="tenant-sidebar @(IsOpen ? "open" : "")">
+    <div class="sidebar-header">
+        <div class="sidebar-brand">
+            @if (!string.IsNullOrEmpty(TenantStateProvider.CurrentTenant.Branding.LogoUrl))
+            {
+                <img src="@TenantStateProvider.CurrentTenant.Branding.LogoUrl" 
+                     alt="@TenantStateProvider.CurrentTenant.Name" 
+                     class="sidebar-logo" />
+            }
+            else
+            {
+                <div class="sidebar-initials-badge">
+                    @GetInitials(TenantStateProvider.CurrentTenant.Name)
+                </div>
+            }
+            <span class="sidebar-brand-name" title="@TenantStateProvider.CurrentTenant.Name">
+                @TenantStateProvider.CurrentTenant.Name
+            </span>
+        </div>
+
+        <button type="button" class="sidebar-close-btn" @onclick="HandleClose" aria-label="Fechar menu de navegação">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+
+    <div class="sidebar-scroll-area">
+        <nav class="sidebar-navigation">
+            <div class="nav-section-label">Central Operacional</div>
+            <ul class="nav-links-list">
+                <li>
+                    <NavLink href="dashboard" Match="NavLinkMatch.All" class="nav-link-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        <span class="nav-link-text">Visão Geral</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="workspaces" class="nav-link-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span class="nav-link-text">Clientes (Workspaces)</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="squads" class="nav-link-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span class="nav-link-text">Times (Squads)</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="integrations" class="nav-link-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                        <span class="nav-link-text">Integrações de Anúncios</span>
+                    </NavLink>
+                </li>
+            </ul>
+
+            <div class="nav-section-label">Governança & Marca</div>
+            <ul class="nav-links-list">
+                <li>
+                    <NavLink href="settings/white-label" class="nav-link-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        <span class="nav-link-text">Configurações White-Label</span>
+                    </NavLink>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <div class="sidebar-footer">
+        <div class="tenant-status-pill">
+            <span class="status-indicator"></span>
+            <span class="status-text">Ambiente Isolado</span>
+        </div>
+    </div>
+</aside>
+
+@if (IsOpen)
+{
+    <div class="sidebar-backdrop" @onclick="HandleClose"></div>
+}
+
+@code {
+    /// <summary>
+    /// Indica se a barra lateral está aberta em modo móvel/responsivo.
+    /// </summary>
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    /// <summary>
+    /// Callback disparado para fechar a barra lateral.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private async Task HandleClose()
+    {
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "AD";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+            return parts[0].Length >= 2 ? parts[0][..2].ToUpperInvariant() : parts[0].ToUpperInvariant();
+
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+}

@@ -1,0 +1,97 @@
+@namespace WebApp.Components.Layout
+@inject ITenantStateProvider TenantStateProvider
+@inject ITenantSessionStateProvider TenantSessionStateProvider
+@inject NavigationManager NavigationManager
+
+<header class="tenant-top-header">
+    <div class="header-left-section">
+        <button type="button" class="tenant-mobile-toggle" @onclick="HandleToggle" aria-label="Alternar navegação móvel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+
+        <a href="dashboard" class="tenant-brand-wrapper">
+            @if (!string.IsNullOrEmpty(TenantStateProvider.CurrentTenant.Branding.LogoUrl))
+            {
+                <img src="@TenantStateProvider.CurrentTenant.Branding.LogoUrl" 
+                     alt="@TenantStateProvider.CurrentTenant.Name" 
+                     class="tenant-brand-logo" />
+            }
+            else
+            {
+                <span class="tenant-brand-initials">
+                    @GetInitials(TenantStateProvider.CurrentTenant.Name)
+                </span>
+            }
+            <span class="tenant-brand-title">@TenantStateProvider.CurrentTenant.Name</span>
+        </a>
+    </div>
+
+    <div class="header-right-section">
+        <div class="user-identity-widget">
+            <div class="user-avatar-circle" title="@UserName">
+                @GetUserInitial()
+            </div>
+            <div class="user-meta-info">
+                <span class="user-full-name">@UserName</span>
+                <span class="user-role-badge">@UserRole</span>
+            </div>
+        </div>
+
+        <button type="button" class="logout-btn" @onclick="HandleLogout" title="Encerrar Sessão">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+        </button>
+    </div>
+</header>
+
+@code {
+    /// <summary>
+    /// EventCallback acionado ao clicar no botão de alternância da barra lateral.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnToggleSidebar { get; set; }
+
+    private string UserName => TenantSessionStateProvider.CurrentSession?.FullName ?? "Gestor";
+    private string UserRole => TenantSessionStateProvider.CurrentSession?.Role ?? "Gestor";
+
+    private async Task HandleToggle()
+    {
+        if (OnToggleSidebar.HasDelegate)
+        {
+            await OnToggleSidebar.InvokeAsync();
+        }
+    }
+
+    private void HandleLogout()
+    {
+        TenantSessionStateProvider.ClearSession();
+        NavigationManager.NavigateTo("/login");
+    }
+
+    private string GetUserInitial()
+    {
+        if (string.IsNullOrWhiteSpace(UserName))
+            return "U";
+
+        return UserName[0].ToString().ToUpperInvariant();
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "AD";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+            return parts[0].Length >= 2 ? parts[0][..2].ToUpperInvariant() : parts[0].ToUpperInvariant();
+
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+}

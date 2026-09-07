@@ -1,0 +1,61 @@
+@namespace WebApp.Components.Layout
+
+@if (_isVisible)
+{
+    <div class="tenant-trial-banner" role="alert">
+        <div class="trial-banner-content">
+            <div class="trial-info-group">
+                <span class="trial-badge">
+                    <svg class="trial-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Trial
+                </span>
+                <span class="trial-message">
+                    Ambiente de Testes (Trial) — @DaysRemaining dias restantes.
+                </span>
+            </div>
+
+            <div class="trial-actions-group">
+                <a href="@ActivationUrl" class="trial-cta-button">
+                    <span>Ativar Plano Definitivo</span>
+                    <svg class="cta-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </a>
+                <button type="button" class="trial-dismiss-button" @onclick="Dismiss" aria-label="Dispensar aviso de teste">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isVisible = true;
+
+    /// <summary>
+    /// Quantidade de dias restantes no período de testes (Trial) do inquilino. Padrão: 14 dias.
+    /// </summary>
+    [Parameter]
+    public int DaysRemaining { get; set; } = 14;
+
+    /// <summary>
+    /// Rota de destino para a contratação ou ativação definitiva do plano.
+    /// </summary>
+    [Parameter]
+    public string ActivationUrl { get; set; } = "/settings/billing";
+
+    /// <summary>
+    /// Oculta visualmente o banner no escopo da sessão atual do circuito.
+    /// </summary>
+    private void Dismiss()
+    {
+        _isVisible = false;
+    }
+}

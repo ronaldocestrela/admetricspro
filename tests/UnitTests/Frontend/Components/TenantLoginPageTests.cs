@@ -21,16 +21,10 @@ namespace UnitTests.Frontend.Components;
 public sealed class TenantLoginPageTests : BunitTestBase
 {
     private readonly ITenantAuthClientService _authClientService = Substitute.For<ITenantAuthClientService>();
-    private readonly TenantStateProvider _tenantStateProvider = new();
-    private readonly TenantSessionStateProvider _tenantSessionStateProvider;
 
     public TenantLoginPageTests()
     {
-        _tenantSessionStateProvider = new TenantSessionStateProvider(_tenantStateProvider);
-
         Services.AddSingleton<ITenantAuthClientService>(_authClientService);
-        Services.AddSingleton<ITenantStateProvider>(_tenantStateProvider);
-        Services.AddSingleton<ITenantSessionStateProvider>(_tenantSessionStateProvider);
     }
 
     /// <summary>
@@ -131,8 +125,8 @@ public sealed class TenantLoginPageTests : BunitTestBase
         submitButton.Click();
 
         // Assert
-        _tenantSessionStateProvider.IsAuthenticated.Should().BeTrue();
-        _tenantSessionStateProvider.CurrentSession.Should().Be(userDto);
+        TenantSessionStateProvider.IsAuthenticated.Should().BeTrue();
+        TenantSessionStateProvider.CurrentSession.Should().Be(userDto);
 
         var nav = Services.GetRequiredService<NavigationManager>();
         nav.Uri.Should().Contain("/dashboard");

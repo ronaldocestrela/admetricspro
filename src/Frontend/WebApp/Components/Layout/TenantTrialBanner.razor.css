@@ -1,0 +1,125 @@
+.tenant-trial-banner {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 50%, rgba(15, 23, 42, 0.4) 100%);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+    backdrop-filter: blur(12px);
+    padding: 0.625rem 1.5rem;
+    position: relative;
+    z-index: 40;
+    transition: all 0.3s ease;
+}
+
+.trial-banner-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.trial-info-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.trial-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+}
+
+.trial-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+.trial-message {
+    color: #f3f4f6;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.trial-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.trial-cta-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #0f172a;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 0.375rem 0.875rem;
+    border-radius: 6px;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+    transition: all 0.2s ease;
+}
+
+.trial-cta-button:hover {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #020617;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.cta-arrow-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    transition: transform 0.2s ease;
+}
+
+.trial-cta-button:hover .cta-arrow-icon {
+    transform: translateX(2px);
+}
+
+.trial-dismiss-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 0.375rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.trial-dismiss-button svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.trial-dismiss-button:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 640px) {
+    .trial-banner-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .trial-actions-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

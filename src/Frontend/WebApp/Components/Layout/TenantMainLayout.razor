@@ -1,0 +1,57 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@namespace WebApp.Components.Layout
+@inject ITenantStateProvider TenantStateProvider
+@inject ITenantSessionStateProvider TenantSessionStateProvider
+
+<div class="tenant-app-shell" style="@TenantStateProvider.CurrentTenant.Branding.ToCssVariables()">
+    <TenantTopHeader OnToggleSidebar="ToggleSidebar" />
+    <TenantTrialBanner DaysRemaining="14" />
+
+    <div class="tenant-layout-body">
+        <TenantSidebar IsOpen="_isSidebarOpen" OnClose="CloseSidebar" />
+
+        <main class="tenant-main-content">
+            @Body
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Ocorreu um erro inesperado no processamento da página.
+    <a href="." class="reload">Recarregar</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool _isSidebarOpen;
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        TenantStateProvider.OnTenantChanged += HandleStateChanged;
+        TenantSessionStateProvider.OnSessionChanged += HandleStateChanged;
+    }
+
+    private void ToggleSidebar()
+    {
+        _isSidebarOpen = !_isSidebarOpen;
+    }
+
+    private void CloseSidebar()
+    {
+        _isSidebarOpen = false;
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantStateProvider.OnTenantChanged -= HandleStateChanged;
+        TenantSessionStateProvider.OnSessionChanged -= HandleStateChanged;
+    }
+}

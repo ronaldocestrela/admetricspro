@@ -91,14 +91,16 @@ graph TD
 
 **Objetivo:** Eliminar o erro 404 pós-onboarding e fornecer a casca visual da aplicação operacional com identidade visual dinâmica.
 
-#### Subfase 3.1: Layout Base do Tenant (`TenantMainLayout.razor`)
-1. **Tema Dinâmico (White-Label CSS):**
-   * Injetar variáveis CSS globais (`--tenant-primary-color`, `--tenant-secondary-color`) extraídas do `TenantBranding` da sessão.
-   * Renderizar logomarca customizada ou fallback com iniciais da agência na sidebar/topbar.
-2. **Barra de Navegação Operacional:**
-   * Itens: Visão Geral (Dashboard), Clientes (Workspaces), Times (Squads), Integrações de Anúncios, Configurações White-Label.
-3. **Banner Informativo de Trial:**
-   * Alerta superior amigável: *"Ambiente de Testes (Trial) — 14 dias restantes. [Ativar Plano Definitivo]"*.
+#### Subfase 3.1: Layout Base do Tenant (`TenantMainLayout.razor`) — [CONCLUÍDO]
+1. [x] **Tema Dinâmico (White-Label CSS):**
+   * Variáveis CSS globais (`--tenant-primary-color`, `--tenant-secondary-color`, `--tenant-accent-color`) injetadas no elemento raiz do layout a partir do `TenantBranding` do estado de sessão.
+   * Renderização de logomarca customizada quando presente ou monograma de fallback com as iniciais da agência na sidebar e topbar.
+2. [x] **Barra de Navegação Operacional (`TenantSidebar.razor`):**
+   * Itens mandatários implementados: Visão Geral (`/dashboard`), Clientes (`/workspaces`), Times (`/squads`), Integrações de Anúncios (`/integrations`), Configurações White-Label (`/settings/white-label`).
+   * Suporte a drawer móvel com overlay, transições CSS e botão toggle no cabeçalho (`TenantTopHeader.razor`).
+3. [x] **Banner Informativo de Trial (`TenantTrialBanner.razor`):**
+   * Alerta superior amigável: *"Ambiente de Testes (Trial) — 14 dias restantes. [Ativar Plano Definitivo]"*, com ação de upgrade e capacidade de dispensar na sessão.
+4. [x] **TDD & Cobertura bUnit:** 11 novos testes criados em `TenantMainLayoutTests`, `TenantSidebarTests` e `TenantTrialBannerTests`; 100% de testes passando. Documentação viva registrada em `/docs/modules/tenants-dashboard-shell.md`.
 
 #### Subfase 3.2: Página de Visão Geral (`/dashboard`)
 1. **Componente `TenantDashboardPage.razor`:**
