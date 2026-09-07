@@ -50,6 +50,34 @@ public sealed class RegisterTenantOnboardingCommandTests
     }
 
     /// <summary>
+    /// Valida que o validador aceita comando com CPF de 11 dígitos numéricos válidos.
+    /// </summary>
+    [Fact]
+    public void Validator_WhenCpfIsValid_ShouldPassValidation()
+    {
+        // Arrange
+        var validator = new RegisterTenantOnboardingCommandValidator();
+        var command = new RegisterTenantOnboardingCommand(
+            "Consultoria de Tráfego",
+            "52998224725",
+            "consultoria-trafego",
+            "Agência de Performance",
+            "Até R$ 50k",
+            SubscriptionTier.Pro,
+            "Monthly",
+            "Carlos Mendes",
+            "carlos@consultoria.com",
+            "11987654321",
+            "Senha@123");
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+    }
+
+    /// <summary>
     /// Valida que o handler orquestra o provisionamento com sucesso e retorna a URL e dados do inquilino.
     /// </summary>
     [Fact]

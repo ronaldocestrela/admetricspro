@@ -6,6 +6,7 @@ using FluentAssertions;
 using Master.Application.Plans.DTOs;
 using Master.Application.Tenants.Commands.RegisterTenantOnboarding;
 using Master.Application.Tenants.Queries.CheckSubdomainAvailability;
+using Master.Application.Tenants.Queries.CheckTaxDocumentAvailability;
 using Master.Application.Tenants.Queries.GetTenantDetails;
 using Master.Application.Users.DTOs;
 using Master.Domain.Tenants;
@@ -54,6 +55,41 @@ public sealed class HttpClientServicesTests
         result.IsSuccess.Should().BeTrue();
         result.Value.IsAvailable.Should().BeTrue();
         result.Value.Subdomain.Should().Be("acme");
+    }
+
+    [Fact]
+    public async Task TenantOnboardingClientService_CheckTaxDocumentAvailabilityAsync_ShouldCallApiAndReturnSuccess()
+    {
+        // Arrange
+        var expectedResponse = Result<TaxDocumentAvailabilityResponse>.Success(new TaxDocumentAvailabilityResponse(
+            Document: "52998224725",
+            FormattedDocument: "529.982.247-25",
+            IsValid: true,
+            IsAvailable: true,
+            DocumentType: "CPF",
+            Reason: null));
+
+        var handler = new TestHttpMessageHandler((request, cancellationToken) =>
+        {
+            request.RequestUri!.PathAndQuery.Should().Contain("/api/v1/tenants/check-document?document=529.982.247-25");
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(expectedResponse, JsonOptions))
+            };
+        });
+
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:7001") };
+        var service = new WebAppTenantOnboardingService(httpClient);
+
+        // Act
+        var result = await service.CheckTaxDocumentAvailabilityAsync("529.982.247-25");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.IsValid.Should().BeTrue();
+        result.Value.IsAvailable.Should().BeTrue();
+        result.Value.DocumentType.Should().Be("CPF");
+        result.Value.Document.Should().Be("52998224725");
     }
 
     [Fact]

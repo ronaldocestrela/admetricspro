@@ -16,10 +16,10 @@ public sealed class TenantOnboardingFormModel
     public string CompanyName { get; set; } = string.Empty;
 
     /// <summary>
-    /// CNPJ da empresa (14 dígitos).
+    /// Documento fiscal da empresa ou gestor (CPF com 11 dígitos ou CNPJ com 14 dígitos).
     /// </summary>
-    [Required(ErrorMessage = "O CNPJ é obrigatório.")]
-    [RegularExpression(@"^\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}$|^\d{14}$", ErrorMessage = "CNPJ inválido.")]
+    [Required(ErrorMessage = "O CPF ou CNPJ é obrigatório.")]
+    [RegularExpression(@"^\d{3}\.\d{3}\.\d{3}\-\d{2}$|^\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}$|^\d{11}$|^\d{14}$", ErrorMessage = "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.")]
     public string Cnpj { get; set; } = string.Empty;
 
     /// <summary>
@@ -110,9 +110,29 @@ public sealed class TenantOnboardingFormModel
     public bool AcceptTerms { get; set; } = true;
 
     /// <summary>
-    /// Obtém o CNPJ sanitizado (apenas números).
+    /// Obtém o CNPJ/CPF sanitizado (apenas números).
     /// </summary>
     public string GetSanitizedCnpj() => new string(Cnpj?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
+
+    /// <summary>
+    /// Indica se o documento informado possui comprimento numérico de CPF (11 dígitos).
+    /// </summary>
+    public bool IsCpf() => GetSanitizedCnpj().Length == 11;
+
+    /// <summary>
+    /// Indica se o documento informado possui comprimento numérico de CNPJ (14 dígitos).
+    /// </summary>
+    public bool IsCnpj() => GetSanitizedCnpj().Length == 14;
+
+    /// <summary>
+    /// Obtém o tipo textual descritivo do documento ("CPF", "CNPJ" ou "Documento").
+    /// </summary>
+    public string GetDocumentType() => IsCpf() ? "CPF" : (IsCnpj() ? "CNPJ" : "Documento");
+
+    /// <summary>
+    /// Obtém o documento formatado com a máscara apropriada (CPF ou CNPJ).
+    /// </summary>
+    public string GetFormattedDocument() => BuildingBlocks.Domain.Tenants.TaxDocumentValidator.Format(Cnpj);
 
     /// <summary>
     /// Obtém o subdomínio sanitizado (minúsculo e sem espaços).

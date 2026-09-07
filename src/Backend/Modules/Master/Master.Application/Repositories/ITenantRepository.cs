@@ -17,6 +17,14 @@ public interface ITenantRepository : IRepository<Tenant, TenantId>
     Task<Tenant?> GetBySubdomainAsync(string subdomain, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Finds a tenant by its fiscal document (CPF or CNPJ).
+    /// </summary>
+    /// <param name="cnpj">Tax/fiscal document (digits-only).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The tenant aggregate if found; otherwise null.</returns>
+    Task<Tenant?> GetByCnpjAsync(string cnpj, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Retrieves all tenants that require dunning evaluation (tenants with an overdue payment date or non-None dunning stage).
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>

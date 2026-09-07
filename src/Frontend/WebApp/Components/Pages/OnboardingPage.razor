@@ -140,9 +140,17 @@
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(_formModel.Cnpj) || _formModel.GetSanitizedCnpj().Length != 14)
+            var sanitizedDoc = _formModel.GetSanitizedCnpj();
+            if (string.IsNullOrWhiteSpace(sanitizedDoc) || (sanitizedDoc.Length != 11 && sanitizedDoc.Length != 14))
             {
-                _errorMessage = "Por favor, informe um CNPJ válido com 14 dígitos.";
+                _errorMessage = "Por favor, informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.";
+                return;
+            }
+
+            if (!BuildingBlocks.Domain.Tenants.TaxDocumentValidator.IsValid(sanitizedDoc))
+            {
+                var type = sanitizedDoc.Length == 11 ? "CPF" : "CNPJ";
+                _errorMessage = $"O {type} informado é inválido. Verifique os dígitos digitados.";
                 return;
             }
         }

@@ -225,6 +225,13 @@ public sealed class CachedTenantConnectionResolverTests
             return Task.FromResult(tenant);
         }
 
+        public Task<Tenant?> GetByCnpjAsync(string cnpj, CancellationToken cancellationToken = default)
+        {
+            var sanitized = new string(cnpj?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
+            var tenant = _tenants.Values.FirstOrDefault(t => t.Cnpj == sanitized);
+            return Task.FromResult(tenant);
+        }
+
         public void Update(Tenant entity) => _tenants[entity.Id.Value] = entity;
         public void Remove(Tenant entity) => _tenants.Remove(entity.Id.Value);
 

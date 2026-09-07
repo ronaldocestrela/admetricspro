@@ -1,5 +1,8 @@
 @namespace WebApp.Components.Onboarding
+@using BuildingBlocks.Domain.Tenants
 @using WebApp.Models
+@using WebApp.Services
+@inject ITenantOnboardingClientService OnboardingClientService
 
 <div class="step-heading">
     <h2>Dados Corporativos & Fiscais</h2>
@@ -21,17 +24,30 @@
 
 <div class="form-row">
     <div class="form-group">
-        <label class="form-label" for="company-cnpj">CNPJ da Empresa (14 dígitos) *</label>
+        <label class="form-label" for="company-cnpj">CPF ou CNPJ da Empresa / Gestor *</label>
         <div class="input-with-icon">
             <span class="input-icon">📋</span>
             <input id="company-cnpj"
                    type="text"
                    class="custom-input"
-                   placeholder="00.000.000/0000-00"
+                   placeholder="000.000.000-00 ou 00.000.000/0000-00"
                    maxlength="18"
                    @bind="Model.Cnpj"
-                   @bind:after="OnFieldChanged" />
+                   @bind:after="OnDocumentChangedAsync" />
         </div>
+
+        @if (_isCheckingDocument)
+        {
+            <div class="status-pill warning" style="margin-top: 0.5rem;">
+                <span>Checando disponibilidade do documento...</span>
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_documentStatusMessage))
+        {
+            <div class="status-pill @(_isDocumentValid && _isDocumentAvailable ? "success" : "error")" style="margin-top: 0.5rem;">
+                <span>@(_isDocumentValid && _isDocumentAvailable ? "✓" : "⚠") @_documentStatusMessage</span>
+            </div>
+        }
     </div>
 
     <div class="form-group">
@@ -74,6 +90,84 @@
     /// </summary>
     [Parameter]
     public EventCallback OnStateChanged { get; set; }
+
+    private bool _isCheckingDocument;
+    private bool _isDocumentValid = true;
+    private bool _isDocumentAvailable = true;
+    private string? _documentStatusMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Model.Cnpj))
+        {
+            await OnDocumentChangedAsync();
+        }
+    }
+
+    private async Task OnDocumentChangedAsync()
+    {
+        var sanitized = Model.GetSanitizedCnpj();
+
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            _documentStatusMessage = null;
+            _isDocumentValid = true;
+            _isDocumentAvailable = true;
+            await OnFieldChanged();
+            return;
+        }
+
+        // Aplica formatação de máscara dinâmica (CPF ou CNPJ)
+        Model.Cnpj = TaxDocumentValidator.Format(sanitized);
+
+        // Validação de comprimento
+        if (sanitized.Length != 11 && sanitized.Length != 14)
+        {
+            _isDocumentValid = false;
+            _isDocumentAvailable = false;
+            _documentStatusMessage = "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) completo.";
+            await OnFieldChanged();
+            return;
+        }
+
+        // Validação algorítmica matemática (dígitos verificadores)
+        var isAlgorithmicValid = TaxDocumentValidator.IsValid(sanitized);
+        var docType = sanitized.Length == 11 ? "CPF" : "CNPJ";
+
+        if (!isAlgorithmicValid)
+        {
+            _isDocumentValid = false;
+            _isDocumentAvailable = false;
+            _documentStatusMessage = $"{docType} inválido: dígitos verificadores incorretos.";
+            await OnFieldChanged();
+            return;
+        }
+
+        // Consulta de unicidade e disponibilidade em tempo real na Web API
+        _isCheckingDocument = true;
+        _documentStatusMessage = null;
+        await OnFieldChanged();
+
+        var checkResult = await OnboardingClientService.CheckTaxDocumentAvailabilityAsync(sanitized);
+        _isCheckingDocument = false;
+
+        if (checkResult.IsSuccess && checkResult.Value.IsAvailable)
+        {
+            _isDocumentValid = true;
+            _isDocumentAvailable = true;
+            _documentStatusMessage = $"{checkResult.Value.DocumentType} válido e disponível para registro!";
+        }
+        else
+        {
+            _isDocumentValid = checkResult.IsSuccess && checkResult.Value.IsValid;
+            _isDocumentAvailable = false;
+            _documentStatusMessage = checkResult.IsSuccess 
+                ? checkResult.Value.Reason 
+                : "Não foi possível validar o documento fiscal.";
+        }
+
+        await OnFieldChanged();
+    }
 
     private async Task OnFieldChanged()
     {

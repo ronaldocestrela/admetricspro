@@ -23,9 +23,9 @@ public sealed class RegisterTenantOnboardingCommandValidator : AbstractValidator
             .MaximumLength(200).WithMessage("Nome da empresa não pode exceder 200 caracteres.");
 
         RuleFor(x => x.Cnpj)
-            .NotEmpty().WithMessage("CNPJ é obrigatório.")
-            .Length(14).WithMessage("CNPJ deve conter exatamente 14 dígitos numéricos.")
-            .Must(cnpj => cnpj != null && cnpj.All(char.IsDigit)).WithMessage("CNPJ deve conter apenas dígitos numéricos.");
+            .NotEmpty().WithMessage("CPF ou CNPJ é obrigatório.")
+            .Must(doc => doc != null && (doc.Length == 11 || doc.Length == 14) && doc.All(char.IsDigit))
+            .WithMessage("O documento fiscal deve conter exatamente 11 dígitos (CPF) ou 14 dígitos (CNPJ) numéricos.");
 
         RuleFor(x => x.Subdomain)
             .NotEmpty().WithMessage("Subdomínio é obrigatório.")

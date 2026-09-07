@@ -46,6 +46,28 @@ public sealed class TenantOnboardingClientService : ITenantOnboardingClientServi
     }
 
     /// <inheritdoc />
+    public async Task<Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>> CheckTaxDocumentAvailabilityAsync(
+        string document,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(
+                $"/api/v1/tenants/check-document?document={Uri.EscapeDataString(document ?? string.Empty)}",
+                cancellationToken);
+
+            var result = await response.Content.ReadFromJsonAsync<Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>>(JsonOptions, cancellationToken);
+            return result ?? Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>.Failure(
+                Error.Failure("Onboarding.InvalidResponse", "Resposta inválida do servidor."));
+        }
+        catch (Exception ex)
+        {
+            return Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>.Failure(
+                Error.Failure("Onboarding.NetworkError", ex.Message));
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<Result<TenantOnboardingResult>> RegisterTenantAsync(
         TenantOnboardingFormModel model,
         CancellationToken cancellationToken = default)

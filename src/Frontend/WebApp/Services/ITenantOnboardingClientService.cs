@@ -21,6 +21,16 @@ public interface ITenantOnboardingClientService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Verifica a validade e disponibilidade de um documento fiscal (CPF ou CNPJ) em tempo real.
+    /// </summary>
+    /// <param name="document">Documento a ser validado.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado com o diagnóstico de validação e disponibilidade.</returns>
+    Task<Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>> CheckTaxDocumentAvailabilityAsync(
+        string document,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Submete os dados de cadastro e aciona o provisionamento do banco dedicado do novo inquilino.
     /// </summary>
     /// <param name="model">Modelo de formulário validado.</param>

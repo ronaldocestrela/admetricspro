@@ -282,4 +282,39 @@ public sealed class TenantTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Tenant.InvalidBillingCycle");
     }
+
+    /// <summary>
+    /// Valida que a criação de Tenant com documento CPF de 11 dígitos numéricos é realizada com sucesso.
+    /// </summary>
+    [Fact]
+    public void Create_WithCpf11Digits_ShouldSucceed()
+    {
+        // Act
+        var result = Tenant.Create("Gestor Autônomo", "52998224725", "gestor-autonomo");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        var tenant = result.Value;
+        tenant.Cnpj.Should().Be("52998224725");
+        tenant.CompanyName.Should().Be("Gestor Autônomo");
+    }
+
+    /// <summary>
+    /// Valida que a criação de Tenant com documento que não possui 11 nem 14 dígitos falha com código Tenant.InvalidCnpj.
+    /// </summary>
+    /// <param name="invalidDoc">Documento inválido.</param>
+    [Theory]
+    [InlineData("123")]
+    [InlineData("1234567890")]
+    [InlineData("123456789012")]
+    [InlineData("123456789012345")]
+    public void Create_WithInvalidDocumentLength_ShouldReturnValidationFailure(string invalidDoc)
+    {
+        // Act
+        var result = Tenant.Create("Empresa Inválida", invalidDoc, "empresa-invalida");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Tenant.InvalidCnpj");
+    }
 }

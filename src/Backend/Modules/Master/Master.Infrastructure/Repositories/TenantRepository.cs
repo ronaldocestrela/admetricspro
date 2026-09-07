@@ -41,6 +41,13 @@ public sealed class TenantRepository : ITenantRepository
     }
 
     /// <inheritdoc />
+    public Task<Tenant?> GetByCnpjAsync(string cnpj, CancellationToken cancellationToken = default)
+    {
+        var sanitized = new string(cnpj?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
+        return _masterDbContext.Tenants.SingleOrDefaultAsync(t => t.Cnpj == sanitized, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public void Update(Tenant entity)
     {
         _masterDbContext.Tenants.Update(entity);

@@ -74,7 +74,30 @@ sequenceDiagram
 
 ---
 
-### 3.2 Comando: `RegisterTenantOnboardingCommand`
+### 3.2 Consulta: `CheckTaxDocumentAvailabilityQuery`
+* **Endpoint HTTP:** `GET /api/v1/tenants/check-document?document=529.982.247-25`
+* **Descrição:** Valida em tempo real o formato, a integridade matemática dos dígitos verificadores (módulo 11) e a unicidade no catálogo Master tanto para **CPF (11 dígitos)** quanto para **CNPJ (14 dígitos)**.
+
+#### Retorno de Sucesso (`Result<TaxDocumentAvailabilityResponse>`):
+```json
+{
+  "isSuccess": true,
+  "isFailure": false,
+  "value": {
+    "document": "52998224725",
+    "formattedDocument": "529.982.247-25",
+    "isValid": true,
+    "isAvailable": true,
+    "documentType": "CPF",
+    "reason": null
+  },
+  "error": { "code": null, "description": null, "type": 0 }
+}
+```
+
+---
+
+### 3.3 Comando: `RegisterTenantOnboardingCommand`
 * **Endpoint HTTP:** `POST /api/v1/tenants/onboarding`
 * **Payload JSON de Entrada:**
 ```json
@@ -117,13 +140,13 @@ sequenceDiagram
 | Código do Erro | Tipo | Descrição |
 | :--- | :--- | :--- |
 | `Tenant.CompanyNameRequired` | Validation | Razão Social é obrigatória (máx. 200 caracteres). |
-| `Tenant.InvalidCnpj` | Validation | CNPJ deve conter exatamente 14 dígitos numéricos válidos. |
+| `Tenant.InvalidCnpj` | Validation | Documento fiscal deve conter exatamente 11 dígitos (CPF) ou 14 dígitos (CNPJ) numéricos válidos. |
 | `Tenant.InvalidSubdomain` | Validation | Subdomínio inválido ou contendo espaços em branco. |
 | `Tenant.InvalidColorHex` | Validation | Cor primária ou secundária fora do formato hexadecimal (`#RRGGBB` ou `#RGB`). |
 | `Tenant.InvalidCustomDomain` | Validation | Domínio CNAME personalizado contém protocolo (`http/https`) ou espaços. |
 | `Tenant.InvalidBillingCycle` | Validation | Ciclo de faturamento deve ser `Monthly` ou `Annual`. |
 | `Tenant.SubdomainAlreadyExists` | Conflict | O subdomínio informado já se encontra alocado por outro assinante. |
-| `Tenant.CnpjAlreadyExists` | Conflict | O CNPJ informado já possui um ambiente ativo no catálogo. |
+| `Tenant.CnpjAlreadyExists` | Conflict | O CPF ou CNPJ informado já possui um ambiente ativo no catálogo. |
 | `Tenant.DatabaseAlreadyExists` | Conflict | Instância física de banco SQL Server já existente. |
 
 #### Persistência no Catálogo Global (`MasterDb.Tenants`):

@@ -137,6 +137,31 @@ public sealed class TenantsController : ControllerBase
     }
 
     /// <summary>
+    /// Verifica em tempo real a validade matemática e a disponibilidade de um CPF ou CNPJ para cadastro de novo tenant.
+    /// </summary>
+    /// <param name="document">Documento fiscal (CPF ou CNPJ) com ou sem pontuação.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Diagnóstico de validade e disponibilidade com formatação visual.</returns>
+    [HttpGet("check-document")]
+    [EndpointSummary("Verifica a validade e disponibilidade de um CPF ou CNPJ para cadastro de novo tenant")]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>>> CheckDocument(
+        [FromQuery] string document,
+        CancellationToken cancellationToken)
+    {
+        var query = new Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.CheckTaxDocumentAvailabilityQuery(document);
+        var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Submete o cadastro completo de um novo tenant, disparando a engine de provisionamento de banco SQL Server dedicado.
     /// </summary>
     /// <param name="request">Dados corporativos, de plano, White-Label e credenciais do gestor.</param>

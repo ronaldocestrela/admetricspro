@@ -21,6 +21,16 @@ public sealed class OnboardingPageTests : BunitTestBase
 
     public OnboardingPageTests()
     {
+        _onboardingClientService.CheckTaxDocumentAvailabilityAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse>.Success(
+                new Master.Application.Tenants.Queries.CheckTaxDocumentAvailability.TaxDocumentAvailabilityResponse(
+                    "52998224725", "529.982.247-25", true, true, "CPF")));
+
+        _onboardingClientService.CheckSubdomainAvailabilityAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<Master.Application.Tenants.Queries.CheckSubdomainAvailability.SubdomainAvailabilityResponse>.Success(
+                new Master.Application.Tenants.Queries.CheckSubdomainAvailability.SubdomainAvailabilityResponse(
+                    "vanguarda", true)));
+
         Services.AddSingleton(_onboardingClientService);
     }
 
@@ -60,6 +70,68 @@ public sealed class OnboardingPageTests : BunitTestBase
         var errorPill = cut.Find(".status-pill.error");
         errorPill.Should().NotBeNull();
         errorPill.TextContent.Should().Contain("Razão Social");
+    }
+
+    /// <summary>
+    /// Valida que ao avançar com documento fiscal inválido, uma mensagem de erro é exibida.
+    /// </summary>
+    [Fact]
+    public void OnboardingPage_WhenAdvancingWithInvalidDocument_ShouldShowErrorMessage()
+    {
+        // Arrange
+        var cut = Render<OnboardingPage>();
+
+        cut.Find("#company-name").Change("Agência Beta");
+        cut.Find("#company-cnpj").Change("12345678901"); // CPF inválido
+
+        // Act
+        var advanceButton = cut.Find(".wizard-actions .btn-wizard-primary");
+        advanceButton.Click();
+
+        // Assert
+        var errorPill = cut.Find(".status-pill.error");
+        errorPill.Should().NotBeNull();
+        errorPill.TextContent.Should().Contain("inválido");
+    }
+
+    /// <summary>
+    /// Valida que ao preencher Razão Social e CPF válido, o assistente avança para a Etapa 2 (Subdomínio).
+    /// </summary>
+    [Fact]
+    public void OnboardingPage_WhenAdvancingWithValidCpf_ShouldProceedToStep2()
+    {
+        // Arrange
+        var cut = Render<OnboardingPage>();
+
+        cut.Find("#company-name").Change("Agência Beta");
+        cut.Find("#company-cnpj").Change("52998224725"); // CPF válido
+
+        // Act
+        var advanceButton = cut.Find(".wizard-actions .btn-wizard-primary");
+        advanceButton.Click();
+
+        // Assert
+        cut.Find("#subdomain-input").Should().NotBeNull();
+    }
+
+    /// <summary>
+    /// Valida que ao preencher Razão Social e CNPJ válido, o assistente avança para a Etapa 2 (Subdomínio).
+    /// </summary>
+    [Fact]
+    public void OnboardingPage_WhenAdvancingWithValidCnpj_ShouldProceedToStep2()
+    {
+        // Arrange
+        var cut = Render<OnboardingPage>();
+
+        cut.Find("#company-name").Change("Vanguarda Digital Ltda");
+        cut.Find("#company-cnpj").Change("12345678000195"); // CNPJ válido
+
+        // Act
+        var advanceButton = cut.Find(".wizard-actions .btn-wizard-primary");
+        advanceButton.Click();
+
+        // Assert
+        cut.Find("#subdomain-input").Should().NotBeNull();
     }
 
     /// <summary>

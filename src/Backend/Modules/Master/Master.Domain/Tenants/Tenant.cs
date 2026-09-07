@@ -169,9 +169,9 @@ public sealed partial class Tenant : AggregateRoot<TenantId>
             return Result<Tenant>.Failure(Error.Validation("Tenant.CompanyNameRequired", "Company name is required."));
         }
 
-        if (string.IsNullOrWhiteSpace(cnpj) || cnpj.Length != 14 || !cnpj.All(char.IsDigit))
+        if (string.IsNullOrWhiteSpace(cnpj) || (cnpj.Length != 11 && cnpj.Length != 14) || !cnpj.All(char.IsDigit))
         {
-            return Result<Tenant>.Failure(Error.Validation("Tenant.InvalidCnpj", "CNPJ must contain exactly 14 digits."));
+            return Result<Tenant>.Failure(Error.Validation("Tenant.InvalidCnpj", "Fiscal document must contain exactly 11 digits (CPF) or 14 digits (CNPJ)."));
         }
 
         if (string.IsNullOrWhiteSpace(subdomain) || subdomain.Any(char.IsWhiteSpace))
