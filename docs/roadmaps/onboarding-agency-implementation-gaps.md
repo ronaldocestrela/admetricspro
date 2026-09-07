@@ -129,12 +129,24 @@ graph TD
 4. [x] **TDD & Cobertura Completa:**
    * 32 testes unitários de domínio e aplicação e 4 testes de aceitação de endpoints; 100% de testes passando sem regressões. Documentação viva em `/docs/modules/tenants-workspaces.md`.
 
-#### Subfase 4.2: Gestão de Squads (Times Internos)
-1. **Agregado `Squad`:**
-   * Entidade: `Id`, `Name`, `Description`, `CreatedAtUtc`.
-   * Vínculos: Associação de membros (`TenantUser`) e clientes (`Workspace`).
-2. **Isolamento por Carteira:**
-   * Garantir que analistas atribuídos ao "Squad A" não tenham acesso aos dados dos clientes do "Squad B".
+#### Subfase 4.2: Gestão de Squads (Times Internos) & Isolamento por Carteira — [CONCLUÍDO]
+1. [x] **Agregado `Squad` & Entidades Associativas:**
+   * Agregado raiz `Squad` com `Id`, `Name`, `Description`, `IsActive`, `CreatedAtUtc`, `UpdatedAtUtc` e métodos ricos de gestão.
+   * Entidades associativas `SquadMember` e `SquadWorkspace` permitindo modelagem matricial N:N de alocação de equipe e carteira de clientes.
+   * Mapeamentos EF Core fluentes (`SquadEntityTypeConfiguration`, `SquadMemberEntityTypeConfiguration`, `SquadWorkspaceEntityTypeConfiguration`) e migração `20260907150000_Add_Squads_And_Portfolio_Tables`.
+2. [x] **Governança & Isolamento por Carteira (`UserPortfolioService`):**
+   * Papéis com governança executiva (`Owner` e `Admin`) mantêm acesso irrestrito a todos os workspaces da agência.
+   * Papéis operacionais (`SquadLeader`, `MediaManager`, `Analyst`, `Guest`) têm visibilidade e operação estritamente restritas à união dos workspaces pertencentes aos squads ativos nos quais estão vinculados.
+   * Colaboradores sem squad possuem carteira vazia (acesso zero); colaboradores inativos são bloqueados imediatamente.
+3. [x] **Comandos, Consultas e Repositórios (`Tenants.Application` & `Tenants.Infrastructure`):**
+   * Repositórios `ISquadRepository` e `ITenantUserRepository`.
+   * Comandos: `CreateSquadCommand`, `UpdateSquadCommand`, `ToggleSquadStatusCommand`, `AddSquadMemberCommand`, `RemoveSquadMemberCommand`, `AssignSquadWorkspaceCommand`, `UnassignSquadWorkspaceCommand`.
+   * Consultas: `GetSquadsQuery`, `GetSquadByIdQuery`, `GetUserAccessibleWorkspacesQuery`, `ValidateUserWorkspaceAccessQuery`.
+4. [x] **Web API REST & OpenAPI/Scalar (`SquadsController`):**
+   * Endpoints completos em `/api/v1/squads` cobrindo CRUD, associação de membros/workspaces e `/users/{userId}/portfolio`.
+5. [x] **TDD & Cobertura Completa:**
+   * 39 novos testes unitários e de aceitação criados; 100% da suíte passando (809 testes verdes sem regressão).
+   * Documentação viva em `/docs/modules/tenants-squads.md` e ADR `/docs/adr/0021-squads-and-portfolio-isolation.md`.
 
 ---
 

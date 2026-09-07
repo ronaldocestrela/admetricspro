@@ -31,6 +31,9 @@ public static class TenantsInfrastructureServiceExtensions
         services.AddScoped<ITenantAuthService, TenantAuthService>();
         services.AddScoped<ITenantTokenService, TenantJwtTokenService>();
         services.AddScoped<Tenants.Application.Workspaces.Repositories.IWorkspaceRepository, Tenants.Infrastructure.Workspaces.WorkspaceRepository>();
+        services.AddScoped<Tenants.Application.Squads.Repositories.ISquadRepository, Tenants.Infrastructure.Squads.SquadRepository>();
+        services.AddScoped<Tenants.Application.Users.Repositories.ITenantUserRepository, Tenants.Infrastructure.Users.TenantUserRepository>();
+        services.AddScoped<Tenants.Application.Squads.Services.IUserPortfolioService, Tenants.Infrastructure.Squads.UserPortfolioService>();
         services.AddScoped<Tenants.Application.Persistence.ITenantUnitOfWork, Tenants.Infrastructure.Persistence.TenantUnitOfWork>();
 
         return services;

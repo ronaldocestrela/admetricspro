@@ -37,6 +37,21 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<Workspace> Workspaces => Set<Workspace>();
 
+    /// <summary>
+    /// Gets the operational squads table representing agency internal teams.
+    /// </summary>
+    public DbSet<Squad> Squads => Set<Squad>();
+
+    /// <summary>
+    /// Gets the operational squad members associative table.
+    /// </summary>
+    public DbSet<SquadMember> SquadMembers => Set<SquadMember>();
+
+    /// <summary>
+    /// Gets the operational squad workspaces associative table.
+    /// </summary>
+    public DbSet<SquadWorkspace> SquadWorkspaces => Set<SquadWorkspace>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,5 +67,8 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new TenantUserEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new TenantBrandingEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new WorkspaceEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new SquadEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new SquadMemberEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new SquadWorkspaceEntityTypeConfiguration());
     }
 }
