@@ -104,6 +104,16 @@ public sealed class TenantEntityTypeConfiguration : IEntityTypeConfiguration<Ten
             .IsRequired(false);
 
         builder
+            .Property(tenant => tenant.AdminEmail)
+            .HasMaxLength(256)
+            .IsRequired(false);
+
+        builder
+            .Property(tenant => tenant.AdminFullName)
+            .HasMaxLength(150)
+            .IsRequired(false);
+
+        builder
             .Property(tenant => tenant.CreatedAtUtc)
             .IsRequired();
     }

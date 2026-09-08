@@ -61,4 +61,44 @@ public sealed class BillingController : ControllerBase
 
         return Ok(Result<DunningExecutionSummaryResponse>.Success(response));
     }
+
+    /// <summary>
+    /// Dispara imediatamente um ciclo de avaliação da régua de trial (notificações aos 7, 3 e 1 dias restantes e expiração).
+    /// </summary>
+    /// <param name="request">Parâmetros opcionais de execução contendo data de referência UTC.</param>
+    /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
+    /// <returns>Sumário detalhado das notificações despachadas no ciclo.</returns>
+    [HttpPost("trial-notices/execute")]
+    [EndpointSummary("Executa o ciclo da régua de lembretes e notificações de término de trial")]
+    [ProducesResponseType(typeof(Result<TrialNoticeExecutionSummaryResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<TrialNoticeExecutionSummaryResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<TrialNoticeExecutionSummaryResponse>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<TrialNoticeExecutionSummaryResponse>>> ExecuteTrialNoticeCycle(
+        [FromBody] ExecuteTrialNoticeApiRequest? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new Master.Application.Billing.Trial.ExecuteTrialNoticeCycleCommand(request?.ReferenceDateUtc);
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.Validation => UnprocessableEntity(Result<TrialNoticeExecutionSummaryResponse>.Failure(result.Error)),
+                _ => BadRequest(Result<TrialNoticeExecutionSummaryResponse>.Failure(result.Error))
+            };
+        }
+
+        var response = new TrialNoticeExecutionSummaryResponse(
+            result.Value.EvaluatedCount,
+            result.Value.SevenDayNoticesSent,
+            result.Value.ThreeDayNoticesSent,
+            result.Value.OneDayNoticesSent,
+            result.Value.ExpiredNoticesSent,
+            result.Value.FailuresCount,
+            result.Value.TotalNoticesSent,
+            result.Value.ExecutedAtUtc);
+
+        return Ok(Result<TrialNoticeExecutionSummaryResponse>.Success(response));
+    }
 }

@@ -199,6 +199,11 @@ public sealed class ImpersonationEndpointTests : IClassFixture<WebApplicationFac
             return Task.FromResult<IReadOnlyList<Tenant>>(_tenant != null ? new[] { _tenant } : Array.Empty<Tenant>());
         }
 
+        public Task<IReadOnlyList<Tenant>> GetTenantsForTrialNoticeEvaluationAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Tenant>>(_tenant != null ? new[] { _tenant } : Array.Empty<Tenant>());
+        }
+
         public Task AddAsync(Tenant entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void Update(Tenant entity) { }
         public void Remove(Tenant entity) { }

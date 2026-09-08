@@ -22,7 +22,9 @@ public sealed partial class Tenant : AggregateRoot<TenantId>
         string? billingCycle,
         string? customDomain,
         string? primaryColor,
-        string? secondaryColor)
+        string? secondaryColor,
+        string? adminEmail = null,
+        string? adminFullName = null)
         : base(id)
     {
         CompanyName = companyName;
@@ -37,6 +39,8 @@ public sealed partial class Tenant : AggregateRoot<TenantId>
         CustomDomain = customDomain;
         PrimaryColor = primaryColor;
         SecondaryColor = secondaryColor;
+        AdminEmail = adminEmail;
+        AdminFullName = adminFullName;
         DunningStage = DunningStage.None;
         PaymentDueDateUtc = null;
         CreatedAtUtc = DateTime.UtcNow;
@@ -132,6 +136,16 @@ public sealed partial class Tenant : AggregateRoot<TenantId>
     public string? BillingCycle { get; private set; }
 
     /// <summary>
+    /// Gets the primary corporate email address of the tenant administrator (Owner).
+    /// </summary>
+    public string? AdminEmail { get; private set; }
+
+    /// <summary>
+    /// Gets the full name of the primary tenant administrator (Owner).
+    /// </summary>
+    public string? AdminFullName { get; private set; }
+
+    /// <summary>
     /// Gets the UTC creation timestamp.
     /// </summary>
     public DateTime CreatedAtUtc { get; private set; }
@@ -150,6 +164,8 @@ public sealed partial class Tenant : AggregateRoot<TenantId>
     /// <param name="customDomain">Optional custom CNAME domain for white-label routing.</param>
     /// <param name="primaryColor">Optional primary theme hex color code.</param>
     /// <param name="secondaryColor">Optional secondary theme hex color code.</param>
+    /// <param name="adminEmail">Optional corporate email address of the initial administrator.</param>
+    /// <param name="adminFullName">Optional full name of the initial administrator.</param>
     /// <returns>A successful result with a new tenant or a validation failure.</returns>
     public static Result<Tenant> Create(
         string companyName,
@@ -162,7 +178,9 @@ public sealed partial class Tenant : AggregateRoot<TenantId>
         string? billingCycle = null,
         string? customDomain = null,
         string? primaryColor = null,
-        string? secondaryColor = null)
+        string? secondaryColor = null,
+        string? adminEmail = null,
+        string? adminFullName = null)
     {
         if (string.IsNullOrWhiteSpace(companyName))
         {
@@ -201,9 +219,24 @@ public sealed partial class Tenant : AggregateRoot<TenantId>
             normalizedBillingCycle,
             normalizedCustomDomain,
             primaryColor?.Trim(),
-            secondaryColor?.Trim());
+            secondaryColor?.Trim(),
+            adminEmail?.Trim().ToLowerInvariant(),
+            adminFullName?.Trim());
 
         return Result<Tenant>.Success(tenant);
+    }
+
+    /// <summary>
+    /// Updates the tenant administrator contact coordinates.
+    /// </summary>
+    /// <param name="adminEmail">Corporate administrator email.</param>
+    /// <param name="adminFullName">Administrator full name.</param>
+    /// <returns>Success result.</returns>
+    public Result UpdateAdminContact(string? adminEmail, string? adminFullName)
+    {
+        AdminEmail = adminEmail?.Trim().ToLowerInvariant();
+        AdminFullName = adminFullName?.Trim();
+        return Result.Success();
     }
 
     /// <summary>

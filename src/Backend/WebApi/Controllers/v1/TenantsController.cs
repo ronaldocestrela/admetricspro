@@ -322,4 +322,34 @@ public sealed class TenantsController : ControllerBase
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// Reenvia manualmente o e-mail de boas-vindas com o link de login do subdomínio para o gestor principal do inquilino.
+    /// </summary>
+    /// <param name="tenantId">Identificador único do inquilino.</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+    /// <returns>Resultado com booleano indicando sucesso no despacho.</returns>
+    [HttpPost("{tenantId:guid}/resend-welcome-email")]
+    [EndpointSummary("Reenvia o e-mail de boas-vindas para o gestor principal do inquilino")]
+    [ProducesResponseType(typeof(Result<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<bool>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<bool>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result<bool>>> ResendWelcomeEmail(
+        [FromRoute] Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        var command = new Master.Application.Tenants.Commands.ResendWelcomeEmail.ResendWelcomeEmailCommand(tenantId);
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<bool>.Failure(result.Error)),
+                _ => BadRequest(Result<bool>.Failure(result.Error))
+            };
+        }
+
+        return Ok(Result<bool>.Success(result.Value));
+    }
 }

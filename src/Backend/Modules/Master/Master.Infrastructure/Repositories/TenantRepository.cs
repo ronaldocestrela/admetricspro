@@ -68,4 +68,17 @@ public sealed class TenantRepository : ITenantRepository
 
         return tenants;
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Tenant>> GetTenantsForTrialNoticeEvaluationAsync(CancellationToken cancellationToken = default)
+    {
+        var tenants = await _masterDbContext.Tenants
+            .Where(t => t.Status == TenantStatus.Trial &&
+                        t.SubscriptionExpiresAtUtc != null &&
+                        t.AdminEmail != null &&
+                        t.AdminEmail != string.Empty)
+            .ToListAsync(cancellationToken);
+
+        return tenants;
+    }
 }

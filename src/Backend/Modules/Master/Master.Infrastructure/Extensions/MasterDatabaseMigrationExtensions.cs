@@ -52,6 +52,7 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<IMasterDatabaseMigrationRunner, MasterDatabaseMigrationRunner>();
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<ITenantReadOnlyRepository, TenantReadOnlyRepository>();
+        services.AddScoped<ITenantNotificationLogRepository, TenantNotificationLogRepository>();
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<IPlanReadOnlyRepository, PlanReadOnlyRepository>();
         services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
@@ -68,6 +69,9 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<Master.Application.Integrations.Services.IApiQuotaTrackerService, Master.Infrastructure.Integrations.InMemoryApiQuotaTracker>();
         services.AddScoped<Master.Application.FeatureFlags.Repositories.IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<Master.Application.FeatureFlags.Services.IFeatureFlagService, Master.Application.FeatureFlags.Services.FeatureFlagService>();
+        services.AddScoped<Master.Application.Emails.ITransactionalEmailTemplateRenderer, Master.Application.Emails.TransactionalEmailTemplateRenderer>();
+        services.AddScoped<Master.Application.Billing.Trial.ITrialNotificationEngineService, Master.Application.Billing.Trial.TrialNotificationEngineService>();
+        services.AddScoped<BuildingBlocks.Application.Messaging.IDomainEventHandler<Master.Domain.Tenants.Events.TenantProvisionedEvent>, Master.Application.Tenants.Events.TenantProvisionedSendWelcomeEmailEventHandler>();
 
         // Registros de Identidade do ASP.NET Core Identity e Autenticação do Backoffice
         services.AddDataProtection();
@@ -115,6 +119,29 @@ public static class MasterDatabaseMigrationExtensions
         }
 
         services.AddHostedService<DunningBackgroundService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the hosted trial lifecycle notification background service.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">Optional configuration delegate for trial notice options.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddTrialNoticeBackgroundService(
+        this IServiceCollection services,
+        Action<TrialNoticeOptions>? configure = null)
+    {
+        if (configure != null)
+        {
+            services.Configure(configure);
+        }
+        else
+        {
+            services.AddOptions<TrialNoticeOptions>();
+        }
+
+        services.AddHostedService<TrialNoticeBackgroundService>();
         return services;
     }
 

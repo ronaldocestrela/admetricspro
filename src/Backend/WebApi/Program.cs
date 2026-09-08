@@ -1,4 +1,5 @@
 using BuildingBlocks.Infrastructure.Configuration;
+using BuildingBlocks.Infrastructure.Emails;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Security;
@@ -32,6 +33,7 @@ builder.Services.AddMultiTenancy();
 builder.Services.AddTenantPersistence<TenantDbContext>();
 builder.Services.AddTenantsApplication();
 builder.Services.AddTenantsInfrastructure(builder.Configuration);
+builder.Services.AddEmailInfrastructure(builder.Configuration);
 builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
 {
     builder.Configuration.GetSection(Master.Infrastructure.Services.ImpersonationJwtOptions.SectionName).Bind(options);
@@ -39,6 +41,10 @@ builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOption
 builder.Services.AddDunningBackgroundService(options =>
 {
     builder.Configuration.GetSection(Master.Infrastructure.Services.DunningOptions.SectionName).Bind(options);
+});
+builder.Services.AddTrialNoticeBackgroundService(options =>
+{
+    builder.Configuration.GetSection(Master.Infrastructure.Services.TrialNoticeOptions.SectionName).Bind(options);
 });
 
 var app = builder.Build();

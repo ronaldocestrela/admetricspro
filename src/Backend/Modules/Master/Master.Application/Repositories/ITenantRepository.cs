@@ -30,4 +30,11 @@ public interface ITenantRepository : IRepository<Tenant, TenantId>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A read-only collection of tenant aggregates requiring dunning evaluation.</returns>
     Task<IReadOnlyList<Tenant>> GetTenantsForDunningEvaluationAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all tenants that require trial expiration notice evaluation (tenants currently in Trial status with an expiration date and admin email configured).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A read-only collection of tenant aggregates eligible for trial notice evaluation.</returns>
+    Task<IReadOnlyList<Tenant>> GetTenantsForTrialNoticeEvaluationAsync(CancellationToken cancellationToken = default);
 }

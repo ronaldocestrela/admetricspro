@@ -242,6 +242,14 @@ public sealed class CachedTenantConnectionResolverTests
                 .ToList();
             return Task.FromResult<IReadOnlyList<Tenant>>(list);
         }
+
+        public Task<IReadOnlyList<Tenant>> GetTenantsForTrialNoticeEvaluationAsync(CancellationToken cancellationToken = default)
+        {
+            var list = _tenants.Values
+                .Where(t => t.Status == TenantStatus.Trial && t.SubscriptionExpiresAtUtc != null)
+                .ToList();
+            return Task.FromResult<IReadOnlyList<Tenant>>(list);
+        }
     }
 
     private sealed class FakeTenantContextAccessor : ITenantContextAccessor

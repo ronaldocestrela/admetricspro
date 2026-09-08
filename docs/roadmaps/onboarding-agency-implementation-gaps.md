@@ -185,9 +185,22 @@ Exibido no topo do `/dashboard` até que todas as 4 etapas fundamentais sejam co
 
 **Objetivo:** Automatizar a retenção comercial e a comunicação com a agência.
 
-#### Subfase 6.1: Mensageria & E-mails Transacionais
-1. **E-mail de Boas-Vindas:** Disparado logo após o provisionamento com link direto para o subdomínio da agência (`https://{subdomain}.admetricspro.com.br/login`).
-2. **Lembretes de Fim de Trial:** Notificações automáticas aos 7, 3 e 1 dia(s) antes do vencimento dos 14 dias de teste.
+#### Subfase 6.1: Mensageria & E-mails Transacionais (Concluída)
+1. [x] **Abstração Desacoplada de E-mails (`BuildingBlocks.Application/Emails` & `BuildingBlocks.Infrastructure/Emails`):**
+   - Contratos `IEmailSender`, `EmailMessage`, `EmailErrors` e implementações `SmtpEmailSender` e `InMemoryEmailSender`.
+2. [x] **E-mail de Boas-Vindas Automatizado:**
+   - Disparado via evento de domínio `TenantProvisionedEvent` tratado por `TenantProvisionedSendWelcomeEmailEventHandler`.
+   - Template corporativo responsivo HTML com link direto ao login do subdomínio (`https://{subdomain}.admetricspro.com.br/login` ou CNAME customizado).
+   - Endpoint de reenvio sob demanda: `POST /api/v1/tenants/{id}/resend-welcome-email`.
+3. [x] **Régua Automatizada de Ciclo de Vida do Trial:**
+   - Política `TrialNoticePolicy` com regras em D-7, D-3, D-1 e Expiração.
+   - Motor `TrialNotificationEngineService` e serviço em background contínuo `TrialNoticeBackgroundService`.
+   - Endpoint de disparo manual imediato: `POST /api/v1/billing/trial-notices/execute`.
+4. [x] **Auditoria e Idempotência:**
+   - Entidade `TenantNotificationLog` persistida no catálogo central `MasterDb` com índice composto `IX_TenantNotificationLogs_TenantId_NoticeType_SentAtUtc`.
+5. [x] **TDD & Living Documentation:**
+   - Suíte unitária e de aceitação completa (100% dos testes verdes).
+   - Documentação viva em `docs/modules/transactional-emails-and-trial-notices.md` e ADR `docs/adr/0023-transactional-emails-and-trial-lifecycle-messaging.md`.
 
 #### Subfase 6.2: Transição de Trial para Assinatura Paga
 1. **Checkout & Gateway:** Integração com gateway de pagamentos (Asaas, Stripe ou Pagar.me) para cartão de crédito e Pix.

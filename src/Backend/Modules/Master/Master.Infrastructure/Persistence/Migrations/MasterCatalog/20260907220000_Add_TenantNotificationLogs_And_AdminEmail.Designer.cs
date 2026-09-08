@@ -4,6 +4,7 @@ using Master.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
 {
     [DbContext(typeof(MasterDbContext))]
-    partial class MasterDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907220000_Add_TenantNotificationLogs_And_AdminEmail")]
+    partial class Add_TenantNotificationLogs_And_AdminEmail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -40,49 +43,34 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
-                    b.Property<Guid?>("ImpersonationSessionId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("IpAddress")
-                        .HasMaxLength(45)
-                        .HasColumnType("nvarchar(45)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
-                    b.Property<bool>("IsImpersonated")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Resource")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ResourceId")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<Guid?>("SuperAdminId")
+                    b.Property<Guid?>("TargetTenantId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("SupportTicketId")
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserRole")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Tags")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Action");
 
-                    b.HasIndex("IsImpersonated", "CreatedAtUtc");
+                    b.HasIndex("CreatedAtUtc");
 
-                    b.HasIndex("SuperAdminId", "CreatedAtUtc");
+                    b.HasIndex("TargetTenantId");
 
-                    b.HasIndex("TenantId", "CreatedAtUtc");
+                    b.HasIndex("UserId");
 
                     b.ToTable("MasterAuditLogs", (string)null);
                 });
@@ -96,20 +84,12 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsKillSwitch")
                         .HasColumnType("bit");
 
                     b.Property<string>("Key")
@@ -117,50 +97,18 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<DateTime?>("KillSwitchActivatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("KillSwitchReason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("KillSwitchTriggeredBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("RolloutPercentage")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TargetTenantIds")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<string>("TargetingType")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("IsKillSwitch");
 
                     b.HasIndex("Key")
                         .IsUnique();
-
-                    b.HasIndex("IsKillSwitch", "IsEnabled");
 
                     b.ToTable("FeatureFlags", (string)null);
                 });
@@ -171,40 +119,26 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("AlertLevel")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<int>("CallCount")
+                        .HasColumnType("int");
 
-                    b.Property<double>("CriticalThresholdPercentage")
-                        .HasColumnType("float");
-
-                    b.Property<long>("CurrentConsumption")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("LastUpdatedUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long>("MaxLimit")
-                        .HasColumnType("bigint");
+                    b.Property<int>("DailyLimit")
+                        .HasColumnType("int");
 
                     b.Property<string>("Platform")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
-                    b.Property<double>("WarningThresholdPercentage")
-                        .HasColumnType("float");
-
-                    b.Property<TimeSpan>("WindowDuration")
-                        .HasColumnType("time");
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("WindowStartUtc")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Platform")
+                    b.HasIndex("TenantId", "Platform")
                         .IsUnique();
 
                     b.ToTable("ApiQuotaTrackers", (string)null);
@@ -216,55 +150,49 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("AccountIdentifier")
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("ConnectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EncryptedAccessToken")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("EncryptedRefreshToken")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ExternalAccountId")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("AccountName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("LastSyncAtUtc")
+                    b.Property<DateTime?>("LastSyncedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Platform")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("TenantName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<DateTime?>("TokenExpiresAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Status", "Platform");
-
-                    b.HasIndex("TenantId", "Platform");
+                    b.HasIndex("TenantId", "Platform")
+                        .IsUnique();
 
                     b.ToTable("TenantApiConnections", (string)null);
                 });
@@ -272,10 +200,8 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
             modelBuilder.Entity("Master.Domain.Plans.SubscriptionPlan", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("AnnualDiscountPercentage")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -288,27 +214,25 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<decimal>("MonthlyPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal>("PriceMonthly")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PriceYearly")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Tier")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<DateTime?>("UpdatedAtUtc")
-                        .HasColumnType("datetime2");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
 
                     b.ToTable("SubscriptionPlans", (string)null);
                 });
@@ -319,42 +243,37 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("CreatedAtUtc")
+                    b.Property<DateTime?>("EndedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("datetime2");
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("RevokeReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("RevokedAtUtc")
+                    b.Property<DateTime>("StartedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("SuperAdminId")
+                    b.Property<Guid>("SuperAdminUserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("SupportTicketId")
+                    b.Property<Guid>("TargetTenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TokenId")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SuperAdminId");
+                    b.HasIndex("TargetTenantId");
 
-                    b.HasIndex("SupportTicketId");
-
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TokenId")
+                        .IsUnique();
 
                     b.ToTable("ImpersonationSessions", (string)null);
                 });
@@ -421,6 +340,7 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                     b.Property<string>("Segment")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -593,10 +513,6 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
-                        .IsUnique()
-                        .HasFilter("[Email] IS NOT NULL");
-
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
@@ -718,21 +634,21 @@ namespace Master.Infrastructure.Persistence.Migrations.MasterCatalog
                             b1.Property<Guid>("SubscriptionPlanId")
                                 .HasColumnType("uniqueidentifier");
 
-                            b1.Property<bool>("HasAiCopilot")
+                            b1.Property<bool>("CustomDashboards")
                                 .HasColumnType("bit")
-                                .HasColumnName("HasAiCopilot");
+                                .HasColumnName("CustomDashboards");
 
-                            b1.Property<bool>("HasCrossNetworkAutomations")
+                            b1.Property<bool>("ExportPdf")
                                 .HasColumnType("bit")
-                                .HasColumnName("HasCrossNetworkAutomations");
+                                .HasColumnName("ExportPdf");
 
-                            b1.Property<bool>("HasCustomCname")
+                            b1.Property<bool>("MultiAccount")
                                 .HasColumnType("bit")
-                                .HasColumnName("HasCustomCname");
+                                .HasColumnName("MultiAccount");
 
-                            b1.Property<bool>("HasWhiteLabel")
+                            b1.Property<bool>("WhiteLabel")
                                 .HasColumnType("bit")
-                                .HasColumnName("HasWhiteLabel");
+                                .HasColumnName("WhiteLabel");
 
                             b1.HasKey("SubscriptionPlanId");
 

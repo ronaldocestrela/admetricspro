@@ -24,6 +24,7 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEncryptionService _encryptionService;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly MediatR.IPublisher? _publisher;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TenantProvisioningService"/> class.
@@ -37,7 +38,7 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         ITenantRepository tenantRepository,
         IUnitOfWork unitOfWork,
         IEncryptionService encryptionService)
-        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, new PasswordHasher())
+        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, new PasswordHasher(), null)
     {
     }
 
@@ -55,12 +56,33 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         IUnitOfWork unitOfWork,
         IEncryptionService encryptionService,
         IPasswordHasher passwordHasher)
+        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, passwordHasher, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TenantProvisioningService"/> class with cryptographic password hasher and domain event publisher.
+    /// </summary>
+    /// <param name="masterDbContext">Master catalog context.</param>
+    /// <param name="tenantRepository">Tenant repository abstraction.</param>
+    /// <param name="unitOfWork">Unit of work for commit coordination.</param>
+    /// <param name="encryptionService">Encryption service for connection string storage.</param>
+    /// <param name="passwordHasher">Cryptographic password hasher for operational tenant user accounts.</param>
+    /// <param name="publisher">Optional in-memory domain event publisher.</param>
+    public TenantProvisioningService(
+        MasterDbContext masterDbContext,
+        ITenantRepository tenantRepository,
+        IUnitOfWork unitOfWork,
+        IEncryptionService encryptionService,
+        IPasswordHasher passwordHasher,
+        MediatR.IPublisher? publisher)
     {
         _masterDbContext = masterDbContext;
         _tenantRepository = tenantRepository;
         _unitOfWork = unitOfWork;
         _encryptionService = encryptionService;
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
+        _publisher = publisher;
     }
 
     /// <inheritdoc />
@@ -97,7 +119,9 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
             billingCycle: command.BillingCycle,
             customDomain: command.CustomDomain,
             primaryColor: command.PrimaryColor,
-            secondaryColor: command.SecondaryColor);
+            secondaryColor: command.SecondaryColor,
+            adminEmail: command.AdminEmail,
+            adminFullName: command.AdminFullName);
 
         if (tenantCreationResult.IsFailure)
         {
@@ -159,6 +183,23 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
         await _unitOfWork.CommitAsync(cancellationToken);
+
+        if (_publisher is not null && !string.IsNullOrWhiteSpace(tenant.AdminEmail))
+        {
+            var provisionedEvent = new Master.Domain.Tenants.Events.TenantProvisionedEvent(
+                tenant.Id,
+                tenant.CompanyName,
+                tenant.Subdomain,
+                tenant.AdminEmail,
+                tenant.AdminFullName ?? tenant.CompanyName,
+                tenant.CustomDomain,
+                tenant.Tier,
+                tenant.CreatedAtUtc);
+
+            await _publisher.Publish(
+                new BuildingBlocks.Application.Messaging.DomainEventNotification<Master.Domain.Tenants.Events.TenantProvisionedEvent>(provisionedEvent),
+                cancellationToken);
+        }
 
         return Result<TenantId>.Success(tenant.Id);
     }

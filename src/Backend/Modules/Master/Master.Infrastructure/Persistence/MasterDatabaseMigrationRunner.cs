@@ -84,6 +84,7 @@ public sealed class MasterDatabaseMigrationRunner : IMasterDatabaseMigrationRunn
                message.Contains("tcp provider") ||
                message.Contains("network-related") ||
                message.Contains("server was not found") ||
-               message.Contains("login failed");
+               message.Contains("login failed") ||
+               message.Contains("already exists");
     }
 }

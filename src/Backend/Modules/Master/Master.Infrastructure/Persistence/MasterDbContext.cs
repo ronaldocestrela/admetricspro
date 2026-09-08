@@ -58,6 +58,11 @@ public sealed class MasterDbContext : IdentityDbContext<MasterUser, MasterRole, 
     /// </summary>
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
 
+    /// <summary>
+    /// Gets the tenant notification audit and idempotency logs catalog set.
+    /// </summary>
+    public DbSet<TenantNotificationLog> TenantNotificationLogs => Set<TenantNotificationLog>();
+
     /// <inheritdoc />
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
