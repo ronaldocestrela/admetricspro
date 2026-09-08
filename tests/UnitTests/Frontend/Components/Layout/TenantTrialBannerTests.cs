@@ -51,4 +51,18 @@ public sealed class TenantTrialBannerTests : BunitTestBase
         // Assert
         cut.FindAll(".tenant-trial-banner").Should().BeEmpty();
     }
+
+    /// <summary>
+    /// Valida que quando o inquilino não está mais em período de degustação (IsTrial = false), o banner não é renderizado.
+    /// </summary>
+    [Fact]
+    public void TenantTrialBanner_WhenNotTrial_ShouldNotRender()
+    {
+        // Arrange & Act
+        var cut = Render<TenantTrialBanner>(parameters => parameters
+            .Add(p => p.IsTrial, false));
+
+        // Assert
+        cut.FindAll(".tenant-trial-banner").Should().BeEmpty();
+    }
 }

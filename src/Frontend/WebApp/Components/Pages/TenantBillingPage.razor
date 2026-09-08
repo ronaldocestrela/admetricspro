@@ -1,0 +1,440 @@
+@page "/settings/billing"
+@layout TenantMainLayout
+@namespace WebApp.Components.Pages
+@using Master.Domain.Tenants
+@using Master.Domain.Billing
+@using Master.Application.Billing.Checkout.Commands.ProcessCheckout
+@using Master.Application.Billing.Checkout.Queries.GetCheckoutPreview
+@inject ITenantSessionStateProvider TenantSessionStateProvider
+@inject ITenantStateProvider TenantStateProvider
+@inject IBillingClientService BillingClientService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Assinatura & Planos — @AgencyName</PageTitle>
+
+<div class="tenant-billing-container">
+    <!-- Cabeçalho de Status e Informações -->
+    <header class="billing-header-section">
+        <div class="billing-header-content">
+            <div class="billing-badge-group">
+                @if (TenantStateProvider.CurrentTenant.IsTrial)
+                {
+                    <span class="badge-status badge-trial">
+                        Degustação Ativa — @TenantStateProvider.CurrentTenant.TrialDaysRemaining dias restantes
+                    </span>
+                }
+                else
+                {
+                    <span class="badge-status badge-active">
+                        Assinatura Ativa
+                    </span>
+                }
+            </div>
+            <h1 class="billing-page-title">Assinatura & Planos</h1>
+            <p class="billing-page-subtitle">
+                Escolha o plano ideal para a escala da sua agência e garanta sincronização em tempo real das suas contas de anúncios.
+            </p>
+        </div>
+
+        <!-- Alternador de Ciclo de Cobrança -->
+        <div class="cycle-toggle-container">
+            <div class="cycle-toggle-wrapper">
+                <button type="button"
+                        class="btn-cycle @(_selectedCycle == "Monthly" ? "active" : "")"
+                        @onclick='() => SetBillingCycle("Monthly")'>
+                    Mensal
+                </button>
+                <button type="button"
+                        class="btn-cycle btn-cycle-annual @(_selectedCycle == "Annual" ? "active" : "")"
+                        @onclick='() => SetBillingCycle("Annual")'>
+                    Anual
+                    <span class="discount-badge">20% OFF</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    @if (_isActivated)
+    {
+        <div class="activation-success-banner" role="status">
+            <div class="success-icon-wrap">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <div class="success-content">
+                <h3>Assinatura Ativada com Sucesso!</h3>
+                <p>Seu plano <strong>@_selectedTier.ToString()</strong> está ativo e regularizado. Todos os recursos operacionais já estão desbloqueados para sua agência.</p>
+                <a href="dashboard" class="btn-return-dashboard">Ir para a Central de Tráfego</a>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="checkout-error-alert" role="alert">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@_errorMessage</span>
+        </div>
+    }
+
+    <!-- Grid de Planos -->
+    <section class="plans-grid-section" aria-label="Tabela Comparativa de Planos">
+        <!-- Starter Card -->
+        <div class="plan-card plan-card-starter @(_selectedTier == SubscriptionTier.Starter ? "selected" : "")"
+             @onclick="() => SelectTier(SubscriptionTier.Starter)">
+            <div class="plan-card-header">
+                <h3 class="plan-name">Starter</h3>
+                <p class="plan-target">Para consultores e agências em início de tração.</p>
+                <div class="plan-price-block">
+                    <span class="currency">R$</span>
+                    <span class="price-value">@(_selectedCycle == "Annual" ? "237,60" : "297")</span>
+                    <span class="price-period">/mês</span>
+                </div>
+            </div>
+            <ul class="plan-features-list">
+                <li><span class="check-icon">✓</span> Até 5 Workspaces de Clientes</li>
+                <li><span class="check-icon">✓</span> Meta Ads & Google Ads</li>
+                <li><span class="check-icon">✓</span> Regras básicas de automação</li>
+                <li><span class="check-icon">✓</span> Atualização a cada 2 horas</li>
+            </ul>
+            <button type="button" class="btn-select-tier @(_selectedTier == SubscriptionTier.Starter ? "btn-selected" : "")">
+                @(_selectedTier == SubscriptionTier.Starter ? "Plano Selecionado" : "Selecionar Starter")
+            </button>
+        </div>
+
+        <!-- Pro Card (Destaque) -->
+        <div class="plan-card plan-card-pro featured @(_selectedTier == SubscriptionTier.Pro ? "selected" : "")"
+             @onclick="() => SelectTier(SubscriptionTier.Pro)">
+            <div class="featured-tag">Mais Escolhido por Agências</div>
+            <div class="plan-card-header">
+                <h3 class="plan-name">Pro</h3>
+                <p class="plan-target">Para agências consolidadas que operam múltiplos clientes.</p>
+                <div class="plan-price-block">
+                    <span class="currency">R$</span>
+                    <span class="price-value">@(_selectedCycle == "Annual" ? "397,60" : "497")</span>
+                    <span class="price-period">/mês</span>
+                </div>
+            </div>
+            <ul class="plan-features-list">
+                <li><span class="check-icon">✓</span> Até 15 Workspaces de Clientes</li>
+                <li><span class="check-icon">✓</span> Meta, Google, TikTok e Bing Ads</li>
+                <li><span class="check-icon">✓</span> Motor de automações em tempo real</li>
+                <li><span class="check-icon">✓</span> Portal White-Label personalizado</li>
+                <li><span class="check-icon">✓</span> Suporte técnico prioritário</li>
+            </ul>
+            <button type="button" class="btn-select-tier @(_selectedTier == SubscriptionTier.Pro ? "btn-selected" : "")">
+                @(_selectedTier == SubscriptionTier.Pro ? "Plano Selecionado" : "Selecionar Pro")
+            </button>
+        </div>
+
+        <!-- Enterprise Card -->
+        <div class="plan-card plan-card-enterprise @(_selectedTier == SubscriptionTier.Enterprise ? "selected" : "")"
+             @onclick="() => SelectTier(SubscriptionTier.Enterprise)">
+            <div class="plan-card-header">
+                <h3 class="plan-name">Enterprise</h3>
+                <p class="plan-target">Para grandes operações com alto volume de investimento.</p>
+                <div class="plan-price-block">
+                    <span class="currency">R$</span>
+                    <span class="price-value">@(_selectedCycle == "Annual" ? "797,60" : "997")</span>
+                    <span class="price-period">/mês</span>
+                </div>
+            </div>
+            <ul class="plan-features-list">
+                <li><span class="check-icon">✓</span> Workspaces de Clientes Ilimitados</li>
+                <li><span class="check-icon">✓</span> Todas as 4 Redes de Anúncios sem limites</li>
+                <li><span class="check-icon">✓</span> Automações customizadas e Webhooks</li>
+                <li><span class="check-icon">✓</span> SLA 99.9% e Gerente de Sucesso Dedicado</li>
+                <li><span class="check-icon">✓</span> Relatórios executivos automatizados</li>
+            </ul>
+            <button type="button" class="btn-select-tier @(_selectedTier == SubscriptionTier.Enterprise ? "btn-selected" : "")">
+                @(_selectedTier == SubscriptionTier.Enterprise ? "Plano Selecionado" : "Selecionar Enterprise")
+            </button>
+        </div>
+    </section>
+
+    @if (!_isActivated)
+    {
+        <!-- Seção de Checkout e Pagamento -->
+        <section class="checkout-section" aria-label="Finalização do Pedido e Pagamento">
+            <div class="checkout-grid">
+                <!-- Painel de Dados de Pagamento -->
+                <div class="payment-form-card">
+                    <div class="form-header">
+                        <h2>Forma de Pagamento</h2>
+                        <div class="payment-method-selector">
+                            <button type="button"
+                                    id="btn-method-card"
+                                    class="method-btn @(_paymentMethod == PaymentMethod.CreditCard ? "active" : "")"
+                                    @onclick="() => SetPaymentMethod(PaymentMethod.CreditCard)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                                </svg>
+                                Cartão de Crédito
+                            </button>
+                            <button type="button"
+                                    id="btn-method-pix"
+                                    class="method-btn @(_paymentMethod == PaymentMethod.Pix ? "active" : "")"
+                                    @onclick="() => SetPaymentMethod(PaymentMethod.Pix)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                    <polyline points="2 17 12 22 22 17"></polyline>
+                                    <polyline points="2 12 12 17 22 12"></polyline>
+                                </svg>
+                                Pix
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (_paymentMethod == PaymentMethod.CreditCard)
+                    {
+                        <div class="credit-card-fields">
+                            <div class="form-group">
+                                <label for="card-holder-name">Nome impresso no Cartão</label>
+                                <input id="card-holder-name" type="text" placeholder="Nome Completo" @bind="_cardHolderName" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="card-number">Número do Cartão</label>
+                                <input id="card-number" type="text" placeholder="0000 0000 0000 0000" maxlength="19" @bind="_cardNumber" />
+                            </div>
+
+                            <div class="form-row-compact">
+                                <div class="form-group">
+                                    <label for="card-expiry-month">Mês (MM)</label>
+                                    <input id="card-expiry-month" type="text" placeholder="MM" maxlength="2" @bind="_cardExpiryMonth" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="card-expiry-year">Ano (AAAA)</label>
+                                    <input id="card-expiry-year" type="text" placeholder="AAAA" maxlength="4" @bind="_cardExpiryYear" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="card-ccv">CVV</label>
+                                    <input id="card-ccv" type="text" placeholder="123" maxlength="4" @bind="_cardCcv" />
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="pix-instructions-block">
+                            <p>Ao clicar no botão abaixo, geraremos um QR Code dinâmico do Banco Central para liquidação instantânea.</p>
+                            @if (!string.IsNullOrEmpty(_pixQrCode))
+                            {
+                                <div class="pix-qrcode-container">
+                                    <img src="@_pixQrCode" alt="QR Code Pix" class="pix-image" />
+                                    <div class="pix-copia-cola-group">
+                                        <label for="pix-code">Código Pix (Copia e Cola):</label>
+                                        <input id="pix-code" type="text" class="pix-copia-cola-input" value="@_pixCopiaECola" readonly />
+                                    </div>
+                                    <button type="button" class="btn-check-status" @onclick="CheckPixStatusAsync">
+                                        Verificar Confirmação de Pagamento
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="form-actions">
+                        <button type="button"
+                                id="btn-submit-checkout"
+                                class="btn-submit-checkout"
+                                disabled="@_isProcessing"
+                                @onclick="SubmitCheckoutAsync">
+                            @if (_isProcessing)
+                            {
+                                <span>Processando Transação...</span>
+                            }
+                            else if (_paymentMethod == PaymentMethod.CreditCard)
+                            {
+                                <span>Confirmar e Ativar Plano (R$ @FormatCurrency(TotalAmount))</span>
+                            }
+                            else
+                            {
+                                <span>Gerar QR Code Pix (R$ @FormatCurrency(TotalAmount))</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resumo do Pedido -->
+                <div class="checkout-summary-card">
+                    <h3>Resumo do Pedido</h3>
+                    <div class="summary-line">
+                        <span>Plano Escolhido</span>
+                        <strong>@_selectedTier.ToString()</strong>
+                    </div>
+                    <div class="summary-line">
+                        <span>Ciclo de Cobrança</span>
+                        <strong>@(_selectedCycle == "Annual" ? "Anual (12 meses)" : "Mensal")</strong>
+                    </div>
+                    @if (_preview != null && _preview.DiscountPercentage > 0)
+                    {
+                        <div class="summary-line discount-line">
+                            <span>Desconto Anual (@_preview.DiscountPercentage%)</span>
+                            <strong class="discount-text">- R$ @FormatCurrency(_preview.SavingsAmount)</strong>
+                        </div>
+                    }
+                    <hr class="summary-divider" />
+                    <div class="summary-line total-line">
+                        <span>Total a Pagar</span>
+                        <strong class="checkout-summary-total">R$ @FormatCurrency(TotalAmount)</strong>
+                    </div>
+
+                    <div class="guarantee-box">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>Garantia de 7 dias ou seu dinheiro de volta sem complicações.</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private SubscriptionTier _selectedTier = SubscriptionTier.Pro;
+    private string _selectedCycle = "Monthly";
+    private PaymentMethod _paymentMethod = PaymentMethod.CreditCard;
+
+    private CheckoutPreviewDto? _preview;
+    private bool _isProcessing;
+    private bool _isActivated;
+    private string? _errorMessage;
+
+    // Campos do Cartão
+    private string _cardHolderName = string.Empty;
+    private string _cardNumber = string.Empty;
+    private string _cardExpiryMonth = string.Empty;
+    private string _cardExpiryYear = string.Empty;
+    private string _cardCcv = string.Empty;
+
+    // Campos do Pix
+    private string? _pixQrCode;
+    private string? _pixCopiaECola;
+    private Guid? _currentTransactionId;
+
+    private string AgencyName => TenantSessionStateProvider.CurrentSession?.Branding?.AgencyName
+        ?? TenantStateProvider.CurrentTenant.Name;
+
+    private decimal TotalAmount => _preview?.TotalPayableNow ?? (_selectedCycle == "Annual" ? 4771.20m : 497m);
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPreviewAsync();
+    }
+
+    private async Task SelectTier(SubscriptionTier tier)
+    {
+        _selectedTier = tier;
+        _errorMessage = null;
+        await LoadPreviewAsync();
+    }
+
+    private async Task SetBillingCycle(string cycle)
+    {
+        _selectedCycle = cycle;
+        _errorMessage = null;
+        await LoadPreviewAsync();
+    }
+
+    private void SetPaymentMethod(PaymentMethod method)
+    {
+        _paymentMethod = method;
+        _errorMessage = null;
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        var tenantId = TenantSessionStateProvider.CurrentSession?.TenantId ?? TenantStateProvider.CurrentTenant.TenantId;
+        if (tenantId == Guid.Empty)
+        {
+            return;
+        }
+
+        var result = await BillingClientService.GetCheckoutPreviewAsync(tenantId, _selectedTier, _selectedCycle);
+        if (result.IsSuccess)
+        {
+            _preview = result.Value;
+        }
+    }
+
+    private async Task SubmitCheckoutAsync()
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+
+        var tenantId = TenantSessionStateProvider.CurrentSession?.TenantId ?? TenantStateProvider.CurrentTenant.TenantId;
+
+        var command = new ProcessCheckoutCommand(
+            TenantId: tenantId,
+            Tier: _selectedTier,
+            BillingCycle: _selectedCycle,
+            PaymentMethod: _paymentMethod,
+            CardHolderName: _paymentMethod == PaymentMethod.CreditCard ? _cardHolderName : null,
+            CardNumber: _paymentMethod == PaymentMethod.CreditCard ? _cardNumber : null,
+            ExpiryMonth: _paymentMethod == PaymentMethod.CreditCard ? _cardExpiryMonth : null,
+            ExpiryYear: _paymentMethod == PaymentMethod.CreditCard ? _cardExpiryYear : null,
+            Ccv: _paymentMethod == PaymentMethod.CreditCard ? _cardCcv : null);
+
+        var result = await BillingClientService.ProcessCheckoutAsync(command);
+        _isProcessing = false;
+
+        if (result.IsFailure)
+        {
+            _errorMessage = result.Error.Description;
+            return;
+        }
+
+        var data = result.Value;
+        _currentTransactionId = data.TransactionId;
+
+        if (data.IsActivated)
+        {
+            _isActivated = true;
+            UpdateTenantPaidState();
+        }
+        else if (_paymentMethod == PaymentMethod.Pix)
+        {
+            _pixQrCode = data.PixQrCode;
+            _pixCopiaECola = data.PixCopiaECola;
+        }
+    }
+
+    private async Task CheckPixStatusAsync()
+    {
+        if (_currentTransactionId == null)
+            return;
+
+        _isProcessing = true;
+        var result = await BillingClientService.GetPaymentStatusAsync(_currentTransactionId.Value);
+        _isProcessing = false;
+
+        if (result.IsSuccess && result.Value.IsPaid)
+        {
+            _isActivated = true;
+            UpdateTenantPaidState();
+        }
+        else if (result.IsFailure)
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+
+    private void UpdateTenantPaidState()
+    {
+        var current = TenantStateProvider.CurrentTenant;
+        var updated = current with { IsTrial = false, TrialDaysRemaining = 0 };
+        TenantStateProvider.SetTenant(updated);
+    }
+
+    private static string FormatCurrency(decimal value) => value.ToString("N2", new System.Globalization.CultureInfo("pt-BR"));
+}

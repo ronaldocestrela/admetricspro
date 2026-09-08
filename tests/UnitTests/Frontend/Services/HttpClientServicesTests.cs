@@ -10,6 +10,7 @@ using Master.Application.Tenants.Queries.CheckTaxDocumentAvailability;
 using Master.Application.Tenants.Queries.GetTenantDetails;
 using Master.Application.Users.DTOs;
 using Master.Domain.Tenants;
+using UnitTests.Frontend.Common;
 using WebApp.Models;
 using Xunit;
 using WebAppTenantOnboardingService = WebApp.Services.TenantOnboardingClientService;
@@ -209,20 +210,5 @@ public sealed class HttpClientServicesTests
         result.Value.Id.Should().Be(userId);
         result.Value.Email.Should().Be("admin@admetricspro.internal");
         result.Value.Roles.Should().Contain("SuperAdmin");
-    }
-
-    private sealed class TestHttpMessageHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> _handler;
-
-        public TestHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> handler)
-        {
-            _handler = handler;
-        }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(_handler(request, cancellationToken));
-        }
     }
 }

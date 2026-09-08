@@ -6,7 +6,7 @@
 
 <div class="tenant-app-shell" style="@TenantStateProvider.CurrentTenant.Branding.ToCssVariables()">
     <TenantTopHeader OnToggleSidebar="ToggleSidebar" />
-    <TenantTrialBanner DaysRemaining="14" />
+    <TenantTrialBanner DaysRemaining="@TenantStateProvider.CurrentTenant.TrialDaysRemaining" IsTrial="@TenantStateProvider.CurrentTenant.IsTrial" />
 
     <div class="tenant-layout-body">
         <TenantSidebar IsOpen="_isSidebarOpen" OnClose="CloseSidebar" />

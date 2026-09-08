@@ -244,4 +244,82 @@ public sealed class TransactionalEmailTemplateRenderer : ITransactionalEmailTemp
         var normalizedSubdomain = subdomain.Trim().ToLowerInvariant();
         return $"https://{normalizedSubdomain}.admetricspro.com.br/login";
     }
+
+    /// <inheritdoc />
+    public EmailMessage RenderSubscriptionConfirmationEmail(
+        string recipientEmail,
+        string companyName,
+        SubscriptionTier tier,
+        string billingCycle,
+        decimal amount,
+        DateTime paidAtUtc,
+        DateTime expiresAtUtc)
+    {
+        var subject = $"[Confirmado] Assinatura do Plano {tier} ativada com sucesso - {AppBrandName}";
+        var cycleDisplay = string.Equals(billingCycle, "Annual", StringComparison.OrdinalIgnoreCase) ? "Anual" : "Mensal";
+
+        var html = $$"""
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>{{subject}}</title>
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b0f19; color: #f1f5f9; margin: 0; padding: 0; }
+                .wrapper { max-width: 600px; margin: 40px auto; background-color: #131b2e; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+                .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px; text-align: center; }
+                .header h1 { margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; }
+                .content { padding: 36px 32px; }
+                .content p { font-size: 15px; line-height: 1.6; color: #94a3b8; margin: 0 0 18px; }
+                .content strong { color: #ffffff; }
+                .receipt-card { background-color: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                .receipt-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+                .receipt-row:last-child { margin-bottom: 0; padding-top: 10px; border-top: 1px dashed #334155; font-weight: 600; }
+                .footer { border-top: 1px solid #1e293b; padding: 24px 32px; text-align: center; font-size: 12px; color: #64748b; background-color: #0b0f19; }
+              </style>
+            </head>
+            <body>
+              <div class="wrapper">
+                <div class="header">
+                  <h1>Assinatura Confirmada!</h1>
+                </div>
+                <div class="content">
+                  <p>Olá,</p>
+                  <p>Confirmamos o pagamento e a ativação definitiva do plano da <strong>{{companyName}}</strong> no {{AppBrandName}}.</p>
+                  
+                  <div class="receipt-card">
+                    <div class="receipt-row"><span>Plano:</span><strong>{{tier}}</strong></div>
+                    <div class="receipt-row"><span>Ciclo de Faturamento:</span><strong>{{cycleDisplay}}</strong></div>
+                    <div class="receipt-row"><span>Data de Pagamento:</span><strong>{{paidAtUtc:dd/MM/yyyy HH:mm}} UTC</strong></div>
+                    <div class="receipt-row"><span>Próxima Renovação:</span><strong>{{expiresAtUtc:dd/MM/yyyy}}</strong></div>
+                    <div class="receipt-row"><span>Total Liquidado:</span><strong style="color: #10b981;">R$ {{amount:N2}}</strong></div>
+                  </div>
+
+                  <p>Todos os limites operacionais e recursos da sua assinatura estão liberados.</p>
+                </div>
+                <div class="footer">
+                  <p>{{AppBrandName}} — Plataforma de Gestão Unificada de Tráfego Pago.</p>
+                </div>
+              </div>
+            </body>
+            </html>
+            """;
+
+        var plainText = $"""
+            Assinatura Confirmada - {AppBrandName}
+            
+            Confirmamos o pagamento e a ativação definitiva do plano da {companyName}.
+            
+            - Plano: {tier}
+            - Ciclo: {cycleDisplay}
+            - Total Pago: R$ {amount:N2}
+            - Data de Liquidação: {paidAtUtc:dd/MM/yyyy HH:mm} UTC
+            - Próxima Renovação: {expiresAtUtc:dd/MM/yyyy}
+            
+            {AppBrandName}
+            """;
+
+        return EmailMessage.Create(recipientEmail, subject, html, plainText).Value;
+    }
 }

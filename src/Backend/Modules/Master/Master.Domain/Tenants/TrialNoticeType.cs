@@ -28,5 +28,10 @@ public enum TrialNoticeType
     /// <summary>
     /// Alerta emitido quando o período de trial de 14 dias se esgota sem ativação de plano pago.
     /// </summary>
-    TrialExpired = 5
+    TrialExpired = 5,
+
+    /// <summary>
+    /// E-mail de confirmação emitido após ativação definitiva de assinatura paga e liquidação financeira.
+    /// </summary>
+    SubscriptionActivated = 6
 }

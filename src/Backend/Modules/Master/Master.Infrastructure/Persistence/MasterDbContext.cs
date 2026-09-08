@@ -1,4 +1,5 @@
 using Master.Domain.Auditing;
+using Master.Domain.Billing;
 using Master.Domain.FeatureFlags;
 using Master.Domain.Integrations;
 using Master.Domain.Plans;
@@ -62,6 +63,11 @@ public sealed class MasterDbContext : IdentityDbContext<MasterUser, MasterRole, 
     /// Gets the tenant notification audit and idempotency logs catalog set.
     /// </summary>
     public DbSet<TenantNotificationLog> TenantNotificationLogs => Set<TenantNotificationLog>();
+
+    /// <summary>
+    /// Gets the tenant payment and subscription transactions catalog set.
+    /// </summary>
+    public DbSet<TenantPaymentTransaction> PaymentTransactions => Set<TenantPaymentTransaction>();
 
     /// <inheritdoc />
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

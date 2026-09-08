@@ -203,8 +203,25 @@ Exibido no topo do `/dashboard` até que todas as 4 etapas fundamentais sejam co
    - Documentação viva em `docs/modules/transactional-emails-and-trial-notices.md` e ADR `docs/adr/0023-transactional-emails-and-trial-lifecycle-messaging.md`.
 
 #### Subfase 6.2: Transição de Trial para Assinatura Paga
-1. **Checkout & Gateway:** Integração com gateway de pagamentos (Asaas, Stripe ou Pagar.me) para cartão de crédito e Pix.
-2. **Ativação Definitiva:** Atualização do status do `Tenant` de `Trial` para `Active` e registro da recorrência conforme ciclo selecionado no onboarding (`Monthly` ou `Annual`).
+1. [x] **Domínio Master & Agregado de Pagamento:**
+   - Enums `PaymentMethod` (CreditCard, Pix) e `PaymentTransactionStatus` (Pending, Paid, Failed, Cancelled, Refunded).
+   - Agregado `TenantPaymentTransaction` e método `ActivatePaidSubscription` no `Tenant` com emissão de `TenantSubscriptionActivatedDomainEvent`.
+2. [x] **Gateway de Pagamento Pluggável:**
+   - Abstração `IPaymentGatewayService` no Kernel da aplicação com implementações `AsaasPaymentGateway` e `InMemoryPaymentGateway`.
+3. [x] **Camada de Aplicação (CQRS) & E-mails:**
+   - Comandos e consultas: `ProcessCheckoutCommand`, `GetCheckoutPreviewQuery`, `GetPaymentStatusQuery`, `ProcessPaymentWebhookCommand`.
+   - Handler `TenantSubscriptionActivatedSendConfirmationEmailHandler` e template HTML corporativo de confirmação de assinatura.
+4. [x] **Persistência & Migração Mestre:**
+   - Mapeamento e tabela `TenantPaymentTransactions` no catálogo central `MasterDb` via migração `20260908013735_Add_TenantPaymentTransactions`.
+5. [x] **Web API com OpenAPI + Scalar:**
+   - Endpoints `/api/v1/billing/checkout/preview`, `/api/v1/billing/checkout`, `/api/v1/billing/checkout/{transactionId}/status` e `/api/v1/billing/webhooks/{provider}` documentados e testados com Scalar UI.
+6. [x] **Frontend Blazor Server Especializado:**
+   - Cliente HTTP tipado `IBillingClientService` desacoplado de banco (Regra 9 do `AGENTS.md`).
+   - Página interativa de faturamento e checkout `/settings/billing` (`TenantBillingPage.razor`) com seletor de planos (Starter, Pro, Enterprise), alternador de periodicidade (20% OFF anual) e pagamento com cartão ou Pix.
+   - Atualização do estado do inquilino `TenantState` e adaptação do banner `TenantTrialBanner`.
+7. [x] **TDD & Living Documentation:**
+   - Suíte com 100% dos testes verdes (907 testes passando em unidade, integração, aceitação e conformidade de arquitetura).
+   - Documentação viva em `docs/modules/billing-checkout-and-paid-activation.md` e ADR `docs/adr/0024-payment-gateway-and-trial-to-paid-transition.md`.
 
 ---
 

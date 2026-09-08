@@ -1,8 +1,10 @@
 using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Infrastructure.Security;
+using Master.Application.Billing.Payments;
 using Master.Application.Repositories;
 using Master.Application.Services;
+using Master.Infrastructure.Payments;
 using Master.Infrastructure.Persistence;
 using Master.Infrastructure.Repositories;
 using Master.Infrastructure.Services;
@@ -72,6 +74,11 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<Master.Application.Emails.ITransactionalEmailTemplateRenderer, Master.Application.Emails.TransactionalEmailTemplateRenderer>();
         services.AddScoped<Master.Application.Billing.Trial.ITrialNotificationEngineService, Master.Application.Billing.Trial.TrialNotificationEngineService>();
         services.AddScoped<BuildingBlocks.Application.Messaging.IDomainEventHandler<Master.Domain.Tenants.Events.TenantProvisionedEvent>, Master.Application.Tenants.Events.TenantProvisionedSendWelcomeEmailEventHandler>();
+        services.AddScoped<ITenantPaymentTransactionRepository, TenantPaymentTransactionRepository>();
+        services.AddScoped<IPaymentGatewayService, InMemoryPaymentGateway>();
+        services.AddScoped<BuildingBlocks.Application.Messaging.IDomainEventHandler<Master.Domain.Tenants.Events.TenantSubscriptionActivatedDomainEvent>, Master.Application.Billing.Checkout.Events.TenantSubscriptionActivatedSendConfirmationEmailHandler>();
+        services.AddOptions<Master.Infrastructure.Payments.AsaasOptions>()
+            .BindConfiguration(Master.Infrastructure.Payments.AsaasOptions.SectionName);
 
         // Registros de Identidade do ASP.NET Core Identity e Autenticação do Backoffice
         services.AddDataProtection();

@@ -47,6 +47,11 @@ public abstract class BunitTestBase : BunitContext
     protected WebApp.Services.ITenantTeamClientService TenantTeamClientService { get; }
 
     /// <summary>
+    /// Mock do serviço de cliente de Billing/Checkout.
+    /// </summary>
+    protected WebApp.Services.IBillingClientService BillingClientService { get; }
+
+    /// <summary>
     /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com os provedores registrados.
     /// </summary>
     protected BunitTestBase()
@@ -58,6 +63,7 @@ public abstract class BunitTestBase : BunitContext
         TenantFtuxClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantFtuxClientService>();
         WorkspaceClientService = NSubstitute.Substitute.For<WebApp.Services.IWorkspaceClientService>();
         TenantTeamClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantTeamClientService>();
+        BillingClientService = NSubstitute.Substitute.For<WebApp.Services.IBillingClientService>();
 
         TenantFtuxClientService.GetFtuxStatusAsync(NSubstitute.Arg.Any<CancellationToken>())
             .Returns(BuildingBlocks.Domain.Primitives.Result<Tenants.Application.Ftux.DTOs.TenantFtuxStatusDto>.Success(
@@ -81,6 +87,7 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<WebApp.Services.ITenantFtuxClientService>(TenantFtuxClientService);
         Services.AddSingleton<WebApp.Services.IWorkspaceClientService>(WorkspaceClientService);
         Services.AddSingleton<WebApp.Services.ITenantTeamClientService>(TenantTeamClientService);
+        Services.AddSingleton<WebApp.Services.IBillingClientService>(BillingClientService);
     }
 
     /// <summary>

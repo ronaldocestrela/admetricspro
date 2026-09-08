@@ -47,4 +47,24 @@ public interface ITransactionalEmailTemplateRenderer
         TrialNoticeType noticeType,
         DateTime expirationUtc,
         double daysRemaining);
+
+    /// <summary>
+    /// Renderiza o e-mail de confirmação de ativação definitiva de assinatura comercial paga.
+    /// </summary>
+    /// <param name="recipientEmail">Endereço de e-mail de destino.</param>
+    /// <param name="companyName">Razão social da empresa.</param>
+    /// <param name="tier">Nível do plano contratado.</param>
+    /// <param name="billingCycle">Ciclo de faturamento (Monthly ou Annual).</param>
+    /// <param name="amount">Valor monetário total pago.</param>
+    /// <param name="paidAtUtc">Data e hora de pagamento em UTC.</param>
+    /// <param name="expiresAtUtc">Próxima renovação da assinatura em UTC.</param>
+    /// <returns>Mensagem de e-mail pronta para envio.</returns>
+    EmailMessage RenderSubscriptionConfirmationEmail(
+        string recipientEmail,
+        string companyName,
+        SubscriptionTier tier,
+        string billingCycle,
+        decimal amount,
+        DateTime paidAtUtc,
+        DateTime expiresAtUtc);
 }

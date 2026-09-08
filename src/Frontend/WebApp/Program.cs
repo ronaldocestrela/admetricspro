@@ -43,6 +43,8 @@ builder.Services.AddHttpClient<IWorkspaceClientService, WorkspaceClientService>(
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<ITenantTeamClientService, TenantTeamClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IBillingClientService, BillingClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 

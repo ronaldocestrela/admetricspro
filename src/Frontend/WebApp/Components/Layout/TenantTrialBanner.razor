@@ -1,6 +1,6 @@
 @namespace WebApp.Components.Layout
 
-@if (_isVisible)
+@if (_isVisible && IsTrial)
 {
     <div class="tenant-trial-banner" role="alert">
         <div class="trial-banner-content">
@@ -38,6 +38,12 @@
 
 @code {
     private bool _isVisible = true;
+
+    /// <summary>
+    /// Indica se o inquilino encontra-se sob o regime de Trial. Se false, o banner não é exibido.
+    /// </summary>
+    [Parameter]
+    public bool IsTrial { get; set; } = true;
 
     /// <summary>
     /// Quantidade de dias restantes no período de testes (Trial) do inquilino. Padrão: 14 dias.

@@ -489,4 +489,68 @@ public sealed partial class Tenant : AggregateRoot<TenantId>
 
         return Result.Success();
     }
+
+    /// <summary>
+    /// Ativa definitivamente a assinatura paga do inquilino, atualizando seu status para Active,
+    /// definindo o ciclo de cobrança e nova data de renovação, e emitindo o evento de domínio.
+    /// </summary>
+    /// <param name="tier">Nível do plano comercial contratado.</param>
+    /// <param name="billingCycle">Ciclo de faturamento contratado (Monthly ou Annual).</param>
+    /// <param name="referenceUtc">Data e hora UTC de referência para início da vigência.</param>
+    /// <param name="amount">Valor monetário liquidado.</param>
+    /// <returns>Resultado da operação.</returns>
+    public Result ActivatePaidSubscription(
+        SubscriptionTier tier,
+        string billingCycle,
+        DateTime referenceUtc,
+        decimal amount)
+    {
+        if (tier == SubscriptionTier.Trial)
+        {
+            return Result.Failure(Error.Validation("Tenant.InvalidPaidTier", "O plano de ativação deve ser um nível comercial pago."));
+        }
+
+        if (string.IsNullOrWhiteSpace(billingCycle))
+        {
+            return Result.Failure(Error.Validation("Tenant.InvalidBillingCycle", "O ciclo de faturamento é obrigatório."));
+        }
+
+        var trimmedCycle = billingCycle.Trim();
+        string normalizedCycle;
+        DateTime expiresAtUtc;
+
+        if (string.Equals(trimmedCycle, "Monthly", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedCycle = "Monthly";
+            expiresAtUtc = referenceUtc.AddDays(30);
+        }
+        else if (string.Equals(trimmedCycle, "Annual", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedCycle = "Annual";
+            expiresAtUtc = referenceUtc.AddDays(365);
+        }
+        else
+        {
+            return Result.Failure(Error.Validation("Tenant.InvalidBillingCycle", "O ciclo de faturamento deve ser Monthly ou Annual."));
+        }
+
+        Status = TenantStatus.Active;
+        Tier = tier;
+        BillingCycle = normalizedCycle;
+        SubscriptionExpiresAtUtc = expiresAtUtc;
+
+        RegularizePayment();
+
+        RaiseDomainEvent(new TenantSubscriptionActivatedDomainEvent(
+            Id,
+            CompanyName,
+            AdminEmail,
+            Tier,
+            BillingCycle,
+            amount,
+            referenceUtc,
+            expiresAtUtc));
+
+        return Result.Success();
+    }
 }
