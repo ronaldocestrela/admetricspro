@@ -165,3 +165,41 @@ Todos os endpoints operam sob resolução de contexto multitenant (cabeçalho `X
 | `Workspace.NotFound` | NotFound (2) | Workspace com o identificador informado não foi localizado. |
 | `Workspace.AlreadyActive` | Conflict (3) | O workspace já se encontra ativo. |
 | `Workspace.AlreadyInactive` | Conflict (3) | O workspace já se encontra inativo. |
+
+---
+
+## 4. Frontend Blazor Server (Regra 9 do AGENTS.md)
+
+Em conformidade estrita com o princípio de separação de camadas do `AGENTS.md`, o projeto `WebApp` opera estritamente no modo de apresentação, consumindo todos os dados e regras através da Web API via `HttpClient` fortemente tipado e tratando envelopes `Result<T>`.
+
+### 4.1 Cliente HTTP Tipado (`IWorkspaceClientService`)
+- `CreateWorkspaceAsync(CreateWorkspaceModel, CancellationToken)`: Despacha `POST /api/v1/workspaces`.
+- `GetWorkspacesAsync(bool? activeOnly, CancellationToken)`: Despacha `GET /api/v1/workspaces`.
+- `GetWorkspaceByIdAsync(Guid id, CancellationToken)`: Despacha `GET /api/v1/workspaces/{id}`.
+- `UpdateWorkspaceAsync(Guid id, UpdateWorkspaceModel, CancellationToken)`: Despacha `PUT /api/v1/workspaces/{id}`.
+- `ToggleWorkspaceStatusAsync(Guid id, CancellationToken)`: Despacha `PATCH /api/v1/workspaces/{id}/toggle-status`.
+
+### 4.2 Telas e Componentes Blazor
+1. **Página de Gestão de Clientes (`/workspaces` - `WorkspacesPage.razor`):**
+   - Painel com cards estatísticos: Total de Clientes, Clientes Ativos e Verba Mensal Gerenciada.
+   - Toolbar com pesquisa em tempo real e filtros de status (Todos, Ativos, Pausados).
+   - Tabela responsiva com dados sanitizados, badge de documento fiscal, segmento e orçamento formatado.
+   - Alternância de status operacional com liberação imediata de cota ou aviso de bloqueio caso a cota do plano esteja esgotada.
+   - Modal unificado para cadastro e edição com validações pré-submissão e feedback visual de progresso.
+2. **Modal Rápido FTUX (`WorkspaceQuickModal.razor`):**
+   - Cadastro ágil do primeiro cliente durante o checklist de ativação da agência.
+
+---
+
+## 5. Suíte de Testes Automatizados (TDD Global)
+
+A integridade do módulo é garantida por testes automatizados em três níveis:
+
+1. **Testes Unitários de Domínio & Handlers (`UnitTests.Backend`):**
+   - `WorkspaceTests.cs`: Validações de fábrica estática `Workspace.Create`, algoritmos oficiais de CPF/CNPJ (módulo 11), sanitização, invariantes de atualização (`UpdateDetails`), ativação e desativação.
+   - `CreateWorkspaceCommandHandlerTests.cs`: Validação de cotas por plano via `MediatR` desacoplado, conflito de documento duplicado, persistência transacional com `IUnitOfWork`.
+   - `UpdateWorkspaceCommandHandlerTests.cs` e `ToggleWorkspaceStatusCommandHandlerTests.cs`: Fluxos de alteração e controle de cota na reativação.
+2. **Testes Unitários de Interface (`UnitTests.Frontend`):**
+   - `WorkspacesPageTests.cs`: Testes bUnit cobrindo renderização com branding institucional, empty state, cards de resumo, tabela de clientes e interações de alternância de status.
+3. **Testes de Aceitação de API (`AcceptanceTests`):**
+   - `WorkspacesEndpointTests.cs`: Testes de integração via `WebApplicationFactory` cobrindo os códigos HTTP `201 Created`, `400 BadRequest` (cota excedida), `200 OK` e `404 NotFound`.

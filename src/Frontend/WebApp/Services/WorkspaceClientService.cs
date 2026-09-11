@@ -94,6 +94,93 @@ public sealed class WorkspaceClientService : IWorkspaceClientService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<Result<WorkspaceDto>> GetWorkspaceByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/workspaces/{id}");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<WorkspaceDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<WorkspaceDto>.Failure(
+                Error.Failure("Workspace.InvalidResponse", "Resposta inválida ao obter dados do workspace."));
+        }
+        catch (Exception ex)
+        {
+            return Result<WorkspaceDto>.Failure(
+                Error.Failure("Workspace.NetworkError", $"Erro de comunicação com a API: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result> UpdateWorkspaceAsync(
+        Guid id,
+        UpdateWorkspaceModel model,
+        CancellationToken cancellationToken = default)
+    {
+        if (model is null)
+        {
+            return Result.Failure(
+                Error.Validation("Request.Null", "Os dados do workspace não podem ser nulos."));
+        }
+
+        try
+        {
+            var payload = new
+            {
+                Name = model.Name,
+                CnpjOrCpf = model.CnpjOrCpf,
+                MonthlyAdSpendBudget = model.MonthlyAdSpendBudget,
+                Segment = model.Segment
+            };
+
+            using var message = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/workspaces/{id}")
+            {
+                Content = JsonContent.Create(payload, options: JsonOptions)
+            };
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result>(JsonOptions, cancellationToken);
+
+            return result ?? Result.Failure(
+                Error.Failure("Workspace.InvalidResponse", "Resposta inválida ao atualizar workspace."));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(
+                Error.Failure("Workspace.NetworkError", $"Erro de comunicação com a API: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result> ToggleWorkspaceStatusAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Patch, $"/api/v1/workspaces/{id}/toggle-status");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result>(JsonOptions, cancellationToken);
+
+            return result ?? Result.Failure(
+                Error.Failure("Workspace.InvalidResponse", "Resposta inválida ao alternar status do workspace."));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(
+                Error.Failure("Workspace.NetworkError", $"Erro de comunicação com a API: {ex.Message}"));
+        }
+    }
+
     private void AppendTenantHeader(HttpRequestMessage request)
     {
         var tenantId = _tenantStateProvider.CurrentTenant?.TenantId;

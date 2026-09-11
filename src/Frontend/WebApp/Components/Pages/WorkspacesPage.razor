@@ -1,0 +1,557 @@
+@page "/workspaces"
+@layout TenantMainLayout
+@namespace WebApp.Components.Pages
+@using BuildingBlocks.Domain.Primitives
+@using Tenants.Application.Workspaces.DTOs
+@using WebApp.Models
+@using WebApp.Services
+@using WebApp.State
+@inject IWorkspaceClientService WorkspaceClientService
+@inject ITenantSessionStateProvider TenantSessionStateProvider
+@inject ITenantStateProvider TenantStateProvider
+
+<PageTitle>Clientes (Workspaces) — @AgencyName</PageTitle>
+
+<div class="workspaces-page-container">
+    <!-- Cabeçalho Principal -->
+    <header class="workspaces-header">
+        <div class="header-info">
+            <h1 class="page-title">Clientes & Workspaces</h1>
+            <p class="page-subtitle">
+                Gerencie a carteira de clientes, orçamentos de mídia e status operacional da agência <strong>@AgencyName</strong>.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-primary" @onclick="OpenCreateModal" id="btn-open-create-workspace">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Novo Workspace</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Cards de Resumo da Carteira -->
+    <section class="summary-cards-grid" aria-label="Resumo da Carteira">
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <span class="summary-label">Total de Clientes</span>
+                <div class="summary-icon icon-clients">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="summary-value">@_workspaces.Count</div>
+            <span class="summary-footer">Cadastrados no banco isolado</span>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <span class="summary-label">Clientes Ativos</span>
+                <div class="summary-icon icon-active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+            </div>
+            <div class="summary-value">@ActiveWorkspacesCount</div>
+            <span class="summary-footer">Consumindo cotas da assinatura</span>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <span class="summary-label">Verba Mensal Gerenciada</span>
+                <div class="summary-icon icon-budget">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="summary-value">@TotalManagedBudget.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</div>
+            <span class="summary-footer">Orçamento total previsto</span>
+        </div>
+    </section>
+
+    <!-- Alertas Globais -->
+    @if (!string.IsNullOrEmpty(_globalErrorMessage))
+    {
+        <div class="alert-error-banner" role="alert">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@_globalErrorMessage</span>
+            <button type="button" class="btn-dismiss-alert" @onclick="() => _globalErrorMessage = null" aria-label="Fechar alerta">✕</button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_globalSuccessMessage))
+    {
+        <div class="alert-success-banner" role="status">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>@_globalSuccessMessage</span>
+            <button type="button" class="btn-dismiss-alert" @onclick="() => _globalSuccessMessage = null" aria-label="Fechar aviso">✕</button>
+        </div>
+    }
+
+    <!-- Barra de Filtros e Pesquisa -->
+    <div class="filters-toolbar">
+        <div class="search-input-group">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text"
+                   class="search-input"
+                   placeholder="Buscar por nome ou documento fiscal..."
+                   @bind="_searchTerm"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="status-filter-pills">
+            <button type="button"
+                    class="filter-pill @(_statusFilter == null ? "active" : "")"
+                    @onclick="() => SetStatusFilter(null)">
+                Todos (@_workspaces.Count)
+            </button>
+            <button type="button"
+                    class="filter-pill @(_statusFilter == true ? "active" : "")"
+                    @onclick="() => SetStatusFilter(true)">
+                Ativos (@ActiveWorkspacesCount)
+            </button>
+            <button type="button"
+                    class="filter-pill @(_statusFilter == false ? "active" : "")"
+                    @onclick="() => SetStatusFilter(false)">
+                Pausados (@InactiveWorkspacesCount)
+            </button>
+        </div>
+    </div>
+
+    <!-- Conteúdo da Tabela / Estado de Carregamento -->
+    <div class="workspaces-table-wrapper">
+        @if (_isLoading)
+        {
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Carregando carteira de clientes...</p>
+            </div>
+        }
+        else if (!FilteredWorkspaces.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon-box">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <h3>Nenhum cliente/workspace encontrado</h3>
+                <p>@(string.IsNullOrWhiteSpace(_searchTerm) ? "Sua agência ainda não possui clientes cadastrados neste ambiente." : "Nenhum resultado corresponde aos termos da pesquisa.")</p>
+                <button type="button" class="btn-primary btn-sm" @onclick="OpenCreateModal">
+                    Cadastrar Primeiro Cliente
+                </button>
+            </div>
+        }
+        else
+        {
+            <table class="workspaces-table">
+                <thead>
+                    <tr>
+                        <th>Cliente / Razão Social</th>
+                        <th>Documento Fiscal</th>
+                        <th>Segmento</th>
+                        <th>Verba Mensal</th>
+                        <th>Status</th>
+                        <th>Cadastrado em</th>
+                        <th class="col-actions">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var workspace in FilteredWorkspaces)
+                    {
+                        <tr class="@(!workspace.IsActive ? "row-inactive" : "")">
+                            <td>
+                                <div class="client-name-cell">
+                                    <span class="client-name">@workspace.Name</span>
+                                    <span class="client-id" title="@workspace.Id">ID: @workspace.Id.ToString()[..8]...</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="doc-badge">@FormatTaxDocument(workspace.CnpjOrCpf)</span>
+                            </td>
+                            <td>
+                                <span class="segment-badge">@(string.IsNullOrWhiteSpace(workspace.Segment) ? "Geral" : workspace.Segment)</span>
+                            </td>
+                            <td class="cell-budget">
+                                @workspace.MonthlyAdSpendBudget.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                            </td>
+                            <td>
+                                @if (workspace.IsActive)
+                                {
+                                    <span class="status-badge badge-active">Ativo</span>
+                                }
+                                else
+                                {
+                                    <span class="status-badge badge-paused">Pausado</span>
+                                }
+                            </td>
+                            <td class="cell-date">
+                                @workspace.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm")
+                            </td>
+                            <td class="col-actions">
+                                <div class="action-buttons-group">
+                                    <button type="button"
+                                            class="btn-icon"
+                                            title="Editar dados cadastrais"
+                                            @onclick="() => OpenEditModal(workspace)">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button"
+                                            class="btn-icon @(workspace.IsActive ? "btn-pause" : "btn-play")"
+                                            title="@(workspace.IsActive ? "Pausar cliente (libera cota)" : "Ativar cliente")"
+                                            @onclick="() => HandleToggleStatusAsync(workspace)">
+                                        @if (workspace.IsActive)
+                                        {
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="6" y="4" width="4" height="16"></rect>
+                                                <rect x="14" y="4" width="4" height="16"></rect>
+                                            </svg>
+                                        }
+                                        else
+                                        {
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                            </svg>
+                                        }
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<!-- Modal Unificado de Criação e Edição de Workspace -->
+@if (_showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-title" class="modal-title">@(_formModel.Id.HasValue ? "Editar Workspace" : "Novo Workspace")</h3>
+                        <p class="modal-subtitle">@(_formModel.Id.HasValue ? "Atualize os dados comerciais e orçamentos do cliente." : "Cadastre uma nova conta gerenciada no ambiente do tenant.")</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="CloseModal" aria-label="Fechar modal">✕</button>
+            </div>
+
+            <form @onsubmit="HandleSaveModalAsync" class="modal-body">
+                @if (!string.IsNullOrEmpty(_modalErrorMessage))
+                {
+                    <div class="alert-error" role="alert">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_modalErrorMessage</span>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="input-workspace-name" class="form-label">Nome do Cliente / Empresa *</label>
+                    <input id="input-workspace-name"
+                           type="text"
+                           class="form-control"
+                           placeholder="Ex: Loja Alpha E-commerce LTDA"
+                           @bind="_formModel.Name"
+                           required
+                           disabled="@_isSubmitting" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-half">
+                        <label for="input-workspace-doc" class="form-label">CNPJ ou CPF *</label>
+                        <input id="input-workspace-doc"
+                               type="text"
+                               class="form-control"
+                               placeholder="12.345.678/0001-95 ou 123.456.789-09"
+                               @bind="_formModel.CnpjOrCpf"
+                               required
+                               disabled="@_isSubmitting" />
+                    </div>
+
+                    <div class="form-group col-half">
+                        <label for="input-workspace-budget" class="form-label">Orçamento Mensal de Mídia (R$) *</label>
+                        <input id="input-workspace-budget"
+                               type="number"
+                               step="100"
+                               min="0"
+                               class="form-control"
+                               placeholder="5000"
+                               @bind="_formModel.MonthlyAdSpendBudget"
+                               required
+                               disabled="@_isSubmitting" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="select-workspace-segment" class="form-label">Nicho / Segmento</label>
+                    <select id="select-workspace-segment"
+                            class="form-control"
+                            @bind="_formModel.Segment"
+                            disabled="@_isSubmitting">
+                        <option value="">Não especificado</option>
+                        <option value="E-commerce">E-commerce / Varejo Digital</option>
+                        <option value="Infoproduto">Infoproduto / Lançamentos</option>
+                        <option value="Negócio Local">Negócio Local / Franquia</option>
+                        <option value="Serviços B2B">Serviços B2B / SaaS</option>
+                        <option value="Imobiliário">Imobiliário / Construção</option>
+                        <option value="Saúde & Bem-Estar">Saúde & Bem-Estar</option>
+                        <option value="Outro">Outro Segmento</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" @onclick="CloseModal" disabled="@_isSubmitting">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btn-save-workspace-submit" class="btn-primary" disabled="@_isSubmitting">
+                        @if (_isSubmitting)
+                        {
+                            <span class="spinner"></span>
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>@(_formModel.Id.HasValue ? "Salvar Alterações" : "Cadastrar Cliente")</span>
+                        }
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    private List<WorkspaceDto> _workspaces = new();
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _globalErrorMessage;
+    private string? _globalSuccessMessage;
+    private string? _modalErrorMessage;
+    private string _searchTerm = string.Empty;
+    private bool? _statusFilter;
+    private bool _showModal;
+    private WorkspaceFormModel _formModel = new();
+
+    private string AgencyName =>
+        TenantStateProvider.CurrentTenant?.Name ??
+        TenantSessionStateProvider.CurrentSession?.Subdomain ??
+        "Agência";
+
+    private int ActiveWorkspacesCount => _workspaces.Count(w => w.IsActive);
+    private int InactiveWorkspacesCount => _workspaces.Count(w => !w.IsActive);
+    private decimal TotalManagedBudget => _workspaces.Where(w => w.IsActive).Sum(w => w.MonthlyAdSpendBudget);
+
+    private IEnumerable<WorkspaceDto> FilteredWorkspaces
+    {
+        get
+        {
+            var query = _workspaces.AsEnumerable();
+
+            if (_statusFilter.HasValue)
+            {
+                query = query.Where(w => w.IsActive == _statusFilter.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim();
+                query = query.Where(w =>
+                    w.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    w.CnpjOrCpf.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(w.Segment) && w.Segment.Contains(term, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            return query;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWorkspacesAsync();
+    }
+
+    private async Task LoadWorkspacesAsync()
+    {
+        _isLoading = true;
+        _globalErrorMessage = null;
+
+        var result = await WorkspaceClientService.GetWorkspacesAsync();
+        _isLoading = false;
+
+        if (result.IsSuccess)
+        {
+            _workspaces = result.Value.ToList();
+        }
+        else
+        {
+            _globalErrorMessage = result.Error.Description;
+        }
+    }
+
+    private void SetStatusFilter(bool? status)
+    {
+        _statusFilter = status;
+    }
+
+    private void OpenCreateModal()
+    {
+        _formModel = new WorkspaceFormModel
+        {
+            MonthlyAdSpendBudget = 5000m,
+            CnpjOrCpf = "12.345.678/0001-95"
+        };
+        _modalErrorMessage = null;
+        _showModal = true;
+    }
+
+    private void OpenEditModal(WorkspaceDto workspace)
+    {
+        _formModel = new WorkspaceFormModel
+        {
+            Id = workspace.Id,
+            Name = workspace.Name,
+            CnpjOrCpf = workspace.CnpjOrCpf,
+            MonthlyAdSpendBudget = workspace.MonthlyAdSpendBudget,
+            Segment = workspace.Segment
+        };
+        _modalErrorMessage = null;
+        _showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        _showModal = false;
+        _modalErrorMessage = null;
+    }
+
+    private async Task HandleSaveModalAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_formModel.Name))
+        {
+            _modalErrorMessage = "O nome comercial do cliente é obrigatório.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_formModel.CnpjOrCpf))
+        {
+            _modalErrorMessage = "O documento fiscal (CNPJ ou CPF) é obrigatório.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _modalErrorMessage = null;
+
+        if (_formModel.Id.HasValue)
+        {
+            var updateModel = new UpdateWorkspaceModel(
+                _formModel.Name.Trim(),
+                _formModel.CnpjOrCpf.Trim(),
+                _formModel.MonthlyAdSpendBudget,
+                _formModel.Segment);
+
+            var result = await WorkspaceClientService.UpdateWorkspaceAsync(_formModel.Id.Value, updateModel);
+            _isSubmitting = false;
+
+            if (result.IsSuccess)
+            {
+                CloseModal();
+                _globalSuccessMessage = "Workspace atualizado com sucesso!";
+                await LoadWorkspacesAsync();
+            }
+            else
+            {
+                _modalErrorMessage = result.Error.Description;
+            }
+        }
+        else
+        {
+            var createModel = new CreateWorkspaceModel(
+                _formModel.Name.Trim(),
+                _formModel.CnpjOrCpf.Trim(),
+                _formModel.MonthlyAdSpendBudget,
+                _formModel.Segment);
+
+            var result = await WorkspaceClientService.CreateWorkspaceAsync(createModel);
+            _isSubmitting = false;
+
+            if (result.IsSuccess)
+            {
+                CloseModal();
+                _globalSuccessMessage = "Cliente/Workspace cadastrado com sucesso!";
+                await LoadWorkspacesAsync();
+            }
+            else
+            {
+                _modalErrorMessage = result.Error.Description;
+            }
+        }
+    }
+
+    private async Task HandleToggleStatusAsync(WorkspaceDto workspace)
+    {
+        _globalErrorMessage = null;
+        _globalSuccessMessage = null;
+
+        var result = await WorkspaceClientService.ToggleWorkspaceStatusAsync(workspace.Id);
+        if (result.IsSuccess)
+        {
+            _globalSuccessMessage = workspace.IsActive
+                ? $"Workspace '{workspace.Name}' pausado com sucesso (cota liberada)."
+                : $"Workspace '{workspace.Name}' ativado com sucesso!";
+            await LoadWorkspacesAsync();
+        }
+        else
+        {
+            _globalErrorMessage = result.Error.Description;
+        }
+    }
+
+    private static string FormatTaxDocument(string? doc)
+    {
+        if (string.IsNullOrWhiteSpace(doc))
+            return "-";
+
+        var sanitized = doc.Replace(".", "").Replace("-", "").Replace("/", "").Trim();
+        if (sanitized.Length == 11)
+            return $"{sanitized[..3]}.{sanitized.Substring(3, 3)}.{sanitized.Substring(6, 3)}-{sanitized.Substring(9, 2)}";
+
+        if (sanitized.Length == 14)
+            return $"{sanitized[..2]}.{sanitized.Substring(2, 3)}.{sanitized.Substring(5, 3)}/{sanitized.Substring(8, 4)}-{sanitized.Substring(12, 2)}";
+
+        return doc;
+    }
+}

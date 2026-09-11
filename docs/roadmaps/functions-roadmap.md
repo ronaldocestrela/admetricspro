@@ -22,14 +22,16 @@ Todas as entregas seguem as diretrizes inegociáveis do `AGENTS.md`: **.NET 10**
 
 Esta fase implementa a governança e o isolamento de dados no banco dedicado de cada inquilino (`TenantDbContext`).
 
-### Subfase 1.1: Workspaces e Cadastro de Clientes
-* **1.1.1 (TDD - Red):** Escrever testes unitários para a entidade `Workspace` validando:
-  * Obrigatoriedade de CNPJ/CPF e Razão Social válidos[cite: 5, 6].
-  * Validação de teto máximo de Workspaces permitidos pela cota da assinatura do Tenant[cite: 6].
-* **1.1.2 (TDD - Green):** Implementar o agregado `Workspace` no namespace `Tenants.Domain.Workspaces` com métodos de fábrica estáticos `Workspace.Create(...)`.
-* **1.1.3:** Implementar `IWorkspaceRepository` com métodos assíncronos que recebem `CancellationToken`.
-* **1.1.4:** Implementar o handler `CreateWorkspaceCommand` retornando `Result<Guid>` ou falha tipada `Error.Conflict` / `Error.Validation`.
-* **1.1.5 (Documentação Viva):** Criar `docs/modules/tenants-workspaces.md` documentando schema de entrada, payload JSON e retornos com códigos semânticos.
+### Subfase 1.1: Workspaces e Cadastro de Clientes `[CONCLUÍDA]`
+* [x] **1.1.1 (TDD - Red):** Escrever testes unitários para a entidade `Workspace` validando:
+  * Obrigatoriedade de CNPJ/CPF e Razão Social válidos (`WorkspaceTests.cs`).
+  * Validação de teto máximo de Workspaces permitidos pela cota da assinatura do Tenant (`CreateWorkspaceCommandHandlerTests.cs`).
+* [x] **1.1.2 (TDD - Green):** Implementar o agregado `Workspace` (`Workspace.cs`) com métodos de fábrica estáticos `Workspace.Create(...)`, algoritmos de documento módulo 11 e invariantes `UpdateDetails`, `Activate`, `Deactivate`.
+* [x] **1.1.3:** Implementar `IWorkspaceRepository` com métodos assíncronos que recebem `CancellationToken` e mapeamento EF Core no `TenantDbContext`.
+* [x] **1.1.4:** Implementar o handler `CreateWorkspaceCommand` retornando `Result<Guid>` ou falha tipada `Error.Conflict` / `Error.Validation`, além de `UpdateWorkspaceCommand` e `ToggleWorkspaceStatusCommand`.
+* [x] **1.1.5 (Documentação Viva & Frontend):** 
+  * Criar e consolidar `docs/modules/tenants-workspaces.md` documentando schema de entrada, payload JSON, retornos com códigos semânticos e catálogo de erros.
+  * Implementar o cliente HTTP tipado `IWorkspaceClientService` / `WorkspaceClientService` e a tela completa de gestão `WorkspacesPage.razor` (`/workspaces`) com suíte bUnit em `WorkspacesPageTests.cs`.
 
 ### Subfase 1.2: Gestão de Squads (Times) e Isolamento de Carteira
 * **1.2.1 (TDD - Red):** Testes unitários para a entidade `Squad` validando:

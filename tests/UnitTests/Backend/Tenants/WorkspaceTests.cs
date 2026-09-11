@@ -220,4 +220,112 @@ public sealed class WorkspaceTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Workspace.AlreadyActive");
     }
+
+    /// <summary>
+    /// Valida que atualizar detalhes com nome inválido (vazio ou whitespace) falha.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void UpdateDetails_ComNomeVazio_DeveRetornarFalha(string invalidName)
+    {
+        // Arrange
+        var workspace = Workspace.Create(Guid.NewGuid(), "Nome Original", ValidCpf, 1000m, "Varejo").Value;
+
+        // Act
+        var result = workspace.UpdateDetails(invalidName, ValidCpf, 1000m, "Varejo");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Workspace.NameRequired");
+    }
+
+    /// <summary>
+    /// Valida que atualizar detalhes com nome excedendo 150 caracteres falha.
+    /// </summary>
+    [Fact]
+    public void UpdateDetails_ComNomeExcedendo150Caracteres_DeveRetornarFalha()
+    {
+        // Arrange
+        var workspace = Workspace.Create(Guid.NewGuid(), "Nome Original", ValidCpf, 1000m, "Varejo").Value;
+        var longName = new string('X', 151);
+
+        // Act
+        var result = workspace.UpdateDetails(longName, ValidCpf, 1000m, "Varejo");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Workspace.NameTooLong");
+    }
+
+    /// <summary>
+    /// Valida que atualizar detalhes com documento inválido falha.
+    /// </summary>
+    [Theory]
+    [InlineData("00000000000")]
+    [InlineData("invalido")]
+    public void UpdateDetails_ComDocumentoInvalido_DeveRetornarFalha(string invalidDoc)
+    {
+        // Arrange
+        var workspace = Workspace.Create(Guid.NewGuid(), "Nome Original", ValidCpf, 1000m, "Varejo").Value;
+
+        // Act
+        var result = workspace.UpdateDetails("Novo Nome", invalidDoc, 1000m, "Varejo");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Workspace.InvalidTaxDocument");
+    }
+
+    /// <summary>
+    /// Valida que atualizar detalhes com orçamento de mídia negativo falha.
+    /// </summary>
+    [Fact]
+    public void UpdateDetails_ComOrcamentoNegativo_DeveRetornarFalha()
+    {
+        // Arrange
+        var workspace = Workspace.Create(Guid.NewGuid(), "Nome Original", ValidCpf, 1000m, "Varejo").Value;
+
+        // Act
+        var result = workspace.UpdateDetails("Novo Nome", ValidCpf, -50m, "Varejo");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Workspace.InvalidBudget");
+    }
+
+    /// <summary>
+    /// Valida que atualizar detalhes com segmento superior a 100 caracteres falha.
+    /// </summary>
+    [Fact]
+    public void UpdateDetails_ComSegmentoSuperiorA100Caracteres_DeveRetornarFalha()
+    {
+        // Arrange
+        var workspace = Workspace.Create(Guid.NewGuid(), "Nome Original", ValidCpf, 1000m, "Varejo").Value;
+        var longSegment = new string('S', 101);
+
+        // Act
+        var result = workspace.UpdateDetails("Novo Nome", ValidCpf, 2000m, longSegment);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Workspace.SegmentTooLong");
+    }
+
+    /// <summary>
+    /// Valida que documento fiscal formatado com pontuação e espaços é devidamente sanitizado na criação.
+    /// </summary>
+    [Fact]
+    public void Create_ComDocumentoFormatadoComEspacos_DeveSanitizarParaApenasDigitos()
+    {
+        // Arrange
+        const string docComEspacos = " 12. 345. 678 / 0001 - 95 ";
+
+        // Act
+        var result = Workspace.Create(Guid.NewGuid(), "Cliente Espacos", docComEspacos, 3000m, "Serviços");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.CnpjOrCpf.Should().Be("12345678000195");
+    }
 }

@@ -24,4 +24,29 @@ public interface IWorkspaceClientService
     /// <param name="cancellationToken">Token de cancelamento.</param>
     /// <returns>Lista de workspaces ou erro de comunicação.</returns>
     Task<Result<IReadOnlyList<WorkspaceDto>>> GetWorkspacesAsync(bool? activeOnly = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém os dados detalhados de um workspace pelo seu identificador único.
+    /// </summary>
+    /// <param name="id">Identificador único do workspace.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Dados do workspace ou falha tipada.</returns>
+    Task<Result<WorkspaceDto>> GetWorkspaceByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atualiza os dados cadastrais e operacionais de um workspace existente.
+    /// </summary>
+    /// <param name="id">Identificador único do workspace.</param>
+    /// <param name="model">Novos dados cadastrais.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado da operação.</returns>
+    Task<Result> UpdateWorkspaceAsync(Guid id, UpdateWorkspaceModel model, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Alterna o status de ativação (ativo/pausado) de um workspace.
+    /// </summary>
+    /// <param name="id">Identificador único do workspace.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado da operação.</returns>
+    Task<Result> ToggleWorkspaceStatusAsync(Guid id, CancellationToken cancellationToken = default);
 }
