@@ -1,0 +1,160 @@
+.rbac-matrix-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.matrix-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.matrix-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.25rem 0;
+}
+
+.matrix-subtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: #334155;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.rbac-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.rbac-table th,
+.rbac-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.th-permission {
+    text-align: left;
+    color: #475569;
+    font-weight: 600;
+    width: 32%;
+}
+
+.th-role {
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.col-owner .role-badge {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.col-guest .role-badge {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.td-permission {
+    display: flex;
+    flex-direction: column;
+}
+
+.permission-name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.permission-code {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-family: monospace;
+}
+
+.badge-allowed {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    background: #dcfce7;
+    color: #166534;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.badge-shielded {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    background: #fee2e2;
+    color: #991b1b;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.badge-denied {
+    color: #cbd5e1;
+    font-weight: 700;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.error-banner {
+    padding: 0.75rem 1rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    color: #991b1b;
+    margin-bottom: 1rem;
+}
+
+.loading-container {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+}

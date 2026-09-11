@@ -1,0 +1,168 @@
+@namespace WebApp.Components.Rbac
+@using BuildingBlocks.Domain.Tenants
+@using Tenants.Application.Rbac.DTOs
+@using WebApp.Services
+@inject ITenantRbacClientService RbacClientService
+
+<div class="rbac-matrix-card">
+    <div class="matrix-header">
+        <div class="matrix-title-group">
+            <h3 class="matrix-title">Matriz Canônica de Perfis e Permissões (RBAC)</h3>
+            <p class="matrix-subtitle">Governança granular de privilégios de acesso e blindagem operacional da agência</p>
+        </div>
+        <button type="button" class="refresh-btn" @onclick="LoadMatrixAsync" disabled="@_isLoading">
+            @if (_isLoading)
+            {
+                <span class="spinner-small"></span>
+            }
+            else
+            {
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+            }
+            <span>Atualizar Matriz</span>
+        </button>
+    </div>
+
+    @if (_errorMessage is not null)
+    {
+        <div class="error-banner" role="alert">
+            <span>@_errorMessage</span>
+        </div>
+    }
+
+    @if (_isLoading && _matrix is null)
+    {
+        <div class="loading-container">
+            <span class="spinner"></span>
+            <p>Carregando matriz de permissões...</p>
+        </div>
+    }
+    else if (_matrix is not null)
+    {
+        <div class="table-responsive">
+            <table class="rbac-table" aria-label="Matriz de Permissões">
+                <thead>
+                    <tr>
+                        <th scope="col" class="th-permission">Permissão / Funcionalidade</th>
+                        @foreach (var role in _matrix.Roles.Keys)
+                        {
+                            <th scope="col" class="th-role @GetRoleHeaderClass(role)">
+                                <span class="role-badge">@FormatRoleName(role)</span>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var permission in _matrix.AllPermissions)
+                    {
+                        <tr>
+                            <td class="td-permission">
+                                <span class="permission-name">@FormatPermissionName(permission)</span>
+                                <span class="permission-code">@permission</span>
+                            </td>
+                            @foreach (var (role, permissions) in _matrix.Roles)
+                            {
+                                var isAllowed = permissions.Contains(permission);
+                                <td class="td-check text-center">
+                                    @if (isAllowed)
+                                    {
+                                        <span class="badge-allowed" title="Concedido">&#10003; Ativo</span>
+                                    }
+                                    else if (role == "Guest" && permission == "ViewFinancialMargins")
+                                    {
+                                        <span class="badge-shielded" title="Blindagem Estrita">&#128737; Blindado</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-denied" title="Negado">&mdash;</span>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private TenantRbacMatrixDto? _matrix;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    /// <summary>
+    /// Matriz opcional pré-carregada para suporte a testes unitários bUnit.
+    /// </summary>
+    [Parameter]
+    public TenantRbacMatrixDto? InitialMatrix { get; set; }
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        if (InitialMatrix is not null)
+        {
+            _matrix = InitialMatrix;
+            _isLoading = false;
+            return;
+        }
+
+        await LoadMatrixAsync();
+    }
+
+    private async Task LoadMatrixAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var result = await RbacClientService.GetRbacMatrixAsync();
+        if (result.IsSuccess)
+        {
+            _matrix = result.Value;
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+
+        _isLoading = false;
+    }
+
+    private static string FormatRoleName(string role) => role switch
+    {
+        "Owner" => "Proprietário",
+        "Admin" => "Administrador",
+        "SquadLeader" => "Líder Squad",
+        "MediaManager" => "Gestor Mídia",
+        "Analyst" => "Analista BI",
+        "Guest" => "Cliente Final",
+        _ => role
+    };
+
+    private static string FormatPermissionName(string permission) => permission switch
+    {
+        "ManageBilling" => "Faturamento & Assinatura Raiz",
+        "ManageSettings" => "Configurações Globais do Inquilino",
+        "ViewAuditLogs" => "Trilha de Auditoria Imutável",
+        "ManageTeamMembers" => "Gestão & Convite de Colaboradores",
+        "ManageSquads" => "Gestão de Squads e Alocações",
+        "ManageWorkspaces" => "Gestão de Clientes (Workspaces)",
+        "ViewCampaigns" => "Visualização de Campanhas & Anúncios",
+        "EditCampaigns" => "Edição de Campanhas & Orçamentos",
+        "ManageAutomations" => "Regras de Automação & Travas",
+        "ViewFinancialMargins" => "Margens, Markups & Fees da Agência",
+        "ExportReports" => "Exportação de Relatórios de BI",
+        _ => permission
+    };
+
+    private static string GetRoleHeaderClass(string role) => role switch
+    {
+        "Owner" => "col-owner",
+        "Guest" => "col-guest",
+        _ => string.Empty
+    };
+}

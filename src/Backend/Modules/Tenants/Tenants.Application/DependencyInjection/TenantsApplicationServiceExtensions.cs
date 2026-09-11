@@ -19,6 +19,7 @@ public static class TenantsApplicationServiceExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddMessaging(typeof(TenantsApplicationServiceExtensions).Assembly);
+        services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(Tenants.Application.Rbac.Behaviors.TenantAuthorizationBehavior<,>));
 
         return services;
     }

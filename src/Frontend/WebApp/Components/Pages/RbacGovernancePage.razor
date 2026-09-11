@@ -1,0 +1,21 @@
+@page "/rbac"
+@layout WebApp.Components.Layout.TenantMainLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<PageTitle>Perfis, Permissões (RBAC) & Auditoria - AdMetricsPro</PageTitle>
+
+<div class="rbac-page-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Perfis & Permissões (RBAC)</h1>
+            <p class="page-description">Governança operacional, matriz de privilégios de acesso e trilha de auditoria do inquilino</p>
+        </div>
+    </div>
+
+    <WebApp.Components.Rbac.RbacMatrixViewer />
+
+    <WebApp.Components.Rbac.TenantAuditLogViewer />
+</div>
+
+@code {
+}

@@ -1,0 +1,87 @@
+@namespace WebApp.Components.Shared
+@using BuildingBlocks.Domain.Tenants
+@inject ITenantStateProvider TenantStateProvider
+
+@if (IsAuthorized)
+{
+    @ChildContent
+}
+else if (NotAuthorized is not null)
+{
+    @NotAuthorized
+}
+
+@code {
+    /// <summary>
+    /// Permissão requerida para renderizar o conteúdo seguro.
+    /// </summary>
+    [Parameter]
+    public TenantPermission? Permission { get; set; }
+
+    /// <summary>
+    /// Lista de papéis autorizados como alternativa ou complemento à permissão direta.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<TenantRole>? AllowedRoles { get; set; }
+
+    /// <summary>
+    /// Papel explícito a ser testado no componente (útil para testes unitários isolados).
+    /// </summary>
+    [Parameter]
+    public TenantRole? CurrentUserRole { get; set; }
+
+    /// <summary>
+    /// Conteúdo renderizado quando a autorização for concedida.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Conteúdo opcional renderizado quando a autorização for negada.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? NotAuthorized { get; set; }
+
+    private bool IsAuthorized
+    {
+        get
+        {
+            var role = CurrentUserRole ?? TenantRole.Admin;
+
+            // Bloqueio inegociável de cliente Guest contra margens financeiras e dados internos
+            if (role == TenantRole.Guest)
+            {
+                if (Permission is TenantPermission.ViewFinancialMargins or TenantPermission.ManageAutomations or TenantPermission.ViewAuditLogs)
+                {
+                    return false;
+                }
+            }
+
+            if (AllowedRoles is { Count: > 0 } && !AllowedRoles.Contains(role))
+            {
+                return false;
+            }
+
+            if (Permission.HasValue)
+            {
+                return EvaluateRolePermission(role, Permission.Value);
+            }
+
+            return true;
+        }
+    }
+
+    private static bool EvaluateRolePermission(TenantRole role, TenantPermission permission)
+    {
+        return role switch
+        {
+            TenantRole.Owner => true,
+            TenantRole.Admin => permission != TenantPermission.ManageBilling,
+            TenantRole.SquadLeader => permission is not (TenantPermission.ManageBilling or TenantPermission.ManageSettings or TenantPermission.ViewAuditLogs),
+            TenantRole.MediaManager => permission is TenantPermission.ViewCampaigns or TenantPermission.EditCampaigns or TenantPermission.ManageAutomations or TenantPermission.ExportReports,
+            TenantRole.Analyst => permission is TenantPermission.ViewCampaigns or TenantPermission.ExportReports,
+            TenantRole.Guest => permission is TenantPermission.ViewCampaigns or TenantPermission.ExportReports,
+            _ => false
+        };
+    }
+}

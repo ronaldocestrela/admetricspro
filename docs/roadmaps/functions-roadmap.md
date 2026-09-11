@@ -42,16 +42,19 @@ Esta fase implementa a governança e o isolamento de dados no banco dedicado de 
 * [x] **1.2.3 (Frontend Blazor):** Criar o cliente HTTP tipado `ISquadClientService` / `SquadClientService`, o componente `SquadManager.razor` com seleção múltipla de clientes e membros, simulador de isolamento de carteira (Portfolio Inspector) e página `/squads` (`SquadsPage.razor`), testados via **bUnit** (`SquadManagerTests.cs`, `SquadsPageTests.cs`, `SquadClientServiceTests.cs`).
 * [x] **1.2.4 (Documentação Viva):** Adicionar tags XML `<summary>` em todos os comandos, DTOs e repositórios de Squads e consolidar especificação completa em `docs/modules/tenants-squads.md`.
 
-### Subfase 1.3: Matriz de Perfis e Permissões (RBAC Granular)
-* **1.3.1 (TDD - Red):** Testes para o avaliador de permissões (`IPermissionEvaluator`) cobrindo toda a matriz[cite: 6]:
-  * *Owner / Administrador:* Acesso irrestrito ao Tenant[cite: 6].
-  * *Líder de Squad:* Gestão restrita aos clientes e membros do squad[cite: 6].
-  * *Gestor de Mídia:* Permissão de edição e ajustes até teto configurado[cite: 6].
-  * *Analista de Tráfego / Visualizador:* Leitura estrita[cite: 6].
-  * *Client Guest (Cliente Final):* Visualização blindada apenas do seu Workspace, sem acesso a margens, markups ou regras internas[cite: 6].
-* **1.3.2 (TDD - Green):** Implementar os policies de autorização no ASP.NET Core e filtros do MediatR.
-* **1.3.3:** Gravação de auditoria imutável em `TenantAuditLog` a cada alteração de permissão operacional[cite: 6].
-* **1.3.4 (Documentação Viva):** Publicar matriz RBAC atualizada em `docs/modules/tenants-rbac.md`[cite: 6].
+### Subfase 1.3: Matriz de Perfis e Permissões (RBAC Granular) `[CONCLUÍDA]`
+* [x] **1.3.1 (TDD - Red):** Testes para o avaliador de permissões (`IPermissionEvaluator`) cobrindo toda a matriz (`TenantPermissionEvaluatorTests.cs`):
+  * *Owner / Administrador:* Acesso irrestrito ao Tenant.
+  * *Líder de Squad:* Gestão restrita aos clientes e membros do squad.
+  * *Gestor de Mídia:* Permissão de edição e ajustes até teto configurado.
+  * *Analista de Tráfego / Visualizador:* Leitura estrita.
+  * *Client Guest (Cliente Final):* Visualização blindada apenas do seu Workspace, sem acesso a margens, markups ou regras internas.
+* [x] **1.3.2 (TDD - Green):** Implementar pipeline behavior de autorização no MediatR (`TenantAuthorizationBehavior`) e contratos `ICurrentUserContext` / `RequireTenantPermissionAttribute`.
+* [x] **1.3.3:** Gravação de auditoria imutável em `TenantAuditLog` no banco dedicado do inquilino a cada alteração de permissão operacional (`ChangeTenantUserRoleCommandHandler`, `TenantAuditLogRepository`, `GetTenantAuditLogsQueryHandler`).
+* [x] **1.3.4 (Frontend Blazor & Documentação Viva):**
+  * Implementar cliente HTTP tipado `ITenantRbacClientService` / `TenantRbacClientService`.
+  * Criar componentes visuais `RbacMatrixViewer.razor`, `TenantAuditLogViewer.razor`, componente de blindagem `TenantAuthorizeView.razor` e página `/rbac` (`RbacGovernancePage.razor`), testados via **bUnit** (`RbacMatrixViewerTests.cs`, `TenantAuditLogViewerTests.cs`, `TenantAuthorizeViewTests.cs`, `TenantRbacClientServiceTests.cs`).
+  * Consolidar especificação completa em `docs/modules/tenants-rbac.md`.
 
 ### Subfase 1.4: Módulo White-Label e CNAME Dinâmico
 * **1.4.1 (TDD - Red):** Testes unitários para `TenantBranding` validando formato de arquivos de imagem (logo claro/escuro, favicon) e códigos hexadecimais válidos para cores primárias/secundárias[cite: 6].

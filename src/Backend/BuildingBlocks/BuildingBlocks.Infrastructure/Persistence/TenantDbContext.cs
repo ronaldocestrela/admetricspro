@@ -57,6 +57,11 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<ConnectedAdAccount> ConnectedAdAccounts => Set<ConnectedAdAccount>();
 
+    /// <summary>
+    /// Gets the operational immutable audit logs table recording role updates and sensitive actions.
+    /// </summary>
+    public DbSet<TenantAuditLog> TenantAuditLogs => Set<TenantAuditLog>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,5 +81,6 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SquadMemberEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new SquadWorkspaceEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new ConnectedAdAccountEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new TenantAuditLogEntityTypeConfiguration());
     }
 }

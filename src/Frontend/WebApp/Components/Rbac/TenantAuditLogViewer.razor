@@ -1,0 +1,154 @@
+@namespace WebApp.Components.Rbac
+@using Tenants.Application.Audit.DTOs
+@using WebApp.Services
+@inject ITenantRbacClientService RbacClientService
+
+<div class="audit-viewer-card">
+    <div class="viewer-header">
+        <div>
+            <h3 class="viewer-title">Trilha de Auditoria Imutável</h3>
+            <p class="viewer-subtitle">Registros operacionais e histórico de governança persistidos no banco dedicado</p>
+        </div>
+        <button type="button" class="refresh-btn" @onclick="() => LoadLogsAsync(_currentPage)" disabled="@_isLoading">
+            <span>Recarregar Trilha</span>
+        </button>
+    </div>
+
+    <div class="filters-bar">
+        <div class="search-box">
+            <input type="text"
+                   class="filter-input"
+                   placeholder="Filtrar por ação (ex: User.RoleChanged)..."
+                   @bind="_actionFilter"
+                   @bind:event="oninput" />
+        </div>
+        <button type="button" class="apply-filter-btn" @onclick="() => LoadLogsAsync(1)">
+            Filtrar
+        </button>
+    </div>
+
+    @if (_errorMessage is not null)
+    {
+        <div class="error-banner" role="alert">
+            <span>@_errorMessage</span>
+        </div>
+    }
+
+    @if (_isLoading && _logsResponse is null)
+    {
+        <div class="loading-container">
+            <p>Carregando registros de auditoria...</p>
+        </div>
+    }
+    else if (_logsResponse is not null)
+    {
+        @if (_logsResponse.Items.Count == 0)
+        {
+            <div class="empty-state">
+                <p>Nenhum registro de auditoria localizado para os filtros informados.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="audit-table" aria-label="Registros de Auditoria">
+                    <thead>
+                        <tr>
+                            <th scope="col">Data / Hora (UTC)</th>
+                            <th scope="col">Operador</th>
+                            <th scope="col">Ação</th>
+                            <th scope="col">Recurso</th>
+                            <th scope="col">Detalhes</th>
+                            <th scope="col">IP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in _logsResponse.Items)
+                        {
+                            <tr>
+                                <td class="col-date">@log.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                <td class="col-user">@log.UserEmail</td>
+                                <td class="col-action">
+                                    <span class="action-pill">@log.Action</span>
+                                </td>
+                                <td class="col-resource">@log.Resource (@(log.ResourceId ?? "-"))</td>
+                                <td class="col-details">@log.Details</td>
+                                <td class="col-ip">@(log.IpAddress ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-bar">
+                <span class="total-info">Total: @_logsResponse.TotalCount registro(s)</span>
+                <div class="page-controls">
+                    <button type="button"
+                            class="page-btn"
+                            disabled="@(_currentPage <= 1 || _isLoading)"
+                            @onclick="() => LoadLogsAsync(_currentPage - 1)">
+                        Anterior
+                    </button>
+                    <span class="current-page">Página @_currentPage</span>
+                    <button type="button"
+                            class="page-btn"
+                            disabled="@(_currentPage * 20 >= _logsResponse.TotalCount || _isLoading)"
+                            @onclick="() => LoadLogsAsync(_currentPage + 1)">
+                        Próxima
+                    </button>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private TenantAuditLogsResponse? _logsResponse;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string _actionFilter = string.Empty;
+    private int _currentPage = 1;
+
+    /// <summary>
+    /// Resposta inicial para testes unitários com bUnit.
+    /// </summary>
+    [Parameter]
+    public TenantAuditLogsResponse? InitialLogs { get; set; }
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        if (InitialLogs is not null)
+        {
+            _logsResponse = InitialLogs;
+            _isLoading = false;
+            return;
+        }
+
+        await LoadLogsAsync(1);
+    }
+
+    private async Task LoadLogsAsync(int page)
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _currentPage = page;
+
+        var action = string.IsNullOrWhiteSpace(_actionFilter) ? null : _actionFilter.Trim();
+        var result = await RbacClientService.GetAuditLogsAsync(
+            action: action,
+            page: _currentPage,
+            pageSize: 20);
+
+        if (result.IsSuccess)
+        {
+            _logsResponse = result.Value;
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+
+        _isLoading = false;
+    }
+}
