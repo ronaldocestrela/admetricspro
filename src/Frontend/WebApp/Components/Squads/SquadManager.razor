@@ -1,0 +1,930 @@
+@namespace WebApp.Components.Squads
+@using BuildingBlocks.Domain.Primitives
+@using Tenants.Application.Squads.DTOs
+@using Tenants.Application.Users.DTOs
+@using Tenants.Application.Workspaces.DTOs
+@using WebApp.Models
+@using WebApp.Services
+@using WebApp.State
+@inject ISquadClientService SquadClientService
+@inject ITenantTeamClientService TenantTeamClientService
+@inject IWorkspaceClientService WorkspaceClientService
+@inject ITenantStateProvider TenantStateProvider
+@inject ITenantSessionStateProvider TenantSessionStateProvider
+
+<div class="squad-manager-container">
+    <!-- Cabeçalho Principal -->
+    <header class="squad-header">
+        <div class="header-info">
+            <h1 class="page-title">Squads & Governança de Carteiras</h1>
+            <p class="page-subtitle">
+                Organize equipes internas da <strong>@AgencyName</strong>, distribua contas com segurança e garanta o isolamento de carteira por operador.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-secondary" id="btn-open-portfolio-inspector" @onclick="OpenPortfolioInspector">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <span>Simulador de Carteira</span>
+            </button>
+            <button type="button" class="btn-primary" id="btn-open-create-squad" @onclick="OpenCreateModal">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Novo Squad</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Alertas Globais -->
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert-error-banner" role="alert">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@_errorMessage</span>
+            <button type="button" class="btn-dismiss-alert" @onclick="() => _errorMessage = null" aria-label="Fechar erro">✕</button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="alert-success-banner" role="status">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>@_successMessage</span>
+            <button type="button" class="btn-dismiss-alert" @onclick="() => _successMessage = null" aria-label="Fechar aviso">✕</button>
+        </div>
+    }
+
+    <!-- Cards de Métricas Operacionais -->
+    <section class="summary-cards-grid" aria-label="Resumo dos Squads">
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <span class="summary-label">Total de Squads</span>
+                <div class="summary-icon icon-squads">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="summary-value">@_squads.Count</div>
+            <span class="summary-footer">Times configurados</span>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <span class="summary-label">Squads Ativos</span>
+                <div class="summary-icon icon-active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+            </div>
+            <div class="summary-value">@ActiveSquadsCount</div>
+            <span class="summary-footer">Em operação regular</span>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <span class="summary-label">Membros Alocados</span>
+                <div class="summary-icon icon-members">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <line x1="19" y1="8" x2="19" y2="14"></line>
+                        <line x1="22" y1="11" x2="16" y2="11"></line>
+                    </svg>
+                </div>
+            </div>
+            <div class="summary-value">@TotalMembersCount</div>
+            <span class="summary-footer">Alocações nos squads</span>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <span class="summary-label">Clientes Cobertos</span>
+                <div class="summary-icon icon-clients">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="summary-value">@TotalAssignedWorkspacesCount</div>
+            <span class="summary-footer">Workspaces com atendimento</span>
+        </div>
+    </section>
+
+    <!-- Toolbar de Pesquisa e Filtros -->
+    <div class="filters-toolbar">
+        <div class="search-input-group">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text"
+                   class="search-input"
+                   placeholder="Buscar squad por nome ou escopo..."
+                   @bind="_searchTerm"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="status-filter-pills">
+            <button type="button"
+                    class="filter-pill @(_statusFilter == null ? "active" : "")"
+                    @onclick="() => SetStatusFilter(null)">
+                Todos (@_squads.Count)
+            </button>
+            <button type="button"
+                    class="filter-pill @(_statusFilter == true ? "active" : "")"
+                    @onclick="() => SetStatusFilter(true)">
+                Ativos (@ActiveSquadsCount)
+            </button>
+            <button type="button"
+                    class="filter-pill @(_statusFilter == false ? "active" : "")"
+                    @onclick="() => SetStatusFilter(false)">
+                Pausados (@InactiveSquadsCount)
+            </button>
+        </div>
+    </div>
+
+    <!-- Conteúdo / Lista de Squads -->
+    <div class="squads-content-wrapper">
+        @if (_isLoading)
+        {
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Carregando squads da agência...</p>
+            </div>
+        }
+        else if (!FilteredSquads.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon-box">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <h3>Nenhum squad encontrado</h3>
+                <p>@(string.IsNullOrWhiteSpace(_searchTerm) ? "Sua agência ainda não possui squads cadastrados." : "Nenhum resultado corresponde à sua pesquisa.")</p>
+                <button type="button" class="btn-primary btn-sm" @onclick="OpenCreateModal">
+                    Criar Primeiro Squad
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="squads-cards-grid">
+                @foreach (var squad in FilteredSquads)
+                {
+                    <div class="squad-card @(!squad.IsActive ? "card-inactive" : "")">
+                        <div class="squad-card-header">
+                            <div class="squad-card-title-box">
+                                <h2 class="squad-name">@squad.Name</h2>
+                                <span class="squad-id" title="@squad.Id">ID: @squad.Id.ToString()[..8]...</span>
+                            </div>
+                            <span class="status-badge @(squad.IsActive ? "badge-active" : "badge-paused")">
+                                @(squad.IsActive ? "Ativo" : "Pausado")
+                            </span>
+                        </div>
+
+                        <p class="squad-desc">@(string.IsNullOrWhiteSpace(squad.Description) ? "Sem descrição operacional informada." : squad.Description)</p>
+
+                        <div class="squad-metrics-pills">
+                            <div class="metric-pill">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                </svg>
+                                <span><strong>@squad.MemberCount</strong> membros</span>
+                            </div>
+                            <div class="metric-pill">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                </svg>
+                                <span><strong>@squad.WorkspaceCount</strong> clientes</span>
+                            </div>
+                        </div>
+
+                        <div class="squad-card-footer">
+                            <div class="card-actions-left">
+                                <button type="button"
+                                        class="btn-sm btn-manage-squad"
+                                        data-squad-id="@squad.Id"
+                                        @onclick="() => OpenManageModal(squad.Id)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                    <span>Gerenciar Alocações</span>
+                                </button>
+                            </div>
+                            <div class="card-actions-right">
+                                <button type="button"
+                                        class="btn-icon btn-edit-squad"
+                                        title="Editar nome e descrição"
+                                        @onclick="() => OpenEditModal(squad)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </button>
+                                <button type="button"
+                                        class="btn-icon btn-toggle-status @(squad.IsActive ? "btn-pause" : "btn-play")"
+                                        title="@(squad.IsActive ? "Pausar squad" : "Ativar squad")"
+                                        @onclick="() => HandleToggleStatusAsync(squad)">
+                                    @if (squad.IsActive)
+                                    {
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="6" y="4" width="4" height="16"></rect>
+                                            <rect x="14" y="4" width="4" height="16"></rect>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                        </svg>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal de Criação / Edição de Squad -->
+@if (_showCreateEditModal)
+{
+    <div class="modal-backdrop" @onclick="CloseCreateEditModal">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>@(_editingSquadId.HasValue ? "Editar Squad" : "Cadastrar Novo Squad")</h3>
+                <button type="button" class="btn-close-modal" @onclick="CloseCreateEditModal" aria-label="Fechar">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="input-squad-name">Nome do Squad *</label>
+                    <input id="input-squad-name"
+                           type="text"
+                           class="form-control"
+                           maxlength="100"
+                           placeholder="Ex: Squad E-commerce Performance"
+                           @bind="_formModel.Name" />
+                </div>
+                <div class="form-group">
+                    <label for="input-squad-desc">Descrição ou Escopo Operacional</label>
+                    <textarea id="input-squad-desc"
+                              class="form-control"
+                              rows="3"
+                              maxlength="500"
+                              placeholder="Descreva o nicho de atuação ou responsabilidades desta célula..."
+                              @bind="_formModel.Description"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" @onclick="CloseCreateEditModal">Cancelar</button>
+                <button type="button" class="btn-primary" id="btn-submit-squad" @onclick="HandleSaveSquadAsync" disabled="@_isSaving">
+                    @(_isSaving ? "Salvando..." : (_editingSquadId.HasValue ? "Salvar Alterações" : "Criar Squad"))
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de Gerenciamento do Squad (Membros e Carteira com Seleção Múltipla) -->
+@if (_showManageModal && _selectedSquadDetails != null)
+{
+    <div class="modal-backdrop" @onclick="CloseManageModal">
+        <div class="modal-dialog modal-lg squad-manage-modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div>
+                    <h3 class="manage-title">Gerenciar: @_selectedSquadDetails.Name</h3>
+                    <p class="manage-subtitle">Alocação de colaboradores e carteira de clientes atendidos.</p>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="CloseManageModal" aria-label="Fechar">✕</button>
+            </div>
+
+            <!-- Abas de Gestão -->
+            <div class="manage-tabs-header">
+                <button type="button"
+                        id="tab-btn-members"
+                        class="tab-btn @(_activeManageTab == "members" ? "active" : "")"
+                        @onclick='() => _activeManageTab = "members"'>
+                    Colaboradores (@_selectedSquadDetails.Members.Count)
+                </button>
+                <button type="button"
+                        id="tab-btn-workspaces"
+                        class="tab-btn @(_activeManageTab == "workspaces" ? "active" : "")"
+                        @onclick='() => _activeManageTab = "workspaces"'>
+                    Clientes / Workspaces (@_selectedSquadDetails.Workspaces.Count)
+                </button>
+            </div>
+
+            <div class="modal-body">
+                @if (_activeManageTab == "members")
+                {
+                    <!-- Aba Membros -->
+                    <div class="tab-content-section">
+                        <h4>Equipe Atual</h4>
+                        @if (!_selectedSquadDetails.Members.Any())
+                        {
+                            <p class="text-muted">Nenhum colaborador alocado neste squad.</p>
+                        }
+                        else
+                        {
+                            <div class="members-list">
+                                @foreach (var member in _selectedSquadDetails.Members)
+                                {
+                                    <div class="member-row">
+                                        <div class="member-info">
+                                            <span class="member-name">@member.FullName</span>
+                                            <span class="member-email">@member.Email</span>
+                                        </div>
+                                        <span class="role-pill">@member.Role</span>
+                                        <button type="button"
+                                                class="btn-icon btn-danger btn-remove-member"
+                                                data-user-id="@member.UserId"
+                                                title="Remover membro do squad"
+                                                @onclick="() => HandleRemoveMemberAsync(member.UserId)">
+                                            ✕
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <hr class="section-divider" />
+
+                        <h4>Vincular Novos Membros (Seleção Múltipla)</h4>
+                        @if (!AvailableUsersForSquad.Any())
+                        {
+                            <p class="text-muted">Todos os colaboradores da agência já pertencem a este squad.</p>
+                        }
+                        else
+                        {
+                            <div class="multi-select-list">
+                                @foreach (var user in AvailableUsersForSquad)
+                                {
+                                    <label class="multi-select-item">
+                                        <input type="checkbox"
+                                               class="member-select-checkbox"
+                                               data-user-id="@user.Id"
+                                               checked="@_selectedMemberIdsToAdd.Contains(user.Id)"
+                                               @onchange="(e) => ToggleMemberSelection(user.Id, (bool)(e.Value ?? false))" />
+                                        <div class="item-label-group">
+                                            <span class="item-primary-text">@user.FullName</span>
+                                            <span class="item-secondary-text">@user.Email (@user.Role)</span>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+                            <div class="multi-select-actions">
+                                <button type="button"
+                                        class="btn-primary btn-sm"
+                                        id="btn-assign-selected-members"
+                                        disabled="@(!_selectedMemberIdsToAdd.Any() || _isAssigning)"
+                                        @onclick="HandleAssignSelectedMembersAsync">
+                                    Vincular Selecionados (@_selectedMemberIdsToAdd.Count)
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- Aba Clientes / Workspaces -->
+                    <div class="tab-content-section">
+                        <h4>Carteira Atual do Squad</h4>
+                        @if (!_selectedSquadDetails.Workspaces.Any())
+                        {
+                            <p class="text-muted">Nenhum cliente/workspace alocado a este squad.</p>
+                        }
+                        else
+                        {
+                            <div class="workspaces-list">
+                                @foreach (var ws in _selectedSquadDetails.Workspaces)
+                                {
+                                    <div class="ws-row">
+                                        <div class="ws-info">
+                                            <span class="ws-name">@ws.Name</span>
+                                            <span class="ws-meta">@ws.CnpjOrCpf • Verba: @ws.MonthlyAdSpendBudget.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                                        </div>
+                                        <button type="button"
+                                                class="btn-icon btn-danger btn-unassign-workspace"
+                                                data-workspace-id="@ws.WorkspaceId"
+                                                title="Remover workspace da carteira deste squad"
+                                                @onclick="() => HandleUnassignWorkspaceAsync(ws.WorkspaceId)">
+                                            ✕
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <hr class="section-divider" />
+
+                        <h4>Alocar Novos Clientes (Seleção Múltipla)</h4>
+                        @if (!AvailableWorkspacesForSquad.Any())
+                        {
+                            <p class="text-muted">Todos os workspaces da agência já estão na carteira deste squad.</p>
+                        }
+                        else
+                        {
+                            <div class="multi-select-list">
+                                @foreach (var ws in AvailableWorkspacesForSquad)
+                                {
+                                    <label class="multi-select-item">
+                                        <input type="checkbox"
+                                               class="ws-select-checkbox"
+                                               data-workspace-id="@ws.Id"
+                                               checked="@_selectedWorkspaceIdsToAdd.Contains(ws.Id)"
+                                               @onchange="(e) => ToggleWorkspaceSelection(ws.Id, (bool)(e.Value ?? false))" />
+                                        <div class="item-label-group">
+                                            <span class="item-primary-text">@ws.Name</span>
+                                            <span class="item-secondary-text">@ws.CnpjOrCpf • Verba: @ws.MonthlyAdSpendBudget.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+                            <div class="multi-select-actions">
+                                <button type="button"
+                                        class="btn-primary btn-sm"
+                                        id="btn-assign-selected-workspaces"
+                                        disabled="@(!_selectedWorkspaceIdsToAdd.Any() || _isAssigning)"
+                                        @onclick="HandleAssignSelectedWorkspacesAsync">
+                                    Alocar Workspaces Selecionados (@_selectedWorkspaceIdsToAdd.Count)
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" @onclick="CloseManageModal">Fechar</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal do Simulador de Carteira (Portfolio Inspector) -->
+@if (_showPortfolioInspectorModal)
+{
+    <div class="modal-backdrop" @onclick="ClosePortfolioInspector">
+        <div class="modal-dialog modal-lg portfolio-inspector-modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div>
+                    <h3>Simulador de Carteira (Portfolio Inspector)</h3>
+                    <p class="manage-subtitle">Valide em tempo real o isolamento de dados e quais clientes cada operador tem permissão de acessar.</p>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="ClosePortfolioInspector" aria-label="Fechar">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="select-portfolio-user">Selecione o Colaborador da Agência:</label>
+                    <select id="select-portfolio-user" class="form-control user-portfolio-select" @onchange="HandlePortfolioUserChanged">
+                        <option value="">-- Escolha um colaborador para auditar --</option>
+                        @foreach (var user in _agencyUsers)
+                        {
+                            <option value="@user.Id">@user.FullName (@user.Email) — Papel: @user.Role</option>
+                        }
+                    </select>
+                </div>
+
+                @if (_isLoadingPortfolio)
+                {
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Consultando carteira autorizada...</p>
+                    </div>
+                }
+                else if (_inspectedUserId.HasValue)
+                {
+                    <div class="portfolio-result-box">
+                        <h4>Carteira Autorizada (@_inspectedUserWorkspaces.Count clientes)</h4>
+                        @if (!_inspectedUserWorkspaces.Any())
+                        {
+                            <div class="empty-isolation-notice">
+                                <p><strong>Carteira Vazia (Acesso Zero):</strong> Este colaborador não possui permissão para visualizar clientes da agência (não pertence a nenhum squad ativo com clientes alocados).</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="portfolio-authorized-list">
+                                @foreach (var ws in _inspectedUserWorkspaces)
+                                {
+                                    <div class="portfolio-ws-card">
+                                        <div class="ws-card-header">
+                                            <span class="ws-name">@ws.Name</span>
+                                            <span class="status-badge badge-active">Autorizado</span>
+                                        </div>
+                                        <div class="ws-card-body">
+                                            <span>Documento: @ws.CnpjOrCpf</span>
+                                            <span>Segmento: @(string.IsNullOrWhiteSpace(ws.Segment) ? "Geral" : ws.Segment)</span>
+                                            <span>Orçamento: @ws.MonthlyAdSpendBudget.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" @onclick="ClosePortfolioInspector">Fechar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SquadSummaryDto> _squads = new();
+    private List<TenantUserDto> _agencyUsers = new();
+    private List<WorkspaceDto> _agencyWorkspaces = new();
+
+    private bool _isLoading = true;
+    private string _searchTerm = string.Empty;
+    private bool? _statusFilter = null;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    // Estado de criação/edição
+    private bool _showCreateEditModal = false;
+    private Guid? _editingSquadId = null;
+    private SquadFormModel _formModel = new();
+    private bool _isSaving = false;
+
+    // Estado do gerenciamento de alocações
+    private bool _showManageModal = false;
+    private SquadDetailsDto? _selectedSquadDetails = null;
+    private string _activeManageTab = "members";
+    private readonly HashSet<Guid> _selectedMemberIdsToAdd = new();
+    private readonly HashSet<Guid> _selectedWorkspaceIdsToAdd = new();
+    private bool _isAssigning = false;
+
+    // Estado do simulador de carteira
+    private bool _showPortfolioInspectorModal = false;
+    private Guid? _inspectedUserId = null;
+    private List<WorkspaceDto> _inspectedUserWorkspaces = new();
+    private bool _isLoadingPortfolio = false;
+
+    private string AgencyName =>
+        TenantStateProvider.CurrentTenant?.Name ??
+        TenantSessionStateProvider.CurrentSession?.Subdomain ??
+        "Agência";
+
+    private int ActiveSquadsCount => _squads.Count(s => s.IsActive);
+    private int InactiveSquadsCount => _squads.Count(s => !s.IsActive);
+    private int TotalMembersCount => _squads.Sum(s => s.MemberCount);
+    private int TotalAssignedWorkspacesCount => _squads.Sum(s => s.WorkspaceCount);
+
+    private IEnumerable<SquadSummaryDto> FilteredSquads
+    {
+        get
+        {
+            var query = _squads.AsEnumerable();
+
+            if (_statusFilter.HasValue)
+            {
+                query = query.Where(s => s.IsActive == _statusFilter.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLowerInvariant();
+                query = query.Where(s =>
+                    s.Name.ToLowerInvariant().Contains(term) ||
+                    (!string.IsNullOrEmpty(s.Description) && s.Description.ToLowerInvariant().Contains(term)));
+            }
+
+            return query.OrderByDescending(s => s.CreatedAtUtc);
+        }
+    }
+
+    private IEnumerable<TenantUserDto> AvailableUsersForSquad
+    {
+        get
+        {
+            if (_selectedSquadDetails == null) return Enumerable.Empty<TenantUserDto>();
+            var existingUserIds = _selectedSquadDetails.Members.Select(m => m.UserId).ToHashSet();
+            return _agencyUsers.Where(u => !existingUserIds.Contains(u.Id));
+        }
+    }
+
+    private IEnumerable<WorkspaceDto> AvailableWorkspacesForSquad
+    {
+        get
+        {
+            if (_selectedSquadDetails == null) return Enumerable.Empty<WorkspaceDto>();
+            var existingWsIds = _selectedSquadDetails.Workspaces.Select(w => w.WorkspaceId).ToHashSet();
+            return _agencyWorkspaces.Where(w => !existingWsIds.Contains(w.Id));
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var squadsResult = await SquadClientService.GetSquadsAsync();
+        if (squadsResult is { IsSuccess: true, Value: not null })
+        {
+            _squads = squadsResult.Value.ToList();
+        }
+        else if (squadsResult is { IsFailure: true })
+        {
+            _errorMessage = squadsResult.Error.Description;
+        }
+
+        if (TenantTeamClientService != null)
+        {
+            var usersResult = await TenantTeamClientService.GetUsersAsync();
+            if (usersResult is { IsSuccess: true, Value: not null })
+            {
+                _agencyUsers = usersResult.Value.ToList();
+            }
+        }
+
+        if (WorkspaceClientService != null)
+        {
+            var wsResult = await WorkspaceClientService.GetWorkspacesAsync();
+            if (wsResult is { IsSuccess: true, Value: not null })
+            {
+                _agencyWorkspaces = wsResult.Value.ToList();
+            }
+        }
+
+        _isLoading = false;
+    }
+
+    private void SetStatusFilter(bool? status)
+    {
+        _statusFilter = status;
+    }
+
+    private void OpenCreateModal()
+    {
+        _editingSquadId = null;
+        _formModel = new SquadFormModel();
+        _showCreateEditModal = true;
+    }
+
+    private void OpenEditModal(SquadSummaryDto squad)
+    {
+        _editingSquadId = squad.Id;
+        _formModel = new SquadFormModel
+        {
+            Id = squad.Id,
+            Name = squad.Name,
+            Description = squad.Description
+        };
+        _showCreateEditModal = true;
+    }
+
+    private void CloseCreateEditModal()
+    {
+        _showCreateEditModal = false;
+        _editingSquadId = null;
+    }
+
+    private async Task HandleSaveSquadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_formModel.Name))
+        {
+            _errorMessage = "O nome do squad é obrigatório.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+
+        if (_editingSquadId.HasValue)
+        {
+            var updateModel = new UpdateSquadModel(_formModel.Name, _formModel.Description);
+            var result = await SquadClientService.UpdateSquadAsync(_editingSquadId.Value, updateModel);
+            if (result.IsSuccess)
+            {
+                _successMessage = "Squad atualizado com sucesso!";
+                CloseCreateEditModal();
+                await LoadDataAsync();
+            }
+            else
+            {
+                _errorMessage = result.Error.Description;
+            }
+        }
+        else
+        {
+            var createModel = new CreateSquadModel(_formModel.Name, _formModel.Description);
+            var result = await SquadClientService.CreateSquadAsync(createModel);
+            if (result.IsSuccess)
+            {
+                _successMessage = "Squad criado com sucesso!";
+                CloseCreateEditModal();
+                await LoadDataAsync();
+            }
+            else
+            {
+                _errorMessage = result.Error.Description;
+            }
+        }
+
+        _isSaving = false;
+    }
+
+    private async Task HandleToggleStatusAsync(SquadSummaryDto squad)
+    {
+        var newStatus = !squad.IsActive;
+        var result = await SquadClientService.ToggleSquadStatusAsync(squad.Id, newStatus);
+        if (result.IsSuccess)
+        {
+            _successMessage = newStatus ? "Squad ativado com sucesso!" : "Squad pausado com sucesso!";
+            await LoadDataAsync();
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task OpenManageModal(Guid squadId)
+    {
+        _selectedMemberIdsToAdd.Clear();
+        _selectedWorkspaceIdsToAdd.Clear();
+        _activeManageTab = "members";
+
+        var detailsResult = await SquadClientService.GetSquadByIdAsync(squadId);
+        if (detailsResult.IsSuccess)
+        {
+            _selectedSquadDetails = detailsResult.Value;
+            _showManageModal = true;
+        }
+        else
+        {
+            _errorMessage = detailsResult.Error.Description;
+        }
+    }
+
+    private void CloseManageModal()
+    {
+        _showManageModal = false;
+        _selectedSquadDetails = null;
+        _selectedMemberIdsToAdd.Clear();
+        _selectedWorkspaceIdsToAdd.Clear();
+    }
+
+    private void ToggleMemberSelection(Guid userId, bool isSelected)
+    {
+        if (isSelected) _selectedMemberIdsToAdd.Add(userId);
+        else _selectedMemberIdsToAdd.Remove(userId);
+    }
+
+    private void ToggleWorkspaceSelection(Guid workspaceId, bool isSelected)
+    {
+        if (isSelected) _selectedWorkspaceIdsToAdd.Add(workspaceId);
+        else _selectedWorkspaceIdsToAdd.Remove(workspaceId);
+    }
+
+    private async Task HandleAssignSelectedMembersAsync()
+    {
+        if (_selectedSquadDetails == null || !_selectedMemberIdsToAdd.Any()) return;
+
+        _isAssigning = true;
+        foreach (var userId in _selectedMemberIdsToAdd.ToList())
+        {
+            await SquadClientService.AddSquadMemberAsync(_selectedSquadDetails.Id, userId);
+        }
+
+        _selectedMemberIdsToAdd.Clear();
+        _successMessage = "Membros vinculados com sucesso ao squad!";
+        _isAssigning = false;
+
+        // Recarrega detalhes
+        await RefreshSelectedSquadDetailsAsync();
+        await LoadDataAsync();
+    }
+
+    private async Task HandleRemoveMemberAsync(Guid userId)
+    {
+        if (_selectedSquadDetails == null) return;
+
+        var result = await SquadClientService.RemoveSquadMemberAsync(_selectedSquadDetails.Id, userId);
+        if (result.IsSuccess)
+        {
+            _successMessage = "Colaborador desvinculado do squad com sucesso.";
+            await RefreshSelectedSquadDetailsAsync();
+            await LoadDataAsync();
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task HandleAssignSelectedWorkspacesAsync()
+    {
+        if (_selectedSquadDetails == null || !_selectedWorkspaceIdsToAdd.Any()) return;
+
+        _isAssigning = true;
+        foreach (var wsId in _selectedWorkspaceIdsToAdd.ToList())
+        {
+            await SquadClientService.AssignSquadWorkspaceAsync(_selectedSquadDetails.Id, wsId);
+        }
+
+        _selectedWorkspaceIdsToAdd.Clear();
+        _successMessage = "Clientes alocados com sucesso à carteira do squad!";
+        _isAssigning = false;
+
+        await RefreshSelectedSquadDetailsAsync();
+        await LoadDataAsync();
+    }
+
+    private async Task HandleUnassignWorkspaceAsync(Guid workspaceId)
+    {
+        if (_selectedSquadDetails == null) return;
+
+        var result = await SquadClientService.UnassignSquadWorkspaceAsync(_selectedSquadDetails.Id, workspaceId);
+        if (result.IsSuccess)
+        {
+            _successMessage = "Cliente desassociado da carteira do squad com sucesso.";
+            await RefreshSelectedSquadDetailsAsync();
+            await LoadDataAsync();
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task RefreshSelectedSquadDetailsAsync()
+    {
+        if (_selectedSquadDetails == null) return;
+        var detailsResult = await SquadClientService.GetSquadByIdAsync(_selectedSquadDetails.Id);
+        if (detailsResult.IsSuccess)
+        {
+            _selectedSquadDetails = detailsResult.Value;
+        }
+    }
+
+    private void OpenPortfolioInspector()
+    {
+        _showPortfolioInspectorModal = true;
+        _inspectedUserId = null;
+        _inspectedUserWorkspaces = new();
+    }
+
+    private void ClosePortfolioInspector()
+    {
+        _showPortfolioInspectorModal = false;
+        _inspectedUserId = null;
+        _inspectedUserWorkspaces = new();
+    }
+
+    private async Task HandlePortfolioUserChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (Guid.TryParse(val, out var userId))
+        {
+            _inspectedUserId = userId;
+            _isLoadingPortfolio = true;
+            var result = await SquadClientService.GetUserPortfolioAsync(userId);
+            if (result.IsSuccess)
+            {
+                _inspectedUserWorkspaces = result.Value.ToList();
+            }
+            else
+            {
+                _errorMessage = result.Error.Description;
+            }
+            _isLoadingPortfolio = false;
+        }
+        else
+        {
+            _inspectedUserId = null;
+            _inspectedUserWorkspaces.Clear();
+        }
+    }
+}

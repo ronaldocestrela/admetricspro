@@ -33,14 +33,14 @@ Esta fase implementa a governança e o isolamento de dados no banco dedicado de 
   * Criar e consolidar `docs/modules/tenants-workspaces.md` documentando schema de entrada, payload JSON, retornos com códigos semânticos e catálogo de erros.
   * Implementar o cliente HTTP tipado `IWorkspaceClientService` / `WorkspaceClientService` e a tela completa de gestão `WorkspacesPage.razor` (`/workspaces`) com suíte bUnit em `WorkspacesPageTests.cs`.
 
-### Subfase 1.2: Gestão de Squads (Times) e Isolamento de Carteira
-* **1.2.1 (TDD - Red):** Testes unitários para a entidade `Squad` validando:
-  * Associação de múltiplos membros (gestores, analistas)[cite: 6].
-  * Atribuição exclusiva ou compartilhada de Workspaces ao time[cite: 6].
-  * Garantia de que um operador de um squad específico não receba dados de clientes de outro squad[cite: 6].
-* **1.2.2 (TDD - Green):** Implementar o agregado `Squad` e os handlers `AssignWorkspaceToSquadCommand` e `AddMemberToSquadCommand`.
-* **1.2.3 (Frontend Blazor):** Criar o componente `SquadManager.razor` com seleção múltipla de clientes e membros testado via **bUnit**.
-* **1.2.4 (Documentação Viva):** Adicionar tags XML `<summary>` em todos os comandos e repositórios de Squads.
+### Subfase 1.2: Gestão de Squads (Times) e Isolamento de Carteira `[CONCLUÍDA]`
+* [x] **1.2.1 (TDD - Red):** Testes unitários para a entidade `Squad` validando:
+  * Associação de múltiplos membros (gestores, analistas) (`SquadTests.cs`).
+  * Atribuição exclusiva ou compartilhada de Workspaces ao time (`SquadTests.cs`, `AssignSquadWorkspaceCommandHandlerTests.cs`).
+  * Garantia de que um operador de um squad específico não receba dados de clientes de outro squad (`UserPortfolioServiceTests.cs`, `GetUserAccessibleWorkspacesQueryHandlerTests.cs`, `ValidateUserWorkspaceAccessQueryHandlerTests.cs`).
+* [x] **1.2.2 (TDD - Green):** Implementar o agregado `Squad` e os handlers `AssignSquadWorkspaceCommand`, `AddSquadMemberCommand`, remoção de membros, alternância de status e serviço de governança `UserPortfolioService`.
+* [x] **1.2.3 (Frontend Blazor):** Criar o cliente HTTP tipado `ISquadClientService` / `SquadClientService`, o componente `SquadManager.razor` com seleção múltipla de clientes e membros, simulador de isolamento de carteira (Portfolio Inspector) e página `/squads` (`SquadsPage.razor`), testados via **bUnit** (`SquadManagerTests.cs`, `SquadsPageTests.cs`, `SquadClientServiceTests.cs`).
+* [x] **1.2.4 (Documentação Viva):** Adicionar tags XML `<summary>` em todos os comandos, DTOs e repositórios de Squads e consolidar especificação completa em `docs/modules/tenants-squads.md`.
 
 ### Subfase 1.3: Matriz de Perfis e Permissões (RBAC Granular)
 * **1.3.1 (TDD - Red):** Testes para o avaliador de permissões (`IPermissionEvaluator`) cobrindo toda a matriz[cite: 6]:

@@ -43,6 +43,7 @@ public sealed class WebAppDependencyInjectionTests
         builder.Services.AddHttpClient<IApiHealthClientService, ApiHealthClientService>(client => client.BaseAddress = apiUri);
         builder.Services.AddHttpClient<IFeatureFlagClientService, FeatureFlagClientService>(client => client.BaseAddress = apiUri);
         builder.Services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client => client.BaseAddress = apiUri);
+        builder.Services.AddHttpClient<ISquadClientService, SquadClientService>(client => client.BaseAddress = apiUri);
 
         // Act
         var act = () => builder.Services.BuildServiceProvider(new ServiceProviderOptions
@@ -74,6 +75,7 @@ public sealed class WebAppDependencyInjectionTests
         services.AddHttpClient<IApiHealthClientService, ApiHealthClientService>(client => client.BaseAddress = apiUri);
         services.AddHttpClient<IFeatureFlagClientService, FeatureFlagClientService>(client => client.BaseAddress = apiUri);
         services.AddHttpClient<IImpersonationClientService, ImpersonationClientService>(client => client.BaseAddress = apiUri);
+        services.AddHttpClient<ISquadClientService, SquadClientService>(client => client.BaseAddress = apiUri);
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions
         {
@@ -92,5 +94,6 @@ public sealed class WebAppDependencyInjectionTests
         scope.ServiceProvider.GetRequiredService<IApiHealthClientService>().Should().NotBeNull();
         scope.ServiceProvider.GetRequiredService<IFeatureFlagClientService>().Should().NotBeNull();
         scope.ServiceProvider.GetRequiredService<IImpersonationClientService>().Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<ISquadClientService>().Should().NotBeNull();
     }
 }

@@ -160,3 +160,39 @@ Retorna a lista de `WorkspaceDto` que o colaborador está autorizado a acessar.
 | `User.Inactive` | Validation | Colaborador inativo não pode ser alocado ou acessar carteira. |
 | `Workspace.NotFound` | NotFound | Cliente/workspace não encontrado no inquilino. |
 | `Workspace.Inactive` | Validation | Workspace pausado/inativo não pode ser alocado a um squad. |
+
+---
+
+## 5. Frontend Blazor & Gestão Interativa (`SquadManager` & `SquadsPage`)
+
+Em conformidade estrita com o `AGENTS.md`, o frontend não realiza nenhum acesso direto a banco de dados, consumindo as rotas da Web API via clientes HTTP tipados com envelope `Result<T>`.
+
+### 5.1 Cliente HTTP Tipado (`ISquadClientService` / `SquadClientService`)
+- Encapsula chamadas REST para `/api/v1/squads`.
+- Injeta automaticamente o cabeçalho `X-Tenant-Id` via `ITenantStateProvider`.
+- Métodos com suporte a cancelamento (`CancellationToken`):
+  - `CreateSquadAsync`: Cadastra novo squad.
+  - `GetSquadsAsync`: Lista sumarizada dos times com contagem de membros e clientes.
+  - `GetSquadByIdAsync`: Detalhes completos de membros e clientes alocados.
+  - `UpdateSquadAsync`: Atualização de nome e escopo.
+  - `ToggleSquadStatusAsync`: Alternância entre ativo/pausado.
+  - `AddSquadMemberAsync` & `RemoveSquadMemberAsync`: Gestão de membros.
+  - `AssignSquadWorkspaceAsync` & `UnassignSquadWorkspaceAsync`: Alocação na carteira.
+  - `GetUserPortfolioAsync`: Consulta de carteira para validação de isolamento.
+
+### 5.2 Componente `SquadManager.razor`
+O componente reside em `/Components/Squads/SquadManager.razor` e provê:
+1. **Cards de Métricas Operacionais:** Total de Squads, Squads Ativos, Membros Alocados e Clientes Cobertos.
+2. **Filtros e Pesquisa:** Campo de busca em tempo real com debounce visual e pílulas de filtro de status (Todos / Ativos / Pausados).
+3. **Cards de Squads:** Exibição moderna com badges de status, contadores e ações rápidas (Gerenciar, Editar, Pausar/Ativar).
+4. **Modal de Gerenciamento com Multi-Seleção:**
+   - **Aba Colaboradores:** Lista da equipe atual com opção de desvinculação individual e painel com checkboxes para seleção múltipla e inclusão em lote de novos membros.
+   - **Aba Clientes (Workspaces):** Lista de workspaces na carteira com detalhes de verba e painel de checkboxes para seleção múltipla e alocação em lote de clientes.
+5. **Simulador de Carteira (Portfolio Inspector):** Ferramenta interativa que permite selecionar qualquer colaborador da agência para inspecionar os clientes que ele está autorizado a visualizar, demonstrando na prática o isolamento por carteira.
+
+### 5.3 Página de Rota (`SquadsPage.razor`)
+- **Rota:** `@page "/squads"`
+- **Layout:** `TenantMainLayout`
+- **Navegação:** Integrada à barra lateral (`TenantSidebar.razor`).
+- **Título da Página:** Dinâmico com base no nome do Tenant ativo (`<PageTitle>Squads & Equipes — @AgencyName</PageTitle>`).
+

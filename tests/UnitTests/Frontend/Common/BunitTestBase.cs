@@ -47,6 +47,11 @@ public abstract class BunitTestBase : BunitContext
     protected WebApp.Services.ITenantTeamClientService TenantTeamClientService { get; }
 
     /// <summary>
+    /// Mock do serviço de cliente de Squads.
+    /// </summary>
+    protected WebApp.Services.ISquadClientService SquadClientService { get; }
+
+    /// <summary>
     /// Mock do serviço de cliente de Billing/Checkout.
     /// </summary>
     protected WebApp.Services.IBillingClientService BillingClientService { get; }
@@ -63,6 +68,7 @@ public abstract class BunitTestBase : BunitContext
         TenantFtuxClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantFtuxClientService>();
         WorkspaceClientService = NSubstitute.Substitute.For<WebApp.Services.IWorkspaceClientService>();
         TenantTeamClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantTeamClientService>();
+        SquadClientService = NSubstitute.Substitute.For<WebApp.Services.ISquadClientService>();
         BillingClientService = NSubstitute.Substitute.For<WebApp.Services.IBillingClientService>();
 
         TenantFtuxClientService.GetFtuxStatusAsync(NSubstitute.Arg.Any<CancellationToken>())
@@ -80,6 +86,13 @@ public abstract class BunitTestBase : BunitContext
                     ProgressPercentage: 25,
                     IsCompleted: false)));
 
+        TenantTeamClientService.GetUsersAsync(NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<Tenants.Application.Users.DTOs.TenantUserDto>>.Success(Array.Empty<Tenants.Application.Users.DTOs.TenantUserDto>()));
+        WorkspaceClientService.GetWorkspacesAsync(NSubstitute.Arg.Any<bool?>(), NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<Tenants.Application.Workspaces.DTOs.WorkspaceDto>>.Success(Array.Empty<Tenants.Application.Workspaces.DTOs.WorkspaceDto>()));
+        SquadClientService.GetSquadsAsync(NSubstitute.Arg.Any<bool?>(), NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<Tenants.Application.Squads.DTOs.SquadSummaryDto>>.Success(Array.Empty<Tenants.Application.Squads.DTOs.SquadSummaryDto>()));
+
         Services.AddSingleton<ITenantStateProvider>(TenantStateProvider);
         Services.AddSingleton<ITenantSessionStateProvider>(TenantSessionStateProvider);
         Services.AddSingleton<IImpersonationStateProvider>(ImpersonationStateProvider);
@@ -87,6 +100,7 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<WebApp.Services.ITenantFtuxClientService>(TenantFtuxClientService);
         Services.AddSingleton<WebApp.Services.IWorkspaceClientService>(WorkspaceClientService);
         Services.AddSingleton<WebApp.Services.ITenantTeamClientService>(TenantTeamClientService);
+        Services.AddSingleton<WebApp.Services.ISquadClientService>(SquadClientService);
         Services.AddSingleton<WebApp.Services.IBillingClientService>(BillingClientService);
     }
 

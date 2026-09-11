@@ -1,0 +1,18 @@
+@page "/squads"
+@layout TenantMainLayout
+@namespace WebApp.Components.Pages
+@using WebApp.Components.Squads
+@using WebApp.State
+@inject ITenantStateProvider TenantStateProvider
+@inject ITenantSessionStateProvider TenantSessionStateProvider
+
+<PageTitle>Squads & Equipes — @AgencyName</PageTitle>
+
+<SquadManager />
+
+@code {
+    private string AgencyName =>
+        TenantStateProvider.CurrentTenant?.Name ??
+        TenantSessionStateProvider.CurrentSession?.Subdomain ??
+        "AdMetricsPro";
+}
