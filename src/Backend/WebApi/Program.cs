@@ -7,6 +7,8 @@ using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
 using Tenants.Application.DependencyInjection;
 using Tenants.Infrastructure.DependencyInjection;
+using Integrations.Application.DependencyInjection;
+using Integrations.Infrastructure.DependencyInjection;
 using WebApi.Extensions;
 
 // Carrega variáveis do arquivo .env no ambiente de processo e no pipeline de configuração
@@ -33,6 +35,8 @@ builder.Services.AddMultiTenancy();
 builder.Services.AddTenantPersistence<TenantDbContext>();
 builder.Services.AddTenantsApplication();
 builder.Services.AddTenantsInfrastructure(builder.Configuration);
+builder.Services.AddIntegrationsApplication();
+builder.Services.AddIntegrationsInfrastructure(builder.Configuration);
 builder.Services.AddEmailInfrastructure(builder.Configuration);
 builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
 {

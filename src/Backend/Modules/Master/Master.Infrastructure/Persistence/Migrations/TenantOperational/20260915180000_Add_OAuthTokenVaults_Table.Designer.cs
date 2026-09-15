@@ -4,6 +4,7 @@ using Master.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Master.Infrastructure.Persistence.Migrations.TenantOperational;
 
 [DbContext(typeof(TenantOperationalDbContext))]
-partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
+[Migration("20260915180000_Add_OAuthTokenVaults_Table")]
+partial class Add_OAuthTokenVaults_Table
 {
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
@@ -21,6 +24,71 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
         SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+        modelBuilder.Entity("BuildingBlocks.Domain.Integrations.OAuthTokenVault", b =>
+            {
+                b.Property<Guid>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("uniqueidentifier");
+
+                b.Property<DateTime?>("AccessTokenExpiresAtUtc")
+                    .HasColumnType("datetime2");
+
+                b.Property<DateTime>("CreatedAtUtc")
+                    .HasColumnType("datetime2");
+
+                b.Property<string>("EncryptedAccessToken")
+                    .IsRequired()
+                    .HasColumnType("nvarchar(max)");
+
+                b.Property<string>("EncryptedRefreshToken")
+                    .HasColumnType("nvarchar(max)");
+
+                b.Property<string>("ExternalAccountId")
+                    .IsRequired()
+                    .HasMaxLength(150)
+                    .HasColumnType("nvarchar(150)");
+
+                b.Property<string>("ExternalAccountName")
+                    .IsRequired()
+                    .HasMaxLength(250)
+                    .HasColumnType("nvarchar(250)");
+
+                b.Property<string>("Platform")
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasColumnType("nvarchar(50)");
+
+                b.Property<DateTime?>("RefreshTokenExpiresAtUtc")
+                    .HasColumnType("datetime2");
+
+                b.Property<string>("Scopes")
+                    .IsRequired()
+                    .ValueGeneratedOnAdd()
+                    .HasMaxLength(1000)
+                    .HasColumnType("nvarchar(1000)")
+                    .HasDefaultValue("");
+
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .ValueGeneratedOnAdd()
+                    .HasMaxLength(50)
+                    .HasColumnType("nvarchar(50)")
+                    .HasDefaultValue("Active");
+
+                b.Property<DateTime?>("UpdatedAtUtc")
+                    .HasColumnType("datetime2");
+
+                b.Property<Guid>("WorkspaceId")
+                    .HasColumnType("uniqueidentifier");
+
+                b.HasKey("Id");
+
+                b.HasIndex("WorkspaceId", "Platform")
+                    .IsUnique();
+
+                b.ToTable("OAuthTokenVaults", (string)null);
+            });
 
         modelBuilder.Entity("BuildingBlocks.Domain.Tenants.ConnectedAdAccount", b =>
             {
@@ -108,19 +176,73 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
 
                 b.HasIndex("IsActive");
 
+                b.HasIndex("Name");
+
                 b.ToTable("Squads", (string)null);
             });
 
         modelBuilder.Entity("BuildingBlocks.Domain.Tenants.SquadMember", b =>
             {
-                b.Property<Guid>("Id")
-                    .ValueGeneratedOnAdd()
+                b.Property<Guid>("SquadId")
+                    .HasColumnType("uniqueidentifier");
+
+                b.Property<Guid>("TenantUserId")
                     .HasColumnType("uniqueidentifier");
 
                 b.Property<DateTime>("JoinedAtUtc")
                     .HasColumnType("datetime2");
 
+                b.HasKey("SquadId", "TenantUserId");
+
+                b.ToTable("SquadMembers", (string)null);
+            });
+
+        modelBuilder.Entity("BuildingBlocks.Domain.Tenants.SquadWorkspace", b =>
+            {
                 b.Property<Guid>("SquadId")
+                    .HasColumnType("uniqueidentifier");
+
+                b.Property<Guid>("WorkspaceId")
+                    .HasColumnType("uniqueidentifier");
+
+                b.Property<DateTime>("AssignedAtUtc")
+                    .HasColumnType("datetime2");
+
+                b.HasKey("SquadId", "WorkspaceId");
+
+                b.ToTable("SquadWorkspaces", (string)null);
+            });
+
+        modelBuilder.Entity("BuildingBlocks.Domain.Tenants.TenantAuditLog", b =>
+            {
+                b.Property<Guid>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("uniqueidentifier");
+
+                b.Property<string>("Action")
+                    .IsRequired()
+                    .HasMaxLength(100)
+                    .HasColumnType("nvarchar(100)");
+
+                b.Property<DateTime>("CreatedAtUtc")
+                    .HasColumnType("datetime2");
+
+                b.Property<string>("Details")
+                    .IsRequired()
+                    .HasMaxLength(4000)
+                    .HasColumnType("nvarchar(4000)");
+
+                b.Property<string>("IpAddress")
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasColumnType("nvarchar(50)");
+
+                b.Property<string>("Resource")
+                    .IsRequired()
+                    .HasMaxLength(100)
+                    .HasColumnType("nvarchar(100)");
+
+                b.Property<Guid>("TenantId")
                     .HasColumnType("uniqueidentifier");
 
                 b.Property<Guid>("UserId")
@@ -128,37 +250,13 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
 
                 b.HasKey("Id");
 
+                b.HasIndex("CreatedAtUtc");
+
+                b.HasIndex("TenantId");
+
                 b.HasIndex("UserId");
 
-                b.HasIndex("SquadId", "UserId")
-                    .IsUnique();
-
-                b.ToTable("SquadMembers", (string)null);
-            });
-
-        modelBuilder.Entity("BuildingBlocks.Domain.Tenants.SquadWorkspace", b =>
-            {
-                b.Property<Guid>("Id")
-                    .ValueGeneratedOnAdd()
-                    .HasColumnType("uniqueidentifier");
-
-                b.Property<DateTime>("AssignedAtUtc")
-                    .HasColumnType("datetime2");
-
-                b.Property<Guid>("SquadId")
-                    .HasColumnType("uniqueidentifier");
-
-                b.Property<Guid>("WorkspaceId")
-                    .HasColumnType("uniqueidentifier");
-
-                b.HasKey("Id");
-
-                b.HasIndex("WorkspaceId");
-
-                b.HasIndex("SquadId", "WorkspaceId")
-                    .IsUnique();
-
-                b.ToTable("SquadWorkspaces", (string)null);
+                b.ToTable("TenantAuditLogs", (string)null);
             });
 
         modelBuilder.Entity("BuildingBlocks.Domain.Tenants.TenantBranding", b =>
@@ -171,16 +269,16 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("datetime2");
 
                 b.Property<string>("DarkLogoUrl")
-                    .HasMaxLength(1000)
-                    .HasColumnType("nvarchar(1000)");
+                    .HasMaxLength(500)
+                    .HasColumnType("nvarchar(500)");
 
                 b.Property<string>("FaviconUrl")
-                    .HasMaxLength(1000)
-                    .HasColumnType("nvarchar(1000)");
+                    .HasMaxLength(500)
+                    .HasColumnType("nvarchar(500)");
 
                 b.Property<string>("LightLogoUrl")
-                    .HasMaxLength(1000)
-                    .HasColumnType("nvarchar(1000)");
+                    .HasMaxLength(500)
+                    .HasColumnType("nvarchar(500)");
 
                 b.Property<string>("PrimaryColor")
                     .IsRequired()
@@ -192,10 +290,16 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
                     .HasMaxLength(9)
                     .HasColumnType("nvarchar(9)");
 
+                b.Property<Guid>("TenantId")
+                    .HasColumnType("uniqueidentifier");
+
                 b.Property<DateTime?>("UpdatedAtUtc")
                     .HasColumnType("datetime2");
 
                 b.HasKey("Id");
+
+                b.HasIndex("TenantId")
+                    .IsUnique();
 
                 b.ToTable("TenantBranding", (string)null);
             });
@@ -222,19 +326,13 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
                 b.Property<bool>("IsActive")
                     .HasColumnType("bit");
 
-                b.Property<string>("PasswordHash")
-                    .IsRequired()
-                    .HasMaxLength(500)
-                    .HasColumnType("nvarchar(500)");
-
-                b.Property<string>("PhoneNumber")
-                    .HasMaxLength(50)
-                    .HasColumnType("nvarchar(50)");
-
                 b.Property<string>("Role")
                     .IsRequired()
                     .HasMaxLength(50)
                     .HasColumnType("nvarchar(50)");
+
+                b.Property<Guid>("TenantId")
+                    .HasColumnType("uniqueidentifier");
 
                 b.Property<DateTime?>("UpdatedAtUtc")
                     .HasColumnType("datetime2");
@@ -244,7 +342,7 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
                 b.HasIndex("Email")
                     .IsUnique();
 
-                b.HasIndex("IsActive");
+                b.HasIndex("TenantId");
 
                 b.ToTable("TenantUsers", (string)null);
             });
@@ -254,6 +352,11 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
                 b.Property<Guid>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
+
+                b.Property<string>("ClientName")
+                    .IsRequired()
+                    .HasMaxLength(200)
+                    .HasColumnType("nvarchar(200)");
 
                 b.Property<string>("CnpjOrCpf")
                     .IsRequired()
@@ -266,16 +369,13 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
                 b.Property<bool>("IsActive")
                     .HasColumnType("bit");
 
-                b.Property<decimal>("MonthlyAdSpendBudget")
-                    .HasPrecision(18, 2)
-                    .HasColumnType("decimal(18,2)");
-
-                b.Property<string>("Name")
+                b.Property<string>("MonthlyBudget")
                     .IsRequired()
-                    .HasMaxLength(150)
-                    .HasColumnType("nvarchar(150)");
+                    .HasMaxLength(50)
+                    .HasColumnType("nvarchar(50)");
 
                 b.Property<string>("Segment")
+                    .IsRequired()
                     .HasMaxLength(100)
                     .HasColumnType("nvarchar(100)");
 
@@ -325,71 +425,6 @@ partial class TenantOperationalDbContextModelSnapshot : ModelSnapshot
                 b.HasKey("Id");
 
                 b.ToTable("TenantSchemaMarkers", (string)null);
-            });
-
-        modelBuilder.Entity("BuildingBlocks.Domain.Integrations.OAuthTokenVault", b =>
-            {
-                b.Property<Guid>("Id")
-                    .ValueGeneratedOnAdd()
-                    .HasColumnType("uniqueidentifier");
-
-                b.Property<DateTime?>("AccessTokenExpiresAtUtc")
-                    .HasColumnType("datetime2");
-
-                b.Property<DateTime>("CreatedAtUtc")
-                    .HasColumnType("datetime2");
-
-                b.Property<string>("EncryptedAccessToken")
-                    .IsRequired()
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<string>("EncryptedRefreshToken")
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<string>("ExternalAccountId")
-                    .IsRequired()
-                    .HasMaxLength(150)
-                    .HasColumnType("nvarchar(150)");
-
-                b.Property<string>("ExternalAccountName")
-                    .IsRequired()
-                    .HasMaxLength(250)
-                    .HasColumnType("nvarchar(250)");
-
-                b.Property<string>("Platform")
-                    .IsRequired()
-                    .HasMaxLength(50)
-                    .HasColumnType("nvarchar(50)");
-
-                b.Property<DateTime?>("RefreshTokenExpiresAtUtc")
-                    .HasColumnType("datetime2");
-
-                b.Property<string>("Scopes")
-                    .IsRequired()
-                    .ValueGeneratedOnAdd()
-                    .HasMaxLength(1000)
-                    .HasColumnType("nvarchar(1000)")
-                    .HasDefaultValue("");
-
-                b.Property<string>("Status")
-                    .IsRequired()
-                    .ValueGeneratedOnAdd()
-                    .HasMaxLength(50)
-                    .HasColumnType("nvarchar(50)")
-                    .HasDefaultValue("Active");
-
-                b.Property<DateTime?>("UpdatedAtUtc")
-                    .HasColumnType("datetime2");
-
-                b.Property<Guid>("WorkspaceId")
-                    .HasColumnType("uniqueidentifier");
-
-                b.HasKey("Id");
-
-                b.HasIndex("WorkspaceId", "Platform")
-                    .IsUnique();
-
-                b.ToTable("OAuthTokenVaults", (string)null);
             });
 #pragma warning restore 612, 618
     }

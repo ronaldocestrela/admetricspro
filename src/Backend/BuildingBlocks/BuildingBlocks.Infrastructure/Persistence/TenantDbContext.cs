@@ -58,6 +58,11 @@ public class TenantDbContext : DbContext
     public DbSet<ConnectedAdAccount> ConnectedAdAccounts => Set<ConnectedAdAccount>();
 
     /// <summary>
+    /// Gets the operational token vault storing encrypted OAuth credentials per workspace.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Integrations.OAuthTokenVault> OAuthTokenVaults => Set<BuildingBlocks.Domain.Integrations.OAuthTokenVault>();
+
+    /// <summary>
     /// Gets the operational immutable audit logs table recording role updates and sensitive actions.
     /// </summary>
     public DbSet<TenantAuditLog> TenantAuditLogs => Set<TenantAuditLog>();
@@ -81,6 +86,7 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SquadMemberEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new SquadWorkspaceEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new ConnectedAdAccountEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new OAuthTokenVaultEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new TenantAuditLogEntityTypeConfiguration());
     }
 }

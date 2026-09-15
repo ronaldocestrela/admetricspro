@@ -76,14 +76,20 @@ Esta fase implementa a governança e o isolamento de dados no banco dedicado de 
 Módulo responsável pela comunicação com os gerenciadores de anúncios externos[cite: 3, 4].
 
 ### Subfase 2.1: Provedores de Autenticação OAuth2 e Token Vault
-* **2.1.1 (TDD - Red):** Testes para adaptadores OAuth2 validando troca de código por tokens e renovação preventiva de tokens de acesso[cite: 5]:
-  * `MetaAdsOAuthAdapter` (Meta Graph API)[cite: 3, 4]
-  * `GoogleAdsOAuthAdapter` (Google Ads API & Developer Token)[cite: 4, 5]
-  * `BingAdsOAuthAdapter` (Microsoft Advertising Platform)[cite: 4, 5]
-  * `TikTokAdsOAuthAdapter` (TikTok Marketing API)[cite: 4, 5]
-* **2.1.2 (TDD - Green):** Implementar adaptadores encapsulados atrás da interface `IAdNetworkAuthService`.
-* **2.1.3:** Criptografar tokens de acesso e refresh tokens em repouso no banco do tenant usando AES-256.
-* **2.1.4 (Documentação Viva):** Documentar escopos necessários e URLs de callback em `docs/modules/integrations-oauth.md`.
+* [x] **2.1.1 (TDD - Red & Green):** Testes unitários para adaptadores OAuth2 validando troca de código por tokens e renovação preventiva de tokens de acesso (`MetaAdsOAuthAdapterTests.cs`, `GoogleAdsOAuthAdapterTests.cs`, `BingAdsOAuthAdapterTests.cs`, `TikTokAdsOAuthAdapterTests.cs` e `OAuthStateServiceTests.cs`):
+  * `MetaAdsOAuthAdapter` (Meta Graph API v21.0 com troca automática por *long-lived token* de 60 dias)
+  * `GoogleAdsOAuthAdapter` (Google Ads API com consent offline e refresh token)
+  * `BingAdsOAuthAdapter` (Microsoft Advertising Platform / Entra v2.0 com escopos msads.manage)
+  * `TikTokAdsOAuthAdapter` (TikTok Marketing API v1.3 com retorno de advertiser_ids)
+* [x] **2.1.2 (TDD - Green & Orquestração):** Orquestrador unificado `IAdNetworkAuthService` (`AdNetworkAuthService.cs`) encapsulando os adaptadores especializados e despachando por plataforma.
+* [x] **2.1.3 (Token Vault & Criptografia AES-256):**
+  * Entidade `OAuthTokenVault` e repositório `IOAuthTokenVaultRepository` (`OAuthTokenVaultRepository.cs`).
+  * Cifragem simétrica com AES-256-CBC e IV aleatório por registro em repouso no banco dedicado do inquilino (`TenantDbContext`).
+  * Comandos e consultas CQRS (`InitiateOAuthFlowCommand`, `HandleOAuthCallbackCommand`, `RefreshExpiringTokensCommand`, `RevokeOAuthConnectionCommand`, `GetOAuthConnectionsStatusQuery`).
+  * Endpoints RESTful Web API no `OAuthIntegrationsController.cs` (`/api/v1/integrations/oauth/*`) com OpenAPI + Scalar UI.
+* [x] **2.1.4 (Documentação Viva & ADR):**
+  * Documentação viva de escopos, payloads e URLs de callback consolidada em `docs/modules/integrations-oauth.md`.
+  * ADR registrado em `docs/adr/0026-oauth2-hub-and-token-vault-encryption.md`.
 
 ### Subfase 2.2: Sincronização Estrutural de Campanhas
 * **2.2.1 (TDD - Red):** Testes unitários para mapeamento unificado: converter a estrutura nativa de cada rede para o modelo universal (Conta &rarr; Campanha &rarr; Grupo/Conjunto &rarr; Anúncio/Criativo)[cite: 6].

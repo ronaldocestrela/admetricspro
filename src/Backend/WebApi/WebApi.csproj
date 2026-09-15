@@ -22,6 +22,8 @@
     <ProjectReference Include="..\Modules\Master\Master.Infrastructure\Master.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Tenants\Tenants.Application\Tenants.Application.csproj" />
     <ProjectReference Include="..\Modules\Tenants\Tenants.Infrastructure\Tenants.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Integrations\Integrations.Application\Integrations.Application.csproj" />
+    <ProjectReference Include="..\Modules\Integrations\Integrations.Infrastructure\Integrations.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

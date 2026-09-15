@@ -32,6 +32,20 @@ public sealed class CheckoutEndpointTests : IClassFixture<WebApplicationFactory<
         _factory = factory;
     }
 
+    private HttpClient CreateTestClient(Guid tenantId, Guid? txId = null)
+    {
+        return _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddScoped<ITenantRepository>(_ => new FakeTenantRepo(tenantId));
+                services.AddScoped<IPlanRepository, FakePlanRepo>();
+                services.AddScoped<ITenantPaymentTransactionRepository>(_ => new FakeTxRepo(txId ?? Guid.NewGuid()));
+                services.AddScoped<BuildingBlocks.Application.Persistence.IUnitOfWork, FakeUnitOfWork>();
+            });
+        }).CreateClient();
+    }
+
     /// <summary>
     /// Valida que GET /api/v1/billing/checkout/preview calcula os valores líquidos corretamente com desconto anual.
     /// </summary>
@@ -40,14 +54,7 @@ public sealed class CheckoutEndpointTests : IClassFixture<WebApplicationFactory<
     {
         // Arrange
         var tenantId = Guid.NewGuid();
-        var client = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var fakeTenantRepo = new FakeTenantRepo(tenantId);
-                services.AddScoped<ITenantRepository>(_ => fakeTenantRepo);
-            });
-        }).CreateClient();
+        var client = CreateTestClient(tenantId);
 
         // Act
         var response = await client.GetAsync($"/api/v1/billing/checkout/preview?tenantId={tenantId}&tier=Pro&billingCycle=Annual");
@@ -75,14 +82,7 @@ public sealed class CheckoutEndpointTests : IClassFixture<WebApplicationFactory<
     {
         // Arrange
         var tenantId = Guid.NewGuid();
-        var client = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var fakeTenantRepo = new FakeTenantRepo(tenantId);
-                services.AddScoped<ITenantRepository>(_ => fakeTenantRepo);
-            });
-        }).CreateClient();
+        var client = CreateTestClient(tenantId);
 
         var request = new ProcessCheckoutApiRequest(
             tenantId,
@@ -120,14 +120,7 @@ public sealed class CheckoutEndpointTests : IClassFixture<WebApplicationFactory<
     {
         // Arrange
         var tenantId = Guid.NewGuid();
-        var client = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var fakeTenantRepo = new FakeTenantRepo(tenantId);
-                services.AddScoped<ITenantRepository>(_ => fakeTenantRepo);
-            });
-        }).CreateClient();
+        var client = CreateTestClient(tenantId);
 
         var request = new ProcessCheckoutApiRequest(
             tenantId,
@@ -161,14 +154,7 @@ public sealed class CheckoutEndpointTests : IClassFixture<WebApplicationFactory<
     {
         // Arrange
         var txId = Guid.NewGuid();
-        var client = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var fakeTxRepo = new FakeTxRepo(txId);
-                services.AddScoped<ITenantPaymentTransactionRepository>(_ => fakeTxRepo);
-            });
-        }).CreateClient();
+        var client = CreateTestClient(Guid.NewGuid(), txId);
 
         // Act
         var response = await client.GetAsync($"/api/v1/billing/checkout/{txId}/status");
@@ -259,5 +245,25 @@ public sealed class CheckoutEndpointTests : IClassFixture<WebApplicationFactory<
 
         public Task<IReadOnlyList<TenantPaymentTransaction>> GetByTenantIdAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<TenantPaymentTransaction>>(new List<TenantPaymentTransaction>());
+    }
+
+    private sealed class FakePlanRepo : IPlanRepository
+    {
+        public Task<bool> ExistsByNameAsync(string name, PlanId? excludePlanId = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public Task<SubscriptionPlan?> GetByTierAsync(SubscriptionTier tier, CancellationToken cancellationToken = default) =>
+            Task.FromResult<SubscriptionPlan?>(null);
+
+        public Task AddAsync(SubscriptionPlan entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void Update(SubscriptionPlan entity) { }
+        public void Remove(SubscriptionPlan entity) { }
+        public Task<SubscriptionPlan?> GetByIdAsync(PlanId id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<SubscriptionPlan?>(null);
+    }
+
+    private sealed class FakeUnitOfWork : BuildingBlocks.Application.Persistence.IUnitOfWork
+    {
+        public Task<int> CommitAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
     }
 }
