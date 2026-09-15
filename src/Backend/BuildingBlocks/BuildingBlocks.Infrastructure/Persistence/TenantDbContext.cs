@@ -67,6 +67,21 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<TenantAuditLog> TenantAuditLogs => Set<TenantAuditLog>();
 
+    /// <summary>
+    /// Gets the operational campaigns table representing marketing campaigns across ad networks.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Campaigns.Campaign> Campaigns => Set<BuildingBlocks.Domain.Campaigns.Campaign>();
+
+    /// <summary>
+    /// Gets the operational ad sets table representing ad sets or ad groups subordinated to campaigns.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Campaigns.AdSet> AdSets => Set<BuildingBlocks.Domain.Campaigns.AdSet>();
+
+    /// <summary>
+    /// Gets the operational ads table representing individual creatives and ads subordinated to ad sets.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Campaigns.Ad> Ads => Set<BuildingBlocks.Domain.Campaigns.Ad>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,5 +103,8 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ConnectedAdAccountEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new OAuthTokenVaultEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new TenantAuditLogEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new CampaignEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new AdSetEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new AdEntityTypeConfiguration());
     }
 }

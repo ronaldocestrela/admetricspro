@@ -80,6 +80,34 @@ public static class IntegrationsInfrastructureServiceExtensions
         services.AddScoped<IOAuthTokenVaultRepository, OAuthTokenVaultRepository>();
         services.AddScoped<IIntegrationsUnitOfWork, IntegrationsUnitOfWork>();
 
+        // Mappers de hierarquia estrutural universal
+        services.AddSingleton<Integrations.Domain.Campaigns.Mappers.IMetaAdsHierarchyMapper, Integrations.Infrastructure.Campaigns.Mappers.MetaAdsHierarchyMapper>();
+        services.AddSingleton<Integrations.Domain.Campaigns.Mappers.IGoogleAdsHierarchyMapper, Integrations.Infrastructure.Campaigns.Mappers.GoogleAdsHierarchyMapper>();
+        services.AddSingleton<Integrations.Domain.Campaigns.Mappers.ITikTokAdsHierarchyMapper, Integrations.Infrastructure.Campaigns.Mappers.TikTokAdsHierarchyMapper>();
+        services.AddSingleton<Integrations.Domain.Campaigns.Mappers.IBingAdsHierarchyMapper, Integrations.Infrastructure.Campaigns.Mappers.BingAdsHierarchyMapper>();
+
+        // Política de resiliência e controle de limite de taxa
+        services.AddSingleton<Integrations.Domain.Campaigns.Resilience.IHierarchyRateLimitPolicy, Integrations.Infrastructure.Campaigns.Resilience.HierarchyRateLimitPolicy>();
+
+        // Adaptadores de sincronização paginada
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.MetaAdsHierarchySyncAdapter>();
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.GoogleAdsHierarchySyncAdapter>();
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.TikTokAdsHierarchySyncAdapter>();
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.BingAdsHierarchySyncAdapter>();
+        services.AddScoped<Integrations.Infrastructure.Campaigns.Sync.DemoHierarchySyncAdapter>();
+
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignHierarchySyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.DemoHierarchySyncAdapter>());
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignHierarchySyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.MetaAdsHierarchySyncAdapter>());
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignHierarchySyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.GoogleAdsHierarchySyncAdapter>());
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignHierarchySyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.TikTokAdsHierarchySyncAdapter>());
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignHierarchySyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.BingAdsHierarchySyncAdapter>());
+
+        // Despachante central de sincronização
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignHierarchySyncDispatcher, Integrations.Infrastructure.Campaigns.Sync.CampaignHierarchySyncDispatcher>();
+
+        // Repositório de persistência da hierarquia de campanhas
+        services.AddScoped<Integrations.Domain.Campaigns.ICampaignHierarchyRepository, Integrations.Infrastructure.Campaigns.Persistence.CampaignHierarchyRepository>();
+
         return services;
     }
 }

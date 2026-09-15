@@ -92,9 +92,13 @@ Módulo responsável pela comunicação com os gerenciadores de anúncios extern
   * ADR registrado em `docs/adr/0026-oauth2-hub-and-token-vault-encryption.md`.
 
 ### Subfase 2.2: Sincronização Estrutural de Campanhas
-* **2.2.1 (TDD - Red):** Testes unitários para mapeamento unificado: converter a estrutura nativa de cada rede para o modelo universal (Conta &rarr; Campanha &rarr; Grupo/Conjunto &rarr; Anúncio/Criativo)[cite: 6].
-* **2.2.2 (TDD - Green):** Implementar rotina de sincronização paginada com tratamento de backoff exponencial para limites de requisição[cite: 5].
-* **2.2.3:** Emissão do evento in-memory `CampaignHierarchySyncedEvent` após conclusão da sincronização.
+* [x] **2.2.1 (TDD - Red & Green):** Testes unitários para mapeamento unificado: converter a estrutura nativa de cada rede para o modelo universal (Conta &rarr; Campanha &rarr; Grupo/Conjunto &rarr; Anúncio/Criativo) (`CampaignHierarchyDomainTests.cs`, `MetaAdsHierarchyMapperTests.cs`, `GoogleAdsHierarchyMapperTests.cs`, `TikTokAdsHierarchyMapperTests.cs` e `BingAdsHierarchyMapperTests.cs`).
+* [x] **2.2.2 (TDD - Green):** Rotina de sincronização paginada com tratamento de backoff exponencial com jitter para limites de requisição (`HierarchyRateLimitPolicy.cs`), adaptadores por rede com typed HttpClients (`MetaAdsHierarchySyncAdapter.cs`, `GoogleAdsHierarchySyncAdapter.cs`, `TikTokAdsHierarchySyncAdapter.cs`, `BingAdsHierarchySyncAdapter.cs`), adaptador determinístico para FTUX (`DemoHierarchySyncAdapter.cs`), despachante dinâmico (`CampaignHierarchySyncDispatcher.cs`), repositório de persistência atômica no banco do inquilino (`CampaignHierarchyRepository.cs` e `TenantDbContext`).
+* [x] **2.2.3 (CQRS & Evento In-Memory):**
+  * Emissão do evento de domínio in-memory `CampaignHierarchySyncedEvent` após persistência bem-sucedida.
+  * Comandos e consultas CQRS (`SyncCampaignHierarchyCommand` e `GetCampaignHierarchyQuery`).
+  * Endpoints RESTful Web API no `CampaignsController.cs` (`/api/v1/integrations/campaigns/*`) com documentação OpenAPI + Scalar UI.
+  * Documentação viva consolidada em `docs/modules/integrations-campaign-hierarchy-sync.md` e ADR registrado em `docs/adr/0027-campaign-structural-sync-and-rate-limiting.md`.
 
 ### Subfase 2.3: Pipeline de Ingestão de Métricas Diárias e Horárias
 * **2.3.1 (TDD - Red):** Testes de idempotência: garantir que re-execuções da sincronização de uma mesma data não dupliquem registros de métricas (Spend, Impressions, Clicks, Conversions)[cite: 4].
