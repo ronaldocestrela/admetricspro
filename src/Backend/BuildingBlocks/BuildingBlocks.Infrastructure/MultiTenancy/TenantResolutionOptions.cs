@@ -38,6 +38,7 @@ public sealed class TenantResolutionOptions
     [
         TenantResolutionSource.Header,
         TenantResolutionSource.JwtClaim,
-        TenantResolutionSource.Subdomain
+        TenantResolutionSource.Subdomain,
+        TenantResolutionSource.CustomDomain
     ];
 }

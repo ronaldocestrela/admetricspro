@@ -41,6 +41,18 @@ public sealed class TenantRepository : ITenantRepository
     }
 
     /// <inheritdoc />
+    public Task<Tenant?> GetByCustomDomainAsync(string customDomain, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(customDomain))
+        {
+            return Task.FromResult<Tenant?>(null);
+        }
+
+        var normalized = customDomain.Trim().ToLowerInvariant();
+        return _masterDbContext.Tenants.SingleOrDefaultAsync(t => t.CustomDomain == normalized, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<Tenant?> GetByCnpjAsync(string cnpj, CancellationToken cancellationToken = default)
     {
         var sanitized = new string(cnpj?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());

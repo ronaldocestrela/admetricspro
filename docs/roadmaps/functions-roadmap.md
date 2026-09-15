@@ -56,10 +56,18 @@ Esta fase implementa a governança e o isolamento de dados no banco dedicado de 
   * Criar componentes visuais `RbacMatrixViewer.razor`, `TenantAuditLogViewer.razor`, componente de blindagem `TenantAuthorizeView.razor` e página `/rbac` (`RbacGovernancePage.razor`), testados via **bUnit** (`RbacMatrixViewerTests.cs`, `TenantAuditLogViewerTests.cs`, `TenantAuthorizeViewTests.cs`, `TenantRbacClientServiceTests.cs`).
   * Consolidar especificação completa em `docs/modules/tenants-rbac.md`.
 
-### Subfase 1.4: Módulo White-Label e CNAME Dinâmico
-* **1.4.1 (TDD - Red):** Testes unitários para `TenantBranding` validando formato de arquivos de imagem (logo claro/escuro, favicon) e códigos hexadecimais válidos para cores primárias/secundárias[cite: 6].
-* **1.4.2 (TDD - Green):** Implementar handlers de atualização de marca e injeção dinâmica de CSS no layout raiz do Blazor Server.
-* **1.4.3:** Implementar resolução dinâmica de requisições por subdomínio CNAME próprio (ex.: `relatorios.agencia.com.br`)[cite: 6].
+### Subfase 1.4: Módulo White-Label e CNAME Dinâmico `[CONCLUÍDA]`
+* [x] **1.4.1 (TDD - Red & Green):** Testes unitários para `TenantBranding` no domínio (`TenantBrandingTests.cs`), validando extensões aceitas de imagens (.png, .svg, .jpg, .jpeg, .webp para logos; .ico, .png, .svg para favicon), formato hexadecimal de cores (`#RRGGBB`/`#RGB`) e integridade do Value Object.
+* [x] **1.4.2 (TDD - Green & Frontend):** 
+  * Repositório `ITenantBrandingRepository` e handlers CQRS (`GetTenantBrandingQuery`, `UpdateTenantBrandingCommand`) no `Tenants.Application`.
+  * Controlador Web API `TenantBrandingController` (`/api/v1/tenants/branding`).
+  * Injeção dinâmica de CSS variables no layout raiz (`TenantMainLayout.razor`), título e favicon via `<HeadContent>`.
+  * Componentes `BrandLogo.razor` (com alternância de tema e SVG fallback), página `/settings/white-label` (`WhiteLabelSettingsPage.razor`) e testes bUnit (`BrandLogoTests.cs`, `WhiteLabelSettingsPageTests.cs`).
+* [x] **1.4.3 (CNAME & Resolução Dinâmica):**
+  * Resolução dinâmica por Host header via `CustomDomainTenantIdentificationStrategy` com cache in-memory de alta performance (`IMemoryCache`), fonte `TenantResolutionSource.CustomDomain (4)` e integração ao `TenantIdentificationMiddleware`.
+  * Catálogo MasterDb com unicidade global de domínios customizados (`GetByCustomDomainAsync`), verificação de plano (`plan.Features.HasCustomCname`) e comandos CQRS (`ConfigureTenantCustomDomainCommand`, `RemoveTenantCustomDomainCommand`, `GetTenantCustomDomainQuery`).
+  * Endpoints Web API `TenantCnameController` (`/api/v1/tenants/cname`) e serviço cliente `ITenantCnameClientService` integrado ao painel com instruções de DNS CNAME (`cname.admetricspro.com`).
+  * Documentação viva consolidada em `docs/modules/tenants-white-label.md` e ADR registrado em `docs/adr/0025-dynamic-cname-resolution-and-white-label-strategy.md`.
 
 ---
 

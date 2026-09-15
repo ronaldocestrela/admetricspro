@@ -21,7 +21,12 @@ public enum TenantResolutionSource
     JwtClaim = 2,
 
     /// <summary>
-    /// Tenant identity was extracted from the host subdomain or CNAME.
+    /// Tenant identity was extracted from the host subdomain.
     /// </summary>
-    Subdomain = 3
+    Subdomain = 3,
+
+    /// <summary>
+    /// Tenant identity was extracted from a custom domain mapped via CNAME (e.g. relatorios.agencia.com.br).
+    /// </summary>
+    CustomDomain = 4
 }

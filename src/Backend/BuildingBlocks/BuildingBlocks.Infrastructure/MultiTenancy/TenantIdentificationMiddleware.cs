@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.MultiTenancy;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace BuildingBlocks.Infrastructure.MultiTenancy;
@@ -10,49 +11,40 @@ namespace BuildingBlocks.Infrastructure.MultiTenancy;
 public sealed class TenantIdentificationMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly IReadOnlyList<ITenantIdentificationStrategy> _orderedStrategies;
+    private readonly IOptions<TenantResolutionOptions> _options;
+    private readonly IReadOnlyList<ITenantIdentificationStrategy>? _constructorStrategies;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="TenantIdentificationMiddleware"/> class.
+    /// Initializes a new instance of the <see cref="TenantIdentificationMiddleware"/> class for host runtime execution.
     /// </summary>
     /// <param name="next">The delegate representing the remaining middleware pipeline.</param>
-    /// <param name="strategies">Collection of registered tenant identification strategies.</param>
+    /// <param name="options">Tenant resolution configuration options.</param>
+    [ActivatorUtilitiesConstructor]
+    public TenantIdentificationMiddleware(
+        RequestDelegate next,
+        IOptions<TenantResolutionOptions> options)
+        : this(next, null, options)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TenantIdentificationMiddleware"/> class with explicit strategies.
+    /// </summary>
+    /// <param name="next">The delegate representing the remaining middleware pipeline.</param>
+    /// <param name="strategies">Collection of registered tenant identification strategies, or null to resolve per request.</param>
     /// <param name="options">Tenant resolution configuration options.</param>
     public TenantIdentificationMiddleware(
         RequestDelegate next,
-        IEnumerable<ITenantIdentificationStrategy> strategies,
+        IEnumerable<ITenantIdentificationStrategy>? strategies,
         IOptions<TenantResolutionOptions> options)
     {
-        ArgumentNullException.ThrowIfNull(next);
-        ArgumentNullException.ThrowIfNull(strategies);
-        ArgumentNullException.ThrowIfNull(options);
+        _next = next ?? throw new ArgumentNullException(nameof(next));
+        _options = options ?? throw new ArgumentNullException(nameof(options));
 
-        _next = next;
-        var optionsValue = options.Value;
-
-        // Order strategies according to options.ResolutionOrder
-        var strategyList = strategies.ToList();
-        var ordered = new List<ITenantIdentificationStrategy>();
-
-        foreach (var source in optionsValue.ResolutionOrder)
+        if (strategies is not null)
         {
-            var match = strategyList.FirstOrDefault(s => s.Source == source);
-            if (match is not null && !ordered.Contains(match))
-            {
-                ordered.Add(match);
-            }
+            _constructorStrategies = OrderStrategies(strategies, options.Value);
         }
-
-        // Add any remaining strategies not explicitly listed in ResolutionOrder
-        foreach (var remaining in strategyList)
-        {
-            if (!ordered.Contains(remaining))
-            {
-                ordered.Add(remaining);
-            }
-        }
-
-        _orderedStrategies = ordered;
     }
 
     /// <summary>
@@ -60,15 +52,23 @@ public sealed class TenantIdentificationMiddleware
     /// </summary>
     /// <param name="context">Active HTTP context.</param>
     /// <param name="contextAccessor">Scoped or ambient tenant context accessor.</param>
+    /// <param name="strategies">Optional scoped strategies resolved from the current request container.</param>
     /// <returns>A task representing middleware execution.</returns>
-    public async Task InvokeAsync(HttpContext context, ITenantContextAccessor contextAccessor)
+    public async Task InvokeAsync(
+        HttpContext context,
+        ITenantContextAccessor contextAccessor,
+        IEnumerable<ITenantIdentificationStrategy>? strategies = null)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(contextAccessor);
 
+        var activeStrategies = _constructorStrategies
+            ?? (strategies is not null ? OrderStrategies(strategies, _options.Value) : null)
+            ?? OrderStrategies(context.RequestServices?.GetServices<ITenantIdentificationStrategy>() ?? [], _options.Value);
+
         TenantIdentificationResult? identification = null;
 
-        foreach (var strategy in _orderedStrategies)
+        foreach (var strategy in activeStrategies)
         {
             identification = await strategy.IdentifyTenantAsync(context, context.RequestAborted);
             if (identification is not null)
@@ -91,5 +91,33 @@ public sealed class TenantIdentificationMiddleware
         }
 
         await _next(context);
+    }
+
+    private static IReadOnlyList<ITenantIdentificationStrategy> OrderStrategies(
+        IEnumerable<ITenantIdentificationStrategy> strategies,
+        TenantResolutionOptions optionsValue)
+    {
+        var strategyList = strategies.ToList();
+        var ordered = new List<ITenantIdentificationStrategy>();
+
+        foreach (var source in optionsValue.ResolutionOrder)
+        {
+            var match = strategyList.FirstOrDefault(s => s.Source == source);
+            if (match is not null && !ordered.Contains(match))
+            {
+                ordered.Add(match);
+            }
+        }
+
+        // Add any remaining strategies not explicitly listed in ResolutionOrder
+        foreach (var remaining in strategyList)
+        {
+            if (!ordered.Contains(remaining))
+            {
+                ordered.Add(remaining);
+            }
+        }
+
+        return ordered;
     }
 }

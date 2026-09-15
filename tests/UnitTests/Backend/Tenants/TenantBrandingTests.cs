@@ -182,6 +182,101 @@ public sealed class TenantBrandingTests
     }
 
     /// <summary>
+    /// Verifies that light logo with invalid image file extension returns validation failure.
+    /// </summary>
+    [Theory]
+    [InlineData("https://cdn.example.com/logo.gif")]
+    [InlineData("https://cdn.example.com/logo.exe")]
+    [InlineData("https://cdn.example.com/logo.pdf")]
+    [InlineData("https://cdn.example.com/logo")]
+    [InlineData("https://cdn.example.com/logo.bmp")]
+    public void Create_WithInvalidLightLogoImageExtension_ShouldReturnFailure(string invalidUrl)
+    {
+        // Act
+        var result = TenantBranding.Create(
+            _validId,
+            ValidPrimaryColor,
+            ValidSecondaryColor,
+            lightLogoUrl: invalidUrl);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("TenantBranding.InvalidLightLogoFormat");
+    }
+
+    /// <summary>
+    /// Verifies that dark logo with invalid image file extension returns validation failure.
+    /// </summary>
+    [Theory]
+    [InlineData("https://cdn.example.com/dark.gif")]
+    [InlineData("https://cdn.example.com/dark.txt")]
+    [InlineData("https://cdn.example.com/dark.html")]
+    [InlineData("https://cdn.example.com/dark-logo")]
+    public void Create_WithInvalidDarkLogoImageExtension_ShouldReturnFailure(string invalidUrl)
+    {
+        // Act
+        var result = TenantBranding.Create(
+            _validId,
+            ValidPrimaryColor,
+            ValidSecondaryColor,
+            darkLogoUrl: invalidUrl);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("TenantBranding.InvalidDarkLogoFormat");
+    }
+
+    /// <summary>
+    /// Verifies that favicon with invalid file extension returns validation failure.
+    /// Favicon must only accept .ico, .png or .svg.
+    /// </summary>
+    [Theory]
+    [InlineData("https://cdn.example.com/favicon.jpg")]
+    [InlineData("https://cdn.example.com/favicon.jpeg")]
+    [InlineData("https://cdn.example.com/favicon.gif")]
+    [InlineData("https://cdn.example.com/favicon.webp")]
+    [InlineData("https://cdn.example.com/favicon")]
+    public void Create_WithInvalidFaviconExtension_ShouldReturnFailure(string invalidUrl)
+    {
+        // Act
+        var result = TenantBranding.Create(
+            _validId,
+            ValidPrimaryColor,
+            ValidSecondaryColor,
+            faviconUrl: invalidUrl);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("TenantBranding.InvalidFaviconFormat");
+    }
+
+    /// <summary>
+    /// Verifies that valid image extensions are accepted for logos and favicons.
+    /// </summary>
+    [Theory]
+    [InlineData("https://cdn.example.com/logo.png", "https://cdn.example.com/logo.svg", "https://cdn.example.com/favicon.ico")]
+    [InlineData("https://cdn.example.com/logo.jpg", "https://cdn.example.com/logo.jpeg", "https://cdn.example.com/favicon.png")]
+    [InlineData("https://cdn.example.com/logo.webp", "https://cdn.example.com/logo.webp", "https://cdn.example.com/favicon.svg")]
+    [InlineData("https://cdn.example.com/logo.PNG?version=1", "https://cdn.example.com/logo.SVG#hash", "https://cdn.example.com/favicon.ICO")]
+    public void Create_WithValidImageExtensions_ShouldReturnSuccess(string lightLogo, string darkLogo, string favicon)
+    {
+        // Act
+        var result = TenantBranding.Create(
+            _validId,
+            ValidPrimaryColor,
+            ValidSecondaryColor,
+            lightLogoUrl: lightLogo,
+            darkLogoUrl: darkLogo,
+            faviconUrl: favicon);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.LightLogoUrl.Should().Be(lightLogo.Trim());
+        result.Value.DarkLogoUrl.Should().Be(darkLogo.Trim());
+        result.Value.FaviconUrl.Should().Be(favicon.Trim());
+    }
+
+    /// <summary>
     /// Verifies that updating colors modifies the fields and sets UpdatedAtUtc.
     /// </summary>
     [Fact]
@@ -229,4 +324,56 @@ public sealed class TenantBrandingTests
         branding.FaviconUrl.Should().Be(newFav);
         branding.UpdatedAtUtc.Should().NotBeNull();
     }
+
+    /// <summary>
+    /// Verifies that UpdateLogos rejects invalid file extensions.
+    /// </summary>
+    [Fact]
+    public void UpdateLogos_WithInvalidFileExtensions_ShouldReturnFailure()
+    {
+        // Arrange
+        var branding = TenantBranding.Create(
+            _validId,
+            ValidPrimaryColor,
+            ValidSecondaryColor).Value;
+
+        // Act
+        var result = branding.UpdateLogos("https://cdn.example.com/logo.gif", null, null);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("TenantBranding.InvalidLightLogoFormat");
+    }
+
+    /// <summary>
+    /// Verifies that UpdateDetails modifies both colors and logos atomically.
+    /// </summary>
+    [Fact]
+    public void UpdateDetails_WithValidData_ShouldUpdateAllFieldsAndTimestamp()
+    {
+        // Arrange
+        var branding = TenantBranding.Create(
+            _validId,
+            ValidPrimaryColor,
+            ValidSecondaryColor).Value;
+
+        const string newPrimary = "#10B981";
+        const string newSecondary = "#1E293B";
+        const string newLight = "https://cdn.example.com/brand-light.svg";
+        const string newDark = "https://cdn.example.com/brand-dark.svg";
+        const string newFav = "https://cdn.example.com/brand-fav.png";
+
+        // Act
+        var result = branding.UpdateDetails(newPrimary, newSecondary, newLight, newDark, newFav);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        branding.PrimaryColor.Should().Be(newPrimary);
+        branding.SecondaryColor.Should().Be(newSecondary);
+        branding.LightLogoUrl.Should().Be(newLight);
+        branding.DarkLogoUrl.Should().Be(newDark);
+        branding.FaviconUrl.Should().Be(newFav);
+        branding.UpdatedAtUtc.Should().NotBeNull();
+    }
 }
+

@@ -32,12 +32,15 @@ public static class MultiTenancyServiceExtensions
             services.Configure<TenantResolutionOptions>(_ => { });
         }
 
+        services.AddMemoryCache();
         services.TryAddScoped<ITenantContextAccessor, TenantContextAccessor>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<ITenantContextAccessor>().TenantContext);
+        services.TryAddScoped<ITenantCustomDomainResolver, NullTenantCustomDomainResolver>();
 
         services.AddTransient<ITenantIdentificationStrategy, HeaderTenantIdentificationStrategy>();
         services.AddTransient<ITenantIdentificationStrategy, JwtClaimTenantIdentificationStrategy>();
         services.AddTransient<ITenantIdentificationStrategy, SubdomainTenantIdentificationStrategy>();
+        services.AddTransient<ITenantIdentificationStrategy, CustomDomainTenantIdentificationStrategy>();
 
         return services;
     }

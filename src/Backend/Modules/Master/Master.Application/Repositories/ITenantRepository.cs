@@ -17,6 +17,14 @@ public interface ITenantRepository : IRepository<Tenant, TenantId>
     Task<Tenant?> GetBySubdomainAsync(string subdomain, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Finds a tenant by its mapped custom domain (CNAME).
+    /// </summary>
+    /// <param name="customDomain">Custom domain FQDN.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The tenant aggregate if found; otherwise null.</returns>
+    Task<Tenant?> GetByCustomDomainAsync(string customDomain, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Finds a tenant by its fiscal document (CPF or CNPJ).
     /// </summary>
     /// <param name="cnpj">Tax/fiscal document (digits-only).</param>

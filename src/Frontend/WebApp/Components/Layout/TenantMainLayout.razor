@@ -4,6 +4,14 @@
 @inject ITenantStateProvider TenantStateProvider
 @inject ITenantSessionStateProvider TenantSessionStateProvider
 
+<HeadContent>
+    <title>@(string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Name) ? "AdMetricsPro" : TenantStateProvider.CurrentTenant.Name)</title>
+    @if (!string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Branding.FaviconUrl))
+    {
+        <link rel="icon" type="image/x-icon" href="@TenantStateProvider.CurrentTenant.Branding.FaviconUrl" />
+    }
+</HeadContent>
+
 <div class="tenant-app-shell" style="@TenantStateProvider.CurrentTenant.Branding.ToCssVariables()">
     <TenantTopHeader OnToggleSidebar="ToggleSidebar" />
     <TenantTrialBanner DaysRemaining="@TenantStateProvider.CurrentTenant.TrialDaysRemaining" IsTrial="@TenantStateProvider.CurrentTenant.IsTrial" />

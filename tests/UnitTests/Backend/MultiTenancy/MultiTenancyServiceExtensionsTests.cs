@@ -37,6 +37,6 @@ public sealed class MultiTenancyServiceExtensionsTests
         context!.IsResolved.Should().BeFalse();
 
         var strategies = provider.GetServices<ITenantIdentificationStrategy>().ToList();
-        strategies.Should().HaveCount(3);
+        strategies.Should().HaveCount(4);
     }
 }

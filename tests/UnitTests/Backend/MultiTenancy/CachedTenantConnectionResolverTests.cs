@@ -225,6 +225,13 @@ public sealed class CachedTenantConnectionResolverTests
             return Task.FromResult(tenant);
         }
 
+        public Task<Tenant?> GetByCustomDomainAsync(string customDomain, CancellationToken cancellationToken = default)
+        {
+            var normalized = customDomain?.Trim().ToLowerInvariant();
+            var tenant = _tenants.Values.FirstOrDefault(t => t.CustomDomain == normalized);
+            return Task.FromResult(tenant);
+        }
+
         public Task<Tenant?> GetByCnpjAsync(string cnpj, CancellationToken cancellationToken = default)
         {
             var sanitized = new string(cnpj?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());

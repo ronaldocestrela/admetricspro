@@ -62,6 +62,16 @@ public abstract class BunitTestBase : BunitContext
     protected WebApp.Services.ITenantRbacClientService TenantRbacClientService { get; }
 
     /// <summary>
+    /// Mock do serviço de cliente de Branding e White-Label.
+    /// </summary>
+    protected WebApp.Services.ITenantBrandingClientService TenantBrandingClientService { get; }
+
+    /// <summary>
+    /// Mock do serviço de cliente de CNAME e domínios personalizados.
+    /// </summary>
+    protected WebApp.Services.ITenantCnameClientService TenantCnameClientService { get; }
+
+    /// <summary>
     /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com os provedores registrados.
     /// </summary>
     protected BunitTestBase()
@@ -76,6 +86,27 @@ public abstract class BunitTestBase : BunitContext
         SquadClientService = NSubstitute.Substitute.For<WebApp.Services.ISquadClientService>();
         BillingClientService = NSubstitute.Substitute.For<WebApp.Services.IBillingClientService>();
         TenantRbacClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantRbacClientService>();
+        TenantBrandingClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantBrandingClientService>();
+        TenantCnameClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantCnameClientService>();
+
+        TenantBrandingClientService.GetBrandingAsync(NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<Tenants.Application.Branding.DTOs.TenantBrandingDetailsDto>.Success(
+                new Tenants.Application.Branding.DTOs.TenantBrandingDetailsDto(
+                    PrimaryColor: "#2563EB",
+                    SecondaryColor: "#0F172A",
+                    LightLogoUrl: null,
+                    DarkLogoUrl: null,
+                    FaviconUrl: null,
+                    UpdatedAtUtc: DateTime.UtcNow)));
+
+        TenantCnameClientService.GetCnameDetailsAsync(NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<Master.Application.Tenants.Queries.GetTenantCustomDomain.TenantCustomDomainDto>.Success(
+                new Master.Application.Tenants.Queries.GetTenantCustomDomain.TenantCustomDomainDto(
+                    TenantId: Guid.NewGuid(),
+                    CustomDomain: null,
+                    ExpectedCnameTarget: "cname.admetricspro.com",
+                    IsConfigured: false,
+                    HasPlanSupport: true)));
 
         TenantFtuxClientService.GetFtuxStatusAsync(NSubstitute.Arg.Any<CancellationToken>())
             .Returns(BuildingBlocks.Domain.Primitives.Result<Tenants.Application.Ftux.DTOs.TenantFtuxStatusDto>.Success(
@@ -109,6 +140,8 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<WebApp.Services.ISquadClientService>(SquadClientService);
         Services.AddSingleton<WebApp.Services.IBillingClientService>(BillingClientService);
         Services.AddSingleton<WebApp.Services.ITenantRbacClientService>(TenantRbacClientService);
+        Services.AddSingleton<WebApp.Services.ITenantBrandingClientService>(TenantBrandingClientService);
+        Services.AddSingleton<WebApp.Services.ITenantCnameClientService>(TenantCnameClientService);
     }
 
     /// <summary>

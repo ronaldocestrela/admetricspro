@@ -58,4 +58,14 @@ public sealed class TenantIdentificationResult
     /// <returns>A new <see cref="TenantIdentificationResult"/> instance.</returns>
     public static TenantIdentificationResult FromSubdomain(string subdomain, TenantResolutionSource source, string rawIdentifier) =>
         new(null, subdomain, source, rawIdentifier);
+
+    /// <summary>
+    /// Creates a result based on a tenant custom domain (CNAME) mapping.
+    /// </summary>
+    /// <param name="tenantId">Tenant GUID.</param>
+    /// <param name="subdomain">Tenant subdomain.</param>
+    /// <param name="rawIdentifier">Original CNAME host value.</param>
+    /// <returns>A new <see cref="TenantIdentificationResult"/> instance.</returns>
+    public static TenantIdentificationResult FromCustomDomain(Guid tenantId, string subdomain, string rawIdentifier) =>
+        new(tenantId, subdomain, TenantResolutionSource.CustomDomain, rawIdentifier);
 }

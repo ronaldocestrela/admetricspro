@@ -72,17 +72,30 @@ public sealed partial class TenantBranding : Entity<Guid>
     /// <summary>
     /// Gets the UTC timestamp of the most recent branding update.
     /// </summary>
+    private static readonly HashSet<string> AllowedLogoExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".svg", ".jpg", ".jpeg", ".webp"
+    };
+
+    private static readonly HashSet<string> AllowedFaviconExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".ico", ".png", ".svg"
+    };
+
+    /// <summary>
+    /// Gets the UTC timestamp of the most recent branding update.
+    /// </summary>
     public DateTime? UpdatedAtUtc { get; private set; }
 
     /// <summary>
-    /// Creates a new <see cref="TenantBranding"/> instance validating color formats and optional URLs.
+    /// Creates a new <see cref="TenantBranding"/> instance validating color formats, image file extensions, and optional URLs.
     /// </summary>
     /// <param name="id">The branding configuration identifier.</param>
     /// <param name="primaryColor">Primary brand color in hex format.</param>
     /// <param name="secondaryColor">Secondary brand color in hex format.</param>
-    /// <param name="lightLogoUrl">Optional URL for light theme logo.</param>
-    /// <param name="darkLogoUrl">Optional URL for dark theme logo.</param>
-    /// <param name="faviconUrl">Optional URL for favicon.</param>
+    /// <param name="lightLogoUrl">Optional URL for light theme logo (.png, .svg, .jpg, .jpeg, .webp).</param>
+    /// <param name="darkLogoUrl">Optional URL for dark theme logo (.png, .svg, .jpg, .jpeg, .webp).</param>
+    /// <param name="faviconUrl">Optional URL for favicon (.ico, .png, .svg).</param>
     /// <param name="createdAtUtc">Optional creation timestamp; defaults to UTC now.</param>
     /// <returns>A <see cref="Result{T}"/> with the created entity or validation error.</returns>
     public static Result<TenantBranding> Create(
@@ -111,19 +124,34 @@ public sealed partial class TenantBranding : Entity<Guid>
             return Result<TenantBranding>.Failure(secondaryResult.Error);
         }
 
-        var lightLogoResult = ValidateUrl(lightLogoUrl, "TenantBranding.InvalidLightLogoUrl", "TenantBranding.UrlTooLong");
+        var lightLogoResult = ValidateImageUrl(
+            lightLogoUrl,
+            "TenantBranding.InvalidLightLogoUrl",
+            "TenantBranding.UrlTooLong",
+            "TenantBranding.InvalidLightLogoFormat",
+            AllowedLogoExtensions);
         if (lightLogoResult.IsFailure)
         {
             return Result<TenantBranding>.Failure(lightLogoResult.Error);
         }
 
-        var darkLogoResult = ValidateUrl(darkLogoUrl, "TenantBranding.InvalidDarkLogoUrl", "TenantBranding.UrlTooLong");
+        var darkLogoResult = ValidateImageUrl(
+            darkLogoUrl,
+            "TenantBranding.InvalidDarkLogoUrl",
+            "TenantBranding.UrlTooLong",
+            "TenantBranding.InvalidDarkLogoFormat",
+            AllowedLogoExtensions);
         if (darkLogoResult.IsFailure)
         {
             return Result<TenantBranding>.Failure(darkLogoResult.Error);
         }
 
-        var faviconResult = ValidateUrl(faviconUrl, "TenantBranding.InvalidFaviconUrl", "TenantBranding.UrlTooLong");
+        var faviconResult = ValidateImageUrl(
+            faviconUrl,
+            "TenantBranding.InvalidFaviconUrl",
+            "TenantBranding.UrlTooLong",
+            "TenantBranding.InvalidFaviconFormat",
+            AllowedFaviconExtensions);
         if (faviconResult.IsFailure)
         {
             return Result<TenantBranding>.Failure(faviconResult.Error);
@@ -171,25 +199,40 @@ public sealed partial class TenantBranding : Entity<Guid>
     /// <summary>
     /// Updates the logo and favicon URLs for white-label styling.
     /// </summary>
-    /// <param name="lightLogoUrl">Optional URL for light theme logo.</param>
-    /// <param name="darkLogoUrl">Optional URL for dark theme logo.</param>
-    /// <param name="faviconUrl">Optional URL for favicon icon.</param>
+    /// <param name="lightLogoUrl">Optional URL for light theme logo (.png, .svg, .jpg, .jpeg, .webp).</param>
+    /// <param name="darkLogoUrl">Optional URL for dark theme logo (.png, .svg, .jpg, .jpeg, .webp).</param>
+    /// <param name="faviconUrl">Optional URL for favicon icon (.ico, .png, .svg).</param>
     /// <returns>A <see cref="Result"/> indicating success or validation error.</returns>
     public Result UpdateLogos(string? lightLogoUrl, string? darkLogoUrl, string? faviconUrl)
     {
-        var lightLogoResult = ValidateUrl(lightLogoUrl, "TenantBranding.InvalidLightLogoUrl", "TenantBranding.UrlTooLong");
+        var lightLogoResult = ValidateImageUrl(
+            lightLogoUrl,
+            "TenantBranding.InvalidLightLogoUrl",
+            "TenantBranding.UrlTooLong",
+            "TenantBranding.InvalidLightLogoFormat",
+            AllowedLogoExtensions);
         if (lightLogoResult.IsFailure)
         {
             return Result.Failure(lightLogoResult.Error);
         }
 
-        var darkLogoResult = ValidateUrl(darkLogoUrl, "TenantBranding.InvalidDarkLogoUrl", "TenantBranding.UrlTooLong");
+        var darkLogoResult = ValidateImageUrl(
+            darkLogoUrl,
+            "TenantBranding.InvalidDarkLogoUrl",
+            "TenantBranding.UrlTooLong",
+            "TenantBranding.InvalidDarkLogoFormat",
+            AllowedLogoExtensions);
         if (darkLogoResult.IsFailure)
         {
             return Result.Failure(darkLogoResult.Error);
         }
 
-        var faviconResult = ValidateUrl(faviconUrl, "TenantBranding.InvalidFaviconUrl", "TenantBranding.UrlTooLong");
+        var faviconResult = ValidateImageUrl(
+            faviconUrl,
+            "TenantBranding.InvalidFaviconUrl",
+            "TenantBranding.UrlTooLong",
+            "TenantBranding.InvalidFaviconFormat",
+            AllowedFaviconExtensions);
         if (faviconResult.IsFailure)
         {
             return Result.Failure(faviconResult.Error);
@@ -199,6 +242,37 @@ public sealed partial class TenantBranding : Entity<Guid>
         DarkLogoUrl = NormalizeUrl(darkLogoUrl);
         FaviconUrl = NormalizeUrl(faviconUrl);
         UpdatedAtUtc = DateTime.UtcNow;
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates all branding attributes atomically (colors and logo assets).
+    /// </summary>
+    /// <param name="primaryColor">Primary hex color.</param>
+    /// <param name="secondaryColor">Secondary hex color.</param>
+    /// <param name="lightLogoUrl">Optional light logo URL (.png, .svg, .jpg, .jpeg, .webp).</param>
+    /// <param name="darkLogoUrl">Optional dark logo URL (.png, .svg, .jpg, .jpeg, .webp).</param>
+    /// <param name="faviconUrl">Optional favicon URL (.ico, .png, .svg).</param>
+    /// <returns>A <see cref="Result"/> indicating success or validation error.</returns>
+    public Result UpdateDetails(
+        string primaryColor,
+        string secondaryColor,
+        string? lightLogoUrl,
+        string? darkLogoUrl,
+        string? faviconUrl)
+    {
+        var colorResult = UpdateColors(primaryColor, secondaryColor);
+        if (colorResult.IsFailure)
+        {
+            return colorResult;
+        }
+
+        var logoResult = UpdateLogos(lightLogoUrl, darkLogoUrl, faviconUrl);
+        if (logoResult.IsFailure)
+        {
+            return logoResult;
+        }
 
         return Result.Success();
     }
@@ -219,7 +293,12 @@ public sealed partial class TenantBranding : Entity<Guid>
         return Result.Success();
     }
 
-    private static Result ValidateUrl(string? url, string formatErrorCode, string lengthErrorCode)
+    private static Result ValidateImageUrl(
+        string? url,
+        string urlFormatErrorCode,
+        string lengthErrorCode,
+        string imageFormatErrorCode,
+        HashSet<string> allowedExtensions)
     {
         if (string.IsNullOrWhiteSpace(url))
         {
@@ -235,7 +314,15 @@ public sealed partial class TenantBranding : Entity<Guid>
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
-            return Result.Failure(Error.Validation(formatErrorCode, "Provided URL must be a valid absolute HTTP or HTTPS address."));
+            return Result.Failure(Error.Validation(urlFormatErrorCode, "Provided URL must be a valid absolute HTTP or HTTPS address."));
+        }
+
+        var extension = Path.GetExtension(uri.AbsolutePath);
+        if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
+        {
+            return Result.Failure(Error.Validation(
+                imageFormatErrorCode,
+                $"Image file format is invalid. Allowed extensions are: {string.Join(", ", allowedExtensions)}."));
         }
 
         return Result.Success();

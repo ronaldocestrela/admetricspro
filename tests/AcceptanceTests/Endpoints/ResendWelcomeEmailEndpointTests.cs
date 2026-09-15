@@ -108,6 +108,11 @@ public sealed class ResendWelcomeEmailEndpointTests : IClassFixture<WebApplicati
             return Task.FromResult(_tenant);
         }
 
+        public Task<Tenant?> GetByCustomDomainAsync(string customDomain, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_tenant);
+        }
+
         public Task<Tenant?> GetByCnpjAsync(string cnpj, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(_tenant);

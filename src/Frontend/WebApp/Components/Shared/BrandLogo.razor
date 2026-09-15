@@ -1,0 +1,59 @@
+@namespace WebApp.Components.Shared
+@inject ITenantStateProvider TenantStateProvider
+
+<div class="brand-logo-container @CssClass">
+    @if (!string.IsNullOrWhiteSpace(ResolvedLogoUrl))
+    {
+        <img src="@ResolvedLogoUrl" alt="@CompanyName" class="brand-logo-image" style="height: @(Height)px; max-width: 100%; object-fit: contain;" />
+    }
+    else
+    {
+        <div class="brand-logo-fallback" style="height: @(Height)px;">
+            <svg class="brand-logo-icon" viewBox="0 0 24 24" width="@Height" height="@Height" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            @if (ShowText)
+            {
+                <span class="brand-logo-text">@CompanyName</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Classes CSS adicionais para customização do container do logo.
+    /// </summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    /// <summary>
+    /// Altura do logotipo em pixels. Padrão: 36px.
+    /// </summary>
+    [Parameter]
+    public int Height { get; set; } = 36;
+
+    /// <summary>
+    /// Indica se deve utilizar a versão escura da logomarca (Dark Theme).
+    /// </summary>
+    [Parameter]
+    public bool DarkTheme { get; set; } = true;
+
+    /// <summary>
+    /// Indica se o nome corporativo deve ser renderizado quando em modo fallback.
+    /// </summary>
+    [Parameter]
+    public bool ShowText { get; set; } = true;
+
+    private string? ResolvedLogoUrl =>
+        DarkTheme
+            ? (TenantStateProvider.CurrentTenant.Branding.DarkLogoUrl ?? TenantStateProvider.CurrentTenant.Branding.LogoUrl)
+            : (TenantStateProvider.CurrentTenant.Branding.LogoUrl ?? TenantStateProvider.CurrentTenant.Branding.DarkLogoUrl);
+
+    private string CompanyName =>
+        !string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Branding.CompanyName)
+            ? TenantStateProvider.CurrentTenant.Branding.CompanyName
+            : (!string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Name)
+                ? TenantStateProvider.CurrentTenant.Name
+                : "AdMetricsPro");
+}

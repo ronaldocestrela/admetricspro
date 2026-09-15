@@ -1,0 +1,351 @@
+@page "/settings/white-label"
+@layout TenantMainLayout
+@namespace WebApp.Components.Pages.Settings
+@inject ITenantBrandingClientService BrandingClientService
+@inject ITenantCnameClientService CnameClientService
+@inject ITenantStateProvider TenantStateProvider
+
+<div class="whitelabel-page-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Personalização White-Label & Marca</h1>
+            <p class="page-subtitle">Configure a identidade visual exclusiva da sua agência aplicada aos painéis, relatórios e portais compartilhados.</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" @onclick="ResetDefaults" disabled="@_isSaving">Restaurar Padrões</button>
+            <button class="btn btn-primary" @onclick="SaveBrandingAsync" disabled="@_isSaving">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Salvando...</span>
+                }
+                else
+                {
+                    <span>Salvar Alterações</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_successMessage))
+    {
+        <div class="alert alert-success" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            @_successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            @_errorMessage
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Carregando configurações de marca...</p>
+        </div>
+    }
+    else
+    {
+        <div class="settings-grid">
+            <!-- Formulário de Configuração -->
+            <div class="settings-card">
+                <h2 class="section-title">Paleta de Cores Institucional</h2>
+                <p class="section-description">Defina as cores primárias e secundárias que compõem os temas, botões e cartões analíticos.</p>
+
+                <div class="color-form-group">
+                    <div class="color-field">
+                        <label for="primaryColorPicker" class="field-label">Cor Primária (Tema & Botões)</label>
+                        <div class="color-picker-wrapper">
+                            <input id="primaryColorPicker" type="color" class="color-input" @bind="_model.PrimaryColor" @bind:after="TriggerLiveUpdate" />
+                            <input type="text" class="form-control text-uppercase" maxlength="9" @bind="_model.PrimaryColor" @bind:after="TriggerLiveUpdate" />
+                        </div>
+                        <span class="field-hint">Utilizada em cabeçalhos ativos, botões primários e gráficos de destaque.</span>
+                    </div>
+
+                    <div class="color-field">
+                        <label for="secondaryColorPicker" class="field-label">Cor Secundária (Superfícies & Menus)</label>
+                        <div class="color-picker-wrapper">
+                            <input id="secondaryColorPicker" type="color" class="color-input" @bind="_model.SecondaryColor" @bind:after="TriggerLiveUpdate" />
+                            <input type="text" class="form-control text-uppercase" maxlength="9" @bind="_model.SecondaryColor" @bind:after="TriggerLiveUpdate" />
+                        </div>
+                        <span class="field-hint">Utilizada em fundos escuros, barras laterais e cabeçalhos secundários.</span>
+                    </div>
+                </div>
+
+                <h2 class="section-title mt-4">Logomarcas e Favicon</h2>
+                <p class="section-description">Insira URLs seguras de imagens hospedadas em CDN ou armazenamento em nuvem (.png, .svg, .webp, .ico).</p>
+
+                <div class="mb-3">
+                    <label for="lightLogoInput" class="field-label">Logotipo para Tema Claro (URL)</label>
+                    <input id="lightLogoInput" type="url" class="form-control" placeholder="https://cdn.suaempresa.com/logo-light.svg" @bind="_model.LightLogoUrl" @bind:after="TriggerLiveUpdate" />
+                    <span class="field-hint">Formatos aceitos: .png, .svg, .jpg, .jpeg, .webp.</span>
+                </div>
+
+                <div class="mb-3">
+                    <label for="darkLogoInput" class="field-label">Logotipo para Tema Escuro (URL)</label>
+                    <input id="darkLogoInput" type="url" class="form-control" placeholder="https://cdn.suaempresa.com/logo-dark.svg" @bind="_model.DarkLogoUrl" @bind:after="TriggerLiveUpdate" />
+                    <span class="field-hint">Formatos aceitos: .png, .svg, .jpg, .jpeg, .webp.</span>
+                </div>
+
+                <div class="mb-3">
+                    <label for="faviconInput" class="field-label">Favicon do Navegador (URL)</label>
+                    <input id="faviconInput" type="url" class="form-control" placeholder="https://cdn.suaempresa.com/favicon.ico" @bind="_model.FaviconUrl" @bind:after="TriggerLiveUpdate" />
+                    <span class="field-hint">Formatos aceitos: .ico, .png, .svg.</span>
+                </div>
+
+                <h2 class="section-title mt-4">Domínio Personalizado & Apontamento CNAME (DNS)</h2>
+                <p class="section-description">Acesse o AdMetricsPro através de um subdomínio próprio da sua agência ou cliente.</p>
+
+                <div class="cname-card mb-2">
+                    <div class="cname-info-box">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>Instrução para Apontamento DNS na sua Zona de Domínio:</strong>
+                            @if (_cnameConfigured)
+                            {
+                                <span class="badge bg-success" id="cnameStatusActive">CNAME Ativo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary" id="cnameStatusInactive">Não Configurado</span>
+                            }
+                        </div>
+                        <div class="dns-record-grid">
+                            <div><small class="text-muted">Tipo:</small> <code>CNAME</code></div>
+                            <div><small class="text-muted">Host / Entrada:</small> <code>relatorios</code> (ou subdomínio desejado)</div>
+                            <div><small class="text-muted">Destino / Valor:</small> <code id="cnameExpectedTarget">@_expectedCnameTarget</code></div>
+                        </div>
+                    </div>
+
+                    @if (!_hasPlanSupport)
+                    {
+                        <div class="alert alert-warning mt-3" role="alert" id="cnamePlanWarning">
+                            <i class="bi bi-lock-fill me-2"></i>
+                            O recurso de CNAME personalizado requer upgrade para o plano <strong>Enterprise</strong>.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mt-3">
+                            <label for="cnameInput" class="field-label">Seu Domínio Personalizado</label>
+                            <div class="input-group">
+                                <input id="cnameInput" type="text" class="form-control" placeholder="relatorios.suaempresa.com.br" @bind="_customDomainInput" />
+                                <button class="btn btn-outline-primary" type="button" id="btnSaveCname" @onclick="SaveCnameAsync" disabled="@_isSavingCname">
+                                    @if (_isSavingCname)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                        <span>Salvando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Salvar Domínio</span>
+                                    }
+                                </button>
+                                @if (_cnameConfigured)
+                                {
+                                    <button class="btn btn-outline-danger" type="button" id="btnRemoveCname" @onclick="RemoveCnameAsync" disabled="@_isSavingCname">
+                                        Remover
+                                    </button>
+                                }
+                            </div>
+                            <span class="field-hint">Informe o FQDN completo sem http:// ou https:// (ex: relatorios.agenciaalfa.com.br).</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Simulador / Live Preview Card -->
+            <div class="preview-card-wrapper">
+                <div class="preview-sticky-card" style="@PreviewCssVariables">
+                    <div class="preview-header">
+                        <span class="badge bg-primary-subtle text-primary">Simulador em Tempo Real</span>
+                        <small class="text-muted">Prévia Instantânea</small>
+                    </div>
+
+                    <div class="mockup-shell">
+                        <div class="mockup-topbar">
+                            <div class="mockup-logo">
+                                @if (!string.IsNullOrWhiteSpace(_model.DarkLogoUrl))
+                                {
+                                    <img src="@_model.DarkLogoUrl" alt="Logo Escuro" class="mockup-logo-img" />
+                                }
+                                else if (!string.IsNullOrWhiteSpace(_model.LightLogoUrl))
+                                {
+                                    <img src="@_model.LightLogoUrl" alt="Logo Claro" class="mockup-logo-img" />
+                                }
+                                else
+                                {
+                                    <div class="mockup-logo-badge">
+                                        <i class="bi bi-layers-fill me-1"></i>
+                                        <span>@(string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Name) ? "Sua Agência" : TenantStateProvider.CurrentTenant.Name)</span>
+                                    </div>
+                                }
+                            </div>
+                            <div class="mockup-profile-circle"></div>
+                        </div>
+
+                        <div class="mockup-content">
+                            <div class="mockup-metric-card">
+                                <span class="mockup-metric-label">Investimento Consolidado</span>
+                                <span class="mockup-metric-value">R$ 142.580,00</span>
+                                <span class="mockup-pill">+18.4% vs. período anterior</span>
+                            </div>
+
+                            <div class="mockup-actions">
+                                <button class="mockup-btn mockup-btn-primary" type="button">Ação Primária</button>
+                                <button class="mockup-btn mockup-btn-secondary" type="button">Detalhes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private UpdateTenantBrandingModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private string? _successMessage;
+    private string? _errorMessage;
+
+    private string _customDomainInput = string.Empty;
+    private string _expectedCnameTarget = "cname.admetricspro.com";
+    private bool _cnameConfigured = false;
+    private bool _hasPlanSupport = true;
+    private bool _isSavingCname = false;
+
+    private string PreviewCssVariables =>
+        $"--preview-primary: {_model.PrimaryColor}; --preview-secondary: {_model.SecondaryColor};";
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBrandingAsync();
+    }
+
+    private async Task LoadBrandingAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var brandingTask = BrandingClientService.GetBrandingAsync();
+        var cnameTask = CnameClientService.GetCnameDetailsAsync();
+
+        await Task.WhenAll(brandingTask, cnameTask);
+
+        var result = await brandingTask;
+        if (result.IsSuccess)
+        {
+            _model = new UpdateTenantBrandingModel
+            {
+                PrimaryColor = result.Value.PrimaryColor,
+                SecondaryColor = result.Value.SecondaryColor,
+                LightLogoUrl = result.Value.LightLogoUrl,
+                DarkLogoUrl = result.Value.DarkLogoUrl,
+                FaviconUrl = result.Value.FaviconUrl
+            };
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+
+        var cnameResult = await cnameTask;
+        if (cnameResult.IsSuccess)
+        {
+            _customDomainInput = cnameResult.Value.CustomDomain ?? string.Empty;
+            _expectedCnameTarget = cnameResult.Value.ExpectedCnameTarget;
+            _cnameConfigured = cnameResult.Value.IsConfigured;
+            _hasPlanSupport = cnameResult.Value.HasPlanSupport;
+        }
+
+        _isLoading = false;
+    }
+
+    private void TriggerLiveUpdate()
+    {
+        StateHasChanged();
+    }
+
+    private void ResetDefaults()
+    {
+        _model.PrimaryColor = "#2563EB";
+        _model.SecondaryColor = "#0F172A";
+        _model.LightLogoUrl = null;
+        _model.DarkLogoUrl = null;
+        _model.FaviconUrl = null;
+        _successMessage = null;
+        _errorMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task SaveBrandingAsync()
+    {
+        _isSaving = true;
+        _successMessage = null;
+        _errorMessage = null;
+
+        var result = await BrandingClientService.UpdateBrandingAsync(_model);
+        if (result.IsSuccess)
+        {
+            _successMessage = "Identidade visual atualizada e aplicada com sucesso a toda a plataforma!";
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+
+        _isSaving = false;
+    }
+
+    private async Task SaveCnameAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_customDomainInput))
+            return;
+
+        _isSavingCname = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var result = await CnameClientService.ConfigureCnameAsync(_customDomainInput.Trim());
+        if (result.IsSuccess)
+        {
+            _cnameConfigured = true;
+            _successMessage = "Domínio CNAME configurado com sucesso! Aguarde a propagação DNS do seu provedor.";
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+
+        _isSavingCname = false;
+    }
+
+    private async Task RemoveCnameAsync()
+    {
+        _isSavingCname = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var result = await CnameClientService.RemoveCnameAsync();
+        if (result.IsSuccess)
+        {
+            _cnameConfigured = false;
+            _customDomainInput = string.Empty;
+            _successMessage = "Apontamento CNAME removido com sucesso.";
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+
+        _isSavingCname = false;
+    }
+}

@@ -31,6 +31,8 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0021](file:///home/rony/LPR/AdMetricsPro/docs/adr/0021-squads-and-portfolio-isolation.md) | Gestão de Squads e Isolamento Granular de Portfólios por Cliente | Aceito | 2026-09-07 |
 | [0022](file:///home/rony/LPR/AdMetricsPro/docs/adr/0022-agency-ftux-and-interactive-onboarding-wizard.md) | Wizard de Primeiro Acesso da Agência (FTUX) e Dados Demonstrativos | Aceito | 2026-09-07 |
 | [0023](file:///home/rony/LPR/AdMetricsPro/docs/adr/0023-transactional-emails-and-trial-lifecycle-messaging.md) | Mensageria Transacional e Régua Automatizada de Ciclo de Vida do Trial | Aceito | 2026-09-07 |
+| [0024](file:///home/rony/LPR/AdMetricsPro/docs/adr/0024-payment-gateway-and-trial-to-paid-transition.md) | Gateway de Pagamentos e Transição de Trial para Assinatura Paga | Aceito | 2026-09-07 |
+| [0025](file:///home/rony/LPR/AdMetricsPro/docs/adr/0025-dynamic-cname-resolution-and-white-label-strategy.md) | Estratégia de Resolução Dinâmica de CNAME e Customização White-Label | Aceito | 2026-09-15 |
 
 ---
 

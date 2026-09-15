@@ -1,0 +1,322 @@
+.whitelabel-page-container {
+    padding: 1.5rem 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    color: #F8FAFC;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.page-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #F8FAFC;
+    margin-bottom: 0.25rem;
+}
+
+.page-subtitle {
+    color: #94A3B8;
+    font-size: 0.95rem;
+    margin-bottom: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.settings-card {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #F1F5F9;
+    margin-bottom: 0.25rem;
+}
+
+.section-description {
+    font-size: 0.875rem;
+    color: #94A3B8;
+    margin-bottom: 1.5rem;
+}
+
+.color-form-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .color-form-group {
+        grid-template-columns: 1fr;
+    }
+}
+
+.color-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.field-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #E2E8F0;
+    margin-bottom: 0.5rem;
+}
+
+.field-hint {
+    font-size: 0.75rem;
+    color: #64748B;
+    margin-top: 0.35rem;
+}
+
+.color-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.color-input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 44px;
+    height: 44px;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    background: transparent;
+    padding: 0;
+    overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 0.375rem;
+}
+
+.color-input:hover {
+    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.form-control {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #F8FAFC;
+    border-radius: 0.5rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    background: rgba(30, 41, 59, 0.9);
+    border-color: #38BDF8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    color: #FFFFFF;
+    outline: none;
+}
+
+/* Simulador Sticky Card */
+.preview-card-wrapper {
+    position: relative;
+}
+
+.preview-sticky-card {
+    position: sticky;
+    top: 2rem;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(16px);
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.mockup-shell {
+    background: #090D16;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.mockup-topbar {
+    background: var(--preview-secondary, #0F172A);
+    padding: 0.875rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.3s ease;
+}
+
+.mockup-logo-img {
+    height: 28px;
+    max-width: 140px;
+    object-fit: contain;
+}
+
+.mockup-logo-badge {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #F8FAFC;
+    display: flex;
+    align-items: center;
+}
+
+.mockup-profile-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.mockup-content {
+    padding: 1.25rem;
+}
+
+.mockup-metric-card {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+}
+
+.mockup-metric-label {
+    font-size: 0.75rem;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.mockup-metric-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #F8FAFC;
+}
+
+.mockup-pill {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #34D399;
+}
+
+.mockup-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.mockup-btn {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: default;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.mockup-btn-primary {
+    background: var(--preview-primary, #2563EB);
+    color: #FFFFFF;
+}
+
+.mockup-btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #CBD5E1;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5rem 1rem;
+    color: #94A3B8;
+}
+
+/* CNAME & DNS Card */
+.cname-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+}
+
+.cname-info-box {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.dns-record-grid {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+    .dns-record-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+}
+
+.dns-record-grid code {
+    background: rgba(56, 189, 248, 0.1);
+    color: #38BDF8;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+}
