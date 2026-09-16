@@ -24,6 +24,7 @@ public static class AutomationsInfrastructureExtensions
         services.AddScoped<IAutomationRuleRepository, AutomationRuleRepository>();
         services.AddScoped<IAutomationsUnitOfWork, AutomationsUnitOfWork>();
         services.AddScoped<IAutomationsMetricsProvider, AutomationsMetricsProvider>();
+        services.AddScoped<Automations.Application.Pacing.Services.IBudgetPacingDataProvider, Automations.Infrastructure.Pacing.BudgetPacingDataProvider>();
         services.AddScoped<Automations.Domain.SafetyGuards.ISafetyGuardIncidentRepository, Automations.Infrastructure.Persistence.SafetyGuardIncidentRepository>();
 
         // Travas de Segurança Operacional & Notificações Multi-Canal (Subfase 4.2)

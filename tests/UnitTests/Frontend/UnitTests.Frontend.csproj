@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\..\src\Frontend\WebApp\WebApp.csproj" />
     <ProjectReference Include="..\..\..\src\Frontend\BackofficeApp\BackofficeApp.csproj" />
     <ProjectReference Include="..\..\..\src\Backend\Modules\Analytics\Analytics.Application\Analytics.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Backend\Modules\Automations\Automations.Application\Automations.Application.csproj" />
   </ItemGroup>
 
 </Project>

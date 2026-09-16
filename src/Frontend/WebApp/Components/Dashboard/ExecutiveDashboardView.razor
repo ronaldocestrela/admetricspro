@@ -1,9 +1,11 @@
 @using Analytics.Application.Dashboard.DTOs
+@using Automations.Application.Pacing.DTOs
 @using Tenants.Application.Workspaces.DTOs
 @using WebApp.Models
 @using WebApp.Services
 @inject IAnalyticsDashboardClientService DashboardClientService
 @inject IWorkspaceClientService WorkspaceClientService
+@inject IBudgetPacingClientService PacingClientService
 @namespace WebApp.Components.Dashboard
 
 <div id="executive-dashboard-container" class="executive-dashboard-container">
@@ -33,6 +35,12 @@
     <MetricCardsGrid Metrics="@DashboardData?.Metrics"
                      Currency="@(DashboardData?.Currency ?? "BRL")"
                      IsLoading="@IsLoading" />
+
+    @if (PacingData is not null)
+    {
+        <!-- Barra de Pacing e Projeção de Fim de Mês -->
+        <BudgetPacingBar PacingData="@PacingData" ShowDetails="true" />
+    }
 
     <!-- Seção de Gráficos Interativos -->
     <div class="dashboard-charts-layout">
@@ -66,6 +74,11 @@
     /// Dados consolidados do dashboard executivo retornados da Web API.
     /// </summary>
     public ExecutiveDashboardDto? DashboardData { get; private set; }
+
+    /// <summary>
+    /// Dados de pacing orçamentário do workspace ou carteira.
+    /// </summary>
+    public WorkspaceBudgetPacingDto? PacingData { get; private set; }
 
     /// <summary>
     /// Lista de workspaces cadastrados no inquilino.
@@ -120,6 +133,23 @@
             else
             {
                 ErrorMessage = result.Error.Description;
+            }
+
+            if (Filters.WorkspaceId.HasValue && Filters.WorkspaceId.Value != Guid.Empty)
+            {
+                var pacingResult = await PacingClientService.GetWorkspacePacingAsync(Filters.WorkspaceId.Value);
+                if (pacingResult.IsSuccess)
+                {
+                    PacingData = pacingResult.Value;
+                }
+            }
+            else
+            {
+                var portfolioResult = await PacingClientService.GetPortfolioPacingAsync();
+                if (portfolioResult.IsSuccess && portfolioResult.Value.Workspaces.Count > 0)
+                {
+                    PacingData = portfolioResult.Value.Workspaces[0];
+                }
             }
         }
         catch (Exception ex)

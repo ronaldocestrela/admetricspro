@@ -1,0 +1,311 @@
+@using Automations.Application.Pacing.DTOs
+@using BuildingBlocks.Domain.Automations.Pacing
+@namespace WebApp.Components.Dashboard
+
+<div class="budget-pacing-container @(CompactMode ? "compact-mode" : "full-mode")" id="@($"pacing-bar-{WorkspaceId}")">
+    <!-- Cabeçalho do Pacing -->
+    <div class="pacing-header">
+        <div class="pacing-title-block">
+            <div class="pacing-icon-box @GetStatusCssClass()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </div>
+            <div>
+                <span class="pacing-label">Velocidade de Consumo de Verba (Pacing)</span>
+                @if (!string.IsNullOrWhiteSpace(WorkspaceName))
+                {
+                    <span class="pacing-client-name">— @WorkspaceName</span>
+                }
+            </div>
+        </div>
+
+        <div class="pacing-status-badge @GetStatusCssClass()" role="status">
+            <span class="status-pulse"></span>
+            <span class="status-text">@GetStatusLabel()</span>
+        </div>
+    </div>
+
+    <!-- Valores Principais: Gasto Real vs. Meta Orçamentária -->
+    <div class="pacing-values-row">
+        <div class="value-current">
+            <span class="value-number">@FormatCurrency(CurrentSpend)</span>
+            <span class="value-caption">gasto realizado</span>
+        </div>
+
+        <div class="pacing-percentage-pill @GetStatusCssClass()">
+            <span>@PacingPercentage.ToString("F1")% do ritmo ideal</span>
+        </div>
+
+        <div class="value-target">
+            <span class="value-number">@FormatCurrency(TargetBudget)</span>
+            <span class="value-caption">orçamento contratado</span>
+        </div>
+    </div>
+
+    <!-- Barra de Progresso Multi-Camada com Needle e Projeção -->
+    <div class="pacing-track-wrapper">
+        <div class="pacing-track" role="progressbar" aria-valuenow="@CurrentPercentage" aria-valuemin="0" aria-valuemax="100">
+            <!-- Barra de Projeção de Fim de Mês (Tracejada / Translúcida) -->
+            @if (ProjectedPercentage > CurrentPercentage)
+            {
+                <div class="pacing-bar-projected @GetStatusCssClass()"
+                     style="left: @(CurrentPercentage)%; width: @(Math.Min(100 - CurrentPercentage, ProjectedPercentage - CurrentPercentage))%;"
+                     title="Projeção de fim de mês: @FormatCurrency(ProjectedMonthEndSpend)">
+                </div>
+            }
+
+            <!-- Barra de Consumo Realizado -->
+            <div class="pacing-bar-fill @GetStatusCssClass()"
+                 style="width: @(Math.Min(100, CurrentPercentage))%;"
+                 title="Consumo realizado: @FormatCurrency(CurrentSpend) (@CurrentPercentage.ToString("F1")%)">
+            </div>
+
+            <!-- Marcador Temporal Linear Ideal (Needle / Needle Indicator) -->
+            <div class="pacing-needle"
+                 style="left: @(Math.Min(100, IdealPercentage))%;"
+                 title="Gasto linear ideal até hoje (@ElapsedDays/@TotalDaysInCycle dias): @FormatCurrency(ExpectedSpendToDate)">
+                <div class="needle-pin"></div>
+                <div class="needle-line"></div>
+                <span class="needle-tooltip">Ideal Hoje: @FormatCurrency(ExpectedSpendToDate)</span>
+            </div>
+        </div>
+
+        <!-- Indicadores de extremidade da régua -->
+        <div class="track-labels">
+            <span class="track-label-start">Início do Ciclo (Dia 1)</span>
+            <span class="track-label-center">Hoje: Dia @ElapsedDays de @TotalDaysInCycle</span>
+            <span class="track-label-end">Meta: @FormatCurrency(TargetBudget)</span>
+        </div>
+    </div>
+
+    @if (ShowDetails && !CompactMode)
+    {
+        <!-- Grid de Métricas Táticas de Suporte -->
+        <div class="pacing-metrics-grid">
+            <div class="metric-cell">
+                <span class="cell-label">Ritmo Diário Atual</span>
+                <span class="cell-value">@FormatCurrency(ActualDailyRunRate)/dia</span>
+                <span class="cell-sub">Média realizada</span>
+            </div>
+
+            <div class="metric-cell">
+                <span class="cell-label">Ritmo Diário Recomendado</span>
+                <span class="cell-value highlight">@FormatCurrency(RequiredDailyRunRate)/dia</span>
+                <span class="cell-sub">Para os @RemainingDays dias restantes</span>
+            </div>
+
+            <div class="metric-cell">
+                <span class="cell-label">Projeção Fechamento Mês</span>
+                <span class="cell-value @GetStatusCssClass()">@FormatCurrency(ProjectedMonthEndSpend)</span>
+                <span class="cell-sub">
+                    @(ProjectedVariance >= 0 ? $"+{FormatCurrency(ProjectedVariance)}" : FormatCurrency(ProjectedVariance))
+                    (@(ProjectedVariancePercentage >= 0 ? $"+{ProjectedVariancePercentage:F1}%" : $"{ProjectedVariancePercentage:F1}%"))
+                </span>
+            </div>
+
+            <div class="metric-cell">
+                <span class="cell-label">Saldo Disponível</span>
+                <span class="cell-value">@FormatCurrency(RemainingBudget)</span>
+                <span class="cell-sub">@RemainingDays dias restantes</span>
+            </div>
+        </div>
+
+        <!-- Recomendação Tática Orientada a Dados -->
+        @if (!string.IsNullOrWhiteSpace(Recommendation))
+        {
+            <div class="pacing-recommendation-box @GetStatusCssClass()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>@Recommendation</span>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Objeto consolidado de dados de pacing retornado pela Web API.
+    /// </summary>
+    [Parameter]
+    public WorkspaceBudgetPacingDto? PacingData { get; set; }
+
+    /// <summary>
+    /// Identificador do workspace.
+    /// </summary>
+    [Parameter]
+    public Guid WorkspaceId { get; set; }
+
+    /// <summary>
+    /// Nome amigável do workspace ou cliente.
+    /// </summary>
+    [Parameter]
+    public string? WorkspaceName { get; set; }
+
+    /// <summary>
+    /// Orçamento total planejado ou contratado.
+    /// </summary>
+    [Parameter]
+    public decimal TargetBudget { get; set; }
+
+    /// <summary>
+    /// Gasto total já acumulado.
+    /// </summary>
+    [Parameter]
+    public decimal CurrentSpend { get; set; }
+
+    /// <summary>
+    /// Gasto linear ideal até o momento.
+    /// </summary>
+    [Parameter]
+    public decimal ExpectedSpendToDate { get; set; }
+
+    /// <summary>
+    /// Gasto total projetado ao encerramento do ciclo.
+    /// </summary>
+    [Parameter]
+    public decimal ProjectedMonthEndSpend { get; set; }
+
+    /// <summary>
+    /// Saldo restante da verba.
+    /// </summary>
+    [Parameter]
+    public decimal RemainingBudget { get; set; }
+
+    /// <summary>
+    /// Total de dias no ciclo.
+    /// </summary>
+    [Parameter]
+    public int TotalDaysInCycle { get; set; } = 30;
+
+    /// <summary>
+    /// Dias já decorridos.
+    /// </summary>
+    [Parameter]
+    public int ElapsedDays { get; set; } = 15;
+
+    /// <summary>
+    /// Dias restantes até o fim do mês.
+    /// </summary>
+    [Parameter]
+    public int RemainingDays { get; set; } = 15;
+
+    /// <summary>
+    /// Ritmo médio diário atual.
+    /// </summary>
+    [Parameter]
+    public decimal ActualDailyRunRate { get; set; }
+
+    /// <summary>
+    /// Ritmo diário ideal recomendado para fechar no orçamento.
+    /// </summary>
+    [Parameter]
+    public decimal RequiredDailyRunRate { get; set; }
+
+    /// <summary>
+    /// Desvio financeiro projetado.
+    /// </summary>
+    [Parameter]
+    public decimal ProjectedVariance { get; set; }
+
+    /// <summary>
+    /// Percentual de desvio projetado.
+    /// </summary>
+    [Parameter]
+    public decimal ProjectedVariancePercentage { get; set; }
+
+    /// <summary>
+    /// Percentual de velocidade de consumo.
+    /// </summary>
+    [Parameter]
+    public decimal PacingPercentage { get; set; } = 100m;
+
+    /// <summary>
+    /// Status operacional de classificação do pacing.
+    /// </summary>
+    [Parameter]
+    public PacingStatus Status { get; set; } = PacingStatus.OnTrack;
+
+    /// <summary>
+    /// Recomendação tática orientada a dados.
+    /// </summary>
+    [Parameter]
+    public string? Recommendation { get; set; }
+
+    /// <summary>
+    /// Moeda de exibição monetária.
+    /// </summary>
+    [Parameter]
+    public string Currency { get; set; } = "BRL";
+
+    /// <summary>
+    /// Determina se o grid tático de suporte e recomendação deve ser exibido.
+    /// </summary>
+    [Parameter]
+    public bool ShowDetails { get; set; } = true;
+
+    /// <summary>
+    /// Determina se o componente deve ser exibido em modo compacto para cartões e listagens.
+    /// </summary>
+    [Parameter]
+    public bool CompactMode { get; set; } = false;
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        if (PacingData is not null)
+        {
+            WorkspaceId = PacingData.WorkspaceId;
+            WorkspaceName = PacingData.WorkspaceName;
+            TargetBudget = PacingData.TargetBudget;
+            CurrentSpend = PacingData.CurrentSpend;
+            ExpectedSpendToDate = PacingData.ExpectedSpendToDate;
+            ProjectedMonthEndSpend = PacingData.ProjectedMonthEndSpend;
+            RemainingBudget = PacingData.RemainingBudget;
+            TotalDaysInCycle = PacingData.TotalDaysInCycle;
+            ElapsedDays = PacingData.ElapsedDays;
+            RemainingDays = PacingData.RemainingDays;
+            ActualDailyRunRate = PacingData.ActualDailyRunRate;
+            RequiredDailyRunRate = PacingData.RequiredDailyRunRate;
+            ProjectedVariance = PacingData.ProjectedVariance;
+            ProjectedVariancePercentage = PacingData.ProjectedVariancePercentage;
+            PacingPercentage = PacingData.PacingPercentage;
+            Status = PacingData.Status;
+            Recommendation = PacingData.Recommendation;
+            Currency = PacingData.Currency;
+        }
+    }
+
+    private decimal CurrentPercentage => TargetBudget > 0 ? (CurrentSpend / TargetBudget) * 100m : 0m;
+    private decimal IdealPercentage => TargetBudget > 0 ? (ExpectedSpendToDate / TargetBudget) * 100m : 0m;
+    private decimal ProjectedPercentage => TargetBudget > 0 ? (ProjectedMonthEndSpend / TargetBudget) * 100m : 0m;
+
+    private string GetStatusCssClass() => Status switch
+    {
+        PacingStatus.OnTrack => "status-ontrack",
+        PacingStatus.Over => "status-over",
+        PacingStatus.Under => "status-under",
+        _ => "status-ontrack"
+    };
+
+    private string GetStatusLabel() => Status switch
+    {
+        PacingStatus.OnTrack => "No Ritmo",
+        PacingStatus.Over => "Sobreaquecido (Over)",
+        PacingStatus.Under => "Subinvestido (Under)",
+        _ => "No Ritmo"
+    };
+
+    private string FormatCurrency(decimal value)
+    {
+        return Currency.ToUpperInvariant() switch
+        {
+            "USD" => value.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US")),
+            _ => value.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+        };
+    }
+}

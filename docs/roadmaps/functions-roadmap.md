@@ -167,9 +167,9 @@ Motor de processamento programado de ações baseadas em regras de negócio[cite
 * [x] **4.2.4 (Documentação Viva & API):** Endpoints RESTful no `SecurityGuardsController.cs` (`/api/v1/automations/guards/...`), documentação OpenAPI + Scalar UI, especificação viva em `docs/modules/automations-safety-guards.md` e ADR registrado em `docs/adr/0033-safety-guards-overspending-and-broken-links.md`.
 
 ### Subfase 4.3: Gestão Dinâmica de Budget & Previsão de Fim de Mês (Pacing)
-* **4.3.1 (TDD - Red):** Testes unitários para cálculo de projeção de consumo de verba (gasto projetado vs. contratado)[cite: 3, 4].
-* **4.3.2 (TDD - Green):** Implementar calculador de pacing com classificação em 3 status: *No Ritmo*, *Sobreaquecido (Over)* e *Subinvestido (Under)*[cite: 4].
-* **4.3.3 (Frontend Blazor):** Componente visual `BudgetPacingBar.razor` indicando a velocidade de consumo por cliente[cite: 4].
+* [x] **4.3.1 (TDD - Red):** Testes unitários para cálculo de projeção de consumo de verba (gasto projetado vs. contratado)[cite: 3, 4] (`BudgetPacingCalculatorTests.cs`).
+* [x] **4.3.2 (TDD - Green):** Implementar calculador de pacing com classificação em 3 status: *No Ritmo*, *Sobreaquecido (Over)* e *Subinvestido (Under)*[cite: 4] (`BudgetPacingCalculator.cs`, `GetWorkspaceBudgetPacingQueryHandler.cs`, `BudgetPacingController.cs`).
+* [x] **4.3.3 (Frontend Blazor):** Componente visual `BudgetPacingBar.razor` indicando a velocidade de consumo por cliente[cite: 4], cliente HTTP `BudgetPacingClientService.cs` e testes bUnit (`BudgetPacingBarTests.cs`, `BudgetPacingClientServiceTests.cs`).
 
 ---
 

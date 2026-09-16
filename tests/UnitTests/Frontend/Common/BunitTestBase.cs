@@ -77,6 +77,11 @@ public abstract class BunitTestBase : BunitContext
     protected WebApp.Services.IAnalyticsDashboardClientService AnalyticsDashboardClientService { get; }
 
     /// <summary>
+    /// Mock do serviço de cliente de Pacing e orçamentos.
+    /// </summary>
+    protected WebApp.Services.IBudgetPacingClientService BudgetPacingClientService { get; }
+
+    /// <summary>
     /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com os provedores registrados.
     /// </summary>
     protected BunitTestBase()
@@ -94,6 +99,11 @@ public abstract class BunitTestBase : BunitContext
         TenantBrandingClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantBrandingClientService>();
         TenantCnameClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantCnameClientService>();
         AnalyticsDashboardClientService = NSubstitute.Substitute.For<WebApp.Services.IAnalyticsDashboardClientService>();
+        BudgetPacingClientService = NSubstitute.Substitute.For<WebApp.Services.IBudgetPacingClientService>();
+
+        BudgetPacingClientService.GetPortfolioPacingAsync(NSubstitute.Arg.Any<Guid?>(), NSubstitute.Arg.Any<int?>(), NSubstitute.Arg.Any<int?>(), NSubstitute.Arg.Any<DateTime?>(), NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<Automations.Application.Pacing.DTOs.PortfolioPacingSummaryDto>.Success(
+                new Automations.Application.Pacing.DTOs.PortfolioPacingSummaryDto()));
 
         TenantBrandingClientService.GetBrandingAsync(NSubstitute.Arg.Any<CancellationToken>())
             .Returns(BuildingBlocks.Domain.Primitives.Result<Tenants.Application.Branding.DTOs.TenantBrandingDetailsDto>.Success(
@@ -184,6 +194,7 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<WebApp.Services.ITenantBrandingClientService>(TenantBrandingClientService);
         Services.AddSingleton<WebApp.Services.ITenantCnameClientService>(TenantCnameClientService);
         Services.AddSingleton<WebApp.Services.IAnalyticsDashboardClientService>(AnalyticsDashboardClientService);
+        Services.AddSingleton<WebApp.Services.IBudgetPacingClientService>(BudgetPacingClientService);
     }
 
     /// <summary>

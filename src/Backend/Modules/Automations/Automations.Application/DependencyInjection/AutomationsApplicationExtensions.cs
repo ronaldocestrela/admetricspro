@@ -23,6 +23,7 @@ public static class AutomationsApplicationExtensions
 
         services.AddScoped<IRuleConditionEvaluator, RuleConditionEvaluator>();
         services.AddScoped<IRuleActionDispatcher, RuleActionDispatcher>();
+        services.AddScoped<Automations.Domain.Pacing.IBudgetPacingCalculator, Automations.Domain.Pacing.BudgetPacingCalculator>();
 
         return services;
     }

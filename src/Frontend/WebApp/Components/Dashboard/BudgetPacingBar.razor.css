@@ -1,0 +1,429 @@
+.budget-pacing-container {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: relative;
+    overflow: visible;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.35);
+}
+
+.budget-pacing-container:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.45);
+}
+
+.budget-pacing-container.compact-mode {
+    padding: 14px 18px;
+    gap: 10px;
+    border-radius: 12px;
+}
+
+/* Cabeçalho */
+.pacing-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.pacing-title-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pacing-icon-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease;
+}
+
+.pacing-icon-box.status-ontrack {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+}
+
+.pacing-icon-box.status-over {
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+}
+
+.pacing-icon-box.status-under {
+    background: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+}
+
+.pacing-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #F8FAFC;
+    letter-spacing: -0.01em;
+}
+
+.pacing-client-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #94A3B8;
+    margin-left: 4px;
+}
+
+/* Badge de Status */
+.pacing-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    backdrop-filter: blur(8px);
+}
+
+.pacing-status-badge.status-ontrack {
+    background: rgba(16, 185, 129, 0.12);
+    color: #34D399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pacing-status-badge.status-over {
+    background: rgba(239, 68, 68, 0.12);
+    color: #F87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.pacing-status-badge.status-under {
+    background: rgba(245, 158, 11, 0.12);
+    color: #FBBF24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 2s infinite ease-in-out;
+}
+
+.pacing-status-badge.status-ontrack .status-pulse {
+    background: #10B981;
+    box-shadow: 0 0 8px #10B981;
+}
+
+.pacing-status-badge.status-over .status-pulse {
+    background: #EF4444;
+    box-shadow: 0 0 8px #EF4444;
+}
+
+.pacing-status-badge.status-under .status-pulse {
+    background: #F59E0B;
+    box-shadow: 0 0 8px #F59E0B;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.4;
+        transform: scale(0.85);
+    }
+}
+
+/* Linha de Valores */
+.pacing-values-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.value-current, .value-target {
+    display: flex;
+    flex-direction: column;
+}
+
+.value-target {
+    align-items: flex-end;
+}
+
+.value-number {
+    font-size: 22px;
+    font-weight: 700;
+    color: #F8FAFC;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.value-caption {
+    font-size: 11px;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.pacing-percentage-pill {
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.pacing-percentage-pill.status-ontrack {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+}
+
+.pacing-percentage-pill.status-over {
+    background: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+}
+
+.pacing-percentage-pill.status-under {
+    background: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
+}
+
+/* Barra de Pacing Multi-Camada */
+.pacing-track-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    padding-top: 14px;
+}
+
+.pacing-track {
+    width: 100%;
+    height: 18px;
+    background: rgba(2, 6, 23, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    position: relative;
+    overflow: visible;
+}
+
+.pacing-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    z-index: 2;
+}
+
+.pacing-bar-fill.status-ontrack {
+    background: linear-gradient(90deg, #059669 0%, #10B981 100%);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+}
+
+.pacing-bar-fill.status-over {
+    background: linear-gradient(90deg, #DC2626 0%, #EF4444 100%);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+}
+
+.pacing-bar-fill.status-under {
+    background: linear-gradient(90deg, #D97706 0%, #F59E0B 100%);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+}
+
+/* Projeção Fantasma */
+.pacing-bar-projected {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 0 9999px 9999px 0;
+    background-size: 12px 12px;
+    z-index: 1;
+    opacity: 0.85;
+}
+
+.pacing-bar-projected.status-over {
+    background-image: repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.25) 4px, transparent 4px, transparent 8px);
+    border: 1px dashed rgba(239, 68, 68, 0.6);
+}
+
+.pacing-bar-projected.status-ontrack {
+    background-image: repeating-linear-gradient(45deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.25) 4px, transparent 4px, transparent 8px);
+    border: 1px dashed rgba(16, 185, 129, 0.6);
+}
+
+.pacing-bar-projected.status-under {
+    background-image: repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.25) 4px, transparent 4px, transparent 8px);
+    border: 1px dashed rgba(245, 158, 11, 0.6);
+}
+
+/* Needle (Marcador Temporal) */
+.pacing-needle {
+    position: absolute;
+    top: -12px;
+    height: 42px;
+    width: 2px;
+    background: #38BDF8;
+    z-index: 5;
+    transform: translateX(-50%);
+    transition: left 0.4s ease;
+    box-shadow: 0 0 8px #38BDF8;
+}
+
+.needle-pin {
+    width: 10px;
+    height: 10px;
+    background: #38BDF8;
+    border: 2px solid #0F172A;
+    border-radius: 50%;
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    box-shadow: 0 0 10px #38BDF8;
+}
+
+.needle-line {
+    width: 2px;
+    height: 100%;
+}
+
+.needle-tooltip {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #38BDF8;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.pacing-needle:hover .needle-tooltip,
+.pacing-track-wrapper:hover .needle-tooltip {
+    opacity: 1;
+}
+
+/* Legendas do Track */
+.track-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #64748B;
+    font-weight: 500;
+}
+
+.track-label-center {
+    color: #94A3B8;
+}
+
+/* Grid de Métricas Táticas */
+.pacing-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 6px;
+}
+
+@media (max-width: 900px) {
+    .pacing-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
+    .pacing-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.metric-cell {
+    background: rgba(2, 6, 23, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cell-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.cell-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #F8FAFC;
+    font-variant-numeric: tabular-nums;
+}
+
+.cell-value.highlight {
+    color: #38BDF8;
+}
+
+.cell-value.status-ontrack {
+    color: #34D399;
+}
+
+.cell-value.status-over {
+    color: #F87171;
+}
+
+.cell-value.status-under {
+    color: #FBBF24;
+}
+
+.cell-sub {
+    font-size: 11px;
+    color: #64748B;
+}
+
+/* Caixa de Recomendação */
+.pacing-recommendation-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.pacing-recommendation-box.status-ontrack {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #A7F3D0;
+}
+
+.pacing-recommendation-box.status-over {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #FECACA;
+}
+
+.pacing-recommendation-box.status-under {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: #FDE68A;
+}
