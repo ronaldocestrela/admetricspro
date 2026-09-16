@@ -1,0 +1,79 @@
+@page "/workspaces/{WorkspaceId:guid}/campaigns/bulk"
+@using global::Integrations.Application.Campaigns.DTOs
+@using WebApp.Components.Campaigns
+@using WebApp.Services
+
+<PageTitle>Operações em Massa — AdMetricsPro</PageTitle>
+
+<div class="bulk-page-container">
+    <div class="page-top-bar">
+        <a href="/workspaces" class="btn-back"><i class="bi bi-arrow-left"></i> Voltar aos Workspaces</a>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="loading-state" data-testid="loading-state">
+            <div class="spinner"></div>
+            <span>Carregando campanhas do workspace...</span>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="error-banner" data-testid="error-banner">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span>@ErrorMessage</span>
+            <button type="button" class="btn-retry" @onclick="LoadCampaignsAsync">Tentar Novamente</button>
+        </div>
+    }
+    else
+    {
+        <BulkCampaignEditorMatrix WorkspaceId="WorkspaceId" Campaigns="CampaignsList" OnBulkOperationCompleted="LoadCampaignsAsync" />
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Identificador do Workspace vindo da rota.
+    /// </summary>
+    [Parameter]
+    public Guid WorkspaceId { get; set; }
+
+    [Inject]
+    public IBulkCampaignClientService BulkClientService { get; set; } = default!;
+
+    public bool IsLoading { get; set; } = true;
+    public string? ErrorMessage { get; set; }
+    public IReadOnlyList<CampaignHierarchyDto> CampaignsList { get; set; } = Array.Empty<CampaignHierarchyDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCampaignsAsync();
+    }
+
+    public async Task LoadCampaignsAsync()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+
+        try
+        {
+            var result = await BulkClientService.GetCampaignsForBulkAsync(WorkspaceId);
+            if (result.IsSuccess)
+            {
+                CampaignsList = result.Value;
+            }
+            else
+            {
+                ErrorMessage = result.Error.Description;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erro inesperado ao carregar campanhas: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

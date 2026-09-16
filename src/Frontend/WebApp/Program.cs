@@ -59,6 +59,8 @@ builder.Services.AddHttpClient<IAnalyticsDashboardClientService, AnalyticsDashbo
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<IBudgetPacingClientService, BudgetPacingClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IBulkCampaignClientService, BulkCampaignClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 

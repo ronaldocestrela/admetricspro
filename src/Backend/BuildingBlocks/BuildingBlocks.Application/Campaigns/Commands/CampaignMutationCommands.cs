@@ -3,6 +3,17 @@ using BuildingBlocks.Application.Messaging;
 namespace BuildingBlocks.Application.Campaigns.Commands;
 
 /// <summary>
+/// Comando in-memory para ativar uma campanha publicitária via módulo Integrations.
+/// </summary>
+/// <param name="WorkspaceId">Identificador do workspace associado.</param>
+/// <param name="CampaignId">Identificador da campanha a ser ativada.</param>
+/// <param name="Reason">Motivo descritivo da ativação.</param>
+public sealed record ActivateCampaignCommand(
+    Guid WorkspaceId,
+    Guid CampaignId,
+    string? Reason = null) : ICommand;
+
+/// <summary>
 /// Comando in-memory para pausar uma campanha publicitária via módulo Integrations.
 /// </summary>
 /// <param name="WorkspaceId">Identificador do workspace associado.</param>

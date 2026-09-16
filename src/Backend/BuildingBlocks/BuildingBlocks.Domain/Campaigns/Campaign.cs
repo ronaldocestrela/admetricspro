@@ -277,6 +277,17 @@ public sealed class Campaign : Entity<Guid>
     }
 
     /// <summary>
+    /// Ativa a veiculação da campanha no contexto de ações manuais ou em lote.
+    /// </summary>
+    /// <returns>Resultado da operação.</returns>
+    public Result Activate()
+    {
+        Status = CampaignStatus.Active;
+        UpdatedAtUtc = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Pausa a veiculação da campanha no contexto de automações ou ações manuais.
     /// </summary>
     /// <returns>Resultado da operação.</returns>

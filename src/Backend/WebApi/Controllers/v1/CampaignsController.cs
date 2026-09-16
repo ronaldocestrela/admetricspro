@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Campaigns.Commands;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Application.Campaigns.Commands.SyncCampaignHierarchy;
 using Integrations.Application.Campaigns.DTOs;
@@ -100,6 +101,47 @@ public sealed class CampaignsController : ControllerBase
             status);
 
         var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Executa operações em massa (ativar, pausar ou reajustar orçamento) em múltiplas campanhas com tolerância a falhas parciais.
+    /// </summary>
+    /// <param name="request">Payload contendo o identificador do workspace e a lista de operações a serem aplicadas.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado consolidado informando itens alterados com sucesso e itens que falharam.</returns>
+    [HttpPost("bulk")]
+    [EndpointSummary("Executa operações em lote (ativar, pausar, alterar budget) em múltiplas campanhas")]
+    [ProducesResponseType(typeof(Result<BulkCampaignOperationResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<BulkCampaignOperationResultDto>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<Result<BulkCampaignOperationResultDto>>> ExecuteBulkOperations(
+        [FromBody] BulkCampaignOperationApiRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            return BadRequest(Result<BulkCampaignOperationResultDto>.Failure(
+                Error.Validation("Request.Null", "O corpo da requisição não pode ser nulo.")));
+        }
+
+        var operations = request.Operations?
+            .Select(o => new BulkCampaignOperationItem(
+                o.CampaignId,
+                o.Action,
+                o.DailyBudget,
+                o.PercentageChange,
+                o.Reason))
+            .ToList() ?? [];
+
+        var command = new BulkCampaignOperationCommand(request.WorkspaceId, operations);
+
+        var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)
         {

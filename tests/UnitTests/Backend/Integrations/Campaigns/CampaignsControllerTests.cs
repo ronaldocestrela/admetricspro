@@ -102,4 +102,77 @@ public sealed class CampaignsControllerTests
         var val = okResult.Value.Should().BeOfType<Result<IReadOnlyList<CampaignHierarchyDto>>>().Subject;
         val.IsSuccess.Should().BeTrue();
     }
+
+    /// <summary>
+    /// Valida que requisição com corpo nulo para operações em lote retorna HTTP 400 Bad Request.
+    /// </summary>
+    /// <returns>Tarefa assíncrona de teste.</returns>
+    [Fact]
+    public async Task ExecuteBulkOperations_WhenRequestIsNull_ShouldReturnBadRequest()
+    {
+        // Act
+        var result = await _controller.ExecuteBulkOperations(null!);
+
+        // Assert
+        result.Result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    /// <summary>
+    /// Valida que a execução bem-sucedida de operações em lote retorna HTTP 200 OK com o resumo das operações.
+    /// </summary>
+    /// <returns>Tarefa assíncrona de teste.</returns>
+    [Fact]
+    public async Task ExecuteBulkOperations_WhenSuccessful_ShouldReturnOkWithResultDto()
+    {
+        // Arrange
+        var workspaceId = Guid.NewGuid();
+        var request = new BulkCampaignOperationApiRequest(
+            workspaceId,
+            new[]
+            {
+                new BulkCampaignOperationItemApiDto(Guid.NewGuid(), BuildingBlocks.Application.Campaigns.Commands.BulkCampaignActionType.Activate)
+            });
+
+        var resultDto = new BuildingBlocks.Application.Campaigns.Commands.BulkCampaignOperationResultDto
+        {
+            TotalRequested = 1,
+            TotalSucceeded = 1,
+            TotalFailed = 0
+        };
+
+        _sender.Send(Arg.Any<BuildingBlocks.Application.Campaigns.Commands.BulkCampaignOperationCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<BuildingBlocks.Application.Campaigns.Commands.BulkCampaignOperationResultDto>.Success(resultDto)));
+
+        // Act
+        var result = await _controller.ExecuteBulkOperations(request);
+
+        // Assert
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        var val = okResult.Value.Should().BeOfType<Result<BuildingBlocks.Application.Campaigns.Commands.BulkCampaignOperationResultDto>>().Subject;
+        val.IsSuccess.Should().BeTrue();
+        val.Value.TotalSucceeded.Should().Be(1);
+    }
+
+    /// <summary>
+    /// Valida que quando o comando de operações em lote falha, o controlador retorna HTTP 400 Bad Request.
+    /// </summary>
+    /// <returns>Tarefa assíncrona de teste.</returns>
+    [Fact]
+    public async Task ExecuteBulkOperations_WhenCommandFails_ShouldReturnBadRequest()
+    {
+        // Arrange
+        var request = new BulkCampaignOperationApiRequest(
+            Guid.NewGuid(),
+            Array.Empty<BulkCampaignOperationItemApiDto>());
+
+        _sender.Send(Arg.Any<BuildingBlocks.Application.Campaigns.Commands.BulkCampaignOperationCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<BuildingBlocks.Application.Campaigns.Commands.BulkCampaignOperationResultDto>.Failure(
+                Error.Validation("BulkCampaign.EmptyList", "A lista de operações não pode ser vazia."))));
+
+        // Act
+        var result = await _controller.ExecuteBulkOperations(request);
+
+        // Assert
+        result.Result.Should().BeOfType<BadRequestObjectResult>();
+    }
 }

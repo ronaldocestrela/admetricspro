@@ -178,9 +178,9 @@ Motor de processamento programado de ações baseadas em regras de negócio[cite
 Recursos avançados de produtividade e entrega de valor ao usuário final[cite: 3, 4].
 
 ### Subfase 5.1: Edição e Operações em Massa Multiplataforma
-* **5.1.1 (TDD - Red):** Testes unitários para `BulkCampaignOperationCommand` validando ações em lote (ativar, pausar ou reajustar orçamento em 30 campanhas de plataformas diferentes simultaneamente)[cite: 3, 4].
-* **5.1.2 (TDD - Green):** Implementar orquestrador em lote com padrão de tolerância a falhas parciais (retornando lista explícita de itens alterados com sucesso e itens que falharam).
-* **5.1.3 (Frontend Blazor):** Tabela matricial de edição rápida permitindo modificações de orçamentos com pré-visualização de impacto antes da confirmação[cite: 4].
+* [x] **5.1.1 (TDD - Red):** Testes unitários para `BulkCampaignOperationCommand` validando ações em lote (ativar, pausar ou reajustar orçamento em 30 campanhas de plataformas diferentes simultaneamente)[cite: 3, 4].
+* [x] **5.1.2 (TDD - Green):** Implementar orquestrador em lote com padrão de tolerância a falhas parciais (retornando lista explícita de itens alterados com sucesso e itens que falharam).
+* [x] **5.1.3 (Frontend Blazor):** Tabela matricial de edição rápida permitindo modificações de orçamentos com pré-visualização de impacto antes da confirmação[cite: 4].
 
 ### Subfase 5.2: Creative Hub & Detector de Fadiga de Criativos
 * **5.2.1 (TDD - Red):** Testes para cálculo de fadiga de anúncio: identificar criativos cujo CTR caiu progressivamente nos últimos 7 dias acompanhado de frequência elevada[cite: 3, 4].
