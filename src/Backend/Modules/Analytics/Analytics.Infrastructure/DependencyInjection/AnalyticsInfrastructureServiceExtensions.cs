@@ -52,6 +52,12 @@ public static class AnalyticsInfrastructureServiceExtensions
         services.AddSingleton<Analytics.Domain.Creatives.ICreativeHubAggregator, Analytics.Domain.Creatives.CreativeHubAggregator>();
         services.AddScoped<Analytics.Domain.Creatives.ICreativeHubDataProvider, Analytics.Infrastructure.Creatives.CreativeHubDataProvider>();
 
+        // Copiloto de IA & Auditor de Tráfego
+        services.AddSingleton<Analytics.Domain.Copilot.IAudienceOverlapDetector, Analytics.Domain.Copilot.MetaAudienceOverlapDetector>();
+        services.AddSingleton<Analytics.Domain.Copilot.ISearchTermCannibalizationDetector, Analytics.Domain.Copilot.SearchTermCannibalizationDetector>();
+        services.AddSingleton<Analytics.Domain.Copilot.ITrafficAuditorSynthesizer, Analytics.Domain.Copilot.TrafficAuditorSynthesizer>();
+        services.AddScoped<Analytics.Domain.Copilot.ICopilotDataProvider, Analytics.Infrastructure.Copilot.CopilotDataProvider>();
+
         return services;
     }
 }

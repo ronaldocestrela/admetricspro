@@ -188,11 +188,11 @@ Recursos avançados de produtividade e entrega de valor ao usuário final[cite: 
 * [x] **5.2.3:** Emissão de aviso visual de substituição sugerida na tela do gestor (`CreativeFatigueAlertBanner.razor`, `CreativeFatigueBadge.razor`, `CreativeComparisonCard.razor`, `CreativeHubPage.razor`).
 
 ### Subfase 5.3: Copiloto de Otimização via IA (Auditor de Tráfego)
-* **5.3.1 (TDD - Red):** Testes para detector de anomalias:
-  * Identificação de sobreposição de públicos no Meta Ads[cite: 4].
-  * Disputa e canibalização de termos de busca entre Google e Bing Ads[cite: 4].
-* **5.3.2 (TDD - Green):** Implementar gerador de diagnóstico diário sintetizado em texto natural acompanhado de botão de *Execução em 1 Clique*[cite: 4].
-* **5.3.3 (Documentação Viva):** Registrar catálogo de diagnósticos e contratos de retorno em `docs/modules/ai-copilot.md`.
+* [x] **5.3.1 (TDD - Red):** Testes para detector de anomalias:
+  * Identificação de sobreposição de públicos no Meta Ads (`MetaAudienceOverlapDetectorTests.cs`).
+  * Disputa e canibalização de termos de busca entre Google e Bing Ads (`SearchTermCannibalizationDetectorTests.cs`).
+* [x] **5.3.2 (TDD - Green):** Implementar gerador de diagnóstico diário sintetizado em texto natural acompanhado de botão de *Execução em 1 Clique* (`TrafficAuditorSynthesizer.cs`, `CopilotDataProvider.cs`, `GetDailyDiagnosticQueryHandler.cs`, `ExecuteCopilotRecommendationCommandHandler.cs`, `CopilotController.cs`, `TrafficCopilotClientService.cs`, `CopilotAnomalyCard.razor`, `CopilotDailySummaryCard.razor`, `AudienceOverlapVisualizer.razor`, `SearchCannibalizationCompare.razor`, `TrafficCopilotPage.razor`).
+* [x] **5.3.3 (Documentação Viva):** Registrar catálogo de diagnósticos e contratos de retorno em `docs/modules/ai-copilot.md` e ADR `docs/adr/0036-ai-copilot-traffic-auditor-and-anomaly-detection.md`.
 
 ### Subfase 5.4: Gerador de Relatórios Automatizados em White-Label
 * **5.4.1 (TDD - Red):** Testes unitários validando templates de relatórios:

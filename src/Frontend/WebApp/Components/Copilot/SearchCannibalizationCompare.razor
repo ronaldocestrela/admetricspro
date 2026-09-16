@@ -1,0 +1,179 @@
+@using Analytics.Application.Copilot.DTOs
+
+<div class="cannibalization-compare" id="cannibalization-comp-@Anomaly?.SearchTerm?.Replace(" ", "-")">
+    <div class="cannibalization-header">
+        <div class="term-badge">
+            <span class="term-icon">🔍</span>
+            <span class="term-text">"@Anomaly?.SearchTerm"</span>
+        </div>
+        <div class="disparity-badge">
+            Disparidade: @(Anomaly?.DisparityRatio.ToString("F1") ?? "0.0")x
+        </div>
+    </div>
+
+    <div class="channels-grid">
+        <div class="channel-card channel-a">
+            <div class="channel-card-header">
+                <span class="channel-name">@Anomaly?.ChannelA</span>
+                <span class="campaign-name" title="@Anomaly?.CampaignNameA">@Anomaly?.CampaignNameA</span>
+            </div>
+            <div class="channel-metrics">
+                <div class="metric-item">
+                    <span class="metric-label">CPC</span>
+                    <span class="metric-val">R$ @(Anomaly?.CpcA.ToString("N2") ?? "0,00")</span>
+                </div>
+                <div class="metric-item highlight">
+                    <span class="metric-label">CPA</span>
+                    <span class="metric-val">R$ @(Anomaly?.CpaA.ToString("N2") ?? "0,00")</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Gasto</span>
+                    <span class="metric-val">R$ @(Anomaly?.SpendA.ToString("N2") ?? "0,00")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="channel-card channel-b">
+            <div class="channel-card-header">
+                <span class="channel-name">@Anomaly?.ChannelB</span>
+                <span class="campaign-name" title="@Anomaly?.CampaignNameB">@Anomaly?.CampaignNameB</span>
+            </div>
+            <div class="channel-metrics">
+                <div class="metric-item">
+                    <span class="metric-label">CPC</span>
+                    <span class="metric-val">R$ @(Anomaly?.CpcB.ToString("N2") ?? "0,00")</span>
+                </div>
+                <div class="metric-item highlight">
+                    <span class="metric-label">CPA</span>
+                    <span class="metric-val">R$ @(Anomaly?.CpaB.ToString("N2") ?? "0,00")</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Gasto</span>
+                    <span class="metric-val">R$ @(Anomaly?.SpendB.ToString("N2") ?? "0,00")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="waste-estimate-row">
+        <span class="waste-label">💸 Desperdício Estimado:</span>
+        <span class="waste-val">R$ @(Anomaly?.EstimatedMonthlyWastedSpend.ToString("N2") ?? "0,00")</span>
+    </div>
+</div>
+
+<style>
+    .cannibalization-compare {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 12px;
+        padding: 16px;
+        margin: 12px 0;
+    }
+    .cannibalization-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .term-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(30, 41, 59, 0.8);
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+    .term-text {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #f8fafc;
+    }
+    .disparity-badge {
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .channels-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .channel-card {
+        background: rgba(30, 41, 59, 0.5);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.08);
+    }
+    .channel-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .channel-name {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #60a5fa;
+    }
+    .campaign-name {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        max-width: 140px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .channel-metrics {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .metric-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .metric-label {
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+    .metric-val {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+    .metric-item.highlight .metric-val {
+        color: #f59e0b;
+        font-weight: 700;
+    }
+    .waste-estimate-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: #cbd5e1;
+        background: rgba(239, 68, 68, 0.08);
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .waste-val {
+        font-weight: 700;
+        color: #f87171;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Dados da anomalia de canibalização entre canais de busca.
+    /// </summary>
+    [Parameter]
+    public SearchCannibalizationAnomalyDto? Anomaly { get; set; }
+}

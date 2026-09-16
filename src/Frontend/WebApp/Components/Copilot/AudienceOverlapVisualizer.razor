@@ -1,0 +1,157 @@
+@using Analytics.Application.Copilot.DTOs
+
+<div class="overlap-visualizer" id="overlap-vis-@Anomaly?.AdSetIdA">
+    <div class="overlap-header">
+        <span class="platform-badge meta">Meta Ads</span>
+        <span class="overlap-pct-pill @(Anomaly?.OverlapPercentage >= 50 ? "critical" : "high")">
+            Sobreposição: @(Anomaly?.OverlapPercentage.ToString("F1") ?? "0.0")%
+        </span>
+    </div>
+
+    <div class="overlap-bar-wrapper">
+        <div class="overlap-bar-fill" style="width: @(Math.Min(100, Math.Max(0, Anomaly?.OverlapPercentage ?? 0)))%"></div>
+    </div>
+
+    <div class="sets-comparison-grid">
+        <div class="set-box">
+            <span class="set-name">@(Anomaly?.AdSetNameA ?? "Conjunto A")</span>
+            <span class="set-metric">CPM: R$ @(Anomaly?.CpmA.ToString("N2") ?? "0,00")</span>
+        </div>
+        <div class="vs-divider">VS</div>
+        <div class="set-box">
+            <span class="set-name">@(Anomaly?.AdSetNameB ?? "Conjunto B")</span>
+            <span class="set-metric">CPM: R$ @(Anomaly?.CpmB.ToString("N2") ?? "0,00")</span>
+        </div>
+    </div>
+
+    @if (Anomaly?.SharedTargetingTags != null && Anomaly.SharedTargetingTags.Count > 0)
+    {
+        <div class="tags-row">
+            <span class="tags-label">Tags sobrepostas:</span>
+            <div class="tags-pills">
+                @foreach (var tag in Anomaly.SharedTargetingTags)
+                {
+                    <span class="tag-pill">@tag</span>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .overlap-visualizer {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 12px;
+        padding: 16px;
+        margin: 12px 0;
+    }
+    .overlap-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .platform-badge.meta {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .overlap-pct-pill {
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+    }
+    .overlap-pct-pill.critical {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .overlap-pct-pill.high {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+    .overlap-bar-wrapper {
+        height: 6px;
+        background: rgba(148, 163, 184, 0.2);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 12px;
+    }
+    .overlap-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #f59e0b, #ef4444);
+        border-radius: 4px;
+        transition: width 0.4s ease;
+    }
+    .sets-comparison-grid {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+    .set-box {
+        flex: 1;
+        background: rgba(30, 41, 59, 0.5);
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.08);
+        display: flex;
+        flex-direction: column;
+    }
+    .set-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #f1f5f9;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .set-metric {
+        font-size: 0.78rem;
+        color: #94a3b8;
+        margin-top: 2px;
+    }
+    .vs-divider {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+    }
+    .tags-row {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .tags-label {
+        font-size: 0.72rem;
+        color: #94a3b8;
+    }
+    .tags-pills {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .tag-pill {
+        font-size: 0.72rem;
+        background: rgba(148, 163, 184, 0.12);
+        color: #cbd5e1;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Dados da anomalia de sobreposição de públicos no Meta Ads.
+    /// </summary>
+    [Parameter]
+    public AudienceOverlapAnomalyDto? Anomaly { get; set; }
+}

@@ -33,6 +33,17 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0023](file:///home/rony/LPR/AdMetricsPro/docs/adr/0023-transactional-emails-and-trial-lifecycle-messaging.md) | Mensageria Transacional e Régua Automatizada de Ciclo de Vida do Trial | Aceito | 2026-09-07 |
 | [0024](file:///home/rony/LPR/AdMetricsPro/docs/adr/0024-payment-gateway-and-trial-to-paid-transition.md) | Gateway de Pagamentos e Transição de Trial para Assinatura Paga | Aceito | 2026-09-07 |
 | [0025](file:///home/rony/LPR/AdMetricsPro/docs/adr/0025-dynamic-cname-resolution-and-white-label-strategy.md) | Estratégia de Resolução Dinâmica de CNAME e Customização White-Label | Aceito | 2026-09-15 |
+| [0026](file:///home/rony/LPR/AdMetricsPro/docs/adr/0026-oauth2-hub-and-token-vault-encryption.md) | OAuth2 Hub e Token Vault Criptografado | Aceito | 2026-09-15 |
+| [0027](file:///home/rony/LPR/AdMetricsPro/docs/adr/0027-campaign-structural-sync-and-rate-limiting.md) | Sincronização Estrutural de Campanhas e Rate Limiting | Aceito | 2026-09-15 |
+| [0028](file:///home/rony/LPR/AdMetricsPro/docs/adr/0028-campaign-metrics-ingestion-and-idempotency.md) | Ingestão de Métricas de Campanha e Idempotência | Aceito | 2026-09-15 |
+| [0029](file:///home/rony/LPR/AdMetricsPro/docs/adr/0029-currency-normalization-and-automated-taxonomy.md) | Normalização Cambial e Taxonomia Automatizada | Aceito | 2026-09-15 |
+| [0030](file:///home/rony/LPR/AdMetricsPro/docs/adr/0030-blended-metrics-and-multichannel-attribution.md) | Blended Metrics e Atribuição Multicanal | Aceito | 2026-09-15 |
+| [0031](file:///home/rony/LPR/AdMetricsPro/docs/adr/0031-unified-blazor-executive-dashboard.md) | Dashboard Executivo Unificado em Blazor | Aceito | 2026-09-16 |
+| [0032](file:///home/rony/LPR/AdMetricsPro/docs/adr/0032-cross-platform-rules-dsl-and-action-dispatcher.md) | DSL de Regras Cross-Platform e Despachador de Ações | Aceito | 2026-09-16 |
+| [0033](file:///home/rony/LPR/AdMetricsPro/docs/adr/0033-safety-guards-overspending-and-broken-links.md) | Travas de Segurança: Overspending e Links Quebrados | Aceito | 2026-09-16 |
+| [0034](file:///home/rony/LPR/AdMetricsPro/docs/adr/0034-budget-pacing-and-month-end-forecasting.md) | Budget Pacing e Projeção de Consumo de Verba | Aceito | 2026-09-16 |
+| [0035](file:///home/rony/LPR/AdMetricsPro/docs/adr/0034-bulk-cross-platform-campaign-operations.md) | Operações e Edição em Massa Multiplataforma | Aceito | 2026-09-16 |
+| [0036](file:///home/rony/LPR/AdMetricsPro/docs/adr/0036-ai-copilot-traffic-auditor-and-anomaly-detection.md) | Copiloto de Otimização via IA (Auditor de Tráfego) e Detecção de Anomalias | Aceito | 2026-09-16 |
 
 ---
 

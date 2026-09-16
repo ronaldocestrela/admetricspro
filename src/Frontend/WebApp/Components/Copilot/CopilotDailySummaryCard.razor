@@ -1,0 +1,199 @@
+@using Analytics.Application.Copilot.DTOs
+
+<div class="copilot-summary-card" id="copilot-daily-summary">
+    <div class="copilot-summary-header">
+        <div class="copilot-badge-wrapper">
+            <span class="copilot-ai-icon">🤖</span>
+            <div>
+                <h3 class="copilot-title">Copiloto de Otimização & Auditor de Tráfego</h3>
+                <span class="copilot-date">Diagnóstico de @(Report?.ReportDate.ToString("dd/MM/yyyy") ?? DateTime.UtcNow.ToString("dd/MM/yyyy"))</span>
+            </div>
+        </div>
+
+        <div class="copilot-metrics-strip">
+            <div class="copilot-stat-box savings">
+                <span class="stat-label">Economia Projetada</span>
+                <span class="stat-value" id="copilot-savings-val">R$ @(Report?.EstimatedMonthlySavings.ToString("N2") ?? "0,00")/mês</span>
+            </div>
+            <div class="copilot-stat-box @(Report?.CriticalAnomaliesCount > 0 ? "critical" : "neutral")">
+                <span class="stat-label">Críticas</span>
+                <span class="stat-value" id="copilot-critical-count">@(Report?.CriticalAnomaliesCount ?? 0)</span>
+            </div>
+            <div class="copilot-stat-box @(Report?.HighAnomaliesCount > 0 ? "warning" : "neutral")">
+                <span class="stat-label">Alta Atenção</span>
+                <span class="stat-value" id="copilot-high-count">@(Report?.HighAnomaliesCount ?? 0)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="copilot-summary-body">
+        <div class="copilot-briefing-text" id="copilot-executive-summary">
+            <p>@(Report?.ExecutiveSummary ?? "Carregando diagnóstico do auditor...")</p>
+        </div>
+
+        <div class="copilot-sections-grid">
+            <div class="copilot-section-card wins" id="copilot-wins-section">
+                <div class="section-title">
+                    <span class="icon">✨</span>
+                    <h4>Vitórias & Destaques</h4>
+                </div>
+                <p>@(Report?.WinsSummary ?? "Aguardando métricas consolidadas.")</p>
+            </div>
+
+            <div class="copilot-section-card risks" id="copilot-risks-section">
+                <div class="section-title">
+                    <span class="icon">⚠️</span>
+                    <h4>Riscos & Alertas Operacionais</h4>
+                </div>
+                <p>@(Report?.RisksSummary ?? "Nenhum risco detectado.")</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .copilot-summary-card {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        border-radius: 16px;
+        padding: 24px;
+        color: #f8fafc;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        margin-bottom: 24px;
+    }
+    .copilot-summary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+    }
+    .copilot-badge-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .copilot-ai-icon {
+        font-size: 2rem;
+        background: rgba(59, 130, 246, 0.15);
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .copilot-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #f8fafc;
+    }
+    .copilot-date {
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+    .copilot-metrics-strip {
+        display: flex;
+        gap: 12px;
+    }
+    .copilot-stat-box {
+        padding: 8px 16px;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 90px;
+    }
+    .copilot-stat-box.savings {
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .copilot-stat-box.savings .stat-value {
+        color: #34d399;
+    }
+    .copilot-stat-box.critical {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+    .copilot-stat-box.critical .stat-value {
+        color: #f87171;
+    }
+    .copilot-stat-box.warning {
+        background: rgba(245, 158, 11, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+    .copilot-stat-box.warning .stat-value {
+        color: #fbbf24;
+    }
+    .copilot-stat-box.neutral {
+        background: rgba(148, 163, 184, 0.1);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+    .stat-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+    }
+    .stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-top: 2px;
+    }
+    .copilot-briefing-text {
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #e2e8f0;
+        margin-bottom: 20px;
+    }
+    .copilot-sections-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+    }
+    .copilot-section-card {
+        padding: 16px;
+        border-radius: 12px;
+    }
+    .copilot-section-card.wins {
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .copilot-section-card.risks {
+        background: rgba(239, 68, 68, 0.08);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    .section-title h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    .copilot-section-card.wins h4 {
+        color: #34d399;
+    }
+    .copilot-section-card.risks h4 {
+        color: #f87171;
+    }
+    .copilot-section-card p {
+        margin: 0;
+        font-size: 0.88rem;
+        line-height: 1.5;
+        color: #cbd5e1;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Relatório diário emitido pelo Copiloto de IA.
+    /// </summary>
+    [Parameter]
+    public DailyDiagnosticReportDto? Report { get; set; }
+}

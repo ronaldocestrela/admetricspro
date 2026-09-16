@@ -1,0 +1,313 @@
+@page "/copilot"
+@page "/workspaces/{WorkspaceId:guid}/copilot"
+@using Analytics.Application.Copilot.DTOs
+@using Tenants.Application.Workspaces.DTOs
+@using WebApp.Components.Copilot
+@using WebApp.Services
+@using WebApp.Services.Copilot
+@using WebApp.State
+@inject ITrafficCopilotClientService CopilotService
+@inject IWorkspaceClientService WorkspaceService
+@inject ITenantStateProvider TenantStateProvider
+@inject NavigationManager Navigation
+
+<div class="copilot-page-container">
+    <div class="copilot-page-header">
+        <div class="header-left">
+            <h1 class="page-title">Copiloto de Otimização via IA</h1>
+            <p class="page-subtitle">Auditor autônomo de tráfego pago, detecção de sobreposições, canibalização de termos e ações em 1 clique.</p>
+        </div>
+
+        <div class="header-right">
+            @if (Workspaces != null && Workspaces.Count > 0)
+            {
+                <select class="workspace-selector" id="copilot-workspace-select" @onchange="OnWorkspaceChanged" value="@SelectedWorkspaceId">
+                    @foreach (var ws in Workspaces)
+                    {
+                        <option value="@ws.Id">@ws.Name</option>
+                    }
+                </select>
+            }
+
+            <button class="btn-refresh" id="btn-refresh-copilot" @onclick="LoadDiagnosticAsync" disabled="@IsLoading">
+                @if (IsLoading)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <span>🔄 Atualizar Auditoria</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger" id="copilot-error-banner">
+            @ErrorMessage
+        </div>
+    }
+
+    @if (IsLoading && DiagnosticReport == null)
+    {
+        <div class="loading-state" id="copilot-loading-skeleton">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>O Copiloto está analisando leilões, segmentações e métricas...</p>
+        </div>
+    }
+    else if (DiagnosticReport != null)
+    {
+        <CopilotDailySummaryCard Report="@DiagnosticReport" />
+
+        <div class="anomalies-section">
+            <div class="section-sub-header">
+                <h2 class="section-title">Anomalias Operacionais & Ações Recomendadas</h2>
+                <span class="anomalies-count">
+                    @(DiagnosticReport.AudienceOverlapAnomalies.Count + DiagnosticReport.SearchCannibalizationAnomalies.Count) ocorrências identificadas
+                </span>
+            </div>
+
+            @if (DiagnosticReport.AudienceOverlapAnomalies.Count == 0 && DiagnosticReport.SearchCannibalizationAnomalies.Count == 0)
+            {
+                <div class="empty-anomalies-state" id="copilot-no-anomalies">
+                    <span class="empty-icon">🛡️</span>
+                    <h3>Nenhum atrito de leilão ou conflito ativo detectado!</h3>
+                    <p>Seus públicos e termos de busca estão devidamente isolados sem sobreposição destrutiva.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var overlap in DiagnosticReport.AudienceOverlapAnomalies)
+                {
+                    <CopilotAnomalyCard Title="Sobreposição de Públicos (Meta Ads)"
+                                        Severity="@overlap.Severity"
+                                        Description="@overlap.Description"
+                                        OverlapAnomaly="@overlap"
+                                        Action="@overlap.SuggestedAction"
+                                        OnExecuteAction="@(action => HandleExecuteActionAsync(action))" />
+                }
+
+                @foreach (var cannibalization in DiagnosticReport.SearchCannibalizationAnomalies)
+                {
+                    <CopilotAnomalyCard Title="Canibalização de Termos (Google Ads vs. Bing Ads)"
+                                        Severity="@cannibalization.Severity"
+                                        Description="@cannibalization.Description"
+                                        CannibalizationAnomaly="@cannibalization"
+                                        Action="@cannibalization.SuggestedAction"
+                                        OnExecuteAction="@(action => HandleExecuteActionAsync(action))" />
+                }
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .copilot-page-container {
+        padding: 24px;
+        max-width: 1280px;
+        margin: 0 auto;
+        color: #f8fafc;
+    }
+    .copilot-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.02em;
+    }
+    .page-subtitle {
+        font-size: 0.95rem;
+        color: #94a3b8;
+        margin: 4px 0 0;
+    }
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .workspace-selector {
+        background: rgba(30, 41, 59, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        color: #f8fafc;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+    .btn-refresh {
+        background: rgba(59, 130, 246, 0.15);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        color: #60a5fa;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+    .btn-refresh:hover:not(:disabled) {
+        background: rgba(59, 130, 246, 0.25);
+    }
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        gap: 16px;
+        color: #94a3b8;
+    }
+    .section-sub-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 32px 0 16px;
+    }
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    .anomalies-count {
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+    .empty-anomalies-state {
+        text-align: center;
+        padding: 48px 24px;
+        background: rgba(30, 41, 59, 0.4);
+        border: 1px dashed rgba(148, 163, 184, 0.2);
+        border-radius: 12px;
+    }
+    .empty-icon {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+        display: block;
+    }
+    .empty-anomalies-state h3 {
+        margin: 0 0 6px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #f1f5f9;
+    }
+    .empty-anomalies-state p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Identificador do workspace fornecido na rota.
+    /// </summary>
+    [Parameter]
+    public Guid WorkspaceId { get; set; }
+
+    private Guid SelectedWorkspaceId { get; set; }
+    private IReadOnlyList<WorkspaceDto>? Workspaces { get; set; }
+    private DailyDiagnosticReportDto? DiagnosticReport { get; set; }
+    private bool IsLoading { get; set; }
+    private string? ErrorMessage { get; set; }
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWorkspacesAsync();
+
+        if (WorkspaceId != Guid.Empty)
+        {
+            SelectedWorkspaceId = WorkspaceId;
+        }
+        else if (Workspaces != null && Workspaces.Count > 0)
+        {
+            SelectedWorkspaceId = Workspaces[0].Id;
+        }
+
+        if (SelectedWorkspaceId != Guid.Empty)
+        {
+            await LoadDiagnosticAsync();
+        }
+    }
+
+    private async Task LoadWorkspacesAsync()
+    {
+        try
+        {
+            var result = await WorkspaceService.GetWorkspacesAsync();
+            if (result.IsSuccess)
+            {
+                Workspaces = result.Value;
+            }
+        }
+        catch
+        {
+            // Silencioso ou fallback
+        }
+    }
+
+    private async Task OnWorkspaceChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var wsId))
+        {
+            SelectedWorkspaceId = wsId;
+            await LoadDiagnosticAsync();
+        }
+    }
+
+    private async Task LoadDiagnosticAsync()
+    {
+        if (SelectedWorkspaceId == Guid.Empty)
+        {
+            return;
+        }
+
+        IsLoading = true;
+        ErrorMessage = null;
+
+        try
+        {
+            var result = await CopilotService.GetDailyDiagnosticAsync(SelectedWorkspaceId);
+            if (result.IsSuccess)
+            {
+                DiagnosticReport = result.Value;
+            }
+            else
+            {
+                ErrorMessage = result.Error.Description;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Falha ao carregar auditoria: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task HandleExecuteActionAsync(CopilotRecommendationActionDto action)
+    {
+        if (SelectedWorkspaceId == Guid.Empty || action == null)
+        {
+            return;
+        }
+
+        var result = await CopilotService.ExecuteActionAsync(SelectedWorkspaceId, action);
+        if (!result.IsSuccess)
+        {
+            throw new InvalidOperationException(result.Error.Description);
+        }
+    }
+}

@@ -1,0 +1,298 @@
+@using Analytics.Application.Copilot.DTOs
+
+<div class="copilot-anomaly-card @(Severity?.ToLowerInvariant())" id="anomaly-card-@(Action?.ActionId)">
+    <div class="card-top-row">
+        <div class="anomaly-type-badge">
+            <span class="severity-tag @(Severity?.ToLowerInvariant())">@Severity</span>
+            <span class="type-name">@Title</span>
+        </div>
+        @if (IsApplied || (Action?.IsApplied ?? false))
+        {
+            <span class="applied-badge" id="badge-applied-@Action?.ActionId">✅ Executado</span>
+        }
+    </div>
+
+    <p class="anomaly-description">@Description</p>
+
+    @if (OverlapAnomaly != null)
+    {
+        <AudienceOverlapVisualizer Anomaly="@OverlapAnomaly" />
+    }
+    else if (CannibalizationAnomaly != null)
+    {
+        <SearchCannibalizationCompare Anomaly="@CannibalizationAnomaly" />
+    }
+
+    @if (Action != null)
+    {
+        <div class="action-footer">
+            <div class="action-info">
+                <span class="action-label">Ação Recomendada (1 Clique):</span>
+                <span class="action-title">@Action.Title</span>
+                <span class="action-detail">@Action.Description</span>
+            </div>
+
+            <button class="btn-one-click @(IsApplied || Action.IsApplied ? "applied" : "")"
+                    id="btn-execute-@Action.ActionId"
+                    disabled="@(IsExecuting || IsApplied || Action.IsApplied)"
+                    @onclick="HandleExecuteClick">
+                @if (IsExecuting)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Executando...</span>
+                }
+                else if (IsApplied || Action.IsApplied)
+                {
+                    <span>✅ Aplicado</span>
+                }
+                else
+                {
+                    <span class="bolt-icon">⚡</span>
+                    <span>Executar em 1 Clique</span>
+                }
+            </button>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(ExecutionFeedback))
+    {
+        <div class="execution-feedback alert @(ExecutionFeedbackSuccess ? "alert-success" : "alert-danger")" id="feedback-@Action?.ActionId">
+            @ExecutionFeedback
+        </div>
+    }
+</div>
+
+<style>
+    .copilot-anomaly-card {
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 20px;
+        color: #f8fafc;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        position: relative;
+    }
+    .copilot-anomaly-card.critical {
+        border-left: 4px solid #ef4444;
+    }
+    .copilot-anomaly-card.high {
+        border-left: 4px solid #f59e0b;
+    }
+    .card-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .anomaly-type-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .severity-tag {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 6px;
+    }
+    .severity-tag.critical {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .severity-tag.high {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+    .type-name {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #f1f5f9;
+    }
+    .applied-badge {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #34d399;
+        background: rgba(16, 185, 129, 0.15);
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .anomaly-description {
+        font-size: 0.9rem;
+        line-height: 1.5;
+        color: #cbd5e1;
+        margin: 6px 0 12px;
+    }
+    .action-footer {
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 14px;
+    }
+    .action-info {
+        display: flex;
+        flex-direction: column;
+        max-width: 70%;
+    }
+    .action-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #94a3b8;
+    }
+    .action-title {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #f8fafc;
+        margin: 2px 0;
+    }
+    .action-detail {
+        font-size: 0.8rem;
+        color: #94a3b8;
+    }
+    .btn-one-click {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+    .btn-one-click:hover:not(:disabled) {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+    }
+    .btn-one-click.applied {
+        background: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        box-shadow: none;
+        cursor: default;
+    }
+    .btn-one-click:disabled:not(.applied) {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .bolt-icon {
+        font-size: 1rem;
+    }
+    .execution-feedback {
+        margin-top: 10px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+    }
+    .alert-success {
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #34d399;
+    }
+    .alert-danger {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #f87171;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Título do tipo de anomalia.
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Nível de severidade (Critical, High, Medium, Low).
+    /// </summary>
+    [Parameter]
+    public string Severity { get; set; } = "High";
+
+    /// <summary>
+    /// Descrição técnica do diagnóstico.
+    /// </summary>
+    [Parameter]
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Dados opcionais de sobreposição de públicos no Meta Ads.
+    /// </summary>
+    [Parameter]
+    public AudienceOverlapAnomalyDto? OverlapAnomaly { get; set; }
+
+    /// <summary>
+    /// Dados opcionais de canibalização de busca.
+    /// </summary>
+    [Parameter]
+    public SearchCannibalizationAnomalyDto? CannibalizationAnomaly { get; set; }
+
+    /// <summary>
+    /// Ação sugerida para execução em 1 clique.
+    /// </summary>
+    [Parameter]
+    public CopilotRecommendationActionDto? Action { get; set; }
+
+    /// <summary>
+    /// Callback disparado ao acionar o botão de execução em 1 clique.
+    /// </summary>
+    [Parameter]
+    public EventCallback<CopilotRecommendationActionDto> OnExecuteAction { get; set; }
+
+    /// <summary>
+    /// Indica se a ação já foi executada.
+    /// </summary>
+    [Parameter]
+    public bool IsApplied { get; set; }
+
+    private bool IsExecuting { get; set; }
+    private string? ExecutionFeedback { get; set; }
+    private bool ExecutionFeedbackSuccess { get; set; }
+
+    private async Task HandleExecuteClick()
+    {
+        if (Action == null || IsExecuting || IsApplied || Action.IsApplied)
+        {
+            return;
+        }
+
+        IsExecuting = true;
+        ExecutionFeedback = null;
+
+        try
+        {
+            if (OnExecuteAction.HasDelegate)
+            {
+                await OnExecuteAction.InvokeAsync(Action);
+                IsApplied = true;
+                ExecutionFeedbackSuccess = true;
+                ExecutionFeedback = $"Recomendação '{Action.Title}' executada com sucesso!";
+            }
+        }
+        catch (Exception ex)
+        {
+            ExecutionFeedbackSuccess = false;
+            ExecutionFeedback = $"Erro na execução da ação: {ex.Message}";
+        }
+        finally
+        {
+            IsExecuting = false;
+        }
+    }
+}

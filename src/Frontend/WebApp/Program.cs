@@ -63,6 +63,8 @@ builder.Services.AddHttpClient<IBulkCampaignClientService, BulkCampaignClientSer
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<WebApp.Services.Creatives.ICreativeHubClientService, WebApp.Services.Creatives.CreativeHubClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<WebApp.Services.Copilot.ITrafficCopilotClientService, WebApp.Services.Copilot.TrafficCopilotClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 
