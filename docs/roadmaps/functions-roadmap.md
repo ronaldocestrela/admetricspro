@@ -132,12 +132,16 @@ Centralização dos dados analíticos e inteligência de performance[cite: 3, 4]
   * Registrar convenções de taxonomia em `docs/modules/analytics-taxonomy.md` e ADR registrado em `docs/adr/0029-currency-normalization-and-automated-taxonomy.md`.
 
 ### Subfase 3.2: Atribuição Multicanal, MER e Blended Metrics
-* **3.2.1 (TDD - Red):** Testes unitários para as fórmulas financeiras agregadas[cite: 3, 4]:
-  * **MER (*Marketing Efficiency Ratio*):** $\text{Receita Total} \div \text{Gasto Total Consolidado}$[cite: 3, 4]
-  * **Blended ROAS:** $\text{Receita de Conversões} \div \sum \text{Investimento Total}$[cite: 3, 4]
-  * **Blended CAC:** $\sum \text{Investimento Total} \div \sum \text{Novos Clientes}$[cite: 3, 4]
-* **3.2.2 (TDD - Green):** Implementar o calculador `BlendedMetricsCalculator` retornando `Result<BlendedMetricsDto>`.
-* **3.2.3:** Implementar modelos de atribuição (Primeiro Clique, Último Clique e Linear) para ilustrar como o tráfego assistido converte entre canais[cite: 3, 4].
+* [x] **3.2.1 (TDD - Red):** Testes unitários para as fórmulas financeiras agregadas (`BlendedMetricsCalculatorTests.cs` com testes cobrindo MER, Blended ROAS, Blended CAC, CPA, CPC, CPM, CTR, proteção contra divisão por zero, conversão multi-moeda integrada e quebra percentual por canal).
+  * **MER (*Marketing Efficiency Ratio*):** $\text{Receita Total} \div \text{Gasto Total Consolidado}$
+  * **Blended ROAS:** $\text{Receita de Conversões} \div \sum \text{Investimento Total}$
+  * **Blended CAC:** $\sum \text{Investimento Total} \div \sum \text{Novos Clientes}$
+* [x] **3.2.2 (TDD - Green):** Implementação do calculador de alta performance `BlendedMetricsCalculator` (`IBlendedMetricsCalculator`) retornando `Result<BlendedMetricsResult>` / `Result<BlendedMetricsDto>` com normalização cambial multi-moeda e shares de investimento somando 100%.
+* [x] **3.2.3 (Atribuição Multicanal & TDD):** Implementação do motor de atribuição `AttributionCalculator` (`IAttributionCalculator`) e testes em `AttributionCalculatorTests.cs` cobrindo Primeiro Clique (*First-Touch* 100%), Último Clique (*Last-Touch* 100%), Linear ($1/N$), contabilização de Conversões Assistidas (*Assisted Conversions*) e comparador side-by-side dos 3 modelos.
+* [x] **3.2.4 (Documentação Viva & API):**
+  * Consultas e handlers CQRS (`CalculateBlendedMetricsQuery` e `CalculateAttributionQuery` com testes em `AnalyticsBlendedAndAttributionQueriesTests.cs`).
+  * Endpoints RESTful Web API no `AnalyticsController.cs` (`/api/v1/analytics/blended-metrics` e `/api/v1/analytics/attribution`) com documentação OpenAPI + Scalar UI e testes em `AnalyticsBlendedAndAttributionControllerTests.cs`.
+  * Documentação viva consolidada em `docs/modules/analytics-blended-and-attribution.md` e ADR registrado em `docs/adr/0030-blended-metrics-and-multichannel-attribution.md`.
 
 ### Subfase 3.3: Dashboard Unificado no Blazor Server
 * **3.3.1 (TDD - bUnit):** Testes de renderização para cartões de métricas principais (Spend, CPC, CPM, CTR, CPA, ROAS) comparando com período anterior[cite: 3, 4].

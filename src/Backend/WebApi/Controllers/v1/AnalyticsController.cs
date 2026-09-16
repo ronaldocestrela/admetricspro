@@ -1,9 +1,14 @@
+using Analytics.Application.Attribution.Dtos;
+using Analytics.Application.Attribution.Queries.CalculateAttribution;
+using Analytics.Application.Blended.Dtos;
+using Analytics.Application.Blended.Queries.CalculateBlendedMetrics;
 using Analytics.Application.Currencies.Dtos;
 using Analytics.Application.Currencies.Queries.ConvertCurrency;
 using Analytics.Application.Currencies.Queries.ConvertCurrencyBatch;
 using Analytics.Application.Taxonomy.Dtos;
 using Analytics.Application.Taxonomy.Queries.BatchClassifyTaxonomy;
 using Analytics.Application.Taxonomy.Queries.ClassifyTaxonomy;
+using Analytics.Domain.Attribution;
 using BuildingBlocks.Domain.Primitives;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -158,6 +163,113 @@ public sealed class AnalyticsController : ControllerBase
             .ToList() ?? new List<BatchClassifyTaxonomyItem>();
 
         var query = new BatchClassifyTaxonomyQuery(items);
+        var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Calcula e consolida métricas agregadas multi-canal (MER, Blended ROAS, Blended CAC, CPA, CPC, CPM, CTR)
+    /// com suporte a conversão cambial multi-moeda e quebra percentual de investimento por plataforma.
+    /// </summary>
+    /// <param name="request">Parâmetros contendo métricas por rede, moeda alvo, receita de loja e novos clientes.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado contendo todos os indicadores blended calculados.</returns>
+    [HttpPost("blended-metrics")]
+    [EndpointSummary("Calcula métricas agregadas multi-canal (MER, Blended ROAS, Blended CAC)")]
+    [ProducesResponseType(typeof(Result<BlendedMetricsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<BlendedMetricsDto>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<Result<BlendedMetricsDto>>> CalculateBlendedMetrics(
+        [FromBody] CalculateBlendedMetricsApiRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            return BadRequest(Result<BlendedMetricsDto>.Failure(
+                Error.Validation("Request.Null", "O corpo da requisição não pode ser nulo.")));
+        }
+
+        var items = request.Items?
+            .Select(i => new BlendedMetricItemInput(
+                i.Platform,
+                i.CampaignId,
+                i.ExternalCampaignId,
+                i.Date,
+                i.Spend,
+                i.Currency,
+                i.Impressions,
+                i.Clicks,
+                i.Conversions,
+                i.ConversionValue,
+                i.NewCustomers))
+            .ToList() ?? new List<BlendedMetricItemInput>();
+
+        var query = new CalculateBlendedMetricsQuery(
+            items,
+            request.TargetCurrency ?? "BRL",
+            request.TotalStoreRevenue,
+            request.TotalNewCustomers);
+
+        var result = await _sender.Send(query, cancellationToken);
+        if (result.IsFailure)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Processa jornadas de conversão e gera relatório analítico comparando os modelos de atribuição
+    /// Primeiro Clique (First-Touch), Último Clique (Last-Touch) e Linear, incluindo tráfego assistido.
+    /// </summary>
+    /// <param name="request">Lista de jornadas e touchpoints dos usuários e custos por canal opcionais.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado comparativo side-by-side entre os modelos de atribuição.</returns>
+    [HttpPost("attribution")]
+    [EndpointSummary("Calcula e compara modelos de atribuição multi-canal (First, Last, Linear)")]
+    [ProducesResponseType(typeof(Result<AttributionComparisonDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<AttributionComparisonDto>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<Result<AttributionComparisonDto>>> CalculateAttribution(
+        [FromBody] CalculateAttributionApiRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            return BadRequest(Result<AttributionComparisonDto>.Failure(
+                Error.Validation("Request.Null", "O corpo da requisição não pode ser nulo.")));
+        }
+
+        var journeys = request.Journeys?
+            .Select(j => new ConversionJourneyInput(
+                j.JourneyId,
+                j.CustomerId,
+                j.ConvertedAtUtc,
+                j.ConversionValue,
+                j.Touchpoints?
+                    .Select(tp => new AttributionTouchpointInput(
+                        tp.Channel,
+                        tp.CampaignName,
+                        tp.OccurredAtUtc,
+                        tp.TouchType == 2 ? TouchpointType.Impression : TouchpointType.Click,
+                        tp.Cost))
+                    .ToList() ?? new List<AttributionTouchpointInput>()))
+            .ToList() ?? new List<ConversionJourneyInput>();
+
+        AttributionModelType? modelType = request.ModelType switch
+        {
+            1 => AttributionModelType.FirstTouch,
+            2 => AttributionModelType.LastTouch,
+            3 => AttributionModelType.Linear,
+            _ => null
+        };
+
+        var query = new CalculateAttributionQuery(journeys, modelType, request.ChannelCosts);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)
