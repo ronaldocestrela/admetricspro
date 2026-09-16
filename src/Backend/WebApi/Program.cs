@@ -62,8 +62,9 @@ builder.Services.AddTrialNoticeBackgroundService(options =>
 
 var app = builder.Build();
 
-// Executa migrações automáticas do catálogo MasterDb no startup quando habilitado por configuração
-if (app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOnStartup", false))
+// Executa migrações automáticas do catálogo MasterDb no startup quando habilitado por configuração e fora de testes
+if (!app.Environment.IsEnvironment("Testing") &&
+    app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOnStartup", false))
 {
     var migrationResult = await app.ApplyMasterDatabaseMigrationsAsync();
     if (migrationResult.IsFailure)

@@ -68,13 +68,13 @@ public static class OpenApiScalarExtensions
     }
 
     /// <summary>
-    /// Mapeia os endpoints de OpenAPI e Scalar UI nos ambientes de desenvolvimento e homologação com suporte a autenticação corporativa.
+    /// Mapeia os endpoints de OpenAPI e Scalar UI nos ambientes de desenvolvimento, homologação e testes com suporte a autenticação corporativa.
     /// </summary>
     /// <param name="app">Instância da aplicação Web.</param>
     /// <returns>A aplicação configurada.</returns>
     public static WebApplication UseOpenApiAndScalar(this WebApplication app)
     {
-        if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Staging"))
+        if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Staging") || app.Environment.IsEnvironment("Testing"))
         {
             app.MapOpenApi();
             app.MapScalarApiReference("/scalar/v1", options =>

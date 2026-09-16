@@ -68,8 +68,9 @@ No assembly `Master.Infrastructure`:
 // Registro do DbContext, repositório, Unit of Work e runner de migração
 services.AddMasterCatalog(connectionString);
 
-// Execução no startup do host da WebApi (Program.cs)
-if (app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOnStartup", false))
+// Execução no startup do host da WebApi (Program.cs) fora de ambiente de testes
+if (!app.Environment.IsEnvironment("Testing") &&
+    app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOnStartup", false))
 {
     var migrationResult = await app.ApplyMasterDatabaseMigrationsAsync();
     if (migrationResult.IsFailure)
