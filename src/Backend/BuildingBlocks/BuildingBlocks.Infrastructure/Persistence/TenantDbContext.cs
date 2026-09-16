@@ -82,6 +82,11 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<BuildingBlocks.Domain.Campaigns.Ad> Ads => Set<BuildingBlocks.Domain.Campaigns.Ad>();
 
+    /// <summary>
+    /// Gets the operational campaign metrics table representing daily and hourly performance metrics.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Campaigns.CampaignMetric> CampaignMetrics => Set<BuildingBlocks.Domain.Campaigns.CampaignMetric>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -106,5 +111,6 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CampaignEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new AdSetEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new AdEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new CampaignMetricEntityTypeConfiguration());
     }
 }

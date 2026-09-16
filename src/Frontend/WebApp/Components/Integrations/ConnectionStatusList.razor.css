@@ -1,0 +1,101 @@
+.connection-status-panel {
+    background: var(--bs-card-bg, #ffffff);
+    border: 1px solid var(--bs-border-color, #e9ecef);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.panel-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--bs-heading-color, #212529);
+}
+
+.panel-subtitle {
+    font-size: 0.875rem;
+    color: var(--bs-secondary-color, #6c757d);
+    margin-bottom: 0;
+}
+
+.platforms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+.platform-card {
+    border-radius: 10px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-width: 1px;
+}
+
+.platform-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.platform-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 1.25rem;
+}
+
+.platform-icon.metaads {
+    background: rgba(24, 119, 242, 0.1);
+    color: #1877f2;
+}
+
+.platform-icon.googleads {
+    background: rgba(66, 133, 244, 0.1);
+    color: #4285f4;
+}
+
+.platform-icon.tiktokads {
+    background: rgba(0, 0, 0, 0.08);
+    color: #000000;
+}
+
+.platform-icon.bingads {
+    background: rgba(0, 164, 239, 0.1);
+    color: #00a4ef;
+}
+
+.platform-name {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.platform-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+}
+
+.detail-label {
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.detail-value {
+    font-weight: 500;
+    color: var(--bs-body-color, #212529);
+}

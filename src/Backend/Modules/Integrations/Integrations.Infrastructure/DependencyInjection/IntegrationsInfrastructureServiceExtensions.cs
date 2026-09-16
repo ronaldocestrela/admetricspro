@@ -108,6 +108,25 @@ public static class IntegrationsInfrastructureServiceExtensions
         // Repositório de persistência da hierarquia de campanhas
         services.AddScoped<Integrations.Domain.Campaigns.ICampaignHierarchyRepository, Integrations.Infrastructure.Campaigns.Persistence.CampaignHierarchyRepository>();
 
+        // Repositório de persistência de métricas analíticas de campanhas (idempotente)
+        services.AddScoped<Integrations.Domain.Campaigns.ICampaignMetricsRepository, Integrations.Infrastructure.Campaigns.Persistence.CampaignMetricsRepository>();
+
+        // Adaptadores de ingestão de métricas
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.MetaAdsMetricsSyncAdapter>();
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.GoogleAdsMetricsSyncAdapter>();
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.TikTokAdsMetricsSyncAdapter>();
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.BingAdsMetricsSyncAdapter>();
+        services.AddScoped<Integrations.Infrastructure.Campaigns.Sync.DemoMetricsSyncAdapter>();
+
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignMetricsSyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.DemoMetricsSyncAdapter>());
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignMetricsSyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.MetaAdsMetricsSyncAdapter>());
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignMetricsSyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.GoogleAdsMetricsSyncAdapter>());
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignMetricsSyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.TikTokAdsMetricsSyncAdapter>());
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignMetricsSyncAdapter>(sp => sp.GetRequiredService<Integrations.Infrastructure.Campaigns.Sync.BingAdsMetricsSyncAdapter>());
+
+        // Despachante central de métricas
+        services.AddScoped<Integrations.Domain.Campaigns.Sync.ICampaignMetricsSyncDispatcher, Integrations.Infrastructure.Campaigns.Sync.CampaignMetricsSyncDispatcher>();
+
         return services;
     }
 }

@@ -3,6 +3,7 @@
 @namespace WebApp.Components.Pages
 @using BuildingBlocks.Domain.Primitives
 @using Tenants.Application.Workspaces.DTOs
+@using WebApp.Components.Integrations
 @using WebApp.Models
 @using WebApp.Services
 @using WebApp.State
@@ -211,6 +212,15 @@
                                 <div class="action-buttons-group">
                                     <button type="button"
                                             class="btn-icon"
+                                            title="Ver conexões e tokens de mídia"
+                                            @onclick="() => OpenConnectionsModal(workspace)">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button"
+                                            class="btn-icon"
                                             title="Editar dados cadastrais"
                                             @onclick="() => OpenEditModal(workspace)">
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -354,6 +364,33 @@
     </div>
 }
 
+<!-- Modal de Conexões OAuth e Saúde de Tokens -->
+@if (_selectedWorkspaceForConnections != null)
+{
+    <div class="modal-overlay" @onclick="() => _selectedWorkspaceForConnections = null" role="dialog" aria-modal="true">
+        <div class="modal-dialog" @onclick:stopPropagation="true" style="max-width: 900px; width: 95%;">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-icon-badge">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="modal-title">Conexões de Mídia — @_selectedWorkspaceForConnections.Name</h3>
+                        <p class="modal-subtitle">Monitoramento de saúde e renovação preventiva de tokens OAuth2.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal" @onclick="() => _selectedWorkspaceForConnections = null" aria-label="Fechar modal">✕</button>
+            </div>
+            <div class="modal-body p-0">
+                <ConnectionStatusList WorkspaceId="_selectedWorkspaceForConnections.Id" />
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<WorkspaceDto> _workspaces = new();
     private bool _isLoading = true;
@@ -364,7 +401,10 @@
     private string _searchTerm = string.Empty;
     private bool? _statusFilter;
     private bool _showModal;
+    private WorkspaceDto? _selectedWorkspaceForConnections;
     private WorkspaceFormModel _formModel = new();
+
+    private void OpenConnectionsModal(WorkspaceDto ws) => _selectedWorkspaceForConnections = ws;
 
     private string AgencyName =>
         TenantStateProvider.CurrentTenant?.Name ??

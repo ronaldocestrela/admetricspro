@@ -53,6 +53,8 @@ builder.Services.AddHttpClient<ITenantBrandingClientService, TenantBrandingClien
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<ITenantCnameClientService, TenantCnameClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IOAuthIntegrationsClientService, OAuthIntegrationsClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 

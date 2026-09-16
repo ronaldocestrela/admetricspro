@@ -101,9 +101,19 @@ Módulo responsável pela comunicação com os gerenciadores de anúncios extern
   * Documentação viva consolidada em `docs/modules/integrations-campaign-hierarchy-sync.md` e ADR registrado em `docs/adr/0027-campaign-structural-sync-and-rate-limiting.md`.
 
 ### Subfase 2.3: Pipeline de Ingestão de Métricas Diárias e Horárias
-* **2.3.1 (TDD - Red):** Testes de idempotência: garantir que re-execuções da sincronização de uma mesma data não dupliquem registros de métricas (Spend, Impressions, Clicks, Conversions)[cite: 4].
-* **2.3.2 (TDD - Green):** Implementar repositório `ICampaignMetricsRepository` com inserção/atualização atômica em lote.
-* **2.3.3 (Frontend Blazor):** Painel de status `ConnectionStatusList.razor` sinalizando tokens válidos e botão para renovação imediata de credenciais[cite: 5].
+* [x] **2.3.1 (TDD - Red & Green):** Testes de idempotência: garantir que re-execuções da sincronização de uma mesma data não dupliquem registros de métricas (`CampaignMetricDomainTests.cs` com 11 testes e `CampaignMetricsRepositoryTests.cs` com 3 testes unitários comprovando que re-execuções da mesma data preservam registros e atualizam valores via upsert atômico).
+* [x] **2.3.2 (TDD - Green & CQRS):**
+  * Repositório `ICampaignMetricsRepository` e implementação `CampaignMetricsRepository.cs` com upsert atômico em lote no `TenantDbContext`.
+  * Configuração fluente `CampaignMetricEntityTypeConfiguration.cs` com índice único composto de idempotência (`ConnectedAdAccountId, ExternalCampaignId, ExternalAdSetId, ExternalAdId, Date, Hour, Granularity`).
+  * Adaptadores analíticos com clientes HTTP resilientes (`MetaAdsMetricsSyncAdapter.cs`, `GoogleAdsMetricsSyncAdapter.cs`, `TikTokAdsMetricsSyncAdapter.cs`, `BingAdsMetricsSyncAdapter.cs`, `DemoMetricsSyncAdapter.cs`) e despachante `CampaignMetricsSyncDispatcher.cs` orquestrado com `HierarchyRateLimitPolicy`.
+  * Comandos e consultas CQRS (`SyncCampaignMetricsCommand`, `GetCampaignMetricsQuery`) e evento in-memory `CampaignMetricsSyncedEvent`.
+  * Endpoints RESTful Web API no `CampaignMetricsController.cs` (`/api/v1/integrations/campaigns/metrics/*`) integrados com OpenAPI e Scalar UI.
+  * Documentação viva em `docs/modules/integrations-campaign-metrics-ingestion.md` e ADR registrado em `docs/adr/0028-campaign-metrics-ingestion-and-idempotency.md`.
+* [x] **2.3.3 (Frontend Blazor & bUnit):**
+  * Cliente HTTP fortemente tipado `OAuthIntegrationsClientService.cs` (`IOAuthIntegrationsClientService.cs`) consumindo exclusivamente a Web API (`/api/v1/integrations/oauth/*`), com zero acesso direto a banco de dados (conforme Regra 9 do `AGENTS.md`).
+  * Painel de conexões `ConnectionStatusList.razor` com estilos isolados `ConnectionStatusList.razor.css`, sinalizando saúde das contas de anúncio (Ativo, Expirando, Revogado) e botão de ação para renovação imediata de credenciais.
+  * Integrado à tela `WorkspacesPage.razor` com modal/seção de gerenciamento de integrações.
+  * Testes de componente com **bUnit** em `ConnectionStatusListTests.cs` (4/4 testes passando com sucesso).
 
 ---
 
