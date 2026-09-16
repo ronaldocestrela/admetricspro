@@ -26,6 +26,8 @@
     <ProjectReference Include="..\Modules\Integrations\Integrations.Infrastructure\Integrations.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Analytics\Analytics.Application\Analytics.Application.csproj" />
     <ProjectReference Include="..\Modules\Analytics\Analytics.Infrastructure\Analytics.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Automations\Automations.Application\Automations.Application.csproj" />
+    <ProjectReference Include="..\Modules\Automations\Automations.Infrastructure\Automations.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -307,4 +307,34 @@ public sealed class CampaignHierarchyRepository : ICampaignHierarchyRepository
 
         return await query.ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<Campaign?> GetCampaignByIdAsync(
+        Guid campaignId,
+        CancellationToken cancellationToken = default)
+    {
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return null;
+        }
+
+        return await contextResult.Value.Campaigns
+            .FirstOrDefaultAsync(c => c.Id == campaignId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<Ad?> GetAdByIdAsync(
+        Guid adId,
+        CancellationToken cancellationToken = default)
+    {
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return null;
+        }
+
+        return await contextResult.Value.Ads
+            .FirstOrDefaultAsync(a => a.Id == adId, cancellationToken);
+    }
 }

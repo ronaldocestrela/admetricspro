@@ -11,6 +11,8 @@ using Integrations.Application.DependencyInjection;
 using Integrations.Infrastructure.DependencyInjection;
 using Analytics.Application.DependencyInjection;
 using Analytics.Infrastructure.DependencyInjection;
+using Automations.Application.DependencyInjection;
+using Automations.Infrastructure.DependencyInjection;
 using WebApi.Extensions;
 
 // Carrega variáveis do arquivo .env no ambiente de processo e no pipeline de configuração
@@ -41,6 +43,8 @@ builder.Services.AddIntegrationsApplication();
 builder.Services.AddIntegrationsInfrastructure(builder.Configuration);
 builder.Services.AddAnalyticsApplication();
 builder.Services.AddAnalyticsInfrastructure(builder.Configuration);
+builder.Services.AddAutomationsApplication();
+builder.Services.AddAutomationsInfrastructure(builder.Configuration);
 builder.Services.AddEmailInfrastructure(builder.Configuration);
 builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
 {

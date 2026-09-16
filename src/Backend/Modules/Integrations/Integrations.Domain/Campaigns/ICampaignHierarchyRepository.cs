@@ -67,4 +67,24 @@ public interface ICampaignHierarchyRepository
         Guid? connectedAdAccountId = null,
         string? platform = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém uma campanha pelo seu identificador primário.
+    /// </summary>
+    /// <param name="campaignId">Identificador da campanha.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Campanha localizada ou nulo.</returns>
+    Task<Campaign?> GetCampaignByIdAsync(
+        Guid campaignId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém um anúncio pelo seu identificador primário.
+    /// </summary>
+    /// <param name="adId">Identificador do anúncio.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Anúncio localizado ou nulo.</returns>
+    Task<Ad?> GetAdByIdAsync(
+        Guid adId,
+        CancellationToken cancellationToken = default);
 }

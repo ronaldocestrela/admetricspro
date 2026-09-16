@@ -275,4 +275,32 @@ public sealed class Campaign : Entity<Guid>
 
         return Result.Success();
     }
+
+    /// <summary>
+    /// Pausa a veiculação da campanha no contexto de automações ou ações manuais.
+    /// </summary>
+    /// <returns>Resultado da operação.</returns>
+    public Result Pause()
+    {
+        Status = CampaignStatus.Paused;
+        UpdatedAtUtc = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Atualiza o orçamento diário programado da campanha.
+    /// </summary>
+    /// <param name="newDailyBudget">Novo valor numérico positivo para o orçamento diário.</param>
+    /// <returns>Resultado da alteração orçamentária.</returns>
+    public Result UpdateDailyBudget(decimal newDailyBudget)
+    {
+        if (newDailyBudget < 0)
+        {
+            return Result.Failure(Error.Validation("Campaign.NegativeBudget", "O orçamento diário não pode ser negativo."));
+        }
+
+        DailyBudget = newDailyBudget;
+        UpdatedAtUtc = DateTime.UtcNow;
+        return Result.Success();
+    }
 }

@@ -266,4 +266,15 @@ public sealed class Ad : Entity<Guid>
 
         return Result.Success();
     }
+
+    /// <summary>
+    /// Pausa a veiculação do anúncio individual.
+    /// </summary>
+    /// <returns>Resultado da operação.</returns>
+    public Result Pause()
+    {
+        Status = AdStatus.Paused;
+        UpdatedAtUtc = DateTime.UtcNow;
+        return Result.Success();
+    }
 }

@@ -155,10 +155,10 @@ Centralização dos dados analíticos e inteligência de performance[cite: 3, 4]
 Motor de processamento programado de ações baseadas em regras de negócio[cite: 3, 4].
 
 ### Subfase 4.1: Construtor de Regras Cross-Platform (DSL / Condições If-Then)
-* **4.1.1 (TDD - Red):** Testes para avaliador de condições: validar gatilhos combinados (ex.: *Se CPA do TikTok Ads > R$ 50 nas últimas 48h E Google Ads ROAS > 4.5 &rarr; Reduzir TikTok em 20% e alocar saldo no Google*)[cite: 3, 4].
-* **4.1.2 (TDD - Green):** Implementar árvore de predicados e motor de avaliação de regras desacoplado de dependências de rede.
-* **4.1.3:** Implementar disparador de comandos de mutação (ajustar verba, pausar anúncio) que emite solicitações ao módulo `Integrations`.
-* **4.1.4 (Documentação Viva):** Criar `docs/modules/automations-rules.md` com exemplos práticos de esquemas JSON para configuração de regras[cite: 4].
+* [x] **4.1.1 (TDD - Red):** Testes para avaliador de condições: validar gatilhos combinados (ex.: *Se CPA do TikTok Ads > R$ 50 nas últimas 48h E Google Ads ROAS > 4.5 &rarr; Reduzir TikTok em 20% e alocar saldo no Google*)[cite: 3, 4] (`RuleConditionEvaluatorTests.cs`).
+* [x] **4.1.2 (TDD - Green):** Implementar árvore de predicados e motor de avaliação de regras desacoplado de dependências de rede (`RuleConditionEvaluator`, `IRuleCondition`, `MetricPredicate`, `RuleConditionGroup`).
+* [x] **4.1.3:** Implementar disparador de comandos de mutação (ajustar verba, pausar anúncio) que emite solicitações ao módulo `Integrations` (`RuleActionDispatcher`, `PauseCampaignCommandHandler`, `PauseAdCommandHandler`, `AdjustCampaignBudgetCommandHandler`, `ReallocateBudgetCommandHandler`).
+* [x] **4.1.4 (Documentação Viva):** Criar `docs/modules/automations-rules.md` com exemplos práticos de esquemas JSON para configuração de regras, endpoints da Web API em `AutomationsController.cs` e ADR registrado em `docs/adr/0032-cross-platform-rules-dsl-and-action-dispatcher.md`[cite: 4].
 
 ### Subfase 4.2: Travas de Segurança (Overspending & Detector 404/500)
 * **4.2.1 (TDD - Red):** Testes unitários para `OverspendingGuard`: disparar pausa imediata e alarme se o gasto diário superar 120% do orçamento configurado[cite: 3, 4].

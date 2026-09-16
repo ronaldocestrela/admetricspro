@@ -87,6 +87,11 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<BuildingBlocks.Domain.Campaigns.CampaignMetric> CampaignMetrics => Set<BuildingBlocks.Domain.Campaigns.CampaignMetric>();
 
+    /// <summary>
+    /// Gets the operational automation rules table configuring cross-platform triggers and mutations.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Automations.AutomationRule> AutomationRules => Set<BuildingBlocks.Domain.Automations.AutomationRule>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -112,5 +117,6 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AdSetEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new AdEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new CampaignMetricEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new AutomationRuleEntityTypeConfiguration());
     }
 }
