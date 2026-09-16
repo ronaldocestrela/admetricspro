@@ -161,9 +161,10 @@ Motor de processamento programado de ações baseadas em regras de negócio[cite
 * [x] **4.1.4 (Documentação Viva):** Criar `docs/modules/automations-rules.md` com exemplos práticos de esquemas JSON para configuração de regras, endpoints da Web API em `AutomationsController.cs` e ADR registrado em `docs/adr/0032-cross-platform-rules-dsl-and-action-dispatcher.md`[cite: 4].
 
 ### Subfase 4.2: Travas de Segurança (Overspending & Detector 404/500)
-* **4.2.1 (TDD - Red):** Testes unitários para `OverspendingGuard`: disparar pausa imediata e alarme se o gasto diário superar 120% do orçamento configurado[cite: 3, 4].
-* **4.2.2 (TDD - Green):** Implementar serviço de monitoramento contínuo com envio de notificações push/webhook para Slack, WhatsApp e E-mail[cite: 4].
-* **4.2.3:** Implementar o serviço `LandingPageHealthChecker` que faz requisições periódicas (HTTP `HEAD`) nas URLs de destino dos anúncios; pausar automaticamente anúncios cujo link retorne erro HTTP 4xx ou 5xx[cite: 3, 4].
+* [x] **4.2.1 (TDD - Red & Green):** Testes unitários para `OverspendingGuard` (`OverspendingGuardTests.cs`): disparar pausa imediata via `PauseCampaignCommand` e alarme multi-canal se o gasto diário superar 120% do orçamento configurado.
+* [x] **4.2.2 (TDD - Red & Green):** Implementar subsistema de alarmes e notificações multi-canal (`SecurityAlertDispatcher`, `ISecurityAlertNotifier`, `SecurityAlertDispatcherTests.cs`) com envio resiliente para Slack (Block Kit), WhatsApp, E-mail e Webhooks com tolerância a falhas parciais.
+* [x] **4.2.3 (TDD - Red & Green):** Implementar o serviço `LandingPageHealthChecker` (`LandingPageHealthCheckerTests.cs`) que faz requisições periódicas (HTTP `HEAD` com fallback para `GET`) nas URLs de destino dos anúncios; pausar automaticamente via `PauseAdCommand` anúncios cujo link retorne erro HTTP 4xx, 5xx ou timeout.
+* [x] **4.2.4 (Documentação Viva & API):** Endpoints RESTful no `SecurityGuardsController.cs` (`/api/v1/automations/guards/...`), documentação OpenAPI + Scalar UI, especificação viva em `docs/modules/automations-safety-guards.md` e ADR registrado em `docs/adr/0033-safety-guards-overspending-and-broken-links.md`.
 
 ### Subfase 4.3: Gestão Dinâmica de Budget & Previsão de Fim de Mês (Pacing)
 * **4.3.1 (TDD - Red):** Testes unitários para cálculo de projeção de consumo de verba (gasto projetado vs. contratado)[cite: 3, 4].

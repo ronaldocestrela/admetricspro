@@ -24,6 +24,24 @@ public static class AutomationsInfrastructureExtensions
         services.AddScoped<IAutomationRuleRepository, AutomationRuleRepository>();
         services.AddScoped<IAutomationsUnitOfWork, AutomationsUnitOfWork>();
         services.AddScoped<IAutomationsMetricsProvider, AutomationsMetricsProvider>();
+        services.AddScoped<Automations.Domain.SafetyGuards.ISafetyGuardIncidentRepository, Automations.Infrastructure.Persistence.SafetyGuardIncidentRepository>();
+
+        // Travas de Segurança Operacional & Notificações Multi-Canal (Subfase 4.2)
+        services.Configure<Automations.Infrastructure.SafetyGuards.SecurityAlertNotificationOptions>(
+            configuration.GetSection(Automations.Infrastructure.SafetyGuards.SecurityAlertNotificationOptions.SectionName));
+
+        services.AddHttpClient<Automations.Domain.SafetyGuards.ISlackWebhookNotifier, Automations.Infrastructure.SafetyGuards.SlackWebhookNotifier>();
+        services.AddHttpClient<Automations.Domain.SafetyGuards.IWhatsAppWebhookNotifier, Automations.Infrastructure.SafetyGuards.WhatsAppWebhookNotifier>();
+        services.AddHttpClient<Automations.Domain.SafetyGuards.IGenericWebhookNotifier, Automations.Infrastructure.SafetyGuards.GenericWebhookNotifier>();
+        services.AddHttpClient<Automations.Domain.SafetyGuards.IHttpLandingPageVerifier, Automations.Infrastructure.SafetyGuards.HttpLandingPageVerifier>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+
+        services.AddScoped<Automations.Domain.SafetyGuards.IEmailAlertNotifier, Automations.Infrastructure.SafetyGuards.EmailAlertNotifier>();
+        services.AddScoped<Automations.Domain.SafetyGuards.ISecurityAlertNotifier, Automations.Infrastructure.SafetyGuards.SecurityAlertDispatcher>();
+        services.AddScoped<Automations.Domain.SafetyGuards.IOverspendingGuard, Automations.Infrastructure.SafetyGuards.OverspendingGuard>();
+        services.AddScoped<Automations.Domain.SafetyGuards.ILandingPageHealthChecker, Automations.Infrastructure.SafetyGuards.LandingPageHealthChecker>();
 
         return services;
     }

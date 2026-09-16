@@ -92,6 +92,11 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<BuildingBlocks.Domain.Automations.AutomationRule> AutomationRules => Set<BuildingBlocks.Domain.Automations.AutomationRule>();
 
+    /// <summary>
+    /// Gets the operational safety guard incidents table recording overspending and broken landing pages incidents.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Automations.SafetyGuards.SafetyGuardIncident> SafetyGuardIncidents => Set<BuildingBlocks.Domain.Automations.SafetyGuards.SafetyGuardIncident>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -118,5 +123,6 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AdEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new CampaignMetricEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new AutomationRuleEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new SafetyGuardIncidentEntityTypeConfiguration());
     }
 }
