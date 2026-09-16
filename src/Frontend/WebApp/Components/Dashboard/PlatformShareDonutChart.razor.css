@@ -1,0 +1,152 @@
+.donut-card {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.donut-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.donut-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #F8FAFC;
+    margin: 0;
+}
+
+.donut-subtitle {
+    font-size: 12px;
+    color: #94A3B8;
+}
+
+.donut-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 20px;
+    flex-wrap: wrap;
+    min-height: 200px;
+}
+
+.donut-chart-container {
+    width: 160px;
+    height: 160px;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.donut-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.donut-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.05);
+    stroke-width: 18;
+}
+
+.donut-segment {
+    fill: none;
+    stroke-width: 18;
+    transition: stroke-dasharray 0.5s ease, stroke-dashoffset 0.5s ease;
+}
+
+.donut-center-label {
+    transform: rotate(90deg);
+    transform-origin: 80px 80px;
+    text-anchor: middle;
+    font-size: 10px;
+    font-weight: 600;
+    fill: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.donut-center-val {
+    transform: rotate(90deg);
+    transform-origin: 80px 80px;
+    text-anchor: middle;
+    font-size: 14px;
+    font-weight: 700;
+    fill: #F8FAFC;
+}
+
+.donut-legend-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    min-width: 180px;
+}
+
+.legend-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.legend-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-bullet {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.brand-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #E2E8F0;
+}
+
+.legend-values {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-pct {
+    font-size: 12px;
+    font-weight: 700;
+    color: #38BDF8;
+}
+
+.brand-spend {
+    font-size: 11px;
+    color: #94A3B8;
+}
+
+.donut-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    color: #94A3B8;
+    gap: 8px;
+}
+
+.donut-empty-state p {
+    font-size: 13px;
+    color: #64748B;
+}

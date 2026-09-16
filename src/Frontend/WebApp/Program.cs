@@ -55,6 +55,8 @@ builder.Services.AddHttpClient<ITenantCnameClientService, TenantCnameClientServi
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<IOAuthIntegrationsClientService, OAuthIntegrationsClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IAnalyticsDashboardClientService, AnalyticsDashboardClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 

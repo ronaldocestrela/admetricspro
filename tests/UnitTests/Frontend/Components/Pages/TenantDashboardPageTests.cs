@@ -104,16 +104,11 @@ public sealed class TenantDashboardPageTests : BunitTestBase
 
         var metricTitles = cut.FindAll(".metric-title").Select(e => e.TextContent.Trim()).ToList();
         metricTitles.Should().Contain("Investimento Total");
-        metricTitles.Should().Contain("Receita Atribuída");
-        metricTitles.Should().Contain("ROAS Consolidado");
-        metricTitles.Should().Contain("MER Médio");
-        metricTitles.Should().Contain("Cliques & Impressões");
-        metricTitles.Should().Contain("CPA Médio");
-
-        var pageText = cut.Markup;
-        pageText.Should().Contain("R$ 0,00");
-        pageText.Should().Contain("0,00x");
-        pageText.Should().Contain("0,00%");
+        metricTitles.Should().Contain("Custo por Clique (CPC)");
+        metricTitles.Should().Contain("Custo por Mil Impressões (CPM)");
+        metricTitles.Should().Contain("Taxa de Cliques (CTR)");
+        metricTitles.Should().Contain("Custo por Aquisição (CPA)");
+        metricTitles.Should().Contain("Retorno sobre Ad Spend (ROAS)");
     }
 
     /// <summary>

@@ -1,0 +1,111 @@
+@using System.Globalization
+@using Analytics.Application.Dashboard.DTOs
+@namespace WebApp.Components.Dashboard
+
+<div class="donut-card">
+    <div class="donut-header">
+        <h3 class="donut-title">Divisão por Canal</h3>
+        <span class="donut-subtitle">Participação percentual do investimento publicitário</span>
+    </div>
+
+    <div class="donut-body">
+        @if (PlatformBreakdown == null || PlatformBreakdown.Count == 0)
+        {
+            <div class="donut-empty-state">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2a10 10 0 0 1 10 10"></path>
+                </svg>
+                <p>Nenhuma distribuição registrada.</p>
+            </div>
+        }
+        else
+        {
+            <div class="donut-chart-container">
+                <svg class="donut-svg" viewBox="0 0 160 160">
+                    <circle cx="80" cy="80" r="@Radius" class="donut-track" />
+                    @{
+                        double currentOffset = 0;
+                        foreach (var item in PlatformBreakdown)
+                        {
+                            var sliceLength = (double)(item.ShareOfSpendPercentage / 100m) * Circumference;
+                            var color = GetPlatformColor(item.Platform);
+                            <circle cx="80" cy="80" r="@Radius"
+                                    class="donut-segment"
+                                    stroke="@color"
+                                    stroke-dasharray="@($"{sliceLength:F1} {Circumference:F1}")"
+                                    stroke-dashoffset="@($"-{currentOffset:F1}")">
+                                <title>@item.Platform: @item.ShareOfSpendPercentage.ToString("F1", PtBrCulture)% (@item.Spend.ToString("C", PtBrCulture))</title>
+                            </circle>
+                            currentOffset += sliceLength;
+                        }
+                    }
+                    <text x="80" y="74" class="donut-center-label">Total Spend</text>
+                    <text x="80" y="94" class="donut-center-val">@FormatShortCurrency(TotalSpend)</text>
+                </svg>
+            </div>
+
+            <div class="donut-legend-list">
+                @foreach (var item in PlatformBreakdown)
+                {
+                    var color = GetPlatformColor(item.Platform);
+                    <div class="legend-row">
+                        <div class="legend-brand">
+                            <span class="brand-bullet" style="background-color: @color;"></span>
+                            <span class="brand-name">@FormatPlatformName(item.Platform)</span>
+                        </div>
+                        <div class="legend-values">
+                            <span class="brand-pct">@item.ShareOfSpendPercentage.ToString("F1", PtBrCulture)%</span>
+                            <span class="brand-spend">@item.Spend.ToString("C", PtBrCulture)</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo PtBrCulture = CultureInfo.GetCultureInfo("pt-BR");
+    private const double Radius = 60.0;
+    private static readonly double Circumference = 2 * Math.PI * Radius;
+
+    /// <summary>
+    /// Lista de quebra proporcional por canal de anúncios.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PlatformShareDto>? PlatformBreakdown { get; set; }
+
+    /// <summary>
+    /// Código da moeda padrão.
+    /// </summary>
+    [Parameter]
+    public string Currency { get; set; } = "BRL";
+
+    private decimal TotalSpend => PlatformBreakdown?.Sum(p => p.Spend) ?? 0m;
+
+    private static string GetPlatformColor(string platform) => platform.ToLowerInvariant() switch
+    {
+        "meta" => "#1877F2",
+        "google" => "#EA4335",
+        "tiktok" => "#FE2C55",
+        "bing" => "#00809D",
+        _ => "#8B5CF6"
+    };
+
+    private static string FormatPlatformName(string platform) => platform.ToLowerInvariant() switch
+    {
+        "meta" => "Meta Ads",
+        "google" => "Google Ads",
+        "tiktok" => "TikTok Ads",
+        "bing" => "Bing Ads",
+        _ => platform
+    };
+
+    private static string FormatShortCurrency(decimal val)
+    {
+        if (val >= 1_000_000m) return $"R$ {(val / 1_000_000m):F1}M";
+        if (val >= 1_000m) return $"R$ {(val / 1_000m):F1}k";
+        return val.ToString("C0", PtBrCulture);
+    }
+}

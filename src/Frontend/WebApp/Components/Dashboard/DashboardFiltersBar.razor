@@ -1,0 +1,133 @@
+@using Tenants.Application.Workspaces.DTOs
+@using WebApp.Models
+@namespace WebApp.Components.Dashboard
+
+<div class="dashboard-filters-bar" aria-label="Filtros Globais do Dashboard">
+    <div class="filter-group">
+        <label for="filter-workspace" class="filter-label">Workspace</label>
+        <div class="select-wrapper">
+            <select id="filter-workspace" class="form-select" @onchange="OnWorkspaceChanged" disabled="@IsLoading">
+                <option value="">Todos os Workspaces</option>
+                @if (Workspaces != null)
+                {
+                    @foreach (var ws in Workspaces)
+                    {
+                        <option value="@ws.Id" selected="@(Filters.WorkspaceId == ws.Id)">@ws.Name</option>
+                    }
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="filter-group">
+        <label for="filter-platform" class="filter-label">Canal / Rede</label>
+        <div class="select-wrapper">
+            <select id="filter-platform" class="form-select" @onchange="OnPlatformChanged" disabled="@IsLoading">
+                <option value="All" selected="@(Filters.Platform == "All")">Todas as Redes</option>
+                <option value="Meta" selected="@(Filters.Platform == "Meta")">Meta Ads</option>
+                <option value="Google" selected="@(Filters.Platform == "Google")">Google Ads</option>
+                <option value="TikTok" selected="@(Filters.Platform == "TikTok")">TikTok Ads</option>
+                <option value="Bing" selected="@(Filters.Platform == "Bing")">Bing Ads</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="filter-group">
+        <label for="filter-period" class="filter-label">Período</label>
+        <div class="select-wrapper">
+            <select id="filter-period" class="form-select" @onchange="OnPeriodChanged" disabled="@IsLoading">
+                <option value="Last7Days" selected="@(Filters.Period == "Last7Days")">Últimos 7 dias</option>
+                <option value="Last14Days" selected="@(Filters.Period == "Last14Days")">Últimos 14 dias</option>
+                <option value="Last30Days" selected="@(Filters.Period == "Last30Days")">Últimos 30 dias</option>
+                <option value="CurrentMonth" selected="@(Filters.Period == "CurrentMonth")">Mês Atual</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="filter-group">
+        <label for="filter-device" class="filter-label">Dispositivo</label>
+        <div class="select-wrapper">
+            <select id="filter-device" class="form-select" @onchange="OnDeviceChanged" disabled="@IsLoading">
+                <option value="All" selected="@(Filters.Device == "All")">Todos os Dispositivos</option>
+                <option value="Mobile" selected="@(Filters.Device == "Mobile")">Mobile</option>
+                <option value="Desktop" selected="@(Filters.Device == "Desktop")">Desktop</option>
+                <option value="Tablet" selected="@(Filters.Device == "Tablet")">Tablet</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="filter-actions">
+        <button id="btn-refresh-dashboard" class="btn-refresh" @onclick="TriggerRefresh" disabled="@IsLoading" title="Atualizar dados analíticos">
+            @if (IsLoading)
+            {
+                <span class="spinner" aria-hidden="true"></span>
+                <span>Atualizando...</span>
+            }
+            else
+            {
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                <span>Atualizar</span>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Objeto com o estado atual dos filtros.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public DashboardFiltersState Filters { get; set; } = new();
+
+    /// <summary>
+    /// Lista de workspaces cadastrados no inquilino para seleção no filtro.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<WorkspaceDto>? Workspaces { get; set; }
+
+    /// <summary>
+    /// Evento disparado quando qualquer filtro é modificado pelo usuário.
+    /// </summary>
+    [Parameter]
+    public EventCallback<DashboardFiltersState> OnFiltersChanged { get; set; }
+
+    /// <summary>
+    /// Indica se o painel está aguardando retorno de requisição.
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private async Task OnWorkspaceChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        Filters.WorkspaceId = Guid.TryParse(val, out var parsed) && parsed != Guid.Empty ? parsed : null;
+        await OnFiltersChanged.InvokeAsync(Filters);
+    }
+
+    private async Task OnPlatformChanged(ChangeEventArgs e)
+    {
+        Filters.Platform = e.Value?.ToString() ?? "All";
+        await OnFiltersChanged.InvokeAsync(Filters);
+    }
+
+    private async Task OnPeriodChanged(ChangeEventArgs e)
+    {
+        Filters.Period = e.Value?.ToString() ?? "Last7Days";
+        await OnFiltersChanged.InvokeAsync(Filters);
+    }
+
+    private async Task OnDeviceChanged(ChangeEventArgs e)
+    {
+        Filters.Device = e.Value?.ToString() ?? "All";
+        await OnFiltersChanged.InvokeAsync(Filters);
+    }
+
+    private async Task TriggerRefresh()
+    {
+        await OnFiltersChanged.InvokeAsync(Filters);
+    }
+}

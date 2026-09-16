@@ -1,0 +1,130 @@
+.metric-card {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.5);
+}
+
+.metric-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.metric-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.metric-icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-spend {
+    background: rgba(37, 99, 235, 0.15);
+    color: #60A5FA;
+}
+
+.icon-cpc {
+    background: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
+}
+
+.icon-cpm {
+    background: rgba(168, 85, 247, 0.15);
+    color: #C084FC;
+}
+
+.icon-ctr {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38BDF8;
+}
+
+.icon-cpa {
+    background: rgba(244, 63, 94, 0.15);
+    color: #FB7185;
+}
+
+.icon-roas {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+}
+
+.metric-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: #F8FAFC;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.metric-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.metric-trend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    line-height: 1;
+    border: 1px solid transparent;
+}
+
+.trend-positive {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.trend-negative {
+    background: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.trend-neutral {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94A3B8;
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+.trend-icon {
+    flex-shrink: 0;
+}
+
+.metric-subtext {
+    font-size: 11px;
+    color: #64748B;
+    font-weight: 500;
+}

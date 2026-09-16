@@ -144,9 +144,9 @@ Centralização dos dados analíticos e inteligência de performance[cite: 3, 4]
   * Documentação viva consolidada em `docs/modules/analytics-blended-and-attribution.md` e ADR registrado em `docs/adr/0030-blended-metrics-and-multichannel-attribution.md`.
 
 ### Subfase 3.3: Dashboard Unificado no Blazor Server
-* **3.3.1 (TDD - bUnit):** Testes de renderização para cartões de métricas principais (Spend, CPC, CPM, CTR, CPA, ROAS) comparando com período anterior[cite: 3, 4].
-* **3.3.2:** Desenvolver painel executivo com gráficos interativos e filtros globais (Workspace, Canal, Período, Dispositivo)[cite: 4].
-* **3.3.3:** Exportação rápida de visões em formatos CSV e imagens de alta resolução.
+* [x] **3.3.1 (TDD - bUnit):** Testes de renderização para cartões de métricas principais (Spend, CPC, CPM, CTR, CPA, ROAS) comparando com período anterior (`MetricCardsGridTests.cs`, `MetricCard.razor`, `MetricCardsGrid.razor` com semântica de polaridade invertida para CPA e CPC).
+* [x] **3.3.2:** Desenvolver painel executivo com gráficos interativos e filtros globais (Workspace, Canal, Período, Dispositivo) (`DashboardFiltersBar.razor`, `PerformanceTrendChart.razor`, `PlatformShareDonutChart.razor`, `DevicePerformanceBarChart.razor`, `ExecutiveDashboardView.razor`).
+* [x] **3.3.3:** Exportação rápida de visões em formatos CSV e imagens de alta resolução (`DashboardExportActions.razor`, `dashboard-export.js` e testes em `DashboardExportActionsTests.cs`).
 
 ---
 

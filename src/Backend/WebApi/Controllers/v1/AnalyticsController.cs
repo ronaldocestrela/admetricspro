@@ -5,6 +5,8 @@ using Analytics.Application.Blended.Queries.CalculateBlendedMetrics;
 using Analytics.Application.Currencies.Dtos;
 using Analytics.Application.Currencies.Queries.ConvertCurrency;
 using Analytics.Application.Currencies.Queries.ConvertCurrencyBatch;
+using Analytics.Application.Dashboard.DTOs;
+using Analytics.Application.Dashboard.Queries.GetExecutiveDashboard;
 using Analytics.Application.Taxonomy.Dtos;
 using Analytics.Application.Taxonomy.Queries.BatchClassifyTaxonomy;
 using Analytics.Application.Taxonomy.Queries.ClassifyTaxonomy;
@@ -272,6 +274,48 @@ public sealed class AnalyticsController : ControllerBase
         var query = new CalculateAttributionQuery(journeys, modelType, request.ChannelCosts);
         var result = await _sender.Send(query, cancellationToken);
 
+        if (result.IsFailure)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Obtém o resumo executivo unificado cross-network (Spend, CPC, CPM, CTR, CPA, ROAS) com comparação
+    /// automática com o período anterior equivalente, série temporal diária e quebra por plataforma e dispositivo.
+    /// </summary>
+    /// <param name="workspaceId">Identificador opcional do workspace para filtragem de portfólio.</param>
+    /// <param name="startDateUtc">Data inicial UTC do período corrente (padrão: D-7).</param>
+    /// <param name="endDateUtc">Data final UTC do período corrente (padrão: agora).</param>
+    /// <param name="platform">Filtro opcional por canal (Meta, Google, TikTok, Bing).</param>
+    /// <param name="device">Filtro opcional por dispositivo (Mobile, Desktop, Tablet).</param>
+    /// <param name="currency">Moeda monetária padrão da visualização (padrão: BRL).</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resumo executivo consolidado com comparação temporal.</returns>
+    [HttpGet("dashboard/executive")]
+    [EndpointSummary("Obtém resumo executivo unificado cross-network com comparação temporal e deltas")]
+    [ProducesResponseType(typeof(Result<ExecutiveDashboardDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<ExecutiveDashboardDto>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<Result<ExecutiveDashboardDto>>> GetExecutiveDashboard(
+        [FromQuery] Guid? workspaceId = null,
+        [FromQuery] DateTime? startDateUtc = null,
+        [FromQuery] DateTime? endDateUtc = null,
+        [FromQuery] string? platform = null,
+        [FromQuery] string? device = null,
+        [FromQuery] string? currency = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new GetExecutiveDashboardQuery(
+            workspaceId,
+            startDateUtc,
+            endDateUtc,
+            platform,
+            device,
+            currency);
+
+        var result = await _sender.Send(query, cancellationToken);
         if (result.IsFailure)
         {
             return BadRequest(result);

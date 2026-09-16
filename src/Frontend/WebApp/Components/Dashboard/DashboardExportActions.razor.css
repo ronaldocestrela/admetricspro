@@ -1,0 +1,43 @@
+.dashboard-export-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(30, 41, 59, 0.8);
+    color: #E2E8F0;
+}
+
+.btn-export:hover:not(:disabled) {
+    background: rgba(51, 65, 85, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
+    transform: translateY(-1px);
+}
+
+.btn-export-csv:hover:not(:disabled) {
+    border-color: #10B981;
+    color: #34D399;
+}
+
+.btn-export-image:hover:not(:disabled) {
+    border-color: #38BDF8;
+    color: #38BDF8;
+}
+
+.btn-export:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}

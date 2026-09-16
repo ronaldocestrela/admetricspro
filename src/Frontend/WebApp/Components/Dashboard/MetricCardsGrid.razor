@@ -1,0 +1,63 @@
+@using Analytics.Application.Dashboard.DTOs
+@namespace WebApp.Components.Dashboard
+
+<section class="dashboard-metrics-section" aria-label="Métricas Consolidadas de Tráfego">
+    <div class="metrics-grid">
+        @if (IsLoading)
+        {
+            @for (int i = 0; i < 6; i++)
+            {
+                <div class="metric-card metric-card-skeleton" aria-hidden="true">
+                    <div class="skeleton-header shimmer"></div>
+                    <div class="skeleton-value shimmer"></div>
+                    <div class="skeleton-footer shimmer"></div>
+                </div>
+            }
+        }
+        else if (Metrics != null && Metrics.Count > 0)
+        {
+            @foreach (var metric in Metrics)
+            {
+                <MetricCard Metric="@metric" Currency="@Currency" />
+            }
+        }
+        else
+        {
+            @* Fallback para os 6 cartões padrão quando não houver métricas retornadas *@
+            @foreach (var defaultMetric in GetDefaultMetrics())
+            {
+                <MetricCard Metric="@defaultMetric" Currency="@Currency" />
+            }
+        }
+    </div>
+</section>
+
+@code {
+    /// <summary>
+    /// Lista de cartões de métricas analíticas.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<ExecutiveMetricItemDto>? Metrics { get; set; }
+
+    /// <summary>
+    /// Moeda de visualização (padrão: BRL).
+    /// </summary>
+    [Parameter]
+    public string Currency { get; set; } = "BRL";
+
+    /// <summary>
+    /// Indica se as métricas estão em processo de carregamento na Web API.
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private static IReadOnlyList<ExecutiveMetricItemDto> GetDefaultMetrics() => new List<ExecutiveMetricItemDto>
+    {
+        new("Spend", "Investimento Total", 0m, 0m, 0m, true, "Currency"),
+        new("Cpc", "Custo por Clique (CPC)", 0m, 0m, 0m, true, "Currency"),
+        new("Cpm", "Custo por Mil Impressões (CPM)", 0m, 0m, 0m, true, "Currency"),
+        new("Ctr", "Taxa de Cliques (CTR)", 0m, 0m, 0m, true, "Percentage"),
+        new("Cpa", "Custo por Aquisição (CPA)", 0m, 0m, 0m, true, "Currency"),
+        new("Roas", "Retorno sobre Ad Spend (ROAS)", 0m, 0m, 0m, true, "Multiplier")
+    };
+}

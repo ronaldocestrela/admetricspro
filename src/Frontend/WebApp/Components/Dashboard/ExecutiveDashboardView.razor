@@ -1,0 +1,134 @@
+@using Analytics.Application.Dashboard.DTOs
+@using Tenants.Application.Workspaces.DTOs
+@using WebApp.Models
+@using WebApp.Services
+@inject IAnalyticsDashboardClientService DashboardClientService
+@inject IWorkspaceClientService WorkspaceClientService
+@namespace WebApp.Components.Dashboard
+
+<div id="executive-dashboard-container" class="executive-dashboard-container">
+    <!-- Barra Superior: Filtros Globais e Ações de Exportação -->
+    <div class="dashboard-controls-section">
+        <DashboardFiltersBar Filters="@Filters"
+                             Workspaces="@Workspaces"
+                             OnFiltersChanged="HandleFiltersChanged"
+                             IsLoading="@IsLoading" />
+
+        <DashboardExportActions Dashboard="@DashboardData" Filters="@Filters" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="dashboard-alert-error" role="alert">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@ErrorMessage</span>
+        </div>
+    }
+
+    <!-- Grid dos 6 Cartões Principais (Spend, CPC, CPM, CTR, CPA, ROAS) -->
+    <MetricCardsGrid Metrics="@DashboardData?.Metrics"
+                     Currency="@(DashboardData?.Currency ?? "BRL")"
+                     IsLoading="@IsLoading" />
+
+    <!-- Seção de Gráficos Interativos -->
+    <div class="dashboard-charts-layout">
+        <!-- Gráfico de Tendência Diária (Spend vs Receita) -->
+        <div class="chart-col-trend">
+            <PerformanceTrendChart TimeSeries="@DashboardData?.TimeSeries"
+                                   Currency="@(DashboardData?.Currency ?? "BRL")" />
+        </div>
+
+        <!-- Gráfico Donut de Participação por Canal -->
+        <div class="chart-col-donut">
+            <PlatformShareDonutChart PlatformBreakdown="@DashboardData?.PlatformBreakdown"
+                                     Currency="@(DashboardData?.Currency ?? "BRL")" />
+        </div>
+    </div>
+
+    <!-- Gráfico de Desempenho por Dispositivo -->
+    <div class="dashboard-device-layout">
+        <DevicePerformanceBarChart DeviceBreakdown="@DashboardData?.DeviceBreakdown"
+                                   Currency="@(DashboardData?.Currency ?? "BRL")" />
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Estado dos filtros aplicados ao painel.
+    /// </summary>
+    public DashboardFiltersState Filters { get; } = new();
+
+    /// <summary>
+    /// Dados consolidados do dashboard executivo retornados da Web API.
+    /// </summary>
+    public ExecutiveDashboardDto? DashboardData { get; private set; }
+
+    /// <summary>
+    /// Lista de workspaces cadastrados no inquilino.
+    /// </summary>
+    public IReadOnlyList<WorkspaceDto>? Workspaces { get; private set; }
+
+    /// <summary>
+    /// Indica se uma operação assíncrona está em execução.
+    /// </summary>
+    public bool IsLoading { get; private set; }
+
+    /// <summary>
+    /// Mensagem de erro retornada pela API caso ocorra falha.
+    /// </summary>
+    public string? ErrorMessage { get; private set; }
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWorkspacesAsync();
+        await LoadDashboardAsync();
+    }
+
+    /// <summary>
+    /// Trata a alteração de qualquer filtro na interface.
+    /// </summary>
+    public async Task HandleFiltersChanged(DashboardFiltersState updatedFilters)
+    {
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadWorkspacesAsync()
+    {
+        var result = await WorkspaceClientService.GetWorkspacesAsync(true);
+        if (result.IsSuccess)
+        {
+            Workspaces = result.Value;
+        }
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        try
+        {
+            var result = await DashboardClientService.GetExecutiveDashboardAsync(Filters);
+            if (result.IsSuccess)
+            {
+                DashboardData = result.Value;
+            }
+            else
+            {
+                ErrorMessage = result.Error.Description;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Falha inesperada ao consultar métricas: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

@@ -15,6 +15,7 @@
     <ProjectReference Include="..\..\Backend\Modules\Master\Master.Application\Master.Application.csproj" />
     <ProjectReference Include="..\..\Backend\Modules\Tenants\Tenants.Application\Tenants.Application.csproj" />
     <ProjectReference Include="..\..\Backend\Modules\Integrations\Integrations.Application\Integrations.Application.csproj" />
+    <ProjectReference Include="..\..\Backend\Modules\Analytics\Analytics.Application\Analytics.Application.csproj" />
   </ItemGroup>
 
 </Project>

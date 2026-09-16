@@ -43,6 +43,10 @@ public static class AnalyticsInfrastructureServiceExtensions
         services.AddScoped<IBlendedMetricsCalculator, BlendedMetricsCalculator>();
         services.AddScoped<IAttributionCalculator, AttributionCalculator>();
 
+        // Motor do Dashboard Executivo
+        services.AddSingleton<Analytics.Domain.Dashboard.IExecutiveDashboardCalculator, Analytics.Domain.Dashboard.ExecutiveDashboardCalculator>();
+        services.AddScoped<Analytics.Domain.Dashboard.IExecutiveDashboardDataProvider, Analytics.Infrastructure.Dashboard.ExecutiveDashboardDataProvider>();
+
         return services;
     }
 }

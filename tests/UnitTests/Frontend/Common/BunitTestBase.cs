@@ -72,6 +72,11 @@ public abstract class BunitTestBase : BunitContext
     protected WebApp.Services.ITenantCnameClientService TenantCnameClientService { get; }
 
     /// <summary>
+    /// Mock do serviço de cliente de dashboard executivo analítico.
+    /// </summary>
+    protected WebApp.Services.IAnalyticsDashboardClientService AnalyticsDashboardClientService { get; }
+
+    /// <summary>
     /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com os provedores registrados.
     /// </summary>
     protected BunitTestBase()
@@ -88,6 +93,7 @@ public abstract class BunitTestBase : BunitContext
         TenantRbacClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantRbacClientService>();
         TenantBrandingClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantBrandingClientService>();
         TenantCnameClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantCnameClientService>();
+        AnalyticsDashboardClientService = NSubstitute.Substitute.For<WebApp.Services.IAnalyticsDashboardClientService>();
 
         TenantBrandingClientService.GetBrandingAsync(NSubstitute.Arg.Any<CancellationToken>())
             .Returns(BuildingBlocks.Domain.Primitives.Result<Tenants.Application.Branding.DTOs.TenantBrandingDetailsDto>.Success(
@@ -130,6 +136,41 @@ public abstract class BunitTestBase : BunitContext
         SquadClientService.GetSquadsAsync(NSubstitute.Arg.Any<bool?>(), NSubstitute.Arg.Any<CancellationToken>())
             .Returns(BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<Tenants.Application.Squads.DTOs.SquadSummaryDto>>.Success(Array.Empty<Tenants.Application.Squads.DTOs.SquadSummaryDto>()));
 
+        var defaultDashboard = new Analytics.Application.Dashboard.DTOs.ExecutiveDashboardDto(
+            DateTime.UtcNow.AddDays(-6),
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(-13),
+            DateTime.UtcNow.AddDays(-7),
+            "BRL",
+            new List<Analytics.Application.Dashboard.DTOs.ExecutiveMetricItemDto>
+            {
+                new("Spend", "Investimento Total", 1000m, 800m, 25.0m, true, "Currency"),
+                new("Cpc", "Custo por Clique (CPC)", 1.50m, 2.00m, -25.0m, true, "Currency"),
+                new("Cpm", "Custo por Mil Impressões (CPM)", 15.0m, 18.0m, -16.67m, true, "Currency"),
+                new("Ctr", "Taxa de Cliques (CTR)", 3.5m, 2.8m, 25.0m, true, "Percentage"),
+                new("Cpa", "Custo por Aquisição (CPA)", 20.0m, 25.0m, -20.0m, true, "Currency"),
+                new("Roas", "Retorno sobre Ad Spend (ROAS)", 4.0m, 3.2m, 25.0m, true, "Multiplier")
+            },
+            new List<Analytics.Application.Dashboard.DTOs.ExecutiveTimeSeriesPointDto>
+            {
+                new(DateTime.UtcNow.AddDays(-6), 100m, 400m, 4.0m, 80, 2500, 5)
+            },
+            new List<Analytics.Application.Dashboard.DTOs.PlatformShareDto>
+            {
+                new("Meta", 600m, 2400m, 4.0m, 60.0m, 400, 30),
+                new("Google", 400m, 1600m, 4.0m, 40.0m, 200, 20)
+            },
+            new List<Analytics.Application.Dashboard.DTOs.DeviceShareDto>
+            {
+                new("Mobile", 700m, 450, 35, 4.0m, 70.0m),
+                new("Desktop", 300m, 150, 15, 4.0m, 30.0m)
+            });
+
+        AnalyticsDashboardClientService.GetExecutiveDashboardAsync(
+            NSubstitute.Arg.Any<WebApp.Models.DashboardFiltersState>(),
+            NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<Analytics.Application.Dashboard.DTOs.ExecutiveDashboardDto>.Success(defaultDashboard));
+
         Services.AddSingleton<ITenantStateProvider>(TenantStateProvider);
         Services.AddSingleton<ITenantSessionStateProvider>(TenantSessionStateProvider);
         Services.AddSingleton<IImpersonationStateProvider>(ImpersonationStateProvider);
@@ -142,6 +183,7 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<WebApp.Services.ITenantRbacClientService>(TenantRbacClientService);
         Services.AddSingleton<WebApp.Services.ITenantBrandingClientService>(TenantBrandingClientService);
         Services.AddSingleton<WebApp.Services.ITenantCnameClientService>(TenantCnameClientService);
+        Services.AddSingleton<WebApp.Services.IAnalyticsDashboardClientService>(AnalyticsDashboardClientService);
     }
 
     /// <summary>
