@@ -183,9 +183,9 @@ Recursos avançados de produtividade e entrega de valor ao usuário final[cite: 
 * [x] **5.1.3 (Frontend Blazor):** Tabela matricial de edição rápida permitindo modificações de orçamentos com pré-visualização de impacto antes da confirmação[cite: 4].
 
 ### Subfase 5.2: Creative Hub & Detector de Fadiga de Criativos
-* **5.2.1 (TDD - Red):** Testes para cálculo de fadiga de anúncio: identificar criativos cujo CTR caiu progressivamente nos últimos 7 dias acompanhado de frequência elevada[cite: 3, 4].
-* **5.2.2 (TDD - Green):** Implementar agregação de métricas por ativo de mídia (imagem/vídeo) permitindo comparar a eficiência da mesma peça no Meta vs. TikTok[cite: 3, 4].
-* **5.2.3:** Emissão de aviso visual de substituição sugerida na tela do gestor[cite: 4].
+* [x] **5.2.1 (TDD - Red):** Testes para cálculo de fadiga de anúncio: identificar criativos cujo CTR caiu progressivamente nos últimos 7 dias acompanhado de frequência elevada (`AdFatigueDetectorTests.cs`).
+* [x] **5.2.2 (TDD - Green):** Implementar agregação de métricas por ativo de mídia (imagem/vídeo) permitindo comparar a eficiência da mesma peça no Meta vs. TikTok (`CreativeHubAggregator.cs`, `CreativeHubAggregatorTests.cs`).
+* [x] **5.2.3:** Emissão de aviso visual de substituição sugerida na tela do gestor (`CreativeFatigueAlertBanner.razor`, `CreativeFatigueBadge.razor`, `CreativeComparisonCard.razor`, `CreativeHubPage.razor`).
 
 ### Subfase 5.3: Copiloto de Otimização via IA (Auditor de Tráfego)
 * **5.3.1 (TDD - Red):** Testes para detector de anomalias:

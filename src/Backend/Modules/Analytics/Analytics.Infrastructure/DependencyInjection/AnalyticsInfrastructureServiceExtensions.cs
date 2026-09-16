@@ -47,6 +47,11 @@ public static class AnalyticsInfrastructureServiceExtensions
         services.AddSingleton<Analytics.Domain.Dashboard.IExecutiveDashboardCalculator, Analytics.Domain.Dashboard.ExecutiveDashboardCalculator>();
         services.AddScoped<Analytics.Domain.Dashboard.IExecutiveDashboardDataProvider, Analytics.Infrastructure.Dashboard.ExecutiveDashboardDataProvider>();
 
+        // Creative Hub & Detector de Fadiga
+        services.AddSingleton<Analytics.Domain.Creatives.IAdFatigueDetector, Analytics.Domain.Creatives.AdFatigueDetector>();
+        services.AddSingleton<Analytics.Domain.Creatives.ICreativeHubAggregator, Analytics.Domain.Creatives.CreativeHubAggregator>();
+        services.AddScoped<Analytics.Domain.Creatives.ICreativeHubDataProvider, Analytics.Infrastructure.Creatives.CreativeHubDataProvider>();
+
         return services;
     }
 }

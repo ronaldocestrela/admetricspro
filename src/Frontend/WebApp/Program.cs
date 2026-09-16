@@ -61,6 +61,8 @@ builder.Services.AddHttpClient<IBudgetPacingClientService, BudgetPacingClientSer
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<IBulkCampaignClientService, BulkCampaignClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<WebApp.Services.Creatives.ICreativeHubClientService, WebApp.Services.Creatives.CreativeHubClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 

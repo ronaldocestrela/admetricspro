@@ -1,0 +1,252 @@
+@page "/creatives"
+@rendermode InteractiveServer
+@using Analytics.Application.Creatives.DTOs
+@using WebApp.Components.Creatives
+@using WebApp.Services.Creatives
+@inject ICreativeHubClientService CreativeService
+
+<PageTitle>Creative Hub & Detector de Fadiga | AdMetricsPro</PageTitle>
+
+<div class="creative-hub-container container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1 d-flex align-items-center gap-2">
+                <i class="bi bi-images text-primary"></i>
+                Creative Hub & Detector de Fadiga
+            </h1>
+            <p class="text-muted small mb-0">
+                Monitore a degradação de CTR, saturação de audiência e compare a eficiência do mesmo anúncio no Meta Ads vs. TikTok Ads.
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" @onclick="LoadOverviewAsync" disabled="@_isLoading" id="btn-refresh-creatives">
+                <i class="bi bi-arrow-clockwise"></i>
+                Atualizar Dados
+            </button>
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-5" id="creative-loading-spinner">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted small">Carregando métricas e analisando fadiga dos criativos...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm mb-4" id="creative-error-alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            @_errorMessage
+        </div>
+    }
+    else if (_overview != null)
+    {
+        <!-- Cards de Estatísticas Rápidas -->
+        <div class="row g-3 mb-4" id="creative-kpi-cards">
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm border-0 rounded-3 p-3">
+                    <span class="text-muted small">Total de Criativos</span>
+                    <strong class="fs-4 text-dark" id="kpi-total-creatives">@_overview.TotalCreatives</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm border-0 rounded-3 p-3 border-start border-4 border-danger">
+                    <span class="text-danger small fw-bold">Fadiga Crítica</span>
+                    <strong class="fs-4 text-danger" id="kpi-fatigued-creatives">@_overview.FatiguedCreativesCount</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm border-0 rounded-3 p-3 border-start border-4 border-warning">
+                    <span class="text-warning small fw-bold">Alerta de Desgaste</span>
+                    <strong class="fs-4 text-warning" id="kpi-warning-creatives">@_overview.WarningCreativesCount</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm border-0 rounded-3 p-3 border-start border-4 border-success">
+                    <span class="text-success small fw-bold">Criativos Saudáveis</span>
+                    <strong class="fs-4 text-success" id="kpi-healthy-creatives">@_overview.HealthyCreativesCount</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Banners de Alerta Visual de Substituição Sugerida -->
+        @if (_overview.ReplacementsSuggestedCount > 0)
+        {
+            <div class="mb-4" id="section-replacement-alerts">
+                <h6 class="fw-bold text-danger mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                    Avisos de Substituição Recomendada (@_overview.ReplacementsSuggestedCount)
+                </h6>
+                @foreach (var creative in _overview.Creatives.Where(c => c.ReplacementSuggested))
+                {
+                    <CreativeFatigueAlertBanner Creative="@creative" OnReplaceClick="HandleReplaceCreative" />
+                }
+            </div>
+        }
+
+        <!-- Seção de Comparativo Cross-Platform (quando ativo selecionado) -->
+        @if (_selectedComparison != null)
+        {
+            <div class="mb-4" id="section-active-comparison">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-sliders me-1 text-primary"></i>
+                        Comparativo Cross-Platform Selecionado
+                    </h6>
+                    <button class="btn btn-sm btn-link text-muted" @onclick="() => _selectedComparison = null">Fechar Comparativo</button>
+                </div>
+                <CreativeComparisonCard Comparison="@_selectedComparison" />
+            </div>
+        }
+
+        <!-- Tabela de Criativos com Indicadores de Fadiga -->
+        <div class="card shadow-sm border-0 rounded-3 overflow-hidden" id="creative-list-card">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    Inventário de Criativos e Métricas de Fadiga (Últimos 7 Dias)
+                </h6>
+                <div class="d-flex gap-2">
+                    <input type="text" class="form-control form-control-sm" placeholder="Filtrar por nome ou plataforma..." @bind="_filterText" @bind:event="oninput" style="max-width: 250px;" id="input-filter-creatives" />
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="table-creatives">
+                    <thead class="table-light text-secondary small">
+                        <tr>
+                            <th>CRIATIVO</th>
+                            <th>CANAL</th>
+                            <th>STATUS DE SAÚDE</th>
+                            <th>VARIAÇÃO CTR</th>
+                            <th>FREQ. MÉDIA</th>
+                            <th>AÇÕES RECOMENDADAS</th>
+                            <th class="text-end">AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (FilteredCreatives.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    Nenhum criativo localizado com os filtros informados.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var creative in FilteredCreatives)
+                            {
+                                <tr id="row-creative-@creative.AdId">
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (!string.IsNullOrEmpty(creative.PreviewUrl))
+                                            {
+                                                <img src="@creative.PreviewUrl" alt="Thumb" class="rounded border" style="width: 40px; height: 40px; object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="rounded bg-light border d-flex align-items-center justify-content-center text-muted" style="width: 40px; height: 40px;">
+                                                    <i class="bi bi-image"></i>
+                                                </div>
+                                            }
+                                            <div>
+                                                <strong class="text-dark small d-block">@creative.AdName</strong>
+                                                <span class="text-muted font-monospace" style="font-size: 0.75rem;">@creative.AdId</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">@creative.Platform</span>
+                                    </td>
+                                    <td>
+                                        <CreativeFatigueBadge Status="@creative.Status" ReplacementSuggested="@creative.ReplacementSuggested" />
+                                    </td>
+                                    <td>
+                                        <span class="@(creative.CtrChangePercentage < 0 ? "text-danger fw-bold" : "text-success fw-bold")">
+                                            @(creative.CtrChangePercentage > 0 ? "+" : "")@creative.CtrChangePercentage.ToString("F1")%
+                                        </span>
+                                        <span class="text-muted small d-block">Atual: @creative.CurrentCtr.ToString("F2")%</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary-subtle text-secondary border">
+                                            @creative.AverageFrequency.ToString("F1")x
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="small text-truncate d-inline-block" style="max-width: 280px;" title="@creative.ActionRecommendation">
+                                            @creative.ActionRecommendation
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => LoadCrossPlatformComparisonAsync(creative)" id="btn-compare-@creative.AdId">
+                                            <i class="bi bi-arrow-left-right me-1"></i>
+                                            Comparar
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private CreativeHubOverviewDto? _overview;
+    private CrossPlatformComparisonDto? _selectedComparison;
+    private string _filterText = string.Empty;
+
+    [Parameter]
+    public Guid WorkspaceId { get; set; }
+
+    private Guid CurrentWorkspaceId => WorkspaceId != Guid.Empty ? WorkspaceId : Guid.Parse("48151623-4200-4000-8000-000000000001");
+
+    private List<CreativeFatigueDto> FilteredCreatives => _overview?.Creatives
+        .Where(c => string.IsNullOrWhiteSpace(_filterText) ||
+                    c.AdName.Contains(_filterText, StringComparison.OrdinalIgnoreCase) ||
+                    c.Platform.Contains(_filterText, StringComparison.OrdinalIgnoreCase))
+        .ToList() ?? new List<CreativeFatigueDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOverviewAsync();
+    }
+
+    private async Task LoadOverviewAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var result = await CreativeService.GetOverviewAsync(CurrentWorkspaceId);
+        if (result.IsSuccess)
+        {
+            _overview = result.Value;
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task LoadCrossPlatformComparisonAsync(CreativeFatigueDto creative)
+    {
+        var fingerprint = $"hash_{Math.Abs(creative.AdName.GetHashCode())}";
+        var result = await CreativeService.GetCrossPlatformComparisonAsync(CurrentWorkspaceId, fingerprint, creative.AdName, creative.PreviewUrl);
+        if (result.IsSuccess)
+        {
+            _selectedComparison = result.Value;
+        }
+    }
+
+    private void HandleReplaceCreative(CreativeFatigueDto creative)
+    {
+        // Feedback de substituição no painel
+    }
+}

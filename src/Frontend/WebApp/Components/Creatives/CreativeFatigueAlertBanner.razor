@@ -1,0 +1,58 @@
+@using Analytics.Application.Creatives.DTOs
+@namespace WebApp.Components.Creatives
+
+@if (Creative != null && (Creative.ReplacementSuggested || Creative.Status.Equals("Fatigued", StringComparison.OrdinalIgnoreCase)))
+{
+    <div class="alert alert-danger d-flex align-items-center justify-content-between p-3 mb-3 border-start border-4 border-danger shadow-sm rounded-3" role="alert" id="creative-fatigue-alert-@Creative.AdId">
+        <div class="d-flex align-items-start gap-3">
+            <div class="alert-icon-wrapper text-danger fs-3">
+                <i class="bi bi-shield-fill-exclamation"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <strong class="text-danger fw-bold fs-6">Aviso de Substituição Sugerida</strong>
+                    <span class="badge bg-danger text-white">Fadiga Detectada</span>
+                    <span class="text-muted small">| Anúncio: <strong>@Creative.AdName</strong> (@Creative.Platform)</span>
+                </div>
+                <p class="mb-1 text-dark small">
+                    @Creative.Reason
+                </p>
+                <div class="text-secondary small fst-italic">
+                    <i class="bi bi-lightbulb me-1 text-warning"></i>
+                    <strong>Recomendação:</strong> @Creative.ActionRecommendation
+                </div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-self-center ms-3">
+            @if (OnReplaceClick.HasDelegate)
+            {
+                <button type="button" class="btn btn-sm btn-danger d-flex align-items-center gap-1" id="btn-replace-creative-@Creative.AdId" @onclick="HandleReplaceClick">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Substituir Criativo
+                </button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Dados do criativo analisado para exibição do banner de alerta.
+    /// </summary>
+    [Parameter]
+    public CreativeFatigueDto? Creative { get; set; }
+
+    /// <summary>
+    /// Evento disparado quando o gestor clica para substituir o criativo.
+    /// </summary>
+    [Parameter]
+    public EventCallback<CreativeFatigueDto> OnReplaceClick { get; set; }
+
+    private async Task HandleReplaceClick()
+    {
+        if (Creative != null && OnReplaceClick.HasDelegate)
+        {
+            await OnReplaceClick.InvokeAsync(Creative);
+        }
+    }
+}

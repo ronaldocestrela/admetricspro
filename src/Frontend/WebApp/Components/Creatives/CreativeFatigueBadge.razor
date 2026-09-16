@@ -1,0 +1,53 @@
+@namespace WebApp.Components.Creatives
+
+<div class="creative-fatigue-badge-container d-inline-flex align-items-center gap-1">
+    <span class="badge @GetBadgeClass()" id="badge-status-@Status?.ToLowerInvariant()">
+        <i class="@GetIconClass() me-1"></i>
+        @GetStatusLabel()
+    </span>
+    @if (ReplacementSuggested)
+    {
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle" id="badge-replacement-suggested">
+            <i class="bi bi-arrow-repeat me-1"></i>
+            Troca Sugerida
+        </span>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Status classificado da fadiga do anúncio (Healthy, Warning, Fatigued).
+    /// </summary>
+    [Parameter]
+    public string Status { get; set; } = "Healthy";
+
+    /// <summary>
+    /// Sinalizador se a substituição da peça publicitária foi sugerida.
+    /// </summary>
+    [Parameter]
+    public bool ReplacementSuggested { get; set; }
+
+    private string GetBadgeClass() => Status?.ToLowerInvariant() switch
+    {
+        "fatigued" => "bg-danger text-white",
+        "warning" => "bg-warning text-dark",
+        "healthy" => "bg-success text-white",
+        _ => "bg-secondary text-white"
+    };
+
+    private string GetIconClass() => Status?.ToLowerInvariant() switch
+    {
+        "fatigued" => "bi bi-exclamation-triangle-fill",
+        "warning" => "bi bi-exclamation-circle-fill",
+        "healthy" => "bi bi-check-circle-fill",
+        _ => "bi bi-info-circle-fill"
+    };
+
+    private string GetStatusLabel() => Status?.ToLowerInvariant() switch
+    {
+        "fatigued" => "Fadiga Crítica",
+        "warning" => "Alerta de Desgaste",
+        "healthy" => "Saudável",
+        _ => "Em Análise"
+    };
+}

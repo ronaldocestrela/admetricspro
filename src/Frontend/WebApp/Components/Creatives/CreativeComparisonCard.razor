@@ -1,0 +1,120 @@
+@using Analytics.Application.Creatives.DTOs
+@namespace WebApp.Components.Creatives
+
+@if (Comparison != null)
+{
+    <div class="card shadow-sm border-0 rounded-3 mb-4 overflow-hidden" id="comparison-card-@Comparison.AssetFingerprint">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-intersect fs-5 text-primary"></i>
+                <div>
+                    <h6 class="mb-0 fw-bold">@Comparison.AssetName</h6>
+                    <span class="text-secondary small font-monospace">@Comparison.AssetFingerprint</span>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-secondary small">Canal mais eficiente:</span>
+                <span class="badge bg-success fs-6 py-1 px-2" id="badge-winning-platform">
+                    <i class="bi bi-trophy-fill me-1 text-warning"></i>
+                    @Comparison.WinningPlatform
+                </span>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="row g-4">
+                <!-- Coluna Meta Ads -->
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 @(Comparison.WinningPlatform == "MetaAds" ? "border-primary border-2 bg-primary-subtle bg-opacity-10" : "bg-light")">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0 text-primary">
+                                <i class="bi bi-facebook me-1"></i> Meta Ads
+                            </h6>
+                            @if (Comparison.WinningPlatform == "MetaAds")
+                            {
+                                <span class="badge bg-primary">Vencedor</span>
+                            }
+                        </div>
+                        <div class="row g-2 text-center">
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-white">
+                                    <span class="text-muted small d-block">CTR</span>
+                                    <strong class="fs-6" id="meta-ctr">@Comparison.MetaMetrics.Ctr.ToString("F2")%</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-white">
+                                    <span class="text-muted small d-block">CPA</span>
+                                    <strong class="fs-6 text-danger" id="meta-cpa">R$ @Comparison.MetaMetrics.Cpa.ToString("F2")</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-white">
+                                    <span class="text-muted small d-block">ROAS</span>
+                                    <strong class="fs-6 text-success" id="meta-roas">@Comparison.MetaMetrics.Roas.ToString("F2")x</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 small text-muted d-flex justify-content-between">
+                            <span>Gasto: <strong>R$ @Comparison.MetaMetrics.Spend.ToString("F2")</strong></span>
+                            <span>Conversões: <strong>@Comparison.MetaMetrics.Conversions.ToString("N0")</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna TikTok Ads -->
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 @(Comparison.WinningPlatform == "TikTokAds" ? "border-info border-2 bg-info-subtle bg-opacity-10" : "bg-light")">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0 text-dark">
+                                <i class="bi bi-tiktok me-1"></i> TikTok Ads
+                            </h6>
+                            @if (Comparison.WinningPlatform == "TikTokAds")
+                            {
+                                <span class="badge bg-dark">Vencedor</span>
+                            }
+                        </div>
+                        <div class="row g-2 text-center">
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-white">
+                                    <span class="text-muted small d-block">CTR</span>
+                                    <strong class="fs-6" id="tiktok-ctr">@Comparison.TikTokMetrics.Ctr.ToString("F2")%</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-white">
+                                    <span class="text-muted small d-block">CPA</span>
+                                    <strong class="fs-6 text-danger" id="tiktok-cpa">R$ @Comparison.TikTokMetrics.Cpa.ToString("F2")</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-white">
+                                    <span class="text-muted small d-block">ROAS</span>
+                                    <strong class="fs-6 text-success" id="tiktok-roas">@Comparison.TikTokMetrics.Roas.ToString("F2")x</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 small text-muted d-flex justify-content-between">
+                            <span>Gasto: <strong>R$ @Comparison.TikTokMetrics.Spend.ToString("F2")</strong></span>
+                            <span>Conversões: <strong>@Comparison.TikTokMetrics.Conversions.ToString("N0")</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo de Eficiência -->
+            <div class="mt-3 p-3 bg-light rounded-2 border d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle text-primary fs-5"></i>
+                <span class="small text-dark" id="comparison-efficiency-summary">@Comparison.EfficiencySummary</span>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Dados comparativos entre Meta Ads e TikTok Ads para o ativo de mídia.
+    /// </summary>
+    [Parameter]
+    public CrossPlatformComparisonDto? Comparison { get; set; }
+}
