@@ -122,10 +122,14 @@ Módulo responsável pela comunicação com os gerenciadores de anúncios extern
 Centralização dos dados analíticos e inteligência de performance[cite: 3, 4].
 
 ### Subfase 3.1: Normalização Cambial e Taxonomia Automatizada
-* **3.1.1 (TDD - Red):** Testes unitários para o serviço `ICurrencyConverter`: converter custos em USD, EUR e BRL pela cotação do dia para visualização padronizada[cite: 4].
-* **3.1.2 (TDD - Green):** Implementar serviço de conversão cambial com suporte a cache local.
-* **3.1.3:** Implementar classificador de taxonomia por tags que mapeia nomenclaturas (ex.: `[TOF]` ou `Topo` &rarr; Prospecção; `[BOF]` ou `Remarketing` &rarr; Fundo de Funil)[cite: 3, 4].
-* **3.1.4 (Documentação Viva):** Registrar convenções de taxonomia em `docs/modules/analytics-taxonomy.md`[cite: 4].
+* [x] **3.1.1 (TDD - Red):** Testes unitários para o serviço `ICurrencyConverter`: converter custos em USD, EUR e BRL pela cotação do dia para visualização padronizada (`CurrencyConverterTests.cs` com 6 testes cobrindo conversão direta, triangulação, mesma moeda, validação de negativos, moedas não suportadas e conversão em lote).
+* [x] **3.1.2 (TDD - Green):** Implementar serviço de conversão cambial com suporte a cache local (`CurrencyConverter.cs`, `CanonicalExchangeRateProvider.cs` com cache em dois níveis via `IMemoryCache` de 7 dias para histórico e 30 minutos para intraday).
+* [x] **3.1.3:** Implementar classificador de taxonomia por tags que mapeia nomenclaturas (ex.: `[TOF]` ou `Topo` &rarr; Prospecção; `[BOF]` ou `Remarketing` &rarr; Fundo de Funil; `[RET]` &rarr; Retenção; além de tipos de público e formatos) com normalização de delimitadores (`AutomatedTaxonomyClassifier.cs` e 19 testes em `AutomatedTaxonomyClassifierTests.cs`).
+* [x] **3.1.4 (Documentação Viva & API):**
+  * Criação do módulo autônomo `Analytics` (`Analytics.Domain`, `Analytics.Application`, `Analytics.Infrastructure`).
+  * Consultas e handlers CQRS (`ConvertCurrencyQuery`, `ConvertCurrencyBatchQuery`, `ClassifyTaxonomyQuery`, `BatchClassifyTaxonomyQuery` com testes em `AnalyticsQueriesTests.cs`).
+  * Endpoints RESTful Web API no `AnalyticsController.cs` (`/api/v1/analytics/*`) com documentação OpenAPI + Scalar UI e testes em `AnalyticsControllerTests.cs`.
+  * Registrar convenções de taxonomia em `docs/modules/analytics-taxonomy.md` e ADR registrado em `docs/adr/0029-currency-normalization-and-automated-taxonomy.md`.
 
 ### Subfase 3.2: Atribuição Multicanal, MER e Blended Metrics
 * **3.2.1 (TDD - Red):** Testes unitários para as fórmulas financeiras agregadas[cite: 3, 4]:
