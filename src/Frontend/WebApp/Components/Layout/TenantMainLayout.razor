@@ -3,6 +3,7 @@
 @namespace WebApp.Components.Layout
 @inject ITenantStateProvider TenantStateProvider
 @inject ITenantSessionStateProvider TenantSessionStateProvider
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 
 <HeadContent>
     <title>@(string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Name) ? "AdMetricsPro" : TenantStateProvider.CurrentTenant.Name)</title>
@@ -39,6 +40,39 @@
     {
         TenantStateProvider.OnTenantChanged += HandleStateChanged;
         TenantSessionStateProvider.OnSessionChanged += HandleStateChanged;
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleStateChanged;
+    }
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var needsStateHasChanged = false;
+
+            if (!TenantSessionStateProvider.IsAuthenticated)
+            {
+                var restoredSession = await TenantSessionStateProvider.RestoreSessionAsync();
+                if (restoredSession)
+                {
+                    needsStateHasChanged = true;
+                }
+            }
+
+            if (!WorkspaceContextStateProvider.HasWorkspaceSelected)
+            {
+                var restoredWs = await WorkspaceContextStateProvider.RestoreActiveWorkspaceAsync();
+                if (restoredWs.HasValue)
+                {
+                    needsStateHasChanged = true;
+                }
+            }
+
+            if (needsStateHasChanged)
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        }
     }
 
     private void ToggleSidebar()
@@ -61,5 +95,6 @@
     {
         TenantStateProvider.OnTenantChanged -= HandleStateChanged;
         TenantSessionStateProvider.OnSessionChanged -= HandleStateChanged;
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleStateChanged;
     }
 }

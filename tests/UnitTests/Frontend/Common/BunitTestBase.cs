@@ -27,6 +27,16 @@ public abstract class BunitTestBase : BunitContext
     protected ImpersonationStateProvider ImpersonationStateProvider { get; }
 
     /// <summary>
+    /// Instância do provedor de contexto de workspace utilizada nos testes.
+    /// </summary>
+    protected IWorkspaceContextStateProvider WorkspaceContextStateProvider { get; }
+
+    /// <summary>
+    /// Mock do serviço de storage do navegador.
+    /// </summary>
+    protected IBrowserStorageService BrowserStorageService { get; }
+
+    /// <summary>
     /// Mock do serviço de cliente de impersonation.
     /// </summary>
     protected WebApp.Services.IImpersonationClientService ImpersonationClientService { get; }
@@ -87,7 +97,9 @@ public abstract class BunitTestBase : BunitContext
     protected BunitTestBase()
     {
         TenantStateProvider = new TenantStateProvider();
-        TenantSessionStateProvider = new TenantSessionStateProvider(TenantStateProvider);
+        BrowserStorageService = NSubstitute.Substitute.For<IBrowserStorageService>();
+        TenantSessionStateProvider = new TenantSessionStateProvider(TenantStateProvider, BrowserStorageService);
+        WorkspaceContextStateProvider = new WorkspaceContextStateProvider(BrowserStorageService);
         ImpersonationStateProvider = new ImpersonationStateProvider();
         ImpersonationClientService = NSubstitute.Substitute.For<WebApp.Services.IImpersonationClientService>();
         TenantFtuxClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantFtuxClientService>();
@@ -183,6 +195,8 @@ public abstract class BunitTestBase : BunitContext
 
         Services.AddSingleton<ITenantStateProvider>(TenantStateProvider);
         Services.AddSingleton<ITenantSessionStateProvider>(TenantSessionStateProvider);
+        Services.AddSingleton<IBrowserStorageService>(BrowserStorageService);
+        Services.AddSingleton<IWorkspaceContextStateProvider>(WorkspaceContextStateProvider);
         Services.AddSingleton<IImpersonationStateProvider>(ImpersonationStateProvider);
         Services.AddSingleton<WebApp.Services.IImpersonationClientService>(ImpersonationClientService);
         Services.AddSingleton<WebApp.Services.ITenantFtuxClientService>(TenantFtuxClientService);

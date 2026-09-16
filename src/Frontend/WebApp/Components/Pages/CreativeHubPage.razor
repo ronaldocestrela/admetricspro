@@ -1,9 +1,15 @@
 @page "/creatives"
+@page "/workspaces/{WorkspaceId:guid}/creatives"
 @rendermode InteractiveServer
 @using Analytics.Application.Creatives.DTOs
 @using WebApp.Components.Creatives
+@using WebApp.Services
 @using WebApp.Services.Creatives
+@using WebApp.State
+@implements IDisposable
 @inject ICreativeHubClientService CreativeService
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@inject IWorkspaceClientService WorkspaceClientService
 
 <PageTitle>Creative Hub & Detector de Fadiga | AdMetricsPro</PageTitle>
 
@@ -204,7 +210,7 @@
     [Parameter]
     public Guid WorkspaceId { get; set; }
 
-    private Guid CurrentWorkspaceId => WorkspaceId != Guid.Empty ? WorkspaceId : Guid.Parse("48151623-4200-4000-8000-000000000001");
+    private Guid _activeWorkspaceId;
 
     private List<CreativeFatigueDto> FilteredCreatives => _overview?.Creatives
         .Where(c => string.IsNullOrWhiteSpace(_filterText) ||
@@ -214,15 +220,69 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadOverviewAsync();
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
+        await ResolveWorkspaceAndLoadAsync();
+    }
+
+    private async Task ResolveWorkspaceAndLoadAsync()
+    {
+        if (WorkspaceId != Guid.Empty)
+        {
+            _activeWorkspaceId = WorkspaceId;
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(WorkspaceId, null);
+        }
+        else if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue && WorkspaceContextStateProvider.CurrentWorkspaceId.Value != Guid.Empty)
+        {
+            _activeWorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId.Value;
+        }
+        else
+        {
+            try
+            {
+                var wsResult = await WorkspaceClientService.GetWorkspacesAsync();
+                if (wsResult.IsSuccess && wsResult.Value.Count > 0)
+                {
+                    _activeWorkspaceId = wsResult.Value[0].Id;
+                    await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(_activeWorkspaceId, wsResult.Value[0].Name);
+                }
+            }
+            catch
+            {
+                // Silencioso
+            }
+        }
+
+        if (_activeWorkspaceId != Guid.Empty)
+        {
+            await LoadOverviewAsync();
+        }
+    }
+
+    private void HandleWorkspaceChanged()
+    {
+        var contextId = WorkspaceContextStateProvider.CurrentWorkspaceId;
+        if (contextId.HasValue && contextId.Value != Guid.Empty && contextId.Value != _activeWorkspaceId)
+        {
+            _activeWorkspaceId = contextId.Value;
+            InvokeAsync(async () =>
+            {
+                await LoadOverviewAsync();
+                StateHasChanged();
+            });
+        }
     }
 
     private async Task LoadOverviewAsync()
     {
+        if (_activeWorkspaceId == Guid.Empty)
+        {
+            return;
+        }
+
         _isLoading = true;
         _errorMessage = null;
 
-        var result = await CreativeService.GetOverviewAsync(CurrentWorkspaceId);
+        var result = await CreativeService.GetOverviewAsync(_activeWorkspaceId);
         if (result.IsSuccess)
         {
             _overview = result.Value;
@@ -238,7 +298,7 @@
     private async Task LoadCrossPlatformComparisonAsync(CreativeFatigueDto creative)
     {
         var fingerprint = $"hash_{Math.Abs(creative.AdName.GetHashCode())}";
-        var result = await CreativeService.GetCrossPlatformComparisonAsync(CurrentWorkspaceId, fingerprint, creative.AdName, creative.PreviewUrl);
+        var result = await CreativeService.GetCrossPlatformComparisonAsync(_activeWorkspaceId, fingerprint, creative.AdName, creative.PreviewUrl);
         if (result.IsSuccess)
         {
             _selectedComparison = result.Value;
@@ -248,5 +308,11 @@
     private void HandleReplaceCreative(CreativeFatigueDto creative)
     {
         // Feedback de substituição no painel
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
     }
 }

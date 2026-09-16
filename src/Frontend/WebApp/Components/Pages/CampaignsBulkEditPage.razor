@@ -1,7 +1,10 @@
+@page "/campaigns/bulk"
 @page "/workspaces/{WorkspaceId:guid}/campaigns/bulk"
 @using global::Integrations.Application.Campaigns.DTOs
 @using WebApp.Components.Campaigns
 @using WebApp.Services
+@using WebApp.State
+@implements IDisposable
 
 <PageTitle>Operações em Massa — AdMetricsPro</PageTitle>
 
@@ -25,9 +28,16 @@
             <button type="button" class="btn-retry" @onclick="LoadCampaignsAsync">Tentar Novamente</button>
         </div>
     }
+    else if (_activeWorkspaceId == Guid.Empty)
+    {
+        <div class="info-banner">
+            <p>Nenhum cliente (workspace) selecionado. Por favor, selecione um cliente no cabeçalho ou cadastre um novo cliente.</p>
+            <a href="/workspaces" class="btn-primary">Ir para Clientes (Workspaces)</a>
+        </div>
+    }
     else
     {
-        <BulkCampaignEditorMatrix WorkspaceId="WorkspaceId" Campaigns="CampaignsList" OnBulkOperationCompleted="LoadCampaignsAsync" />
+        <BulkCampaignEditorMatrix WorkspaceId="_activeWorkspaceId" Campaigns="CampaignsList" OnBulkOperationCompleted="LoadCampaignsAsync" />
     }
 </div>
 
@@ -41,23 +51,90 @@
     [Inject]
     public IBulkCampaignClientService BulkClientService { get; set; } = default!;
 
+    [Inject]
+    public IWorkspaceContextStateProvider WorkspaceContextStateProvider { get; set; } = default!;
+
+    [Inject]
+    public IWorkspaceClientService WorkspaceClientService { get; set; } = default!;
+
+    private Guid _activeWorkspaceId;
+
     public bool IsLoading { get; set; } = true;
     public string? ErrorMessage { get; set; }
     public IReadOnlyList<CampaignHierarchyDto> CampaignsList { get; set; } = Array.Empty<CampaignHierarchyDto>();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCampaignsAsync();
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
+        await ResolveWorkspaceAndLoadAsync();
+    }
+
+    private async Task ResolveWorkspaceAndLoadAsync()
+    {
+        if (WorkspaceId != Guid.Empty)
+        {
+            _activeWorkspaceId = WorkspaceId;
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(WorkspaceId, null);
+        }
+        else if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue && WorkspaceContextStateProvider.CurrentWorkspaceId.Value != Guid.Empty)
+        {
+            _activeWorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId.Value;
+        }
+        else
+        {
+            try
+            {
+                var wsRes = await WorkspaceClientService.GetWorkspacesAsync();
+                if (wsRes.IsSuccess && wsRes.Value.Count > 0)
+                {
+                    _activeWorkspaceId = wsRes.Value[0].Id;
+                    await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(_activeWorkspaceId, wsRes.Value[0].Name);
+                }
+            }
+            catch
+            {
+                // Silencioso
+            }
+        }
+
+        if (_activeWorkspaceId != Guid.Empty)
+        {
+            await LoadCampaignsAsync();
+        }
+        else
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void HandleWorkspaceChanged()
+    {
+        var contextId = WorkspaceContextStateProvider.CurrentWorkspaceId;
+        if (contextId.HasValue && contextId.Value != Guid.Empty && contextId.Value != _activeWorkspaceId)
+        {
+            _activeWorkspaceId = contextId.Value;
+            InvokeAsync(async () =>
+            {
+                await LoadCampaignsAsync();
+                StateHasChanged();
+            });
+        }
     }
 
     public async Task LoadCampaignsAsync()
     {
+        if (_activeWorkspaceId == Guid.Empty)
+        {
+            IsLoading = false;
+            return;
+        }
+
         IsLoading = true;
         ErrorMessage = null;
 
         try
         {
-            var result = await BulkClientService.GetCampaignsForBulkAsync(WorkspaceId);
+            var result = await BulkClientService.GetCampaignsForBulkAsync(_activeWorkspaceId);
             if (result.IsSuccess)
             {
                 CampaignsList = result.Value;
@@ -75,5 +152,11 @@
         {
             IsLoading = false;
         }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
     }
 }

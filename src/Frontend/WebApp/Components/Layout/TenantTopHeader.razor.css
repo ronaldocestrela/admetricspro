@@ -146,9 +146,71 @@
     height: 1.125rem;
 }
 
+.header-workspace-wrapper {
+    margin-left: 1.25rem;
+}
+
+.header-workspace-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 0.25rem 0.625rem;
+    transition: all 0.2s ease;
+}
+
+.header-workspace-box:focus-within,
+.header-workspace-box:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+
+.workspace-box-icon {
+    width: 1rem;
+    height: 1rem;
+    color: #818cf8;
+    flex-shrink: 0;
+}
+
+.workspace-box-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.header-workspace-select {
+    background: transparent;
+    border: none;
+    color: #f1f5f9;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    max-width: 220px;
+}
+
+.header-workspace-select option {
+    background: #0f172a;
+    color: #f1f5f9;
+}
+
 @media (max-width: 1024px) {
     .tenant-mobile-toggle {
         display: block;
+    }
+}
+
+@media (max-width: 768px) {
+    .workspace-box-label {
+        display: none;
+    }
+    .header-workspace-select {
+        max-width: 140px;
     }
 }
 
@@ -158,5 +220,8 @@
     }
     .tenant-brand-title {
         display: none;
+    }
+    .header-workspace-wrapper {
+        margin-left: 0.5rem;
     }
 }

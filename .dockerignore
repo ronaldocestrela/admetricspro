@@ -1,0 +1,15 @@
+**/.git
+**/.github
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/.idea
+**/TestResults
+**/docker-compose*.override.yml
+.env
+.env.local
+*.user
+*.suo
+*.log
+docs/

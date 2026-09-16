@@ -3,9 +3,12 @@
 @using Tenants.Application.Workspaces.DTOs
 @using WebApp.Models
 @using WebApp.Services
+@using WebApp.State
+@implements IDisposable
 @inject IAnalyticsDashboardClientService DashboardClientService
 @inject IWorkspaceClientService WorkspaceClientService
 @inject IBudgetPacingClientService PacingClientService
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 @namespace WebApp.Components.Dashboard
 
 <div id="executive-dashboard-container" class="executive-dashboard-container">
@@ -98,6 +101,13 @@
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleContextWorkspaceChanged;
+
+        if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue)
+        {
+            Filters.WorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId;
+        }
+
         await LoadWorkspacesAsync();
         await LoadDashboardAsync();
     }
@@ -107,7 +117,22 @@
     /// </summary>
     public async Task HandleFiltersChanged(DashboardFiltersState updatedFilters)
     {
+        var wsName = Workspaces?.FirstOrDefault(w => w.Id == updatedFilters.WorkspaceId)?.Name;
+        await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(updatedFilters.WorkspaceId, wsName);
         await LoadDashboardAsync();
+    }
+
+    private void HandleContextWorkspaceChanged()
+    {
+        if (Filters.WorkspaceId != WorkspaceContextStateProvider.CurrentWorkspaceId)
+        {
+            Filters.WorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId;
+            InvokeAsync(async () =>
+            {
+                await LoadDashboardAsync();
+                StateHasChanged();
+            });
+        }
     }
 
     private async Task LoadWorkspacesAsync()
@@ -160,5 +185,11 @@
         {
             IsLoading = false;
         }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleContextWorkspaceChanged;
     }
 }

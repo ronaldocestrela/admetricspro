@@ -186,8 +186,22 @@ Em conformidade estrita com o princípio de separação de camadas do `AGENTS.md
    - Tabela responsiva com dados sanitizados, badge de documento fiscal, segmento e orçamento formatado.
    - Alternância de status operacional com liberação imediata de cota ou aviso de bloqueio caso a cota do plano esteja esgotada.
    - Modal unificado para cadastro e edição com validações pré-submissão e feedback visual de progresso.
-2. **Modal Rápido FTUX (`WorkspaceQuickModal.razor`):**
-   - Cadastro ágil do primeiro cliente durante o checklist de ativação da agência.
+### 4.3 Gestão Reativa de Contexto de Cliente (`IWorkspaceContextStateProvider`)
+
+Para solucionar a perda de contexto de inquilino e de cliente gerenciado durante o recarregamento de página (<kbd>F5</kbd>), o frontend implementa o padrão de estado contextual persistente:
+
+1. **`IBrowserStorageService` & `ProtectedBrowserStorageService`:**
+   - Encapsula o `ProtectedLocalStorage` do ASP.NET Core Blazor Server com criptografia em repouso dos tokens e dados de sessão.
+   - Fornece resiliência contra exceções durante a fase de pré-renderização estática do servidor.
+2. **`IWorkspaceContextStateProvider` (`WorkspaceContextStateProvider`):**
+   - Mantém o Workspace/Cliente em foco no circuito SignalR (`CurrentWorkspaceId`, `CurrentWorkspaceName`, `HasWorkspaceSelected`).
+   - Persiste a seleção do cliente sob a chave `admetricspro_active_workspace`.
+   - Restaura automaticamente o cliente selecionado na inicialização pós-F5 (`RestoreActiveWorkspaceAsync`).
+   - Dispara o evento reativo `OnWorkspaceChanged`, permitindo que múltiplos componentes (Dashboard, TopHeader, Copiloto, Creative Hub, Bulk Edit e Relatórios) atualizem sua visualização em tempo real.
+3. **Seletor Global de Cliente no Topo (`TenantTopHeader.razor`):**
+   - Disponibiliza um dropdown unificado no cabeçalho com a lista de clientes da agência e a opção de visão consolidada ("Todos os Clientes").
+4. **Sincronização Bidirecional de Rotas e Telas:**
+   - Telas com rotas genéricas (`/copilot`, `/creatives`, `/campaigns/bulk`, `/reports`) utilizam o workspace ativo provido pelo contexto caso nenhum seja explicitamente passado no parâmetro de rota.
 
 ---
 
@@ -199,7 +213,9 @@ A integridade do módulo é garantida por testes automatizados em três níveis:
    - `WorkspaceTests.cs`: Validações de fábrica estática `Workspace.Create`, algoritmos oficiais de CPF/CNPJ (módulo 11), sanitização, invariantes de atualização (`UpdateDetails`), ativação e desativação.
    - `CreateWorkspaceCommandHandlerTests.cs`: Validação de cotas por plano via `MediatR` desacoplado, conflito de documento duplicado, persistência transacional com `IUnitOfWork`.
    - `UpdateWorkspaceCommandHandlerTests.cs` e `ToggleWorkspaceStatusCommandHandlerTests.cs`: Fluxos de alteração e controle de cota na reativação.
-2. **Testes Unitários de Interface (`UnitTests.Frontend`):**
+2. **Testes Unitários de Interface & Estado (`UnitTests.Frontend`):**
+   - `WorkspaceContextStateProviderTests.cs`: Validação de seleção ativa, notificação de eventos, persistência e restauração tolerante a pré-renderização.
+   - `TenantSessionStateProviderTests.cs`: Persistência segura da sessão e restauração do TenantId pós-recarregamento.
    - `WorkspacesPageTests.cs`: Testes bUnit cobrindo renderização com branding institucional, empty state, cards de resumo, tabela de clientes e interações de alternância de status.
 3. **Testes de Aceitação de API (`AcceptanceTests`):**
    - `WorkspacesEndpointTests.cs`: Testes de integração via `WebApplicationFactory` cobrindo os códigos HTTP `201 Created`, `400 BadRequest` (cota excedida), `200 OK` e `404 NotFound`.

@@ -1,8 +1,14 @@
+@page "/reports"
 @page "/workspaces/{WorkspaceId:guid}/reports"
 @using Analytics.Application.Reports.DTOs
 @using BuildingBlocks.Domain.Reports
+@using WebApp.Services
 @using WebApp.Services.Reports
+@using WebApp.State
+@implements IDisposable
 @inject IReportClientService ReportClientService
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@inject IWorkspaceClientService WorkspaceClientService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
@@ -292,6 +298,9 @@
 @code {
     [Parameter] public Guid WorkspaceId { get; set; }
 
+    private Guid _activeWorkspaceId;
+    public Guid ActiveWorkspaceId => WorkspaceId != Guid.Empty ? WorkspaceId : _activeWorkspaceId;
+
     public string ActiveTab { get; set; } = "schedules";
     public bool IsLoading { get; set; } = true;
     public string? SuccessMessage { get; set; }
@@ -308,21 +317,80 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
+        await ResolveWorkspaceAndLoadAsync();
+    }
+
+    private async Task ResolveWorkspaceAndLoadAsync()
+    {
+        if (WorkspaceId != Guid.Empty)
+        {
+            _activeWorkspaceId = WorkspaceId;
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(WorkspaceId, null);
+        }
+        else if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue && WorkspaceContextStateProvider.CurrentWorkspaceId.Value != Guid.Empty)
+        {
+            _activeWorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId.Value;
+        }
+        else
+        {
+            try
+            {
+                var wsRes = await WorkspaceClientService.GetWorkspacesAsync();
+                if (wsRes.IsSuccess && wsRes.Value.Count > 0)
+                {
+                    _activeWorkspaceId = wsRes.Value[0].Id;
+                    await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(_activeWorkspaceId, wsRes.Value[0].Name);
+                }
+            }
+            catch
+            {
+                // Silencioso
+            }
+        }
+
+        if (ActiveWorkspaceId != Guid.Empty)
+        {
+            await LoadDataAsync();
+        }
+        else
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void HandleWorkspaceChanged()
+    {
+        var contextId = WorkspaceContextStateProvider.CurrentWorkspaceId;
+        if (contextId.HasValue && contextId.Value != Guid.Empty && contextId.Value != _activeWorkspaceId)
+        {
+            _activeWorkspaceId = contextId.Value;
+            InvokeAsync(async () =>
+            {
+                await LoadDataAsync();
+                StateHasChanged();
+            });
+        }
     }
 
     private async Task LoadDataAsync()
     {
+        if (ActiveWorkspaceId == Guid.Empty)
+        {
+            IsLoading = false;
+            return;
+        }
+
         IsLoading = true;
         try
         {
-            var schedulesResult = await ReportClientService.GetSchedulesAsync(WorkspaceId);
+            var schedulesResult = await ReportClientService.GetSchedulesAsync(ActiveWorkspaceId);
             if (schedulesResult.IsSuccess)
             {
                 Schedules = schedulesResult.Value.ToList();
             }
 
-            var historyResult = await ReportClientService.GetHistoryAsync(WorkspaceId);
+            var historyResult = await ReportClientService.GetHistoryAsync(ActiveWorkspaceId);
             if (historyResult.IsSuccess)
             {
                 History = historyResult.Value.ToList();
@@ -362,7 +430,7 @@
     {
         if (_editingScheduleId.HasValue)
         {
-            var updateResult = await ReportClientService.UpdateScheduleAsync(WorkspaceId, _editingScheduleId.Value, request);
+            var updateResult = await ReportClientService.UpdateScheduleAsync(ActiveWorkspaceId, _editingScheduleId.Value, request);
             if (updateResult.IsSuccess)
             {
                 SuccessMessage = "Agendamento atualizado com sucesso!";
@@ -376,7 +444,7 @@
         }
         else
         {
-            var createResult = await ReportClientService.CreateScheduleAsync(WorkspaceId, request);
+            var createResult = await ReportClientService.CreateScheduleAsync(ActiveWorkspaceId, request);
             if (createResult.IsSuccess)
             {
                 SuccessMessage = "Agendamento de relatório criado com sucesso!";
@@ -392,7 +460,7 @@
 
     private async Task DeleteScheduleAsync(Guid scheduleId)
     {
-        var result = await ReportClientService.DeleteScheduleAsync(WorkspaceId, scheduleId);
+        var result = await ReportClientService.DeleteScheduleAsync(ActiveWorkspaceId, scheduleId);
         if (result.IsSuccess)
         {
             SuccessMessage = "Agendamento excluído com sucesso.";
@@ -406,7 +474,7 @@
 
     private async Task DispatchScheduleAsync(Guid scheduleId)
     {
-        var result = await ReportClientService.DispatchScheduleAsync(WorkspaceId, scheduleId);
+        var result = await ReportClientService.DispatchScheduleAsync(ActiveWorkspaceId, scheduleId);
         if (result.IsSuccess)
         {
             SuccessMessage = "Disparo de teste executado com sucesso! Verifique os canais de entrega.";
@@ -420,7 +488,7 @@
 
     private async Task GenerateReportAsync(GenerateReportRequest request)
     {
-        var result = await ReportClientService.GenerateReportAsync(WorkspaceId, request);
+        var result = await ReportClientService.GenerateReportAsync(ActiveWorkspaceId, request);
         if (result.IsSuccess)
         {
             SuccessMessage = "Relatório executivo compilado com sucesso! Acesse a aba de Histórico.";
@@ -450,7 +518,7 @@
 
     private async Task DownloadPdfAsync(Guid reportId)
     {
-        var result = await ReportClientService.DownloadPdfAsync(WorkspaceId, reportId);
+        var result = await ReportClientService.DownloadPdfAsync(ActiveWorkspaceId, reportId);
         if (result.IsSuccess)
         {
             var base64 = Convert.ToBase64String(result.Value);
@@ -461,6 +529,12 @@
         {
             ErrorMessage = result.Error.Description;
         }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
     }
 
     private static string FormatFrequency(ReportScheduleDto s)

@@ -5,10 +5,11 @@
 @using WebApp.Components.Copilot
 @using WebApp.Services
 @using WebApp.Services.Copilot
-@using WebApp.State
+@implements IDisposable
 @inject ITrafficCopilotClientService CopilotService
 @inject IWorkspaceClientService WorkspaceService
 @inject ITenantStateProvider TenantStateProvider
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 @inject NavigationManager Navigation
 
 <div class="copilot-page-container">
@@ -223,20 +224,43 @@
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleContextWorkspaceChanged;
+
         await LoadWorkspacesAsync();
 
         if (WorkspaceId != Guid.Empty)
         {
             SelectedWorkspaceId = WorkspaceId;
+            var wsName = Workspaces?.FirstOrDefault(w => w.Id == WorkspaceId)?.Name;
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(WorkspaceId, wsName);
+        }
+        else if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue && WorkspaceContextStateProvider.CurrentWorkspaceId.Value != Guid.Empty)
+        {
+            SelectedWorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId.Value;
         }
         else if (Workspaces != null && Workspaces.Count > 0)
         {
             SelectedWorkspaceId = Workspaces[0].Id;
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(SelectedWorkspaceId, Workspaces[0].Name);
         }
 
         if (SelectedWorkspaceId != Guid.Empty)
         {
             await LoadDiagnosticAsync();
+        }
+    }
+
+    private void HandleContextWorkspaceChanged()
+    {
+        var contextWsId = WorkspaceContextStateProvider.CurrentWorkspaceId;
+        if (contextWsId.HasValue && contextWsId.Value != Guid.Empty && contextWsId.Value != SelectedWorkspaceId)
+        {
+            SelectedWorkspaceId = contextWsId.Value;
+            InvokeAsync(async () =>
+            {
+                await LoadDiagnosticAsync();
+                StateHasChanged();
+            });
         }
     }
 
@@ -261,6 +285,8 @@
         if (Guid.TryParse(e.Value?.ToString(), out var wsId))
         {
             SelectedWorkspaceId = wsId;
+            var wsName = Workspaces?.FirstOrDefault(w => w.Id == wsId)?.Name;
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(wsId, wsName);
             await LoadDiagnosticAsync();
         }
     }
@@ -309,5 +335,11 @@
         {
             throw new InvalidOperationException(result.Error.Description);
         }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleContextWorkspaceChanged;
     }
 }

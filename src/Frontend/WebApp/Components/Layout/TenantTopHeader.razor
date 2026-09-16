@@ -1,6 +1,10 @@
 @namespace WebApp.Components.Layout
+@using Tenants.Application.Workspaces.DTOs
+@implements IDisposable
 @inject ITenantStateProvider TenantStateProvider
 @inject ITenantSessionStateProvider TenantSessionStateProvider
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@inject IWorkspaceClientService WorkspaceClientService
 @inject NavigationManager NavigationManager
 
 <header class="tenant-top-header">
@@ -28,6 +32,29 @@
             }
             <span class="tenant-brand-title">@TenantStateProvider.CurrentTenant.Name</span>
         </a>
+
+        <!-- Seletor Global de Cliente Ativo (Workspace) -->
+        <div class="header-workspace-wrapper" title="Cliente / Workspace Ativo">
+            <div class="header-workspace-box">
+                <svg class="workspace-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span class="workspace-box-label">Cliente:</span>
+                <select class="header-workspace-select" 
+                        id="header-workspace-select"
+                        value="@(WorkspaceContextStateProvider.CurrentWorkspaceId?.ToString() ?? "")"
+                        @onchange="HandleWorkspaceChanged">
+                    <option value="">Todos os Clientes (Consolidado)</option>
+                    @if (_workspaces != null)
+                    {
+                        @foreach (var ws in _workspaces)
+                        {
+                            <option value="@ws.Id">@ws.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
     </div>
 
     <div class="header-right-section">
@@ -60,6 +87,59 @@
 
     private string UserName => TenantSessionStateProvider.CurrentSession?.FullName ?? "Gestor";
     private string UserRole => TenantSessionStateProvider.CurrentSession?.Role ?? "Gestor";
+    private IReadOnlyList<WorkspaceDto>? _workspaces;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleStateChanged;
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
+        await LoadWorkspacesAsync();
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadWorkspacesAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadWorkspacesAsync()
+    {
+        try
+        {
+            var res = await WorkspaceClientService.GetWorkspacesAsync(true);
+            if (res.IsSuccess)
+            {
+                _workspaces = res.Value;
+            }
+        }
+        catch
+        {
+            // Silencioso se chamada for feita antes de autenticar
+        }
+    }
+
+    private async Task HandleWorkspaceChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (Guid.TryParse(val, out var wsId) && wsId != Guid.Empty)
+        {
+            var ws = _workspaces?.FirstOrDefault(w => w.Id == wsId);
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(wsId, ws?.Name);
+        }
+        else
+        {
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(null, null);
+        }
+    }
 
     private async Task HandleToggle()
     {
@@ -72,6 +152,7 @@
     private void HandleLogout()
     {
         TenantSessionStateProvider.ClearSession();
+        WorkspaceContextStateProvider.Clear();
         NavigationManager.NavigateTo("/login");
     }
 
@@ -93,5 +174,12 @@
             return parts[0].Length >= 2 ? parts[0][..2].ToUpperInvariant() : parts[0].ToUpperInvariant();
 
         return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleStateChanged;
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
     }
 }

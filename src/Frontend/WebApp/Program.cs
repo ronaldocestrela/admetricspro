@@ -14,9 +14,12 @@ builder.Configuration.AddDotEnvFile();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Provedores de estado de sessão do circuito Blazor
+// Provedores de estado de sessão e armazenamento seguro do circuito Blazor
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage>();
+builder.Services.AddScoped<IBrowserStorageService, ProtectedBrowserStorageService>();
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
 builder.Services.AddScoped<ITenantSessionStateProvider, TenantSessionStateProvider>();
+builder.Services.AddScoped<IWorkspaceContextStateProvider, WorkspaceContextStateProvider>();
 builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
 
 // Registro dos clientes HTTP fortemente tipados consumindo exclusivamente a Web API

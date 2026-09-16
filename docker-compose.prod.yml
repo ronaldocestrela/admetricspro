@@ -1,95 +1,95 @@
-name: admetricspro
+name: admetricspro-production
 
 services:
   # ----------------------------------------------------------------------------
-  # 1. SQL SERVER 2022
+  # 1. BANCO DE DADOS CENTRAL & TENANTS (SQL SERVER 2022)
   # ----------------------------------------------------------------------------
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: admetricspro-sqlserver
-    restart: unless-stopped
+    container_name: admetricspro-prod-sqlserver
+    restart: always
     user: root
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd!}
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
     ports:
-      - "${MSSQL_PORT:-1433}:1433"
+      - "127.0.0.1:${MSSQL_PORT:-1433}:1433"
     volumes:
-      - sqlserver-data-admetricspro:/var/opt/mssql/data
+      - sqlserver-prod-data:/var/opt/mssql/data
     networks:
-      - admetricspro-net
+      - admetricspro-prod-net
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd!}\" -C -Q \"SELECT 1\" || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 15s
+      start_period: 20s
 
   # ----------------------------------------------------------------------------
-  # 2. WEB API (.NET 10)
+  # 2. BACKEND WEB API (ASP.NET CORE .NET 10 - MONÓLITO MODULAR)
   # ----------------------------------------------------------------------------
   webapi:
     build:
       context: .
       dockerfile: src/Backend/WebApi/Dockerfile
-    container_name: admetricspro-webapi
-    restart: unless-stopped
+    container_name: admetricspro-prod-webapi
+    restart: always
     depends_on:
       sqlserver:
         condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
       - DOTNET_RUNNING_IN_CONTAINER=true
-      - ConnectionStrings__MasterDb=Server=sqlserver,1433;Database=MasterCatalog;User Id=sa;Password=${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd!};TrustServerCertificate=True;
+      - ConnectionStrings__MasterDb=${ConnectionStrings__MasterDb:-Server=sqlserver,1433;Database=MasterCatalog;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;}
       - DatabaseMigrations__ApplyMasterMigrationsOnStartup=${DatabaseMigrations__ApplyMasterMigrationsOnStartup:-true}
-      - ImpersonationJwt__SecretKey=${ImpersonationJwt__SecretKey:-AdMetricsPro_Secret_Key_For_Tenant_Impersonation_Security_2026_Minimum_32_Chars!}
+      - ImpersonationJwt__SecretKey=${ImpersonationJwt__SecretKey}
       - ImpersonationJwt__Issuer=${ImpersonationJwt__Issuer:-AdMetricsPro.Master}
       - ImpersonationJwt__Audience=${ImpersonationJwt__Audience:-AdMetricsPro.Tenants}
       - ImpersonationJwt__DefaultExpirationMinutes=${ImpersonationJwt__DefaultExpirationMinutes:-30}
-      - TenantJwt__SecretKey=${TenantJwt__SecretKey:-tenants_super_secret_jwt_key_minimum_32_characters_admetricspro_2026!}
+      - TenantJwt__SecretKey=${TenantJwt__SecretKey}
       - TenantJwt__Issuer=${TenantJwt__Issuer:-AdMetricsPro.Tenants}
       - TenantJwt__Audience=${TenantJwt__Audience:-AdMetricsPro.ClientApp}
       - TenantJwt__ExpirationMinutes=${TenantJwt__ExpirationMinutes:-480}
       - SuperAdmin__Email=${SuperAdmin__Email:-admin@admetricspro.internal}
-      - SuperAdmin__Password=${SuperAdmin__Password:-SuperAdmin@Secure2026!}
-      - SuperAdmin__FullName=${SuperAdmin__FullName:-Administrador Global AdMetricsPro}
-      - SuperAdmin__Role=SuperAdmin
-      - Dunning__IsEnabled=true
-      - Dunning__GracePeriodDays=5
-      - Dunning__RetryIntervalHours=24
+      - SuperAdmin__Password=${SuperAdmin__Password}
+      - SuperAdmin__FullName=${SuperAdmin__FullName:-Administrador AdMetricsPro}
+      - SuperAdmin__Role=${SuperAdmin__Role:-SuperAdmin}
+      - Dunning__IsEnabled=${Dunning__IsEnabled:-true}
+      - Dunning__GracePeriodDays=${Dunning__GracePeriodDays:-5}
+      - Dunning__RetryIntervalHours=${Dunning__RetryIntervalHours:-24}
     ports:
-      - "${WEBAPI_PORT:-7001}:8080"
+      - "127.0.0.1:${WEBAPI_PORT:-7001}:8080"
     networks:
-      - admetricspro-net
+      - admetricspro-prod-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
 
   # ----------------------------------------------------------------------------
-  # 3. WEBAPP - PORTAL DO CLIENTE (BLAZOR SERVER .NET 10)
+  # 3. FRONTEND DO CLIENTE / TENANTS (BLAZOR SERVER .NET 10)
   # ----------------------------------------------------------------------------
   webapp:
     build:
       context: .
       dockerfile: src/Frontend/WebApp/Dockerfile
-    container_name: admetricspro-webapp
-    restart: unless-stopped
+    container_name: admetricspro-prod-webapp
+    restart: always
     depends_on:
       webapi:
         condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
       - DOTNET_RUNNING_IN_CONTAINER=true
       - Api__BaseUrl=http://webapi:8080
     ports:
-      - "${WEBAPP_PORT:-7000}:8080"
+      - "127.0.0.1:${WEBAPP_PORT:-7000}:8080"
     networks:
-      - admetricspro-net
+      - admetricspro-prod-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 20s
@@ -98,26 +98,26 @@ services:
       start_period: 15s
 
   # ----------------------------------------------------------------------------
-  # 4. BACKOFFICE - PORTAL SUPERADMIN (BLAZOR SERVER .NET 10)
+  # 4. FRONTEND ADMINISTRATIVO SUPERADMIN (BLAZOR SERVER .NET 10)
   # ----------------------------------------------------------------------------
   backoffice:
     build:
       context: .
       dockerfile: src/Frontend/BackofficeApp/Dockerfile
-    container_name: admetricspro-backoffice
-    restart: unless-stopped
+    container_name: admetricspro-prod-backoffice
+    restart: always
     depends_on:
       webapi:
         condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
       - DOTNET_RUNNING_IN_CONTAINER=true
       - Api__BaseUrl=http://webapi:8080
     ports:
-      - "${BACKOFFICE_PORT:-7002}:8080"
+      - "127.0.0.1:${BACKOFFICE_PORT:-7002}:8080"
     networks:
-      - admetricspro-net
+      - admetricspro-prod-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 20s
@@ -125,9 +125,34 @@ services:
       retries: 5
       start_period: 15s
 
+  # ----------------------------------------------------------------------------
+  # 5. REVERSE PROXY NGINX (ROTEAMENTO, WEBSOCKETS BLAZOR & SSL TERMINATION)
+  # ----------------------------------------------------------------------------
+  proxy:
+    image: nginx:alpine
+    container_name: admetricspro-prod-proxy
+    restart: always
+    depends_on:
+      - webapp
+      - backoffice
+      - webapi
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - admetricspro-prod-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
-  sqlserver-data-admetricspro:
+  sqlserver-prod-data:
+    driver: local
 
 networks:
-  admetricspro-net:
+  admetricspro-prod-net:
     driver: bridge

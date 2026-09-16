@@ -28,6 +28,7 @@ builder.Services.Configure<RouteOptions>(options =>
 });
 builder.Services.AddControllers();
 builder.Services.AddOpenApiDocumentation();
+builder.Services.AddHealthChecks();
 
 var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb")
     ?? "Server=localhost;Database=MasterCatalog;Trusted_Connection=True;TrustServerCertificate=True;";
@@ -80,6 +81,7 @@ app.UseOpenApiAndScalar();
 app.UseTenantResolution();
 app.UseRouting();
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();
