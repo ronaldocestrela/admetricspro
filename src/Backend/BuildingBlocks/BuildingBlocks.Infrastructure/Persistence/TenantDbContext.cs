@@ -97,6 +97,21 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<BuildingBlocks.Domain.Automations.SafetyGuards.SafetyGuardIncident> SafetyGuardIncidents => Set<BuildingBlocks.Domain.Automations.SafetyGuards.SafetyGuardIncident>();
 
+    /// <summary>
+    /// Gets the operational white-label report schedules table configuring automated periodic dispatches.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Reports.ReportSchedule> ReportSchedules => Set<BuildingBlocks.Domain.Reports.ReportSchedule>();
+
+    /// <summary>
+    /// Gets the operational compiled generated reports table with secure share tokens and PDF binaries.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Reports.GeneratedReport> GeneratedReports => Set<BuildingBlocks.Domain.Reports.GeneratedReport>();
+
+    /// <summary>
+    /// Gets the operational immutable report dispatch logs table auditing email and WhatsApp deliveries.
+    /// </summary>
+    public DbSet<BuildingBlocks.Domain.Reports.ReportDispatchLog> ReportDispatchLogs => Set<BuildingBlocks.Domain.Reports.ReportDispatchLog>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -124,5 +139,8 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CampaignMetricEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new AutomationRuleEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new SafetyGuardIncidentEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new ReportScheduleEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new GeneratedReportEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new ReportDispatchLogEntityTypeConfiguration());
     }
 }

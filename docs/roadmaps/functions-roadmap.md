@@ -195,8 +195,8 @@ Recursos avançados de produtividade e entrega de valor ao usuário final[cite: 
 * [x] **5.3.3 (Documentação Viva):** Registrar catálogo de diagnósticos e contratos de retorno em `docs/modules/ai-copilot.md` e ADR `docs/adr/0036-ai-copilot-traffic-auditor-and-anomaly-detection.md`.
 
 ### Subfase 5.4: Gerador de Relatórios Automatizados em White-Label
-* **5.4.1 (TDD - Red):** Testes unitários validando templates de relatórios:
-  * Renderização com logotipo, cores institucionais e dados de rodapé da agência (sem referência à plataforma)[cite: 6].
-  * Suporte a links web interativos com expiração e relatórios em formato PDF[cite: 3, 4].
-* **5.4.2 (TDD - Green):** Implementar agendador de disparo automático (diário, semanal, mensal) via E-mail e WhatsApp[cite: 4].
-* **5.4.3 (Documentação Viva):** Criar `docs/modules/reports-generator.md` documentando parâmetros de agendamento e exemplos de relatórios gerados[cite: 4].
+* [x] **5.4.1 (TDD - Red & Green):** Testes unitários e implementação de templates de relatórios:
+  * Renderização com logotipo, cores institucionais e dados de rodapé da agência (sem referência à plataforma).
+  * Suporte a links web interativos com expiração segura por token e relatórios executivos em formato PDF vetorial.
+* [x] **5.4.2:** Implementar agendador de disparo automático (diário, semanal, mensal) com orquestração multi-canal via E-mail corporativo e WhatsApp.
+* [x] **5.4.3 (Documentação Viva):** Criar `docs/modules/reports-generator.md` documentando parâmetros de agendamento e exemplos de relatórios gerados, e ADR `docs/adr/0037-white-label-automated-reports-generator.md`.

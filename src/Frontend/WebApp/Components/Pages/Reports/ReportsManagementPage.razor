@@ -1,0 +1,504 @@
+@page "/workspaces/{WorkspaceId:guid}/reports"
+@using Analytics.Application.Reports.DTOs
+@using BuildingBlocks.Domain.Reports
+@using WebApp.Services.Reports
+@inject IReportClientService ReportClientService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1 rounded">White-Label 100%</span>
+                <span class="text-muted small">Multi-canal: E-mail &amp; WhatsApp</span>
+            </div>
+            <h3 class="fw-bold text-dark mb-0">Relatórios Executivos White-Label</h3>
+            <p class="text-muted small mb-0">Disparos periódicos e links web interativos com a identidade visual exclusiva da sua agência.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" id="btn-generate-report" class="btn btn-outline-primary" @onclick="OpenGenerateModal">
+                <i class="bi bi-magic me-1"></i> Gerar Sob Demanda
+            </button>
+            <button type="button" id="btn-new-schedule" class="btn btn-primary" @onclick="OpenCreateScheduleModal">
+                <i class="bi bi-plus-lg me-1"></i> Novo Agendamento
+            </button>
+        </div>
+    </div>
+
+    <!-- Feedback Alerts -->
+    @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show py-2 px-3 small rounded-3 mb-4 shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> @SuccessMessage
+            <button type="button" class="btn-close py-2" @onclick="() => SuccessMessage = null"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show py-2 px-3 small rounded-3 mb-4 shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @ErrorMessage
+            <button type="button" class="btn-close py-2" @onclick="() => ErrorMessage = null"></button>
+        </div>
+    }
+
+    <!-- Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3">
+        <li class="nav-item">
+            <button class="nav-link @(ActiveTab == "schedules" ? "active" : "")" id="btn-tab-schedules" @onclick='() => ActiveTab = "schedules"'>
+                <i class="bi bi-calendar2-check me-1"></i> Agendamentos Automáticos
+                <span class="badge bg-secondary ms-1">@Schedules.Count</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(ActiveTab == "history" ? "active" : "")" id="btn-tab-history" @onclick='() => ActiveTab = "history"'>
+                <i class="bi bi-clock-history me-1"></i> Histórico de Relatórios
+                <span class="badge bg-secondary ms-1">@History.Count</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab 1: Agendamentos -->
+    @if (ActiveTab == "schedules")
+    {
+        @if (IsLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="text-muted small mt-2">Carregando agendamentos...</div>
+            </div>
+        }
+        else if (Schedules.Count == 0)
+        {
+            <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-light">
+                <div class="mb-3">
+                    <i class="bi bi-calendar2-x text-muted" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="fw-bold">Nenhum agendamento de relatório configurado</h5>
+                <p class="text-muted small mx-auto" style="max-width: 460px;">
+                    Crie sua primeira regra de envio para disparar automaticamente relatórios executivos aos clientes via E-mail e WhatsApp.
+                </p>
+                <div>
+                    <button class="btn btn-primary" @onclick="OpenCreateScheduleModal">
+                        <i class="bi bi-plus-lg me-1"></i> Criar Primeiro Agendamento
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="table-report-schedules">
+                        <thead class="table-light small text-muted">
+                            <tr>
+                                <th>Nome do Relatório</th>
+                                <th>Frequência</th>
+                                <th>Canais</th>
+                                <th>Destinatários</th>
+                                <th>Próximo Disparo</th>
+                                <th>Status</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var schedule in Schedules)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold text-dark">@schedule.Name</div>
+                                        <div class="text-muted small">@FormatRangeType(schedule.DateRangeType)</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            @FormatFrequency(schedule)
+                                        </span>
+                                        <div class="text-muted small">@schedule.ScheduledTimeUtc.ToString(@"hh\:mm") UTC</div>
+                                    </td>
+                                    <td>
+                                        @if (schedule.DeliveryChannels == ReportDeliveryChannel.Both)
+                                        {
+                                            <span class="badge bg-primary me-1"><i class="bi bi-envelope"></i> E-mail</span>
+                                            <span class="badge bg-success"><i class="bi bi-whatsapp"></i> WhatsApp</span>
+                                        }
+                                        else if (schedule.DeliveryChannels == ReportDeliveryChannel.Email)
+                                        {
+                                            <span class="badge bg-primary"><i class="bi bi-envelope"></i> E-mail</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success"><i class="bi bi-whatsapp"></i> WhatsApp</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="fw-semibold">@schedule.Recipients.Count</span>
+                                        <span class="text-muted small">contatos</span>
+                                    </td>
+                                    <td>
+                                        @if (schedule.NextExecutionAtUtc.HasValue)
+                                        {
+                                            <div class="small fw-semibold text-dark">@schedule.NextExecutionAtUtc.Value.ToString("dd/MM/yyyy")</div>
+                                            <div class="text-muted small">às @schedule.NextExecutionAtUtc.Value.ToString("HH:mm") UTC</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (schedule.IsActive)
+                                        {
+                                            <span class="badge bg-success bg-opacity-10 text-success">Ativo</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary">Pausado</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" id="btn-trigger-schedule-@schedule.Id" title="Disparar Teste Imediato" @onclick="() => DispatchScheduleAsync(schedule.Id)">
+                                                <i class="bi bi-send"></i>
+                                            </button>
+                                            <button class="btn btn-outline-secondary" title="Editar" @onclick="() => OpenEditScheduleModal(schedule)">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" title="Excluir" @onclick="() => DeleteScheduleAsync(schedule.Id)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- Tab 2: Histórico de Relatórios -->
+    @if (ActiveTab == "history")
+    {
+        @if (IsLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="text-muted small mt-2">Carregando histórico de relatórios...</div>
+            </div>
+        }
+        else if (History.Count == 0)
+        {
+            <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-light">
+                <div class="mb-3">
+                    <i class="bi bi-file-earmark-x text-muted" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="fw-bold">Nenhum relatório emitido ainda</h5>
+                <p class="text-muted small mx-auto" style="max-width: 460px;">
+                    Os relatórios gerados pelos agendamentos ou sob demanda aparecerão aqui com link público e download em PDF.
+                </p>
+                <div>
+                    <button class="btn btn-primary" @onclick="OpenGenerateModal">
+                        <i class="bi bi-magic me-1"></i> Gerar Relatório Agora
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="table-generated-reports">
+                        <thead class="table-light small text-muted">
+                            <tr>
+                                <th>Relatório</th>
+                                <th>Período Analisado</th>
+                                <th>Emitido em</th>
+                                <th>Status</th>
+                                <th>Link Web Interativo</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var report in History)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold text-dark">@report.Title</div>
+                                        <div class="text-muted small">ID: @report.Id.ToString()[..8]</div>
+                                    </td>
+                                    <td class="small">
+                                        @report.DateRangeStartUtc.ToString("dd/MM/yyyy") a @report.DateRangeEndUtc.ToString("dd/MM/yyyy")
+                                    </td>
+                                    <td class="small text-muted">
+                                        @report.GeneratedAtUtc.ToString("dd/MM/yyyy HH:mm") UTC
+                                    </td>
+                                    <td>
+                                        @if (report.Status == ReportStatus.Dispatched)
+                                        {
+                                            <span class="badge bg-success bg-opacity-10 text-success">Despachado</span>
+                                        }
+                                        else if (report.Status == ReportStatus.Generated)
+                                        {
+                                            <span class="badge bg-primary bg-opacity-10 text-primary">Gerado</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger bg-opacity-10 text-danger">Falha</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <a href="/reports/shared/@report.ShareToken" id="btn-view-report-@report.Id" target="_blank" class="text-decoration-none small fw-semibold text-primary">
+                                                <i class="bi bi-box-arrow-up-right me-1"></i> Acessar Relatório
+                                            </a>
+                                            <button class="btn btn-sm btn-link p-0 text-muted" id="btn-copy-token-@report.Id" title="Copiar Link" @onclick="() => CopyShareLink(report.ShareToken)">
+                                                <i class="bi bi-clipboard"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        @if (report.HasPdf)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary" id="btn-download-pdf-@report.Id" title="Baixar PDF" @onclick="() => DownloadPdfAsync(report.Id)">
+                                                <i class="bi bi-download me-1"></i> Baixar PDF
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- Modais -->
+    <ReportScheduleModal @ref="_scheduleModal"
+                         IsOpen="_isScheduleModalOpen"
+                         EditingScheduleId="_editingScheduleId"
+                         OnClose="() => _isScheduleModalOpen = false"
+                         OnSave="SaveScheduleAsync" />
+
+    <GenerateReportModal @ref="_generateModal"
+                         IsOpen="_isGenerateModalOpen"
+                         OnClose="() => _isGenerateModalOpen = false"
+                         OnGenerate="GenerateReportAsync" />
+</div>
+
+@code {
+    [Parameter] public Guid WorkspaceId { get; set; }
+
+    public string ActiveTab { get; set; } = "schedules";
+    public bool IsLoading { get; set; } = true;
+    public string? SuccessMessage { get; set; }
+    public string? ErrorMessage { get; set; }
+
+    public List<ReportScheduleDto> Schedules { get; set; } = new();
+    public List<GeneratedReportSummaryDto> History { get; set; } = new();
+
+    private ReportScheduleModal? _scheduleModal;
+    private GenerateReportModal? _generateModal;
+    private bool _isScheduleModalOpen;
+    private bool _isGenerateModalOpen;
+    private Guid? _editingScheduleId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var schedulesResult = await ReportClientService.GetSchedulesAsync(WorkspaceId);
+            if (schedulesResult.IsSuccess)
+            {
+                Schedules = schedulesResult.Value.ToList();
+            }
+
+            var historyResult = await ReportClientService.GetHistoryAsync(WorkspaceId);
+            if (historyResult.IsSuccess)
+            {
+                History = historyResult.Value.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erro ao carregar dados: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void OpenCreateScheduleModal()
+    {
+        _editingScheduleId = null;
+        _isScheduleModalOpen = true;
+        _scheduleModal?.OpenForCreate();
+    }
+
+    private void OpenEditScheduleModal(ReportScheduleDto schedule)
+    {
+        _editingScheduleId = schedule.Id;
+        _isScheduleModalOpen = true;
+        _scheduleModal?.OpenForEdit(schedule);
+    }
+
+    private void OpenGenerateModal()
+    {
+        _isGenerateModalOpen = true;
+        _generateModal?.Open();
+    }
+
+    private async Task SaveScheduleAsync(CreateReportScheduleRequest request)
+    {
+        if (_editingScheduleId.HasValue)
+        {
+            var updateResult = await ReportClientService.UpdateScheduleAsync(WorkspaceId, _editingScheduleId.Value, request);
+            if (updateResult.IsSuccess)
+            {
+                SuccessMessage = "Agendamento atualizado com sucesso!";
+                _isScheduleModalOpen = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ErrorMessage = updateResult.Error.Description;
+            }
+        }
+        else
+        {
+            var createResult = await ReportClientService.CreateScheduleAsync(WorkspaceId, request);
+            if (createResult.IsSuccess)
+            {
+                SuccessMessage = "Agendamento de relatório criado com sucesso!";
+                _isScheduleModalOpen = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                ErrorMessage = createResult.Error.Description;
+            }
+        }
+    }
+
+    private async Task DeleteScheduleAsync(Guid scheduleId)
+    {
+        var result = await ReportClientService.DeleteScheduleAsync(WorkspaceId, scheduleId);
+        if (result.IsSuccess)
+        {
+            SuccessMessage = "Agendamento excluído com sucesso.";
+            await LoadDataAsync();
+        }
+        else
+        {
+            ErrorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task DispatchScheduleAsync(Guid scheduleId)
+    {
+        var result = await ReportClientService.DispatchScheduleAsync(WorkspaceId, scheduleId);
+        if (result.IsSuccess)
+        {
+            SuccessMessage = "Disparo de teste executado com sucesso! Verifique os canais de entrega.";
+            await LoadDataAsync();
+        }
+        else
+        {
+            ErrorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task GenerateReportAsync(GenerateReportRequest request)
+    {
+        var result = await ReportClientService.GenerateReportAsync(WorkspaceId, request);
+        if (result.IsSuccess)
+        {
+            SuccessMessage = "Relatório executivo compilado com sucesso! Acesse a aba de Histórico.";
+            _isGenerateModalOpen = false;
+            ActiveTab = "history";
+            await LoadDataAsync();
+        }
+        else
+        {
+            ErrorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task CopyShareLink(string shareToken)
+    {
+        var url = $"{NavigationManager.BaseUri}reports/shared/{shareToken}";
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            SuccessMessage = "Link interativo copiado para a área de transferência!";
+        }
+        catch
+        {
+            SuccessMessage = $"Link: {url}";
+        }
+    }
+
+    private async Task DownloadPdfAsync(Guid reportId)
+    {
+        var result = await ReportClientService.DownloadPdfAsync(WorkspaceId, reportId);
+        if (result.IsSuccess)
+        {
+            var base64 = Convert.ToBase64String(result.Value);
+            var url = $"data:application/pdf;base64,{base64}";
+            await JSRuntime.InvokeVoidAsync("open", url, "_blank");
+        }
+        else
+        {
+            ErrorMessage = result.Error.Description;
+        }
+    }
+
+    private static string FormatFrequency(ReportScheduleDto s)
+    {
+        return s.Frequency switch
+        {
+            ReportFrequency.Daily => "Diário",
+            ReportFrequency.Weekly => $"Semanal ({TranslateDayOfWeek(s.DayOfWeek)})",
+            ReportFrequency.Monthly => $"Mensal (Dia {s.DayOfMonth})",
+            _ => "Personalizado"
+        };
+    }
+
+    private static string TranslateDayOfWeek(DayOfWeek? day)
+    {
+        return day switch
+        {
+            DayOfWeek.Monday => "Seg",
+            DayOfWeek.Tuesday => "Ter",
+            DayOfWeek.Wednesday => "Qua",
+            DayOfWeek.Thursday => "Qui",
+            DayOfWeek.Friday => "Sex",
+            DayOfWeek.Saturday => "Sáb",
+            DayOfWeek.Sunday => "Dom",
+            _ => "Seg"
+        };
+    }
+
+    private static string FormatRangeType(ReportDateRangeType r)
+    {
+        return r switch
+        {
+            ReportDateRangeType.Last7Days => "Últimos 7 dias",
+            ReportDateRangeType.Last14Days => "Últimos 14 dias",
+            ReportDateRangeType.Last30Days => "Últimos 30 dias",
+            ReportDateRangeType.PreviousMonth => "Mês Anterior Fechado",
+            ReportDateRangeType.MonthToDate => "Mês Atual",
+            _ => "Personalizado"
+        };
+    }
+}

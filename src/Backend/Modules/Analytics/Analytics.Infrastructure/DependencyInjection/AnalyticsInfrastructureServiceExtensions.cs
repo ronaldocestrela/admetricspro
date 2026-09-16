@@ -58,6 +58,13 @@ public static class AnalyticsInfrastructureServiceExtensions
         services.AddSingleton<Analytics.Domain.Copilot.ITrafficAuditorSynthesizer, Analytics.Domain.Copilot.TrafficAuditorSynthesizer>();
         services.AddScoped<Analytics.Domain.Copilot.ICopilotDataProvider, Analytics.Infrastructure.Copilot.CopilotDataProvider>();
 
+        // Gerador de Relatórios Automatizados em White-Label
+        services.AddScoped<Analytics.Domain.Reports.IReportRepository, Analytics.Infrastructure.Reports.ReportRepository>();
+        services.AddScoped<Analytics.Domain.Reports.IReportDataProvider, Analytics.Infrastructure.Reports.ReportDataProvider>();
+        services.AddSingleton<Analytics.Domain.Reports.IReportPdfGenerator, Analytics.Infrastructure.Reports.WhiteLabelReportPdfGenerator>();
+        services.AddScoped<Analytics.Domain.Reports.IReportDispatchService, Analytics.Infrastructure.Reports.ReportDispatchService>();
+        services.AddHttpClient<Analytics.Domain.Reports.IReportWhatsAppNotifier, Analytics.Infrastructure.Reports.ReportWhatsAppNotifier>();
+
         return services;
     }
 }
