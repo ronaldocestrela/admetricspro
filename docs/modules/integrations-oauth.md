@@ -185,3 +185,20 @@ O Hub de Integrações OAuth2 unifica a experiência de conexão com plataformas
 | `BingAds.OAuthFailed` | Falha no Microsoft Identity Platform | `400 BadRequest` |
 | `TikTokAds.OAuthFailed` | Falha de autenticação na TikTok Marketing API | `400 BadRequest` |
 | `RevokeOAuth.NotFound` | Conexão para a plataforma informada não encontrada no workspace | `404 NotFound` |
+
+---
+
+## 6. Interface Frontend Blazor Server (`/integrations`)
+
+A gestão operacional das conexões OAuth2 é exposta no frontend através da página `IntegrationsPage.razor`:
+
+- **Rotas:** `/integrations` e `/workspaces/{WorkspaceId:guid}/integrations`
+- **Seletor de Workspace:** Permite alternar o contexto de cliente, sincronizado com `IWorkspaceContextStateProvider`.
+- **KPIs em Tempo Real:** Total de canais oficiais suportados (4), conexões ativas, tokens em risco (< 72h) e canais desconectados.
+- **Ações Disponíveis por Plataforma:**
+  - *Conectar OAuth:* Invoca `IOAuthIntegrationsClientService.InitiateOAuthFlowAsync` e redireciona o usuário à tela de consentimento da rede.
+  - *Modo Demonstração (FTUX):* Invoca `ITenantFtuxClientService.ConnectDemoAccountAsync` para gerar contas simuladas com dados analíticos instantâneos.
+  - *Desconectar / Revogar:* Modal de confirmação que remove a credencial do Token Vault via `RevokeConnectionAsync`.
+- **Ação Global de Renovação Preventiva:** Botão no cabeçalho disparando `RefreshExpiringTokensAsync` com feedback de contagem de tokens atualizados.
+- **Garantia de Não Acesso a Banco:** Consumo exclusivo via Web API através do cliente fortemente tipado `IOAuthIntegrationsClientService`.
+

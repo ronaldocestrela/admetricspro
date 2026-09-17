@@ -54,4 +54,18 @@ public interface IOAuthIntegrationsClientService
         Guid workspaceId,
         string platform,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Processa o retorno da plataforma de anúncios após consentimento do usuário, troca o código por tokens e cifra no Token Vault.
+    /// </summary>
+    /// <param name="code">Código de autorização retornado pela plataforma.</param>
+    /// <param name="state">Estado assinado anti-CSRF retornado pela plataforma.</param>
+    /// <param name="redirectUri">URI de retorno utilizada na inicialização do fluxo.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Dados e status da conexão persistida no Token Vault.</returns>
+    Task<Result<OAuthConnectionStatusDto>> HandleOAuthCallbackAsync(
+        string code,
+        string state,
+        string redirectUri,
+        CancellationToken cancellationToken = default);
 }

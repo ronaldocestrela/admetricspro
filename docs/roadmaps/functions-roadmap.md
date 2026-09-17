@@ -111,9 +111,10 @@ Módulo responsável pela comunicação com os gerenciadores de anúncios extern
   * Documentação viva em `docs/modules/integrations-campaign-metrics-ingestion.md` e ADR registrado em `docs/adr/0028-campaign-metrics-ingestion-and-idempotency.md`.
 * [x] **2.3.3 (Frontend Blazor & bUnit):**
   * Cliente HTTP fortemente tipado `OAuthIntegrationsClientService.cs` (`IOAuthIntegrationsClientService.cs`) consumindo exclusivamente a Web API (`/api/v1/integrations/oauth/*`), com zero acesso direto a banco de dados (conforme Regra 9 do `AGENTS.md`).
-  * Painel de conexões `ConnectionStatusList.razor` com estilos isolados `ConnectionStatusList.razor.css`, sinalizando saúde das contas de anúncio (Ativo, Expirando, Revogado) e botão de ação para renovação imediata de credenciais.
-  * Integrado à tela `WorkspacesPage.razor` com modal/seção de gerenciamento de integrações.
-  * Testes de componente com **bUnit** em `ConnectionStatusListTests.cs` (4/4 testes passando com sucesso).
+  * Hub Central de Integrações na rota `/integrations` (`IntegrationsPage.razor` e `IntegrationsPage.razor.css`) com seletor de workspaces, KPIs de saúde em tempo real, cards dedicados para Meta Ads, Google Ads, TikTok Ads e Microsoft Advertising (Bing), iniciação OAuth2, ativação de dados demo (FTUX), revogação com modal de confirmação e renovação preventiva em lote.
+  * Painel de conexões `ConnectionStatusList.razor` com estilos isolados `ConnectionStatusList.razor.css`, integrado à tela `WorkspacesPage.razor` com modal/seção de gerenciamento de integrações.
+  * Testes de componente com **bUnit** em `ConnectionStatusListTests.cs` (4/4 testes) e `IntegrationsPageTests.cs` (7/7 testes passando com sucesso).
+
 
 ---
 

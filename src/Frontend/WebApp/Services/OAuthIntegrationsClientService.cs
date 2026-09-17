@@ -132,6 +132,36 @@ public sealed class OAuthIntegrationsClientService : IOAuthIntegrationsClientSer
         }
     }
 
+    /// <inheritdoc />
+    public async Task<Result<OAuthConnectionStatusDto>> HandleOAuthCallbackAsync(
+        string code,
+        string state,
+        string redirectUri,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var encodedCode = Uri.EscapeDataString(code);
+            var encodedState = Uri.EscapeDataString(state);
+            var encodedRedirect = Uri.EscapeDataString(redirectUri);
+            var uri = $"/api/v1/integrations/oauth/callback?code={encodedCode}&state={encodedState}&redirectUri={encodedRedirect}";
+
+            using var message = new HttpRequestMessage(HttpMethod.Get, uri);
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<OAuthConnectionStatusDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<OAuthConnectionStatusDto>.Failure(
+                Error.Failure("OAuth.InvalidResponse", "Resposta inválida ao processar callback de autorização."));
+        }
+        catch (Exception ex)
+        {
+            return Result<OAuthConnectionStatusDto>.Failure(
+                Error.Failure("OAuth.NetworkError", $"Erro de comunicação ao processar callback: {ex.Message}"));
+        }
+    }
+
     private void AppendTenantHeader(HttpRequestMessage request)
     {
         var tenantId = _tenantStateProvider.CurrentTenant?.TenantId;

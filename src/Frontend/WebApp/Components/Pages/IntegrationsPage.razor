@@ -1,0 +1,653 @@
+@page "/integrations"
+@page "/workspaces/{WorkspaceId:guid}/integrations"
+@layout WebApp.Components.Layout.TenantMainLayout
+@namespace WebApp.Components.Pages
+@rendermode InteractiveServer
+@using BuildingBlocks.Domain.Primitives
+@using global::Integrations.Application.OAuth.DTOs
+@using Tenants.Application.Ftux.DTOs
+@using Tenants.Application.Workspaces.DTOs
+@using WebApp.Models
+@using WebApp.Services
+@using WebApp.State
+@inject IOAuthIntegrationsClientService OAuthClient
+@inject IWorkspaceClientService WorkspaceService
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@inject ITenantStateProvider TenantStateProvider
+@inject ITenantSessionStateProvider TenantSessionStateProvider
+@inject ITenantFtuxClientService TenantFtuxClientService
+@inject NavigationManager Navigation
+
+<PageTitle>Integrações de Anúncios — @AgencyName</PageTitle>
+
+<div class="integrations-container">
+    <!-- Cabeçalho Principal -->
+    <header class="integrations-header">
+        <div class="header-titles">
+            <div class="header-badge-group">
+                <span class="badge-hub">Hub OAuth2 & Token Vault</span>
+                <span class="badge-security">AES-256</span>
+            </div>
+            <h1 class="page-title">Integrações de Anúncios</h1>
+            <p class="page-subtitle">
+                Central unificada de canais de mídia paga (Meta Ads, Google Ads, TikTok Ads e Microsoft Advertising). Gerencie credenciais com isolamento por cliente e renovação preventiva de tokens.
+            </p>
+        </div>
+
+        <div class="header-actions">
+            @if (_workspaces.Count > 0)
+            {
+                <div class="workspace-picker-group">
+                    <label for="workspace-select" class="picker-label">Workspace / Cliente:</label>
+                    <select id="workspace-select"
+                            class="form-select workspace-select"
+                            data-testid="workspace-select"
+                            value="@_selectedWorkspaceId"
+                            @onchange="OnWorkspaceChanged">
+                        @foreach (var ws in _workspaces)
+                        {
+                            <option value="@ws.Id">@ws.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <button class="btn btn-refresh-tokens"
+                        data-testid="btn-refresh-tokens"
+                        @onclick="HandleRefreshExpiringTokensAsync"
+                        disabled="@(_isRefreshingTokens || _isLoadingConnections)">
+                    @if (_isRefreshingTokens)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Renovando Credenciais...</span>
+                    }
+                    else
+                    {
+                        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        <span>Renovar Credenciais Imediatamente</span>
+                    }
+                </button>
+            }
+        </div>
+    </header>
+
+    @if (!string.IsNullOrEmpty(_feedbackMessage))
+    {
+        <div class="alert @(_isSuccessFeedback ? "alert-success" : "alert-danger") alert-dismissible fade show feedback-alert"
+             role="alert"
+             data-testid="feedback-alert">
+            <div class="d-flex align-items-center gap-2">
+                @if (_isSuccessFeedback)
+                {
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                }
+                else
+                {
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                }
+                <span>@_feedbackMessage</span>
+            </div>
+            <button type="button" class="btn-close" @onclick="() => _feedbackMessage = null" aria-label="Fechar"></button>
+        </div>
+    }
+
+    @if (_isLoadingWorkspaces)
+    {
+        <div class="loading-container py-5 text-center" data-testid="loading-state">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3 text-muted">Carregando workspaces e conexões de mídia...</p>
+        </div>
+    }
+    else if (_workspaces.Count == 0)
+    {
+        <!-- Empty State: Inquilino sem Workspaces -->
+        <div class="empty-state-card text-center py-5" data-testid="integrations-empty-workspaces">
+            <div class="empty-state-icon mb-3">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    <line x1="12" y1="11" x2="12" y2="17"></line>
+                    <line x1="9" y1="14" x2="15" y2="14"></line>
+                </svg>
+            </div>
+            <h3 class="empty-state-title">Nenhum Workspace / Cliente Cadastrado</h3>
+            <p class="empty-state-desc">
+                As conexões de mídia OAuth2 e o Token Vault são associados a clientes específicos da sua agência.<br />
+                Crie o primeiro workspace para habilitar a conexão das contas de anúncios.
+            </p>
+            <a href="workspaces" class="btn btn-primary mt-3" data-testid="btn-create-first-workspace">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Cadastrar Primeiro Workspace</span>
+            </a>
+        </div>
+    }
+    else
+    {
+        <!-- Resumo de Saúde & KPIs do Workspace Ativo -->
+        <div class="kpi-summary-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Redes Oficiais</div>
+                <div class="kpi-value text-primary">4</div>
+                <div class="kpi-sub">Meta, Google, TikTok, Bing</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Conexões Ativas</div>
+                <div class="kpi-value text-success">@_connections.Count(c => string.Equals(c.Status, "Active", StringComparison.OrdinalIgnoreCase))</div>
+                <div class="kpi-sub">Tokens válidos e operacionais</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Expira em Breve</div>
+                <div class="kpi-value @(_connections.Any(c => c.IsExpiringSoon) ? "text-warning" : "text-muted")">
+                    @_connections.Count(c => c.IsExpiringSoon)
+                </div>
+                <div class="kpi-sub">Janela de atenção (&lt; 72h)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Desconectadas</div>
+                <div class="kpi-value text-secondary">
+                    @(4 - _connections.Count(c => string.Equals(c.Status, "Active", StringComparison.OrdinalIgnoreCase)))
+                </div>
+                <div class="kpi-sub">Prontas para integração</div>
+            </div>
+        </div>
+
+        @if (_isLoadingConnections)
+        {
+            <div class="loading-container py-4 text-center">
+                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                <span class="ms-2 text-muted">Consultando Token Vault do cliente...</span>
+            </div>
+        }
+        else
+        {
+            <!-- Grade das 4 Redes de Anúncios -->
+            <div class="platforms-grid">
+                @foreach (var platform in StandardPlatforms)
+                {
+                    var connection = _connections.FirstOrDefault(c => string.Equals(c.Platform, platform.Key, StringComparison.OrdinalIgnoreCase));
+                    var isConnected = connection != null && string.Equals(connection.Status, "Active", StringComparison.OrdinalIgnoreCase);
+                    var status = ResolvePlatformStatus(connection);
+
+                    <div class="platform-card @platform.BrandColorClass @(isConnected ? "is-connected" : "is-disconnected")"
+                         data-testid="card-platform-@platform.Key.ToLowerInvariant()">
+                        
+                        <div class="card-brand-header">
+                            <div class="brand-info">
+                                <div class="brand-icon-wrapper @platform.BrandColorClass">
+                                    <i class="@platform.IconClass"></i>
+                                </div>
+                                <div>
+                                    <h3 class="brand-name">@platform.DisplayName</h3>
+                                    <span class="brand-sub">@platform.Subtitle</span>
+                                </div>
+                            </div>
+
+                            <span class="badge @status.BadgeClass" data-testid="badge-status">
+                                <span class="status-dot"></span>
+                                @status.Label
+                            </span>
+                        </div>
+
+                        <div class="card-content">
+                            @if (isConnected && connection != null)
+                            {
+                                <div class="connection-details">
+                                    <div class="detail-item">
+                                        <span class="detail-title">Conta Vinculada:</span>
+                                        <span class="detail-text fw-bold text-truncate" title="@(connection.ExternalAccountName ?? connection.ExternalAccountId)">
+                                            @(connection.ExternalAccountName ?? connection.ExternalAccountId ?? "Conta Conectada")
+                                        </span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-title">ID Externo:</span>
+                                        <span class="detail-text font-monospace small">@(connection.ExternalAccountId ?? "—")</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-title">Validade do Token:</span>
+                                        <span class="detail-text @(connection.IsExpiringSoon ? "text-warning fw-bold" : "")">
+                                            @if (connection.AccessTokenExpiresAtUtc.HasValue)
+                                            {
+                                                @connection.AccessTokenExpiresAtUtc.Value.ToString("dd/MM/yyyy HH:mm")
+                                                @if (connection.IsExpiringSoon)
+                                                {
+                                                    <span class="ms-1 small">(Expira em breve)</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span>Sem expiração definida</span>
+                                            }
+                                        </span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(connection.Scopes))
+                                    {
+                                        <div class="detail-item scopes-item">
+                                            <span class="detail-title">Escopos Autorizados:</span>
+                                            <span class="detail-text scopes-badge" title="@connection.Scopes">@connection.Scopes</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="disconnected-placeholder">
+                                    <p class="placeholder-text">
+                                        Nenhuma credencial ativa no Token Vault para esta plataforma neste workspace.
+                                    </p>
+                                    <div class="features-pill-list">
+                                        <span class="pill-item">✓ Métricas &amp; Atribuição</span>
+                                        <span class="pill-item">✓ Sincronização de Campanhas</span>
+                                        <span class="pill-item">✓ Pacing &amp; Travas</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="card-actions">
+                            @if (isConnected)
+                            {
+                                <button class="btn btn-outline-danger btn-sm w-100"
+                                        data-testid="btn-revoke-@platform.Key.ToLowerInvariant()"
+                                        @onclick="() => OpenRevokeModal(platform.Key, platform.DisplayName)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                    <span>Desconectar / Revogar</span>
+                                </button>
+                            }
+                            else
+                            {
+                                <div class="action-buttons-group">
+                                    <button class="btn btn-primary btn-sm btn-connect"
+                                            data-testid="btn-connect-@platform.Key.ToLowerInvariant()"
+                                            @onclick="() => HandleConnectOAuthAsync(platform.Key)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                            <polyline points="10 17 15 12 10 7"></polyline>
+                                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                                        </svg>
+                                        <span>Conectar OAuth</span>
+                                    </button>
+
+                                    <button class="btn btn-outline-secondary btn-sm btn-demo"
+                                            data-testid="btn-demo-@platform.Key.ToLowerInvariant()"
+                                            title="Ativar dados demonstrativos imediatos para testes do FTUX"
+                                            @onclick="() => HandleConnectDemoAsync(platform.Key)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                        </svg>
+                                        <span>Modo Demo</span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Painel Informativo sobre o Pipeline de Ingestão da Fase 2 -->
+            <div class="pipeline-info-card mt-4">
+                <div class="pipeline-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path>
+                    </svg>
+                </div>
+                <div class="pipeline-content">
+                    <h4 class="pipeline-title">Pipeline de Ingestão &amp; Sincronização Contínua (Fase 2)</h4>
+                    <p class="pipeline-desc">
+                        As credenciais conectadas são utilizadas de forma autônoma pelos adaptadores de ingestão estrutural de campanhas e métricas diárias com tolerância a falhas, backoff exponencial com jitter e garantia de idempotência no banco de dados dedicado do inquilino.
+                    </p>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<!-- Modal de Confirmação de Revogação de Credencial -->
+@if (_showRevokeModal)
+{
+    <div class="modal-backdrop-custom" data-testid="revoke-confirm-modal" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <div class="modal-card-header">
+                <div class="modal-warning-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="modal-card-title">Revogar Conexão de Mídia</h4>
+                    <p class="modal-card-subtitle">Confirmação de desativação de credenciais</p>
+                </div>
+            </div>
+
+            <div class="modal-card-body">
+                <p>
+                    Tem certeza de que deseja revogar a conexão com a rede <strong>@_platformToRevokeDisplayName</strong>?
+                </p>
+                <p class="text-muted small">
+                    As credenciais serão imediatamente removidas e invalidadas do Token Vault criptografado. Novas coletas automáticas de métricas para este cliente serão suspensas até que uma nova autorização seja realizada.
+                </p>
+            </div>
+
+            <div class="modal-card-footer">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        @onclick="() => _showRevokeModal = false"
+                        disabled="@_isRevoking">
+                    Cancelar
+                </button>
+                <button type="button"
+                        class="btn btn-danger"
+                        data-testid="btn-confirm-revoke"
+                        @onclick="HandleConfirmRevokeAsync"
+                        disabled="@_isRevoking">
+                    @if (_isRevoking)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Revogando...</span>
+                    }
+                    else
+                    {
+                        <span>Confirmar Revogação</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Identificador opcional do workspace recebido pela rota.
+    /// </summary>
+    [Parameter]
+    public Guid? WorkspaceId { get; set; }
+
+    /// <summary>
+    /// Código retornado no callback OAuth externo caso o provedor redirecione de volta à página.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+
+    /// <summary>
+    /// Estado HMAC anti-CSRF retornado no callback OAuth externo.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "state")]
+    public string? State { get; set; }
+
+    private List<WorkspaceDto> _workspaces = new();
+    private Guid _selectedWorkspaceId;
+    private List<OAuthConnectionStatusDto> _connections = new();
+
+    private bool _isLoadingWorkspaces = true;
+    private bool _isLoadingConnections = true;
+    private bool _isRefreshingTokens;
+    private bool _isRevoking;
+
+    private string? _feedbackMessage;
+    private bool _isSuccessFeedback;
+
+    private bool _showRevokeModal;
+    private string? _platformToRevoke;
+    private string? _platformToRevokeDisplayName;
+
+    private string AgencyName =>
+        TenantStateProvider.CurrentTenant?.Name ??
+        TenantSessionStateProvider.CurrentSession?.Subdomain ??
+        "AdMetricsPro";
+
+    private sealed record PlatformDefinition(string Key, string DisplayName, string Subtitle, string IconClass, string BrandColorClass);
+
+    private static readonly PlatformDefinition[] StandardPlatforms = new[]
+    {
+        new PlatformDefinition("MetaAds", "Meta Ads", "Facebook & Instagram", "bi bi-facebook", "meta"),
+        new PlatformDefinition("GoogleAds", "Google Ads", "Search, YouTube & Display", "bi bi-google", "google"),
+        new PlatformDefinition("TikTokAds", "TikTok Ads", "TikTok For Business", "bi bi-tiktok", "tiktok"),
+        new PlatformDefinition("BingAds", "Microsoft Advertising", "Bing Search & Audience", "bi bi-microsoft", "bing")
+    };
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWorkspacesAsync();
+
+        // Processa callback OAuth se retornou com code e state
+        if (!string.IsNullOrEmpty(Code) && !string.IsNullOrEmpty(State))
+        {
+            await ProcessOAuthCallbackAsync();
+        }
+    }
+
+    private async Task LoadWorkspacesAsync()
+    {
+        _isLoadingWorkspaces = true;
+
+        var result = await WorkspaceService.GetWorkspacesAsync();
+        if (result.IsSuccess)
+        {
+            _workspaces = result.Value.ToList();
+
+            if (_workspaces.Count > 0)
+            {
+                if (WorkspaceId.HasValue && _workspaces.Any(w => w.Id == WorkspaceId.Value))
+                {
+                    _selectedWorkspaceId = WorkspaceId.Value;
+                }
+                else if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue &&
+                         _workspaces.Any(w => w.Id == WorkspaceContextStateProvider.CurrentWorkspaceId.Value))
+                {
+                    _selectedWorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId.Value;
+                }
+                else
+                {
+                    _selectedWorkspaceId = _workspaces[0].Id;
+                }
+
+                var selectedWs = _workspaces.FirstOrDefault(w => w.Id == _selectedWorkspaceId);
+                await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(_selectedWorkspaceId, selectedWs?.Name);
+                await LoadConnectionsAsync();
+            }
+        }
+        else
+        {
+            _feedbackMessage = $"Falha ao listar workspaces: {result.Error.Description}";
+            _isSuccessFeedback = false;
+        }
+
+        _isLoadingWorkspaces = false;
+    }
+
+    private async Task LoadConnectionsAsync()
+    {
+        if (_selectedWorkspaceId == Guid.Empty)
+        {
+            _isLoadingConnections = false;
+            return;
+        }
+
+        _isLoadingConnections = true;
+        var result = await OAuthClient.GetConnectionsStatusAsync(_selectedWorkspaceId);
+
+        if (result.IsSuccess)
+        {
+            _connections = result.Value.ToList();
+        }
+        else
+        {
+            _feedbackMessage = $"Erro ao carregar conexões de mídia: {result.Error.Description}";
+            _isSuccessFeedback = false;
+        }
+
+        _isLoadingConnections = false;
+    }
+
+    private async Task OnWorkspaceChanged(ChangeEventArgs e)
+    {
+        if (e.Value != null && Guid.TryParse(e.Value.ToString(), out var newWorkspaceId))
+        {
+            _selectedWorkspaceId = newWorkspaceId;
+            var selectedWs = _workspaces.FirstOrDefault(w => w.Id == newWorkspaceId);
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(newWorkspaceId, selectedWs?.Name);
+            await LoadConnectionsAsync();
+        }
+    }
+
+    private async Task HandleRefreshExpiringTokensAsync()
+    {
+        _isRefreshingTokens = true;
+        _feedbackMessage = null;
+
+        var result = await OAuthClient.RefreshExpiringTokensAsync();
+        if (result.IsSuccess)
+        {
+            _feedbackMessage = $"Credenciais renovadas com sucesso! {result.Value} token(s) atualizado(s).";
+            _isSuccessFeedback = true;
+            await LoadConnectionsAsync();
+        }
+        else
+        {
+            _feedbackMessage = $"Falha na renovação: {result.Error.Description}";
+            _isSuccessFeedback = false;
+        }
+
+        _isRefreshingTokens = false;
+    }
+
+    private async Task HandleConnectOAuthAsync(string platform)
+    {
+        if (_selectedWorkspaceId == Guid.Empty)
+        {
+            _feedbackMessage = "Selecione um workspace antes de iniciar a conexão.";
+            _isSuccessFeedback = false;
+            return;
+        }
+
+        var redirectUri = Navigation.BaseUri.TrimEnd('/') + "/integrations";
+        var result = await OAuthClient.InitiateOAuthFlowAsync(_selectedWorkspaceId, platform, redirectUri);
+
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo(result.Value.AuthorizationUrl, forceLoad: true);
+        }
+        else
+        {
+            _feedbackMessage = $"Falha ao iniciar autorização: {result.Error.Description}";
+            _isSuccessFeedback = false;
+        }
+    }
+
+    private async Task HandleConnectDemoAsync(string platform)
+    {
+        if (_selectedWorkspaceId == Guid.Empty)
+        {
+            _feedbackMessage = "Selecione um workspace antes de ativar o modo demo.";
+            _isSuccessFeedback = false;
+            return;
+        }
+
+        _feedbackMessage = null;
+        var model = new ConnectDemoAccountModel(_selectedWorkspaceId, platform);
+        var result = await TenantFtuxClientService.ConnectDemoAccountAsync(model);
+
+        if (result.IsSuccess)
+        {
+            _feedbackMessage = $"Conta demonstrativa de {platform} vinculada com sucesso! Dados simulados gerados.";
+            _isSuccessFeedback = true;
+            await LoadConnectionsAsync();
+        }
+        else
+        {
+            _feedbackMessage = $"Falha ao ativar conta demonstrativa: {result.Error.Description}";
+            _isSuccessFeedback = false;
+        }
+    }
+
+    private void OpenRevokeModal(string platform, string displayName)
+    {
+        _platformToRevoke = platform;
+        _platformToRevokeDisplayName = displayName;
+        _showRevokeModal = true;
+    }
+
+    private async Task HandleConfirmRevokeAsync()
+    {
+        if (_selectedWorkspaceId == Guid.Empty || string.IsNullOrEmpty(_platformToRevoke))
+        {
+            _showRevokeModal = false;
+            return;
+        }
+
+        _isRevoking = true;
+        var result = await OAuthClient.RevokeConnectionAsync(_selectedWorkspaceId, _platformToRevoke);
+        _isRevoking = false;
+        _showRevokeModal = false;
+
+        if (result.IsSuccess)
+        {
+            _feedbackMessage = $"Conexão com {_platformToRevokeDisplayName} revogada e desativada com sucesso.";
+            _isSuccessFeedback = true;
+            await LoadConnectionsAsync();
+        }
+        else
+        {
+            _feedbackMessage = $"Falha ao revogar conexão: {result.Error.Description}";
+            _isSuccessFeedback = false;
+        }
+    }
+
+    private async Task ProcessOAuthCallbackAsync()
+    {
+        if (string.IsNullOrEmpty(Code) || string.IsNullOrEmpty(State)) return;
+
+        var redirectUri = Navigation.BaseUri.TrimEnd('/') + "/integrations";
+        var result = await OAuthClient.HandleOAuthCallbackAsync(Code, State, redirectUri);
+
+        if (result.IsSuccess)
+        {
+            _feedbackMessage = $"Conexão com {result.Value.Platform} estabelecida com sucesso no Token Vault!";
+            _isSuccessFeedback = true;
+            await LoadConnectionsAsync();
+        }
+        else
+        {
+            _feedbackMessage = $"Falha no processamento de autorização: {result.Error.Description}";
+            _isSuccessFeedback = false;
+        }
+    }
+
+    private static (string Label, string BadgeClass) ResolvePlatformStatus(OAuthConnectionStatusDto? connection)
+    {
+        if (connection == null || string.IsNullOrWhiteSpace(connection.Status))
+        {
+            return ("Não Conectado", "badge-disconnected");
+        }
+
+        if (string.Equals(connection.Status, "Expired", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(connection.Status, "Revoked", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("Expirado / Inválido", "badge-danger");
+        }
+
+        if (connection.IsExpiringSoon)
+        {
+            return ("Expira em Breve", "badge-warning");
+        }
+
+        return ("Válido & Ativo", "badge-success");
+    }
+}

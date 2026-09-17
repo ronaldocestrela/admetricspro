@@ -92,6 +92,11 @@ public abstract class BunitTestBase : BunitContext
     protected WebApp.Services.IBudgetPacingClientService BudgetPacingClientService { get; }
 
     /// <summary>
+    /// Mock do serviço de cliente de integrações OAuth2 com redes de anúncios.
+    /// </summary>
+    protected WebApp.Services.IOAuthIntegrationsClientService OAuthIntegrationsClientService { get; }
+
+    /// <summary>
     /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com os provedores registrados.
     /// </summary>
     protected BunitTestBase()
@@ -112,6 +117,11 @@ public abstract class BunitTestBase : BunitContext
         TenantCnameClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantCnameClientService>();
         AnalyticsDashboardClientService = NSubstitute.Substitute.For<WebApp.Services.IAnalyticsDashboardClientService>();
         BudgetPacingClientService = NSubstitute.Substitute.For<WebApp.Services.IBudgetPacingClientService>();
+        OAuthIntegrationsClientService = NSubstitute.Substitute.For<WebApp.Services.IOAuthIntegrationsClientService>();
+
+        OAuthIntegrationsClientService.GetConnectionsStatusAsync(NSubstitute.Arg.Any<Guid>(), NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<Integrations.Application.OAuth.DTOs.OAuthConnectionStatusDto>>.Success(
+                Array.Empty<Integrations.Application.OAuth.DTOs.OAuthConnectionStatusDto>()));
 
         BudgetPacingClientService.GetPortfolioPacingAsync(NSubstitute.Arg.Any<Guid?>(), NSubstitute.Arg.Any<int?>(), NSubstitute.Arg.Any<int?>(), NSubstitute.Arg.Any<DateTime?>(), NSubstitute.Arg.Any<CancellationToken>())
             .Returns(BuildingBlocks.Domain.Primitives.Result<Automations.Application.Pacing.DTOs.PortfolioPacingSummaryDto>.Success(
@@ -209,6 +219,7 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<WebApp.Services.ITenantCnameClientService>(TenantCnameClientService);
         Services.AddSingleton<WebApp.Services.IAnalyticsDashboardClientService>(AnalyticsDashboardClientService);
         Services.AddSingleton<WebApp.Services.IBudgetPacingClientService>(BudgetPacingClientService);
+        Services.AddSingleton<WebApp.Services.IOAuthIntegrationsClientService>(OAuthIntegrationsClientService);
     }
 
     /// <summary>
