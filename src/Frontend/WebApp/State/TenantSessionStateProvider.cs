@@ -42,17 +42,9 @@ public sealed class TenantSessionStateProvider : ITenantSessionStateProvider
 
         if (_storage != null)
         {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _storage.SetItemAsync(StorageKey, session);
-                }
-                catch
-                {
-                    // Tratamento gracioso em caso de restrições de JSInterop durante pré-render
-                }
-            });
+            _ = _storage.SetItemAsync(StorageKey, session).AsTask().ContinueWith(
+                _ => { },
+                TaskContinuationOptions.OnlyOnFaulted);
         }
     }
 

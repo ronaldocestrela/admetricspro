@@ -258,7 +258,7 @@
             var authResult = await AuthClientService.LoginAsync(loginModel);
             if (authResult.IsSuccess)
             {
-                SessionProvider.SetSession(authResult.Value);
+                await SessionProvider.SetSessionAsync(authResult.Value);
                 AddLog("[10:00:06] AUTHENTICATION: Sessão do gestor autenticada com sucesso no circuito... PRONTO!");
                 _accessUrl = "/dashboard";
             }

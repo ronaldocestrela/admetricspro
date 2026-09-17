@@ -265,4 +265,82 @@ public sealed class IntegrationsPageTests : BunitTestBase
             .RevokeConnectionAsync(_workspaceId, "MetaAds", Arg.Any<CancellationToken>());
         cut.FindAll("[data-testid='revoke-confirm-modal']").Should().BeEmpty();
     }
+
+    /// <summary>
+    /// Valida que quando a página inicializa sem workspaces (ex: F5 antes da restauração da sessão),
+    /// ao disparar OnSessionChanged a página recarrega os workspaces e renderiza os canais de mídia reativamente.
+    /// </summary>
+    [Fact]
+    public void IntegrationsPage_WhenSessionRestoredAfterInitialRender_ShouldAutomaticallyReloadWorkspaces()
+    {
+        // Arrange - Primeiro retorno vazio (sessão ainda não restaurada no primeiro render)
+        var callCount = 0;
+        WorkspaceClientService.GetWorkspacesAsync(Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                callCount++;
+                return Task.FromResult(callCount == 1
+                    ? Result<IReadOnlyList<WorkspaceDto>>.Success(Array.Empty<WorkspaceDto>())
+                    : Result<IReadOnlyList<WorkspaceDto>>.Success(new[] { _workspace1 }));
+            });
+
+        OAuthIntegrationsClientService.GetConnectionsStatusAsync(_workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<OAuthConnectionStatusDto>>.Success(new List<OAuthConnectionStatusDto>())));
+
+        var cut = Render<IntegrationsPage>();
+
+        // Assert inicial: estado vazio
+        cut.Find("[data-testid='integrations-empty-workspaces']").Should().NotBeNull();
+
+        // Act - Simula restauração de sessão pelo layout ou circuito SignalR
+        var userDto = new Tenants.Application.Auth.DTOs.AuthenticatedTenantUserDto(
+            AccessToken: "jwt_token_restored",
+            TokenType: "Bearer",
+            ExpiresIn: 3600,
+            UserId: Guid.NewGuid(),
+            Email: "gestor@restaurado.com",
+            FullName: "Gestor Restaurado",
+            Role: "Owner",
+            TenantId: Guid.NewGuid(),
+            Subdomain: "agencia-restaurada",
+            Branding: null);
+
+        TenantSessionStateProvider.SetSession(userDto);
+
+        // Assert reativo: deve ter recarregado e agora exibir os cards e seletor
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("[data-testid='workspace-select']").Should().NotBeNull();
+            cut.Find("[data-testid='card-platform-metaads']").Should().NotBeNull();
+        });
+    }
+
+    /// <summary>
+    /// Valida que ao alterar o workspace ativo via WorkspaceContextStateProvider, a página sincroniza o workspace e recarrega conexões.
+    /// </summary>
+    [Fact]
+    public async Task IntegrationsPage_WhenWorkspaceContextChanged_ShouldUpdateActiveWorkspaceAndReloadConnections()
+    {
+        // Arrange
+        WorkspaceClientService.GetWorkspacesAsync(Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<WorkspaceDto>>.Success(new[] { _workspace1, _workspace2 })));
+
+        OAuthIntegrationsClientService.GetConnectionsStatusAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<OAuthConnectionStatusDto>>.Success(new List<OAuthConnectionStatusDto>())));
+
+        var cut = Render<IntegrationsPage>();
+
+        // Act - Workspace contextual é alterado externamente (ex: seletor do TopHeader)
+        await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(_workspace2.Id, _workspace2.Name);
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            var select = cut.Find("[data-testid='workspace-select']");
+            select.GetAttribute("value").Should().Be(_workspace2.Id.ToString());
+        });
+
+        await OAuthIntegrationsClientService.Received().GetConnectionsStatusAsync(_workspace2.Id, Arg.Any<CancellationToken>());
+    }
 }
+

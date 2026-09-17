@@ -201,4 +201,9 @@ A gestão operacional das conexões OAuth2 é exposta no frontend através da p�
   - *Desconectar / Revogar:* Modal de confirmação que remove a credencial do Token Vault via `RevokeConnectionAsync`.
 - **Ação Global de Renovação Preventiva:** Botão no cabeçalho disparando `RefreshExpiringTokensAsync` com feedback de contagem de tokens atualizados.
 - **Garantia de Não Acesso a Banco:** Consumo exclusivo via Web API através do cliente fortemente tipado `IOAuthIntegrationsClientService`.
+- **Resiliência a Recarregamento (F5) e Ciclo de Vida do Blazor Server:**
+  - Assinatura reativa dos eventos `ITenantSessionStateProvider.OnSessionChanged` e `IWorkspaceContextStateProvider.OnWorkspaceChanged` com implementação estrita de `IDisposable`.
+  - Tratamento no `OnAfterRenderAsync(firstRender: true)` para restauração assíncrona da sessão e do workspace ativo via `ProtectedLocalStorage` quando o componente é instanciado em um novo circuito SignalR.
+  - Recarregamento automático de workspaces e conexões de mídia tão logo a identidade do tenant seja restabelecida, evitando exibição indevida do estado vazio (*Empty State*) ou perda do contexto de cliente.
+
 

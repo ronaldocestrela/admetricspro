@@ -561,8 +561,8 @@
                 return;
             }
 
-            // Atualiza o estado da sessão e propaga branding
-            SessionProvider.SetSession(result.Value);
+            // Atualiza o estado da sessão e propaga branding garantindo persistência antes do redirecionamento
+            await SessionProvider.SetSessionAsync(result.Value);
 
             var destination = !string.IsNullOrWhiteSpace(ReturnUrl) ? ReturnUrl : "/dashboard";
             NavigationManager.NavigateTo(destination);

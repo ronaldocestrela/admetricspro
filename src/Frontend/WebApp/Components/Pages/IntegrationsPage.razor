@@ -2,7 +2,7 @@
 @page "/workspaces/{WorkspaceId:guid}/integrations"
 @layout WebApp.Components.Layout.TenantMainLayout
 @namespace WebApp.Components.Pages
-@rendermode InteractiveServer
+@implements IDisposable
 @using BuildingBlocks.Domain.Primitives
 @using global::Integrations.Application.OAuth.DTOs
 @using Tenants.Application.Ftux.DTOs
@@ -424,6 +424,9 @@
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
+
         await LoadWorkspacesAsync();
 
         // Processa callback OAuth se retornou com code e state
@@ -431,6 +434,49 @@
         {
             await ProcessOAuthCallbackAsync();
         }
+    }
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!TenantSessionStateProvider.IsAuthenticated)
+            {
+                var restored = await TenantSessionStateProvider.RestoreSessionAsync();
+                if (restored)
+                {
+                    await WorkspaceContextStateProvider.RestoreActiveWorkspaceAsync();
+                    await LoadWorkspacesAsync();
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+    }
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadWorkspacesAsync();
+            StateHasChanged();
+        });
+    }
+
+    private void HandleWorkspaceChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue &&
+                WorkspaceContextStateProvider.CurrentWorkspaceId.Value != Guid.Empty &&
+                _selectedWorkspaceId != WorkspaceContextStateProvider.CurrentWorkspaceId.Value &&
+                _workspaces.Any(w => w.Id == WorkspaceContextStateProvider.CurrentWorkspaceId.Value))
+            {
+                _selectedWorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId.Value;
+                await LoadConnectionsAsync();
+                StateHasChanged();
+            }
+        });
     }
 
     private async Task LoadWorkspacesAsync()
@@ -441,6 +487,7 @@
         if (result.IsSuccess)
         {
             _workspaces = result.Value.ToList();
+            _feedbackMessage = null;
 
             if (_workspaces.Count > 0)
             {
@@ -649,5 +696,12 @@
         }
 
         return ("Válido & Ativo", "badge-success");
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
     }
 }
