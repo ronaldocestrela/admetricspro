@@ -123,7 +123,7 @@
     public EventCallback OnWorkspaceCreated { get; set; }
 
     private string _name = string.Empty;
-    private string _cnpjOrCpf = "12.345.678/0001-95";
+    private string _cnpjOrCpf = string.Empty;
     private decimal _monthlyBudget = 5000m;
     private string _segment = "E-commerce";
     private bool _isSubmitting;
@@ -160,6 +160,7 @@
         if (result.IsSuccess)
         {
             _name = string.Empty;
+            _cnpjOrCpf = string.Empty;
             await CloseAsync();
             await OnWorkspaceCreated.InvokeAsync();
         }

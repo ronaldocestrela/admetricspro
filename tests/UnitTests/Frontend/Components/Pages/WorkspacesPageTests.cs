@@ -189,4 +189,26 @@ public sealed class WorkspacesPageTests : BunitTestBase
         modal.Should().NotBeNull();
         cut.Find(".modal-title").TextContent.Should().Be("Novo Workspace");
     }
+
+    /// <summary>
+    /// Valida que ao abrir o modal de criação de workspace, o campo de CNPJ/CPF inicia vazio com o placeholder esperado.
+    /// </summary>
+    [Fact]
+    public void WorkspacesPage_WhenOpenCreateModalClicked_CnpjOrCpfInputShouldBeEmptyWithPlaceholder()
+    {
+        // Arrange
+        WorkspaceClientService.GetWorkspacesAsync(Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<WorkspaceDto>>.Success(_sampleWorkspaces));
+
+        var cut = Render<WorkspacesPage>();
+
+        // Act
+        var newBtn = cut.Find("#btn-open-create-workspace");
+        newBtn.Click();
+
+        // Assert
+        var docInput = cut.Find("#input-workspace-doc");
+        docInput.GetAttribute("value").Should().BeNullOrEmpty();
+        docInput.GetAttribute("placeholder").Should().Be("12.345.678/0001-95 ou 123.456.789-09");
+    }
 }
