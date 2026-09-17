@@ -1,7 +1,9 @@
 @page "/reports"
 @page "/workspaces/{WorkspaceId:guid}/reports"
+@layout TenantMainLayout
 @using Analytics.Application.Reports.DTOs
 @using BuildingBlocks.Domain.Reports
+@using WebApp.Components.Layout
 @using WebApp.Services
 @using WebApp.Services.Reports
 @using WebApp.State
@@ -9,6 +11,7 @@
 @inject IReportClientService ReportClientService
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 @inject IWorkspaceClientService WorkspaceClientService
+@inject ITenantSessionStateProvider TenantSessionStateProvider
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
@@ -317,6 +320,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
         await ResolveWorkspaceAndLoadAsync();
     }
@@ -531,9 +535,19 @@
         }
     }
 
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await ResolveWorkspaceAndLoadAsync();
+            StateHasChanged();
+        });
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
     }
 

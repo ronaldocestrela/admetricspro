@@ -1,6 +1,7 @@
 @page "/settings/billing"
 @layout TenantMainLayout
 @namespace WebApp.Components.Pages
+@implements IDisposable
 @using Master.Domain.Tenants
 @using Master.Domain.Billing
 @using Master.Application.Billing.Checkout.Commands.ProcessCheckout
@@ -329,7 +330,17 @@
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         await LoadPreviewAsync();
+    }
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadPreviewAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task SelectTier(SubscriptionTier tier)
@@ -437,4 +448,10 @@
     }
 
     private static string FormatCurrency(decimal value) => value.ToString("N2", new System.Globalization.CultureInfo("pt-BR"));
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
+    }
 }

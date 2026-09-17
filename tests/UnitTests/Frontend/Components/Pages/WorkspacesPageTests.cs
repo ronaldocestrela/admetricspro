@@ -211,4 +211,53 @@ public sealed class WorkspacesPageTests : BunitTestBase
         docInput.GetAttribute("value").Should().BeNullOrEmpty();
         docInput.GetAttribute("placeholder").Should().Be("12.345.678/0001-95 ou 123.456.789-09");
     }
+
+    /// <summary>
+    /// Valida que quando a página de workspaces é inicializada sem sessão e posteriormente o evento OnSessionChanged
+    /// é disparado, a lista de workspaces é recarregada automaticamente e o alerta de erro é limpo.
+    /// </summary>
+    [Fact]
+    public void WorkspacesPage_WhenSessionRestoredAfterInitialRender_ShouldAutomaticallyReloadWorkspaces()
+    {
+        // Arrange - Primeira chamada falha (simulando falta de tenantId no F5), segunda tem sucesso
+        var callCount = 0;
+        WorkspaceClientService.GetWorkspacesAsync(Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                callCount++;
+                return Task.FromResult(callCount == 1
+                    ? BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<WorkspaceDto>>.Failure(
+                        BuildingBlocks.Domain.Primitives.Error.Validation("Tenant.NotFound", "Tenant não identificado."))
+                    : BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<WorkspaceDto>>.Success(_sampleWorkspaces));
+            });
+
+        var cut = Render<WorkspacesPage>();
+
+        // Assert inicial: mensagem de erro visível
+        cut.Find(".alert-error-banner").Should().NotBeNull();
+
+        // Act - Dispara restauração de sessão
+        var userDto = new Tenants.Application.Auth.DTOs.AuthenticatedTenantUserDto(
+            AccessToken: "jwt_token_restored",
+            TokenType: "Bearer",
+            ExpiresIn: 3600,
+            UserId: Guid.NewGuid(),
+            Email: "gestor@restaurado.com",
+            FullName: "Gestor Restaurado",
+            Role: "Owner",
+            TenantId: Guid.NewGuid(),
+            Subdomain: "agencia-restaurada",
+            Branding: null);
+
+        TenantSessionStateProvider.SetSession(userDto);
+
+        // Assert reativo: mensagem de erro limpa e workspaces renderizados
+        cut.WaitForAssertion(() =>
+        {
+            cut.FindAll(".alert-error-banner").Should().BeEmpty();
+            cut.Find(".workspaces-table").Should().NotBeNull();
+            cut.FindAll("tbody tr").Should().HaveCount(2);
+        });
+    }
 }
+

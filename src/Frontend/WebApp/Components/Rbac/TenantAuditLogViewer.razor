@@ -1,7 +1,10 @@
 @namespace WebApp.Components.Rbac
+@implements IDisposable
 @using Tenants.Application.Audit.DTOs
 @using WebApp.Services
+@using WebApp.State
 @inject ITenantRbacClientService RbacClientService
+@inject ITenantSessionStateProvider TenantSessionStateProvider
 
 <div class="audit-viewer-card">
     <div class="viewer-header">
@@ -118,6 +121,8 @@
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
+
         if (InitialLogs is not null)
         {
             _logsResponse = InitialLogs;
@@ -150,5 +155,20 @@
         }
 
         _isLoading = false;
+    }
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadLogsAsync(1);
+            StateHasChanged();
+        });
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
     }
 }

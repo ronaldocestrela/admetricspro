@@ -1,9 +1,11 @@
 @page "/settings/white-label"
 @layout TenantMainLayout
 @namespace WebApp.Components.Pages.Settings
+@implements IDisposable
 @inject ITenantBrandingClientService BrandingClientService
 @inject ITenantCnameClientService CnameClientService
 @inject ITenantStateProvider TenantStateProvider
+@inject ITenantSessionStateProvider TenantSessionStateProvider
 
 <div class="whitelabel-page-container">
     <div class="page-header">
@@ -227,7 +229,17 @@
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         await LoadBrandingAsync();
+    }
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadBrandingAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task LoadBrandingAsync()
@@ -347,5 +359,11 @@
         }
 
         _isSavingCname = false;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
     }
 }

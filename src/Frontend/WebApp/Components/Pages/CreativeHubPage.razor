@@ -1,8 +1,9 @@
 @page "/creatives"
 @page "/workspaces/{WorkspaceId:guid}/creatives"
-@rendermode InteractiveServer
+@layout TenantMainLayout
 @using Analytics.Application.Creatives.DTOs
 @using WebApp.Components.Creatives
+@using WebApp.Components.Layout
 @using WebApp.Services
 @using WebApp.Services.Creatives
 @using WebApp.State
@@ -10,6 +11,7 @@
 @inject ICreativeHubClientService CreativeService
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 @inject IWorkspaceClientService WorkspaceClientService
+@inject ITenantSessionStateProvider TenantSessionStateProvider
 
 <PageTitle>Creative Hub & Detector de Fadiga | AdMetricsPro</PageTitle>
 
@@ -220,6 +222,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
         await ResolveWorkspaceAndLoadAsync();
     }
@@ -305,6 +308,15 @@
         }
     }
 
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await ResolveWorkspaceAndLoadAsync();
+            StateHasChanged();
+        });
+    }
+
     private void HandleReplaceCreative(CreativeFatigueDto creative)
     {
         // Feedback de substituição no painel
@@ -313,6 +325,7 @@
     /// <inheritdoc />
     public void Dispose()
     {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
     }
 }

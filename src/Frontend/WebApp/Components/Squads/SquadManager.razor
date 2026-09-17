@@ -1,4 +1,5 @@
 @namespace WebApp.Components.Squads
+@implements IDisposable
 @using BuildingBlocks.Domain.Primitives
 @using Tenants.Application.Squads.DTOs
 @using Tenants.Application.Users.DTOs
@@ -641,7 +642,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         await LoadDataAsync();
+    }
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task LoadDataAsync()
@@ -926,5 +937,11 @@
             _inspectedUserId = null;
             _inspectedUserWorkspaces.Clear();
         }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
     }
 }

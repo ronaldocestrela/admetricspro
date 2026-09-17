@@ -4,6 +4,7 @@
 @inject ITenantStateProvider TenantStateProvider
 @inject ITenantSessionStateProvider TenantSessionStateProvider
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@inject NavigationManager NavigationManager
 
 <HeadContent>
     <title>@(string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Name) ? "AdMetricsPro" : TenantStateProvider.CurrentTenant.Name)</title>
@@ -21,7 +22,19 @@
         <TenantSidebar IsOpen="_isSidebarOpen" OnClose="CloseSidebar" />
 
         <main class="tenant-main-content">
-            @Body
+            @if (_isRestoringSession)
+            {
+                <div class="tenant-session-loading-shell text-center py-5" data-testid="tenant-session-loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-3 text-muted small fw-semibold">Restaurando sessão corporativa segura...</p>
+                </div>
+            }
+            else
+            {
+                @Body
+            }
         </main>
     </div>
 </div>
@@ -34,6 +47,7 @@
 
 @code {
     private bool _isSidebarOpen;
+    private bool _isRestoringSession;
 
     /// <inheritdoc />
     protected override void OnInitialized()
@@ -41,6 +55,9 @@
         TenantStateProvider.OnTenantChanged += HandleStateChanged;
         TenantSessionStateProvider.OnSessionChanged += HandleStateChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged += HandleStateChanged;
+
+        _isRestoringSession = !TenantSessionStateProvider.IsAuthenticated &&
+                              TenantStateProvider.CurrentTenant.TenantId == Guid.Empty;
     }
 
     /// <inheritdoc />
@@ -66,6 +83,12 @@
                 {
                     needsStateHasChanged = true;
                 }
+            }
+
+            if (_isRestoringSession)
+            {
+                _isRestoringSession = false;
+                needsStateHasChanged = true;
             }
 
             if (needsStateHasChanged)

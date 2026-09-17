@@ -1,8 +1,11 @@
 @namespace WebApp.Components.Rbac
+@implements IDisposable
 @using BuildingBlocks.Domain.Tenants
 @using Tenants.Application.Rbac.DTOs
 @using WebApp.Services
+@using WebApp.State
 @inject ITenantRbacClientService RbacClientService
+@inject ITenantSessionStateProvider TenantSessionStateProvider
 
 <div class="rbac-matrix-card">
     <div class="matrix-header">
@@ -104,6 +107,8 @@
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
+
         if (InitialMatrix is not null)
         {
             _matrix = InitialMatrix;
@@ -165,4 +170,19 @@
         "Guest" => "col-guest",
         _ => string.Empty
     };
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadMatrixAsync();
+            StateHasChanged();
+        });
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
+    }
 }

@@ -1,14 +1,18 @@
 @page "/copilot"
 @page "/workspaces/{WorkspaceId:guid}/copilot"
+@layout TenantMainLayout
 @using Analytics.Application.Copilot.DTOs
 @using Tenants.Application.Workspaces.DTOs
 @using WebApp.Components.Copilot
+@using WebApp.Components.Layout
 @using WebApp.Services
 @using WebApp.Services.Copilot
+@using WebApp.State
 @implements IDisposable
 @inject ITrafficCopilotClientService CopilotService
 @inject IWorkspaceClientService WorkspaceService
 @inject ITenantStateProvider TenantStateProvider
+@inject ITenantSessionStateProvider TenantSessionStateProvider
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 @inject NavigationManager Navigation
 
@@ -224,6 +228,7 @@
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged += HandleContextWorkspaceChanged;
 
         await LoadWorkspacesAsync();
@@ -337,9 +342,25 @@
         }
     }
 
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadWorkspacesAsync();
+            if (SelectedWorkspaceId == Guid.Empty && Workspaces != null && Workspaces.Count > 0)
+            {
+                SelectedWorkspaceId = Workspaces[0].Id;
+                await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(SelectedWorkspaceId, Workspaces[0].Name);
+            }
+            await LoadDiagnosticAsync();
+            StateHasChanged();
+        });
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleContextWorkspaceChanged;
     }
 }

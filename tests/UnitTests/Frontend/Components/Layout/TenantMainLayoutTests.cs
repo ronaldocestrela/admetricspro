@@ -1,6 +1,7 @@
 using AngleSharp.Dom;
 using Bunit;
 using FluentAssertions;
+using NSubstitute;
 using UnitTests.Frontend.Common;
 using WebApp.Components.Layout;
 using WebApp.State;
@@ -180,4 +181,45 @@ public sealed class TenantMainLayoutTests : BunitTestBase
         style.Should().Contain("--tenant-primary-color: #EC4899;");
         style.Should().Contain("--tenant-secondary-color: #831843;");
     }
+
+    /// <summary>
+    /// Valida que quando a sessão do inquilino é restaurada no primeiro render, o layout desativa o estado de carregamento e renderiza o @Body.
+    /// </summary>
+    [Fact]
+    public void TenantMainLayout_WhenSessionRestored_ShouldRenderBodyContent()
+    {
+        // Arrange
+        var userDto = new Tenants.Application.Auth.DTOs.AuthenticatedTenantUserDto(
+            AccessToken: "token_abc",
+            TokenType: "Bearer",
+            ExpiresIn: 3600,
+            UserId: Guid.NewGuid(),
+            Email: "gestor@alfa.com",
+            FullName: "Gestor Alfa",
+            Role: "Owner",
+            TenantId: Guid.NewGuid(),
+            Subdomain: "alfa",
+            Branding: null);
+
+        BrowserStorageService.GetItemAsync<Tenants.Application.Auth.DTOs.AuthenticatedTenantUserDto>("admetricspro_tenant_session", Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Tenants.Application.Auth.DTOs.AuthenticatedTenantUserDto?>(userDto));
+
+        // Act
+        var cut = Render<TenantMainLayout>(parameters => parameters
+            .Add(p => p.Body, builder =>
+            {
+                builder.OpenElement(0, "div");
+                builder.AddAttribute(1, "id", "body-content");
+                builder.AddContent(2, "Conteúdo Protegido");
+                builder.CloseElement();
+            }));
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("#body-content").Should().NotBeNull();
+            cut.Find("#body-content").TextContent.Should().Be("Conteúdo Protegido");
+        });
+    }
 }
+

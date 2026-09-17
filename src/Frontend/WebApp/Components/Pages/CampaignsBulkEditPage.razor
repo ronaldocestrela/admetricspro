@@ -1,7 +1,9 @@
 @page "/campaigns/bulk"
 @page "/workspaces/{WorkspaceId:guid}/campaigns/bulk"
+@layout TenantMainLayout
 @using global::Integrations.Application.Campaigns.DTOs
 @using WebApp.Components.Campaigns
+@using WebApp.Components.Layout
 @using WebApp.Services
 @using WebApp.State
 @implements IDisposable
@@ -57,6 +59,9 @@
     [Inject]
     public IWorkspaceClientService WorkspaceClientService { get; set; } = default!;
 
+    [Inject]
+    public ITenantSessionStateProvider TenantSessionStateProvider { get; set; } = default!;
+
     private Guid _activeWorkspaceId;
 
     public bool IsLoading { get; set; } = true;
@@ -65,6 +70,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
         await ResolveWorkspaceAndLoadAsync();
     }
@@ -154,9 +160,19 @@
         }
     }
 
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await ResolveWorkspaceAndLoadAsync();
+            StateHasChanged();
+        });
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
     }
 }

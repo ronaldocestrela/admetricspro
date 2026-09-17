@@ -1,6 +1,7 @@
 @page "/workspaces"
 @layout TenantMainLayout
 @namespace WebApp.Components.Pages
+@implements IDisposable
 @using BuildingBlocks.Domain.Primitives
 @using Tenants.Application.Workspaces.DTOs
 @using WebApp.Components.Integrations
@@ -441,7 +442,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         await LoadWorkspacesAsync();
+    }
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadWorkspacesAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task LoadWorkspacesAsync()
@@ -455,6 +466,7 @@
         if (result.IsSuccess)
         {
             _workspaces = result.Value.ToList();
+            _globalErrorMessage = null;
         }
         else
         {
@@ -592,5 +604,11 @@
             return $"{sanitized[..2]}.{sanitized.Substring(2, 3)}.{sanitized.Substring(5, 3)}/{sanitized.Substring(8, 4)}-{sanitized.Substring(12, 2)}";
 
         return doc;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
     }
 }
