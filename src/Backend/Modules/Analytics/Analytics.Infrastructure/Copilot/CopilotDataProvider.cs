@@ -31,81 +31,89 @@ public sealed class CopilotDataProvider : ICopilotDataProvider
         DateTime endDateUtc,
         CancellationToken cancellationToken = default)
     {
-        var dbContextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
-        if (dbContextResult.IsFailure)
+        try
         {
-            return Result<IReadOnlyList<AdSetAudienceTargeting>>.Failure(dbContextResult.Error);
-        }
-
-        var db = dbContextResult.Value;
-
-        // Obter campanhas do Meta Ads no workspace
-        var metaCampaigns = await db.Campaigns
-            .AsNoTracking()
-            .Where(c => c.WorkspaceId == workspaceId && c.Platform == "MetaAds")
-            .Include(c => c.AdSets)
-            .ToListAsync(cancellationToken);
-
-        if (metaCampaigns.Count == 0)
-        {
-            return Result<IReadOnlyList<AdSetAudienceTargeting>>.Success(Array.Empty<AdSetAudienceTargeting>());
-        }
-
-        var allAdSets = metaCampaigns.SelectMany(c => c.AdSets.Select(a => new { Campaign = c, AdSet = a })).ToList();
-        var adSetIds = allAdSets.Select(x => x.AdSet.Id).ToList();
-
-        // Obter métricas consolidadas do período para cada conjunto
-        var start = startDateUtc.Date;
-        var end = endDateUtc.Date;
-
-        var metrics = await db.CampaignMetrics
-            .AsNoTracking()
-            .Where(m => m.WorkspaceId == workspaceId &&
-                        m.AdSetId.HasValue &&
-                        adSetIds.Contains(m.AdSetId.Value) &&
-                        m.Date >= start &&
-                        m.Date <= end)
-            .GroupBy(m => m.AdSetId!.Value)
-            .Select(g => new
+            var dbContextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+            if (dbContextResult.IsFailure)
             {
-                AdSetId = g.Key,
-                Spend = g.Sum(m => m.Spend),
-                Impressions = g.Sum(m => m.Impressions),
-                Clicks = g.Sum(m => m.Clicks),
-                Conversions = g.Sum(m => m.Conversions)
-            })
-            .ToDictionaryAsync(x => x.AdSetId, cancellationToken);
+                return Result<IReadOnlyList<AdSetAudienceTargeting>>.Failure(dbContextResult.Error);
+            }
 
-        var resultList = new List<AdSetAudienceTargeting>();
+            var db = dbContextResult.Value;
 
-        foreach (var item in allAdSets)
-        {
-            metrics.TryGetValue(item.AdSet.Id, out var m);
+            // Obter campanhas do Meta Ads no workspace
+            var metaCampaigns = await db.Campaigns
+                .AsNoTracking()
+                .Where(c => c.WorkspaceId == workspaceId && c.Platform == "MetaAds")
+                .Include(c => c.AdSets)
+                .ToListAsync(cancellationToken);
 
-            var spend = m?.Spend ?? 0m;
-            var impressions = m?.Impressions ?? 0;
-            var conversions = m?.Conversions ?? 0m;
+            if (metaCampaigns.Count == 0)
+            {
+                return Result<IReadOnlyList<AdSetAudienceTargeting>>.Success(Array.Empty<AdSetAudienceTargeting>());
+            }
 
-            var cpm = impressions > 0 ? Math.Round((spend / impressions) * 1000m, 2) : 0m;
-            var cpa = conversions > 0 ? Math.Round(spend / conversions, 2) : 0m;
+            var allAdSets = metaCampaigns.SelectMany(c => c.AdSets.Select(a => new { Campaign = c, AdSet = a })).ToList();
+            var adSetIds = allAdSets.Select(x => x.AdSet.Id).ToList();
 
-            var tags = ExtractTargetingTags(item.AdSet.TargetingSummary, item.AdSet.Name);
+            // Obter métricas consolidadas do período para cada conjunto
+            var start = startDateUtc.Date;
+            var end = endDateUtc.Date;
 
-            resultList.Add(new AdSetAudienceTargeting(
-                adSetId: item.AdSet.Id,
-                adSetName: item.AdSet.Name,
-                campaignId: item.Campaign.Id,
-                campaignName: item.Campaign.Name,
-                status: item.AdSet.Status.ToString(),
-                spend: spend,
-                impressions: impressions,
-                cpm: cpm,
-                cpa: cpa,
-                targetingTags: tags
-            ));
+            var metrics = await db.CampaignMetrics
+                .AsNoTracking()
+                .Where(m => m.WorkspaceId == workspaceId &&
+                            m.AdSetId.HasValue &&
+                            adSetIds.Contains(m.AdSetId.Value) &&
+                            m.Date >= start &&
+                            m.Date <= end)
+                .GroupBy(m => m.AdSetId!.Value)
+                .Select(g => new
+                {
+                    AdSetId = g.Key,
+                    Spend = g.Sum(m => m.Spend),
+                    Impressions = g.Sum(m => m.Impressions),
+                    Clicks = g.Sum(m => m.Clicks),
+                    Conversions = g.Sum(m => m.Conversions)
+                })
+                .ToDictionaryAsync(x => x.AdSetId, cancellationToken);
+
+            var resultList = new List<AdSetAudienceTargeting>();
+
+            foreach (var item in allAdSets)
+            {
+                metrics.TryGetValue(item.AdSet.Id, out var m);
+
+                var spend = m?.Spend ?? 0m;
+                var impressions = m?.Impressions ?? 0;
+                var conversions = m?.Conversions ?? 0m;
+
+                var cpm = impressions > 0 ? Math.Round((spend / impressions) * 1000m, 2) : 0m;
+                var cpa = conversions > 0 ? Math.Round(spend / conversions, 2) : 0m;
+
+                var tags = ExtractTargetingTags(item.AdSet.TargetingSummary, item.AdSet.Name);
+
+                resultList.Add(new AdSetAudienceTargeting(
+                    adSetId: item.AdSet.Id,
+                    adSetName: item.AdSet.Name,
+                    campaignId: item.Campaign.Id,
+                    campaignName: item.Campaign.Name,
+                    status: item.AdSet.Status.ToString(),
+                    spend: spend,
+                    impressions: impressions,
+                    cpm: cpm,
+                    cpa: cpa,
+                    targetingTags: tags
+                ));
+            }
+
+            return Result<IReadOnlyList<AdSetAudienceTargeting>>.Success(resultList);
         }
-
-        return Result<IReadOnlyList<AdSetAudienceTargeting>>.Success(resultList);
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<AdSetAudienceTargeting>>.Failure(
+                Error.Failure("Copilot.DatabaseError", $"Falha ao consultar conjuntos de anúncios do Meta Ads: {ex.Message}"));
+        }
     }
 
     /// <inheritdoc />
@@ -115,81 +123,89 @@ public sealed class CopilotDataProvider : ICopilotDataProvider
         DateTime endDateUtc,
         CancellationToken cancellationToken = default)
     {
-        var dbContextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
-        if (dbContextResult.IsFailure)
+        try
         {
-            return Result<IReadOnlyList<SearchKeywordPerformance>>.Failure(dbContextResult.Error);
-        }
-
-        var db = dbContextResult.Value;
-
-        // Obter campanhas de Search (GoogleAds e BingAds)
-        var searchCampaigns = await db.Campaigns
-            .AsNoTracking()
-            .Where(c => c.WorkspaceId == workspaceId && (c.Platform == "GoogleAds" || c.Platform == "BingAds"))
-            .Include(c => c.AdSets)
-            .ToListAsync(cancellationToken);
-
-        if (searchCampaigns.Count == 0)
-        {
-            return Result<IReadOnlyList<SearchKeywordPerformance>>.Success(Array.Empty<SearchKeywordPerformance>());
-        }
-
-        var allAdSets = searchCampaigns.SelectMany(c => c.AdSets.Select(a => new { Campaign = c, AdSet = a })).ToList();
-        var adSetIds = allAdSets.Select(x => x.AdSet.Id).ToList();
-
-        var start = startDateUtc.Date;
-        var end = endDateUtc.Date;
-
-        var metrics = await db.CampaignMetrics
-            .AsNoTracking()
-            .Where(m => m.WorkspaceId == workspaceId &&
-                        m.AdSetId.HasValue &&
-                        adSetIds.Contains(m.AdSetId.Value) &&
-                        m.Date >= start &&
-                        m.Date <= end)
-            .GroupBy(m => m.AdSetId!.Value)
-            .Select(g => new
+            var dbContextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+            if (dbContextResult.IsFailure)
             {
-                AdSetId = g.Key,
-                Spend = g.Sum(m => m.Spend),
-                Clicks = g.Sum(m => m.Clicks),
-                Conversions = g.Sum(m => m.Conversions)
-            })
-            .ToDictionaryAsync(x => x.AdSetId, cancellationToken);
+                return Result<IReadOnlyList<SearchKeywordPerformance>>.Failure(dbContextResult.Error);
+            }
 
-        var resultList = new List<SearchKeywordPerformance>();
+            var db = dbContextResult.Value;
 
-        foreach (var item in allAdSets)
-        {
-            metrics.TryGetValue(item.AdSet.Id, out var m);
+            // Obter campanhas de Search (GoogleAds e BingAds)
+            var searchCampaigns = await db.Campaigns
+                .AsNoTracking()
+                .Where(c => c.WorkspaceId == workspaceId && (c.Platform == "GoogleAds" || c.Platform == "BingAds"))
+                .Include(c => c.AdSets)
+                .ToListAsync(cancellationToken);
 
-            var spend = m?.Spend ?? 0m;
-            var clicks = m?.Clicks ?? 0;
-            var conversions = m?.Conversions ?? 0m;
+            if (searchCampaigns.Count == 0)
+            {
+                return Result<IReadOnlyList<SearchKeywordPerformance>>.Success(Array.Empty<SearchKeywordPerformance>());
+            }
 
-            var cpc = clicks > 0 ? Math.Round(spend / clicks, 2) : 0m;
-            var cpa = conversions > 0 ? Math.Round(spend / conversions, 2) : 0m;
+            var allAdSets = searchCampaigns.SelectMany(c => c.AdSets.Select(a => new { Campaign = c, AdSet = a })).ToList();
+            var adSetIds = allAdSets.Select(x => x.AdSet.Id).ToList();
 
-            var keyword = ExtractSearchKeyword(item.AdSet.TargetingSummary, item.AdSet.Name);
+            var start = startDateUtc.Date;
+            var end = endDateUtc.Date;
 
-            resultList.Add(new SearchKeywordPerformance(
-                platform: item.Campaign.Platform,
-                campaignId: item.Campaign.Id,
-                campaignName: item.Campaign.Name,
-                adGroupId: item.AdSet.Id,
-                adGroupName: item.AdSet.Name,
-                keyword: keyword,
-                matchType: "Phrase",
-                spend: spend,
-                clicks: clicks,
-                conversions: conversions,
-                cpc: cpc,
-                cpa: cpa
-            ));
+            var metrics = await db.CampaignMetrics
+                .AsNoTracking()
+                .Where(m => m.WorkspaceId == workspaceId &&
+                            m.AdSetId.HasValue &&
+                            adSetIds.Contains(m.AdSetId.Value) &&
+                            m.Date >= start &&
+                            m.Date <= end)
+                .GroupBy(m => m.AdSetId!.Value)
+                .Select(g => new
+                {
+                    AdSetId = g.Key,
+                    Spend = g.Sum(m => m.Spend),
+                    Clicks = g.Sum(m => m.Clicks),
+                    Conversions = g.Sum(m => m.Conversions)
+                })
+                .ToDictionaryAsync(x => x.AdSetId, cancellationToken);
+
+            var resultList = new List<SearchKeywordPerformance>();
+
+            foreach (var item in allAdSets)
+            {
+                metrics.TryGetValue(item.AdSet.Id, out var m);
+
+                var spend = m?.Spend ?? 0m;
+                var clicks = m?.Clicks ?? 0;
+                var conversions = m?.Conversions ?? 0m;
+
+                var cpc = clicks > 0 ? Math.Round(spend / clicks, 2) : 0m;
+                var cpa = conversions > 0 ? Math.Round(spend / conversions, 2) : 0m;
+
+                var keyword = ExtractSearchKeyword(item.AdSet.TargetingSummary, item.AdSet.Name);
+
+                resultList.Add(new SearchKeywordPerformance(
+                    platform: item.Campaign.Platform,
+                    campaignId: item.Campaign.Id,
+                    campaignName: item.Campaign.Name,
+                    adGroupId: item.AdSet.Id,
+                    adGroupName: item.AdSet.Name,
+                    keyword: keyword,
+                    matchType: "Phrase",
+                    spend: spend,
+                    clicks: clicks,
+                    conversions: conversions,
+                    cpc: cpc,
+                    cpa: cpa
+                ));
+            }
+
+            return Result<IReadOnlyList<SearchKeywordPerformance>>.Success(resultList);
         }
-
-        return Result<IReadOnlyList<SearchKeywordPerformance>>.Success(resultList);
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<SearchKeywordPerformance>>.Failure(
+                Error.Failure("Copilot.DatabaseError", $"Falha ao consultar palavras-chave de Search: {ex.Message}"));
+        }
     }
 
     /// <inheritdoc />
@@ -203,54 +219,62 @@ public sealed class CopilotDataProvider : ICopilotDataProvider
             return Result<bool>.Failure(Error.Validation("Copilot.NullAction", "A ação de remediação não pode ser nula."));
         }
 
-        var dbContextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
-        if (dbContextResult.IsFailure)
+        try
         {
-            return Result<bool>.Failure(dbContextResult.Error);
-        }
-
-        var db = dbContextResult.Value;
-
-        // Se for pausa de conjunto de anúncios
-        if (action.ActionType == CopilotActionType.PauseAdSet)
-        {
-            var adSet = await db.AdSets.FirstOrDefaultAsync(a => a.Id == action.TargetEntityId, cancellationToken);
-            if (adSet != null)
+            var dbContextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+            if (dbContextResult.IsFailure)
             {
-                adSet.UpdateDetails(
-                    adSet.Name,
-                    AdSetStatus.Paused,
-                    adSet.BidStrategy,
-                    adSet.OptimizationGoal,
-                    adSet.DailyBudget,
-                    adSet.LifetimeBudget,
-                    adSet.TargetingSummary,
-                    adSet.StartDateUtc,
-                    adSet.EndDateUtc,
-                    DateTime.UtcNow);
+                return Result<bool>.Failure(dbContextResult.Error);
             }
+
+            var db = dbContextResult.Value;
+
+            // Se for pausa de conjunto de anúncios
+            if (action.ActionType == CopilotActionType.PauseAdSet)
+            {
+                var adSet = await db.AdSets.FirstOrDefaultAsync(a => a.Id == action.TargetEntityId, cancellationToken);
+                if (adSet != null)
+                {
+                    adSet.UpdateDetails(
+                        adSet.Name,
+                        AdSetStatus.Paused,
+                        adSet.BidStrategy,
+                        adSet.OptimizationGoal,
+                        adSet.DailyBudget,
+                        adSet.LifetimeBudget,
+                        adSet.TargetingSummary,
+                        adSet.StartDateUtc,
+                        adSet.EndDateUtc,
+                        DateTime.UtcNow);
+                }
+            }
+
+            // Registrar auditoria imutável no Tenant
+            var auditLogResult = TenantAuditLog.Create(
+                id: Guid.NewGuid(),
+                userId: workspaceId,
+                userEmail: "copilot@admetricspro.internal",
+                action: $"CopilotAction.{action.ActionType}",
+                resource: action.Platform,
+                resourceId: action.TargetEntityId.ToString(),
+                details: $"Ação executada em 1 clique pelo Copiloto: {action.Title}. Detalhes: {action.Description}",
+                ipAddress: "127.0.0.1",
+                createdAtUtc: DateTime.UtcNow
+            );
+
+            if (auditLogResult.IsSuccess)
+            {
+                await db.TenantAuditLogs.AddAsync(auditLogResult.Value, cancellationToken);
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
+            return Result<bool>.Success(true);
         }
-
-        // Registrar auditoria imutável no Tenant
-        var auditLogResult = TenantAuditLog.Create(
-            id: Guid.NewGuid(),
-            userId: workspaceId,
-            userEmail: "copilot@admetricspro.internal",
-            action: $"CopilotAction.{action.ActionType}",
-            resource: action.Platform,
-            resourceId: action.TargetEntityId.ToString(),
-            details: $"Ação executada em 1 clique pelo Copiloto: {action.Title}. Detalhes: {action.Description}",
-            ipAddress: "127.0.0.1",
-            createdAtUtc: DateTime.UtcNow
-        );
-
-        if (auditLogResult.IsSuccess)
+        catch (Exception ex)
         {
-            await db.TenantAuditLogs.AddAsync(auditLogResult.Value, cancellationToken);
-            await db.SaveChangesAsync(cancellationToken);
+            return Result<bool>.Failure(
+                Error.Failure("Copilot.ExecutionError", $"Falha ao persistir ação do Copiloto: {ex.Message}"));
         }
-
-        return Result<bool>.Success(true);
     }
 
     private static List<string> ExtractTargetingTags(string? targetingSummary, string adSetName)

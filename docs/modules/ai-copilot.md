@@ -196,3 +196,17 @@ Executa imediatamente a ação corretiva selecionada pelo gestor.
   }
 }
 ```
+
+---
+
+## 4. Resiliência HTTP, Tratamento de Falhas & Restauração de Sessão
+
+### 4.1 Resiliência no Cliente HTTP (`TrafficCopilotClientService`)
+- O consumo das rotas do Copiloto é realizado através de leitura defensiva do conteúdo HTTP (`ReadAsStringAsync`).
+- Respostas vazias (ex: interrupção de rede, status 404, 500 sem payload pelo runtime) são interceptadas antes da desserialização, retornando envelopes `Result.Failure(Error.Failure("Http.EmptyResponse", ...))` com o código de status HTTP detalhado.
+- Erros de JSON malformado são capturados graciosamente como `Result.Failure(Error.Failure("Http.InvalidJson", ...))`, prevenindo quebras de circuito SignalR e exceções cruas de tokens JSON.
+
+### 4.2 Restauração de Sessão no Blazor Server (`TrafficCopilotPage.razor`)
+- A página implementa o hook de ciclo de vida `OnAfterRenderAsync(bool firstRender)` para restaurar a sessão corporativa (`TenantSessionStateProvider.RestoreSessionAsync()`) e o workspace ativo (`WorkspaceContextStateProvider.RestoreActiveWorkspaceAsync()`) em acessos diretos à rota `/copilot` ou recarregamentos (F5).
+- Enquanto o inquilino não possuir nenhum workspace cadastrado, a interface apresenta o estado visual orientativo (`data-testid="copilot-empty-workspaces"`) orientando a criação prévia de clientes.
+

@@ -97,6 +97,11 @@ public abstract class BunitTestBase : BunitContext
     protected WebApp.Services.IOAuthIntegrationsClientService OAuthIntegrationsClientService { get; }
 
     /// <summary>
+    /// Mock do serviço de cliente do Copiloto de IA e Auditoria de Tráfego.
+    /// </summary>
+    protected WebApp.Services.Copilot.ITrafficCopilotClientService TrafficCopilotClientService { get; }
+
+    /// <summary>
     /// Inicializa uma nova instância de <see cref="BunitTestBase"/> com os provedores registrados.
     /// </summary>
     protected BunitTestBase()
@@ -118,6 +123,22 @@ public abstract class BunitTestBase : BunitContext
         AnalyticsDashboardClientService = NSubstitute.Substitute.For<WebApp.Services.IAnalyticsDashboardClientService>();
         BudgetPacingClientService = NSubstitute.Substitute.For<WebApp.Services.IBudgetPacingClientService>();
         OAuthIntegrationsClientService = NSubstitute.Substitute.For<WebApp.Services.IOAuthIntegrationsClientService>();
+        TrafficCopilotClientService = NSubstitute.Substitute.For<WebApp.Services.Copilot.ITrafficCopilotClientService>();
+
+        TrafficCopilotClientService.GetDailyDiagnosticAsync(NSubstitute.Arg.Any<Guid>(), NSubstitute.Arg.Any<DateTime?>(), NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<Analytics.Application.Copilot.DTOs.DailyDiagnosticReportDto>.Success(
+                new Analytics.Application.Copilot.DTOs.DailyDiagnosticReportDto(
+                    Guid.NewGuid(),
+                    DateTime.UtcNow.Date,
+                    "Diagnóstico Padrão",
+                    "Vitórias",
+                    "Riscos",
+                    Array.Empty<Analytics.Application.Copilot.DTOs.AudienceOverlapAnomalyDto>(),
+                    Array.Empty<Analytics.Application.Copilot.DTOs.SearchCannibalizationAnomalyDto>(),
+                    Array.Empty<Analytics.Application.Copilot.DTOs.CopilotRecommendationActionDto>(),
+                    0m,
+                    0,
+                    0)));
 
         OAuthIntegrationsClientService.GetConnectionsStatusAsync(NSubstitute.Arg.Any<Guid>(), NSubstitute.Arg.Any<CancellationToken>())
             .Returns(BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<Integrations.Application.OAuth.DTOs.OAuthConnectionStatusDto>>.Success(
@@ -220,6 +241,7 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<WebApp.Services.IAnalyticsDashboardClientService>(AnalyticsDashboardClientService);
         Services.AddSingleton<WebApp.Services.IBudgetPacingClientService>(BudgetPacingClientService);
         Services.AddSingleton<WebApp.Services.IOAuthIntegrationsClientService>(OAuthIntegrationsClientService);
+        Services.AddSingleton<WebApp.Services.Copilot.ITrafficCopilotClientService>(TrafficCopilotClientService);
     }
 
     /// <summary>

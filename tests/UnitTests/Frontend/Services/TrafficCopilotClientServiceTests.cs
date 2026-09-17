@@ -160,4 +160,84 @@ public sealed class TrafficCopilotClientServiceTests
         result.Value.Success.Should().BeTrue();
         capturedMethod.Should().Be(HttpMethod.Post);
     }
+
+    /// <summary>
+    /// Valida que GetDailyDiagnosticAsync retorna falha graciosa e informativa quando a API responde sem conteúdo (corpo vazio).
+    /// </summary>
+    [Fact]
+    public async Task GetDailyDiagnosticAsync_ShouldReturnFailure_WhenApiResponseIsEmpty()
+    {
+        // Arrange
+        var handler = new MockHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent(string.Empty)
+        });
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://api.test") };
+        var service = new TrafficCopilotClientService(client, _tenantStateProvider);
+
+        // Act
+        var result = await service.GetDailyDiagnosticAsync(Guid.NewGuid());
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Http.EmptyResponse");
+        result.Error.Description.Should().Contain("500");
+    }
+
+    /// <summary>
+    /// Valida que GetDailyDiagnosticAsync retorna falha graciosa quando a API responde HTML ou JSON malformado.
+    /// </summary>
+    [Fact]
+    public async Task GetDailyDiagnosticAsync_ShouldReturnFailure_WhenApiResponseIsInvalidJson()
+    {
+        // Arrange
+        var handler = new MockHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadGateway)
+        {
+            Content = new StringContent("<html><body>502 Bad Gateway</body></html>")
+        });
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://api.test") };
+        var service = new TrafficCopilotClientService(client, _tenantStateProvider);
+
+        // Act
+        var result = await service.GetDailyDiagnosticAsync(Guid.NewGuid());
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Http.InvalidJson");
+    }
+
+    /// <summary>
+    /// Valida que ExecuteActionAsync retorna falha graciosa quando a API responde sem conteúdo.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteActionAsync_ShouldReturnFailure_WhenApiResponseIsEmpty()
+    {
+        // Arrange
+        var actionDto = new CopilotRecommendationActionDto(
+            ActionId: Guid.NewGuid(),
+            ActionType: "PauseAdSet",
+            TargetEntityId: Guid.NewGuid(),
+            TargetEntityName: "Conjunto",
+            Platform: "MetaAds",
+            Title: "Pausar",
+            Description: "Pausar conjunto",
+            Parameters: new Dictionary<string, string>(),
+            IsApplied: false,
+            AppliedAtUtc: null);
+
+        var handler = new MockHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent(string.Empty)
+        });
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://api.test") };
+        var service = new TrafficCopilotClientService(client, _tenantStateProvider);
+
+        // Act
+        var result = await service.ExecuteActionAsync(Guid.NewGuid(), actionDto);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Http.EmptyResponse");
+        result.Error.Description.Should().Contain("404");
+    }
 }

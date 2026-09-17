@@ -49,10 +49,25 @@ public sealed class TrafficCopilotClientService : ITrafficCopilotClientService
             AppendTenantHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var result = await response.Content.ReadFromJsonAsync<Result<DailyDiagnosticReportDto>>(JsonOptions, cancellationToken);
+            var contentString = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            return result ?? Result<DailyDiagnosticReportDto>.Failure(
-                Error.Failure("Http.EmptyResponse", "A resposta da API retornou vazia."));
+            if (string.IsNullOrWhiteSpace(contentString))
+            {
+                return Result<DailyDiagnosticReportDto>.Failure(
+                    Error.Failure("Http.EmptyResponse", $"A API retornou status {(int)response.StatusCode} ({response.ReasonPhrase}) sem conteúdo."));
+            }
+
+            try
+            {
+                var result = JsonSerializer.Deserialize<Result<DailyDiagnosticReportDto>>(contentString, JsonOptions);
+                return result ?? Result<DailyDiagnosticReportDto>.Failure(
+                    Error.Failure("Http.EmptyResponse", "A resposta da API retornou vazia."));
+            }
+            catch (JsonException ex)
+            {
+                return Result<DailyDiagnosticReportDto>.Failure(
+                    Error.Failure("Http.InvalidJson", $"Falha ao interpretar resposta da API (status {(int)response.StatusCode}): {ex.Message}"));
+            }
         }
         catch (Exception ex)
         {
@@ -102,10 +117,25 @@ public sealed class TrafficCopilotClientService : ITrafficCopilotClientService
             AppendTenantHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var result = await response.Content.ReadFromJsonAsync<Result<ExecuteCopilotActionResultDto>>(JsonOptions, cancellationToken);
+            var contentString = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            return result ?? Result<ExecuteCopilotActionResultDto>.Failure(
-                Error.Failure("Http.EmptyResponse", "A resposta da API retornou vazia."));
+            if (string.IsNullOrWhiteSpace(contentString))
+            {
+                return Result<ExecuteCopilotActionResultDto>.Failure(
+                    Error.Failure("Http.EmptyResponse", $"A API retornou status {(int)response.StatusCode} ({response.ReasonPhrase}) sem conteúdo."));
+            }
+
+            try
+            {
+                var result = JsonSerializer.Deserialize<Result<ExecuteCopilotActionResultDto>>(contentString, JsonOptions);
+                return result ?? Result<ExecuteCopilotActionResultDto>.Failure(
+                    Error.Failure("Http.EmptyResponse", "A resposta da API retornou vazia."));
+            }
+            catch (JsonException ex)
+            {
+                return Result<ExecuteCopilotActionResultDto>.Failure(
+                    Error.Failure("Http.InvalidJson", $"Falha ao interpretar resposta da API (status {(int)response.StatusCode}): {ex.Message}"));
+            }
         }
         catch (Exception ex)
         {

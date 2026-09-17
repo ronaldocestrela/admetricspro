@@ -54,6 +54,15 @@
         </div>
     }
 
+    @if (Workspaces != null && Workspaces.Count == 0)
+    {
+        <div class="empty-anomalies-state" id="copilot-no-workspaces" data-testid="copilot-empty-workspaces">
+            <span class="empty-icon">📁</span>
+            <h3>Nenhum cliente/workspace cadastrado</h3>
+            <p>Cadastre ao menos um workspace para auditar métricas e detecção de anomalias no Copiloto.</p>
+        </div>
+    }
+
     @if (IsLoading && DiagnosticReport == null)
     {
         <div class="loading-state" id="copilot-loading-skeleton">
@@ -255,18 +264,56 @@
         }
     }
 
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!TenantSessionStateProvider.IsAuthenticated)
+            {
+                var restored = await TenantSessionStateProvider.RestoreSessionAsync();
+                if (restored)
+                {
+                    await WorkspaceContextStateProvider.RestoreActiveWorkspaceAsync();
+                    await LoadWorkspacesAsync();
+
+                    if (Workspaces != null && Workspaces.Count > 0)
+                    {
+                        if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue &&
+                            Workspaces.Any(w => w.Id == WorkspaceContextStateProvider.CurrentWorkspaceId.Value))
+                        {
+                            SelectedWorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId.Value;
+                        }
+                        else
+                        {
+                            SelectedWorkspaceId = Workspaces[0].Id;
+                            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(SelectedWorkspaceId, Workspaces[0].Name);
+                        }
+                    }
+
+                    if (SelectedWorkspaceId != Guid.Empty)
+                    {
+                        await LoadDiagnosticAsync();
+                    }
+
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+    }
+
     private void HandleContextWorkspaceChanged()
     {
-        var contextWsId = WorkspaceContextStateProvider.CurrentWorkspaceId;
-        if (contextWsId.HasValue && contextWsId.Value != Guid.Empty && contextWsId.Value != SelectedWorkspaceId)
+        InvokeAsync(async () =>
         {
-            SelectedWorkspaceId = contextWsId.Value;
-            InvokeAsync(async () =>
+            var contextWsId = WorkspaceContextStateProvider.CurrentWorkspaceId;
+            if (contextWsId.HasValue && contextWsId.Value != Guid.Empty && contextWsId.Value != SelectedWorkspaceId)
             {
+                SelectedWorkspaceId = contextWsId.Value;
                 await LoadDiagnosticAsync();
                 StateHasChanged();
-            });
-        }
+            }
+        });
     }
 
     private async Task LoadWorkspacesAsync()
@@ -347,12 +394,23 @@
         InvokeAsync(async () =>
         {
             await LoadWorkspacesAsync();
-            if (SelectedWorkspaceId == Guid.Empty && Workspaces != null && Workspaces.Count > 0)
+            if (Workspaces != null && Workspaces.Count > 0)
             {
-                SelectedWorkspaceId = Workspaces[0].Id;
-                await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(SelectedWorkspaceId, Workspaces[0].Name);
+                if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue &&
+                    Workspaces.Any(w => w.Id == WorkspaceContextStateProvider.CurrentWorkspaceId.Value))
+                {
+                    SelectedWorkspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId.Value;
+                }
+                else if (SelectedWorkspaceId == Guid.Empty || !Workspaces.Any(w => w.Id == SelectedWorkspaceId))
+                {
+                    SelectedWorkspaceId = Workspaces[0].Id;
+                    await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(SelectedWorkspaceId, Workspaces[0].Name);
+                }
             }
-            await LoadDiagnosticAsync();
+            if (SelectedWorkspaceId != Guid.Empty)
+            {
+                await LoadDiagnosticAsync();
+            }
             StateHasChanged();
         });
     }
