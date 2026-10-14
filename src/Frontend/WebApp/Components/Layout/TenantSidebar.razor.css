@@ -1,10 +1,10 @@
 .tenant-sidebar { width: 284px; height: 100dvh; position: fixed; inset: 0 auto 0 0; background: color-mix(in srgb,var(--tenant-secondary-color,#090e19) 18%,#090e19); border-right: 1px solid var(--tenant-border,#42475360); display: flex; flex-direction: column; z-index: 80; transition: transform 250ms ease; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 26px 20px; border-bottom: 1px solid var(--tenant-border); }
-.sidebar-brand { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; color: white; }
-.sidebar-logo { max-width: 72px; max-height: 38px; object-fit: contain; flex-shrink: 0; }
+.sidebar-brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; text-decoration: none; color: white; }
+.sidebar-logo { max-width: 38px; max-height: 38px; object-fit: contain; flex-shrink: 0; }
 .sidebar-initials-badge { width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; border-radius: 10px; background: linear-gradient(135deg,var(--tenant-primary-color),var(--tenant-accent-color)); color: #01030f; font-size: 13px; font-weight: 800; }
-.sidebar-brand-name { font-size: 17px; font-weight: 700; line-height: 1.35; letter-spacing: -.4px; overflow-wrap: anywhere; }
-.sidebar-close-btn { display: none; padding: 6px; border: 0; border-radius: 8px; background: #ffffff08; color: #c2c6d6; cursor: pointer; }
+.sidebar-brand-name { min-width: 0; font-size: 17px; font-weight: 700; line-height: 1.35; letter-spacing: -.4px; overflow-wrap: normal; word-break: normal; }
+.sidebar-close-btn { display: none; flex-shrink: 0; padding: 6px; border: 0; border-radius: 8px; background: #ffffff08; color: #c2c6d6; cursor: pointer; }
 .sidebar-close-btn svg { width: 18px; height: 18px; }
 .sidebar-scroll-area { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 12px; scrollbar-width: thin; scrollbar-color: #424753 transparent; }
 .sidebar-workspace-wrapper { margin: 0 4px 18px; padding: 14px; border: 1px solid var(--tenant-border); border-radius: 12px; background: var(--tenant-surface); }
@@ -34,6 +34,7 @@
     .tenant-sidebar { transform: translateX(-100%); width: min(284px,calc(100vw - 36px)); box-shadow: 0 0 30px #0008; }
     .tenant-sidebar.open { transform: translateX(0); }
     .sidebar-close-btn { display: inline-flex; }
+    .sidebar-brand-name { font-size: 16px; }
     .sidebar-backdrop { display: block; position: fixed; inset: 0; background: #01030fb0; backdrop-filter: blur(4px); z-index: 70; }
 }
 @media (prefers-reduced-motion: reduce) { .tenant-sidebar { transition: none; } }
