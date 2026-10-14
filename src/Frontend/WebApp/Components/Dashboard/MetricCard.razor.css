@@ -28,7 +28,7 @@
 .metric-title {
     font-size: 13px;
     font-weight: 600;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     text-transform: uppercase;
     letter-spacing: 0.03em;
 }
@@ -43,7 +43,7 @@
 }
 
 .icon-spend {
-    background: rgba(37, 99, 235, 0.15);
+    background: color-mix(in srgb, var(--tenant-primary-color) 15%, transparent);
     color: #60A5FA;
 }
 
@@ -59,7 +59,7 @@
 
 .icon-ctr {
     background: rgba(56, 189, 248, 0.15);
-    color: #38BDF8;
+    color: var(--tenant-primary-color, #4e8eff);
 }
 
 .icon-cpa {
@@ -75,7 +75,7 @@
 .metric-value {
     font-size: 26px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin-bottom: 12px;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
@@ -115,7 +115,7 @@
 
 .trend-neutral {
     background: rgba(148, 163, 184, 0.12);
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     border-color: rgba(148, 163, 184, 0.2);
 }
 
@@ -125,6 +125,6 @@
 
 .metric-subtext {
     font-size: 11px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
     font-weight: 500;
 }

@@ -180,3 +180,18 @@ TenantJwt__ExpirationMinutes=480
 1. **Proteção Contra Enumeração de Usuários:** Respostas de e-mail inexistente e de senha incorreta retornam rigorosamente o mesmo código de erro (`Auth.InvalidCredentials` com HTTP 401), prevenindo enumeração maliciosa de e-mails de clientes.
 2. **Inadimplência Financeira (Dunning Engine Integration):** Inquilinos suspensos pelo motor de dunning no `MasterDb` são imediatamente impedidos de autenticar (`Tenant.Inactive`).
 3. **Resolução de Banco Dinâmica & Pool Seguro:** O `ITenantDbContextFactory<TenantDbContext>` abre a conexão sob demanda no banco SQL Server individual do tenant com base na connection string descriptografada em memória pelo `ITenantConnectionResolver` com cache LRU com expiração deslizante.
+
+
+## Interface de login com a identidade da landing page
+
+A rota `/login` usa fundo `#01030f`, superfícies escuras, tipografia Inter, ícones vetoriais e CTAs com gradiente azul/ciano. O CSS de `TenantLoginPage.razor.css` é isolado pelo compilador Razor, evitando que os estilos dos campos afetem o onboarding ou o dashboard.
+
+O cabeçalho fixo de 76px apresenta a mesma marca e o asset `images/landing/brand-mark.svg` da LP. Logo e nome formam um link para `/`. O botão “Crie seu Cockpit” no cabeçalho e no rodapé do formulário leva a `/onboarding`, sem promessa de tempo de implantação. O botão de autenticação exibe “Entrar no Cockpit”, sem seta.
+
+No formulário padrão, logo e nome aparecem juntos, com a identidade institucional. Quando há branding de tenant, o nome, logo e variáveis de tema carregados pelo cliente HTTP continuam sendo utilizados no card. O botão de visibilidade preserva a senha e informa “Mostrar senha” ou “Ocultar senha”, com `aria-controls` e `aria-pressed`.
+
+A mudança é de apresentação. Os contratos HTTP, validações, persistência da sessão, resolução de subdomínio e redirecionamento após autenticação seguem o fluxo existente. Não houve novo endpoint, acesso direto a banco ou alteração de regras de autenticação. As transições respeitam movimento reduzido e a composição adapta o cabeçalho, card e sufixo do subdomínio para telas pequenas.
+
+Os testes de marca, navegação e visibilidade foram executados com falha antes da alteração. `TenantLoginPageTests` também mantém a cobertura de branding, erros de validação, falha de autenticação e login bem-sucedido.
+
+Validação da atualização visual: 283 testes de frontend aprovados. A conferência no Chrome validou desktop de 1440px e larguras de 1024px, 390px e 320px, sem sobreposição dos controles do cabeçalho ou rolagem horizontal. Foram verificados navegação à LP e ao cadastro, alternância da visibilidade da senha e erro local de campos obrigatórios, sem autenticar uma conta real.

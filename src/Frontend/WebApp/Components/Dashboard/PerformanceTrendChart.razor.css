@@ -27,14 +27,14 @@
 .chart-title {
     font-size: 15px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin: 0;
     letter-spacing: -0.01em;
 }
 
 .chart-subtitle {
     font-size: 12px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
 }
 
 .chart-legend {
@@ -48,7 +48,7 @@
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    color: #CBD5E1;
+    color: var(--tenant-copy, #c2c6d6);
     font-weight: 500;
 }
 
@@ -59,8 +59,8 @@
 }
 
 .dot-spend {
-    background: #3B82F6;
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+    background: var(--tenant-primary-color, #4e8eff);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--tenant-primary-color) 50%, transparent);
 }
 
 .dot-revenue {
@@ -125,7 +125,7 @@
 
 .x-label {
     font-size: 11px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
     font-weight: 500;
 }
 
@@ -136,18 +136,18 @@
     justify-content: center;
     padding: 40px 20px;
     text-align: center;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     gap: 8px;
 }
 
 .chart-empty-state p {
     font-size: 14px;
     font-weight: 600;
-    color: #CBD5E1;
+    color: var(--tenant-copy, #c2c6d6);
     margin: 0;
 }
 
 .empty-sub {
     font-size: 12px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
 }

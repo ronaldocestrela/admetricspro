@@ -2,7 +2,7 @@
     padding: 1.5rem 2rem;
     max-width: 1400px;
     margin: 0 auto;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
 }
 
 .page-header {
@@ -18,12 +18,12 @@
     font-size: 1.875rem;
     font-weight: 700;
     letter-spacing: -0.025em;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin-bottom: 0.25rem;
 }
 
 .page-subtitle {
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     font-size: 0.95rem;
     margin-bottom: 0;
 }
@@ -58,13 +58,13 @@
 .section-title {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #F1F5F9;
+    color: var(--tenant-text, #fff);
     margin-bottom: 0.25rem;
 }
 
 .section-description {
     font-size: 0.875rem;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     margin-bottom: 1.5rem;
 }
 
@@ -88,13 +88,13 @@
 .field-label {
     font-size: 0.875rem;
     font-weight: 500;
-    color: #E2E8F0;
+    color: var(--tenant-text, #fff);
     margin-bottom: 0.5rem;
 }
 
 .field-hint {
     font-size: 0.75rem;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
     margin-top: 0.35rem;
 }
 
@@ -136,7 +136,7 @@
 .form-control {
     background: rgba(30, 41, 59, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     border-radius: 0.5rem;
     padding: 0.625rem 0.875rem;
     font-size: 0.9rem;
@@ -145,9 +145,9 @@
 
 .form-control:focus {
     background: rgba(30, 41, 59, 0.9);
-    border-color: #38BDF8;
+    border-color: var(--tenant-primary-color, #4e8eff);
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-    color: #FFFFFF;
+    color: var(--tenant-text, #fff);
     outline: none;
 }
 
@@ -200,7 +200,7 @@
 .mockup-logo-badge {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     display: flex;
     align-items: center;
 }
@@ -230,7 +230,7 @@
 
 .mockup-metric-label {
     font-size: 0.75rem;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -238,7 +238,7 @@
 .mockup-metric-value {
     font-size: 1.35rem;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
 }
 
 .mockup-pill {
@@ -265,12 +265,12 @@
 
 .mockup-btn-primary {
     background: var(--preview-primary, #2563EB);
-    color: #FFFFFF;
+    color: var(--tenant-text, #fff);
 }
 
 .mockup-btn-secondary {
     background: rgba(255, 255, 255, 0.08);
-    color: #CBD5E1;
+    color: var(--tenant-copy, #c2c6d6);
 }
 
 .loading-state {
@@ -279,7 +279,7 @@
     align-items: center;
     justify-content: center;
     padding: 5rem 1rem;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
 }
 
 /* CNAME & DNS Card */
@@ -315,7 +315,7 @@
 
 .dns-record-grid code {
     background: rgba(56, 189, 248, 0.1);
-    color: #38BDF8;
+    color: var(--tenant-primary-color, #4e8eff);
     padding: 0.2rem 0.4rem;
     border-radius: 0.25rem;
     font-size: 0.85rem;

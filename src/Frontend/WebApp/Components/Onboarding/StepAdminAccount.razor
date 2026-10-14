@@ -3,14 +3,14 @@
 
 <div class="step-heading">
     <h2>Conta do Administrador Principal</h2>
-    <p>Configure as credenciais do gestor inicial com permissão de Super Usuário/Owner no ambiente dedicado.</p>
+    <p>Crie seu acesso para começar. Escolha uma senha segura e mantenha sua operação protegida.</p>
 </div>
 
 <div class="form-row">
     <div class="form-group">
         <label class="form-label" for="admin-fullname">Nome Completo do Gestor *</label>
         <div class="input-with-icon">
-            <span class="input-icon">👤</span>
+            <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span>
             <input id="admin-fullname"
                    type="text"
                    class="custom-input"
@@ -23,7 +23,7 @@
     <div class="form-group">
         <label class="form-label" for="admin-email">E-mail Corporativo *</label>
         <div class="input-with-icon">
-            <span class="input-icon">✉️</span>
+            <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg></span>
             <input id="admin-email"
                    type="email"
                    class="custom-input"
@@ -37,7 +37,7 @@
 <div class="form-group">
     <label class="form-label" for="admin-phone">WhatsApp / Telefone Comercial *</label>
     <div class="input-with-icon">
-        <span class="input-icon">📱</span>
+        <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/></svg></span>
         <input id="admin-phone"
                type="tel"
                class="custom-input"
@@ -45,53 +45,105 @@
                @bind="Model.AdminPhone"
                @bind:after="OnFieldChanged" />
     </div>
-    <small style="color: #64748b; font-size: 0.78rem;">Utilizado para alertas críticos de travas de overspending e segurança.</small>
+    <small style="color: #8c909f; font-size: 0.78rem;">Utilizado para alertas críticos de travas de overspending e segurança.</small>
 </div>
 
 <div class="form-row">
     <div class="form-group">
         <label class="form-label" for="admin-password">Senha de Acesso (Mín. 8 caracteres) *</label>
         <div class="input-with-icon">
-            <span class="input-icon">🔒</span>
+            <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
             <input id="admin-password"
-                   type="password"
+                   type="@(_showPassword ? "text" : "password")"
                    class="custom-input"
                    placeholder="••••••••••••"
+                   autocomplete="new-password"
+                   aria-describedby="password-requirements"
+                   @bind:event="oninput"
                    @bind="Model.AdminPassword"
                    @bind:after="OnFieldChanged" />
+            <button type="button" class="password-visibility" aria-controls="admin-password"
+                    aria-label="@(_showPassword ? "Ocultar senha" : "Mostrar senha")"
+                    aria-pressed="@(_showPassword ? "true" : "false")" @onclick="() => _showPassword = !_showPassword">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                    <circle cx="12" cy="12" r="3" />
+                    @if (_showPassword) { <path d="m3 3 18 18" /> }
+                </svg>
+            </button>
         </div>
     </div>
 
     <div class="form-group">
         <label class="form-label" for="confirm-password">Confirmar Senha *</label>
         <div class="input-with-icon">
-            <span class="input-icon">🔒</span>
+            <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
             <input id="confirm-password"
-                   type="password"
+                   type="@(_showConfirmPassword ? "text" : "password")"
                    class="custom-input"
                    placeholder="••••••••••••"
+                   autocomplete="new-password"
+                   @bind:event="oninput"
                    @bind="Model.ConfirmPassword"
                    @bind:after="OnFieldChanged" />
+            <button type="button" class="password-visibility" aria-controls="confirm-password"
+                    aria-label="@(_showConfirmPassword ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha")"
+                    aria-pressed="@(_showConfirmPassword ? "true" : "false")" @onclick="() => _showConfirmPassword = !_showConfirmPassword">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
+                @if (_showConfirmPassword) { <path d="m3 3 18 18" /> }</svg>
+            </button>
         </div>
     </div>
 </div>
+
+<div id="password-requirements" class="password-requirements">
+    <span class="password-requirements-title">Sua senha precisa ter</span>
+    <ul>
+        @foreach (var rule in PasswordRules)
+        {
+            <li class="password-rule @(rule.IsMet ? "is-met" : "")" data-rule="@rule.Id">
+                <span class="password-rule-indicator" aria-hidden="true">@(rule.IsMet ? "✓" : "·")</span>
+                <span class="password-rule-label">@rule.Label</span>
+                <span class="visually-hidden">@(rule.IsMet ? "atendido" : "pendente")</span>
+            </li>
+        }
+    </ul>
+</div>
+@if (!string.IsNullOrEmpty(Model.ConfirmPassword))
+{
+    <FieldValidationStatus TestId="password-confirmation" State="@(Model.AdminPassword == Model.ConfirmPassword ? "success" : "error")"
+        Message="@(Model.AdminPassword == Model.ConfirmPassword ? "As senhas coincidem." : "As senhas ainda não coincidem.")" />
+}
 
 <div class="form-group" style="margin-top: 1rem;">
     <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.85rem; color: #94a3b8;">
         <input type="checkbox"
                id="accept-terms"
-               style="width: 16px; height: 16px; accent-color: #4f46e5;"
+               style="width: 16px; height: 16px; accent-color: #4e8eff;"
                @bind="Model.AcceptTerms" />
         <span>Concordo com os Termos de Serviço, Política de Privacidade e Tratamento Seguro de Dados (LGPD).</span>
     </label>
 </div>
 
 @code {
+    /// <summary>Dados do administrador a cadastrar.</summary>
     [Parameter, EditorRequired]
     public TenantOnboardingFormModel Model { get; set; } = null!;
 
+    /// <summary>Notifica alterações dos campos da conta.</summary>
     [Parameter]
     public EventCallback OnStateChanged { get; set; }
+
+    private bool _showPassword;
+    private bool _showConfirmPassword;
+    private (string Id, string Label, bool IsMet)[] PasswordRules =>
+    [
+        ("length", "Mínimo de 8 caracteres", Model.AdminPassword.Length >= 8),
+        ("uppercase", "Letras maiúsculas", Model.AdminPassword.Any(char.IsUpper)),
+        ("lowercase", "Letras minúsculas", Model.AdminPassword.Any(char.IsLower)),
+        ("number", "Números", Model.AdminPassword.Any(char.IsDigit)),
+        ("symbol", "Símbolos (ex.: !, @, #, $, %)", Model.AdminPassword.Any(c => !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c)))
+    ];
 
     private async Task OnFieldChanged()
     {

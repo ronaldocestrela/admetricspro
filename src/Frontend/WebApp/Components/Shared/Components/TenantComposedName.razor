@@ -1,0 +1,13 @@
+@namespace WebApp.Components.Shared
+
+<span class="tenant-composed-name">@Prefix@if (!string.IsNullOrEmpty(Suffix)) { <span class="tenant-name-accent">@Suffix</span> }</span>
+
+@code {
+    /// <summary>Nome exibido, com a segunda parte destacada pela cor do projeto.</summary>
+    [Parameter] public string? Text { get; set; }
+
+    private string Name => string.IsNullOrWhiteSpace(Text) ? "AdMetricsPro" : Text.Trim();
+    private int Separator => Name.IndexOf(' ');
+    private string Prefix => Name == "AdMetricsPro" ? "AdMetrics" : Separator < 0 ? Name : Name[..(Separator + 1)];
+    private string Suffix => Name == "AdMetricsPro" ? "Pro" : Separator < 0 ? "" : Name[(Separator + 1)..];
+}

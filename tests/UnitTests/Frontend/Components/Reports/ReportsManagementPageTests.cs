@@ -82,7 +82,7 @@ public sealed class ReportsManagementPageTests : BunitTestBase
         // Assert
         cut.WaitForState(() => cut.FindAll("#table-report-schedules").Count > 0);
 
-        cut.Markup.Should().Contain("Relatórios Executivos White-Label");
+        cut.Find("h3").TextContent.Should().Contain("Relatórios Executivos White-Label");
         cut.Markup.Should().Contain("Relatório Semanal Executivo");
         cut.Markup.Should().Contain("contatos");
         cut.Find("#btn-new-schedule").Should().NotBeNull();

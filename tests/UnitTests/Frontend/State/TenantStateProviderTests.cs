@@ -8,6 +8,16 @@ namespace UnitTests.Frontend.State;
 /// </summary>
 public class TenantStateProviderTests
 {
+    /// <summary>Cores não preenchidas utilizam a identidade institucional da LP.</summary>
+    [Fact]
+    public void TenantBranding_WhenColorsAreBlank_ShouldUseLandingDefaults()
+    {
+        var branding = new TenantBranding("", " ", "");
+        branding.ToCssVariables().Should().Contain("--tenant-primary-color: #4E8EFF;")
+            .And.Contain("--tenant-secondary-color: #090E19;")
+            .And.Contain("--tenant-accent-color: #4BD8EC;");
+    }
+
     [Fact]
     public void Constructor_ShouldInitializeWithDefaultTenantState()
     {

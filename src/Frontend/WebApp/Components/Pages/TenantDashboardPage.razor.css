@@ -32,7 +32,7 @@
 .dashboard-welcome-title {
     font-size: 24px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin: 0 0 8px 0;
     line-height: 1.3;
     letter-spacing: -0.02em;
@@ -40,13 +40,13 @@
 
 .dashboard-welcome-subtitle {
     font-size: 14px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     margin: 0;
     line-height: 1.5;
 }
 
 .tenant-highlight {
-    color: #F1F5F9;
+    color: var(--tenant-text, #fff);
     font-weight: 600;
 }
 
@@ -70,7 +70,7 @@
 
 .btn-primary {
     background: var(--tenant-primary, #2563EB);
-    color: #FFFFFF;
+    color: var(--tenant-text, #fff);
     border: 1px solid transparent;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
@@ -83,7 +83,7 @@
 
 .btn-secondary {
     background: rgba(30, 41, 59, 0.8);
-    color: #E2E8F0;
+    color: var(--tenant-text, #fff);
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -130,7 +130,7 @@
 .metric-title {
     font-size: 13px;
     font-weight: 500;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
 }
 
 .metric-icon-box {
@@ -143,7 +143,7 @@
 }
 
 .icon-spend {
-    background: rgba(37, 99, 235, 0.15);
+    background: color-mix(in srgb, var(--tenant-primary-color) 15%, transparent);
     color: #60A5FA;
 }
 
@@ -164,7 +164,7 @@
 
 .icon-reach {
     background: rgba(56, 189, 248, 0.15);
-    color: #38BDF8;
+    color: var(--tenant-primary-color, #4e8eff);
 }
 
 .icon-cpa {
@@ -175,7 +175,7 @@
 .metric-value {
     font-size: 24px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin-bottom: 10px;
     letter-spacing: -0.01em;
 }
@@ -189,7 +189,7 @@
 
 .metric-subtext {
     font-size: 11px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
 }
 
 .metric-status-badge {
@@ -198,7 +198,7 @@
     padding: 2px 6px;
     border-radius: 4px;
     background: rgba(255, 255, 255, 0.05);
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
 }
 
 /* --------------------------------------------------------------------------
@@ -268,13 +268,13 @@
 .empty-state-title {
     font-size: 20px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin: 0 0 8px 0;
 }
 
 .empty-state-desc {
     font-size: 14px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     line-height: 1.6;
     margin: 0;
     max-width: 900px;
@@ -320,13 +320,13 @@
 .step-title {
     font-size: 15px;
     font-weight: 600;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin: 0 0 6px 0;
 }
 
 .step-desc {
     font-size: 13px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     line-height: 1.5;
     margin: 0 0 20px 0;
     flex: 1;
@@ -340,7 +340,7 @@
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #F1F5F9;
+    color: var(--tenant-text, #fff);
     font-size: 13px;
     font-weight: 500;
     text-decoration: none;
@@ -350,7 +350,7 @@
 .btn-step-action:hover {
     background: var(--tenant-primary, #2563EB);
     border-color: var(--tenant-primary, #2563EB);
-    color: #FFFFFF;
+    color: var(--tenant-text, #fff);
 }
 
 /* --------------------------------------------------------------------------
@@ -369,13 +369,13 @@
 .section-title {
     font-size: 18px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin: 0 0 4px 0;
 }
 
 .section-subtitle {
     font-size: 13px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     margin: 0;
 }
 
@@ -445,13 +445,13 @@
 .platform-name {
     font-size: 14px;
     font-weight: 600;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin: 0;
 }
 
 .platform-sub {
     font-size: 12px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
 }
 
 .platform-status-badge {
@@ -467,7 +467,7 @@
 
 .platform-status-badge.disconnected {
     background: rgba(148, 163, 184, 0.1);
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
@@ -490,7 +490,7 @@
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #E2E8F0;
+    color: var(--tenant-text, #fff);
     text-decoration: none;
     transition: all 0.2s ease;
 }
@@ -498,7 +498,7 @@
 .btn-connect:hover {
     background: var(--tenant-primary, #2563EB);
     border-color: var(--tenant-primary, #2563EB);
-    color: #FFFFFF;
+    color: var(--tenant-text, #fff);
 }
 
 /* --------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 .rbac-matrix-card {
-    background: #ffffff;
+    background: var(--tenant-surface, #171b27);
     border-radius: 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--tenant-border);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     padding: 1.5rem;
     margin-bottom: 2rem;
@@ -19,13 +19,13 @@
 .matrix-title {
     font-size: 1.25rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--tenant-text, #fff);
     margin: 0 0 0.25rem 0;
 }
 
 .matrix-subtitle {
     font-size: 0.875rem;
-    color: #64748b;
+    color: var(--tenant-muted, #8c909f);
     margin: 0;
 }
 
@@ -34,10 +34,10 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: #f8fafc;
-    border: 1px solid #cbd5e1;
+    background: var(--tenant-surface, #171b27);
+    border: 1px solid var(--tenant-border);
     border-radius: 8px;
-    color: #334155;
+    color: var(--tenant-text, #fff);
     font-weight: 500;
     font-size: 0.875rem;
     cursor: pointer;
@@ -45,7 +45,7 @@
 }
 
 .refresh-btn:hover:not(:disabled) {
-    background: #f1f5f9;
+    background: var(--tenant-surface, #171b27);
     border-color: #94a3b8;
 }
 
@@ -62,12 +62,12 @@
 .rbac-table th,
 .rbac-table td {
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--tenant-border);
 }
 
 .th-permission {
     text-align: left;
-    color: #475569;
+    color: var(--tenant-copy, #c2c6d6);
     font-weight: 600;
     width: 32%;
 }
@@ -83,8 +83,8 @@
     border-radius: 9999px;
     font-weight: 600;
     font-size: 0.75rem;
-    background: #f1f5f9;
-    color: #334155;
+    background: var(--tenant-surface, #171b27);
+    color: var(--tenant-text, #fff);
 }
 
 .col-owner .role-badge {
@@ -93,7 +93,7 @@
 }
 
 .col-guest .role-badge {
-    background: #e0e7ff;
+    background: var(--tenant-primary-soft);
     color: #3730a3;
 }
 
@@ -104,12 +104,12 @@
 
 .permission-name {
     font-weight: 600;
-    color: #1e293b;
+    color: var(--tenant-text, #fff);
 }
 
 .permission-code {
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: var(--tenant-muted, #8c909f);
     font-family: monospace;
 }
 
@@ -136,7 +136,7 @@
 }
 
 .badge-denied {
-    color: #cbd5e1;
+    color: var(--tenant-copy, #c2c6d6);
     font-weight: 700;
 }
 
@@ -156,5 +156,5 @@
 .loading-container {
     text-align: center;
     padding: 2rem;
-    color: #64748b;
+    color: var(--tenant-muted, #8c909f);
 }

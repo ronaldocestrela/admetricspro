@@ -1,0 +1,189 @@
+@* <summary>Seção pública do AdMetricsPro, preservando a composição e as interações da referência.</summary> *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<section class="relative z-10 w-full py-space-3xl px-gutter-mobile lg:px-gutter bg-surface-container-lowest/40" id="como-funciona">
+    <div class="max-w-[1200px] mx-auto flex flex-col items-center">
+        <div class="text-center max-w-[760px] mb-space-3xl">
+            <div class="inline-flex items-center gap-space-xs px-space-md py-1 rounded-full bg-surface-container-high mb-space-sm">
+                <span class="font-label-capsule text-label-capsule uppercase text-primary font-semibold">Passo a passo</span>
+            </div>
+            <h2 class="font-headline-section text-headline-section text-on-surface font-bold tracking-tight mb-space-sm">
+                Da primeira conexão à próxima decisão de investimento.
+            </h2>
+            <p class="font-body-lg text-body-lg text-on-surface-variant">
+                Uma sequência clara para organizar contas, entender resultados e colocar sua operação em movimento.
+            </p>
+        </div>
+
+        <!-- Timeline Vertical Container -->
+        <div @ref="timelineElement" data-reveal-atomic class="timeline-track relative w-full max-w-[960px] flex flex-col">
+            <!-- Linha Central Guia -->
+            <div class="timeline-guide" aria-hidden="true"></div>
+            <div class="timeline-progress" aria-hidden="true"></div>
+            <div class="timeline-cursor" aria-hidden="true"></div>
+
+            <!-- Nó 01 (Esquerda) -->
+            <div class="relative flex flex-col md:flex-row items-center w-full mb-space-2xl timeline-node">
+                <div class="w-full md:w-1/2 md:pr-space-2xl text-left md:text-right">
+                    <div class="timeline-card p-space-xl rounded-xl bg-surface-container-low shadow-md hover:bg-surface-container transition-all">
+                        <div class="inline-flex items-center gap-2 mb-2">
+                            <span class="font-mono-code text-mono-code font-bold text-secondary">ETAPA 01</span>
+                            <span class="material-symbols-outlined text-secondary text-[20px]">credit_card</span>
+                        </div>
+                        <h3 class="font-headline-card text-headline-card text-on-surface font-bold mb-space-xs">
+                Comece seu teste de 14 dias
+            </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Cadastre sua operação, escolha o plano adequado e explore a plataforma sem cartão de crédito durante o período de teste.
+            </p>
+                    </div>
+                </div>
+                <!-- Pin Central -->
+                <button type="button" class="timeline-pin" aria-label="Revelar etapa 01" aria-expanded="false">01</button>
+                <div class="w-full md:w-1/2"></div>
+            </div>
+
+            <!-- Nó 02 (Direita) -->
+            <div class="relative flex flex-col md:flex-row items-center w-full mb-space-2xl timeline-node">
+                <div class="w-full md:w-1/2"></div>
+                <!-- Pin Central -->
+                <button type="button" class="timeline-pin" aria-label="Revelar etapa 02" aria-expanded="false">02</button>
+                <div class="w-full md:w-1/2 md:pl-space-2xl text-left">
+                    <div class="timeline-card p-space-xl rounded-xl bg-surface-container-low shadow-md hover:bg-surface-container transition-all">
+                        <div class="inline-flex items-center gap-2 mb-2">
+                            <span aria-hidden="true" class="material-symbols-outlined text-primary text-[20px]">folder_special</span>
+                            <span class="font-mono-code text-mono-code font-bold text-primary">ETAPA 02</span>
+                        </div>
+                        <h3 class="font-headline-card text-headline-card text-on-surface font-bold mb-space-xs">
+                Organize seus clientes em workspaces
+            </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Separe as operações dos clientes e distribua responsabilidades por squads, mantendo a equipe no contexto de trabalho correto.
+            </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nó 03 (Esquerda) -->
+            <div class="relative flex flex-col md:flex-row items-center w-full mb-space-2xl timeline-node">
+                <div class="w-full md:w-1/2 md:pr-space-2xl text-left md:text-right">
+                    <div class="timeline-card p-space-xl rounded-xl bg-surface-container-low shadow-md hover:bg-surface-container transition-all">
+                        <div class="inline-flex items-center gap-2 mb-2">
+                            <span class="font-mono-code text-mono-code font-bold text-tertiary">ETAPA 03</span>
+                            <span aria-hidden="true" class="material-symbols-outlined text-tertiary text-[20px]">sync_alt</span>
+                        </div>
+                        <h3 class="font-headline-card text-headline-card text-on-surface font-bold mb-space-xs">
+                Conecte suas contas de anúncios
+            </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Autorize as redes disponíveis no seu plano por conexão segura. Centralize contas, campanhas e métricas sincronizadas.
+            </p>
+                    </div>
+                </div>
+                <!-- Pin Central -->
+                <button type="button" class="timeline-pin" aria-label="Revelar etapa 03" aria-expanded="false">03</button>
+                <div class="w-full md:w-1/2"></div>
+            </div>
+
+            <!-- Nó 04 (Direita) -->
+            <div class="relative flex flex-col md:flex-row items-center w-full mb-space-2xl timeline-node">
+                <div class="w-full md:w-1/2"></div>
+                <!-- Pin Central -->
+                <button type="button" class="timeline-pin" aria-label="Revelar etapa 04" aria-expanded="false">04</button>
+                <div class="w-full md:w-1/2 md:pl-space-2xl text-left">
+                    <div class="timeline-card p-space-xl rounded-xl bg-surface-container-low shadow-md hover:bg-surface-container transition-all">
+                        <div class="inline-flex items-center gap-2 mb-2">
+                            <span aria-hidden="true" class="material-symbols-outlined text-secondary-fixed-dim text-[20px]">code</span>
+                            <span class="font-mono-code text-mono-code font-bold text-secondary-fixed-dim">ETAPA 04</span>
+                        </div>
+                        <h3 class="font-headline-card text-headline-card text-on-surface font-bold mb-space-xs">
+                Reúna os indicadores que importam
+            </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Compare investimento, CPA, CTR e ROAS. Com receita total e jornadas disponíveis, amplie a análise com MER e atribuição multicanal.
+            </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nó 05 (Esquerda) -->
+            <div class="relative flex flex-col md:flex-row items-center w-full mb-space-2xl timeline-node">
+                <div class="w-full md:w-1/2 md:pr-space-2xl text-left md:text-right">
+                    <div class="timeline-card p-space-xl rounded-xl bg-surface-container-low shadow-md hover:bg-surface-container transition-all">
+                        <div class="inline-flex items-center gap-2 mb-2">
+                            <span class="font-mono-code text-mono-code font-bold text-primary">ETAPA 05</span>
+                            <span aria-hidden="true" class="material-symbols-outlined text-primary text-[20px]">monitoring</span>
+                        </div>
+                        <h3 class="font-headline-card text-headline-card text-on-surface font-bold mb-space-xs">
+                Identifique riscos e oportunidades
+            </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Acompanhe sinais de fadiga, o ritmo do orçamento e os diagnósticos do Copiloto para priorizar o que merece atenção.
+            </p>
+                    </div>
+                </div>
+                <!-- Pin Central -->
+                <button type="button" class="timeline-pin" aria-label="Revelar etapa 05" aria-expanded="false">05</button>
+                <div class="w-full md:w-1/2"></div>
+            </div>
+
+            <!-- Nó 06 (Direita) -->
+            <div class="relative flex flex-col md:flex-row items-center w-full mb-space-2xl timeline-node">
+                <div class="w-full md:w-1/2"></div>
+                <!-- Pin Central -->
+                <button type="button" class="timeline-pin" aria-label="Revelar etapa 06" aria-expanded="false">06</button>
+                <div class="w-full md:w-1/2 md:pl-space-2xl text-left">
+                    <div class="timeline-card p-space-xl rounded-xl bg-surface-container-low shadow-md hover:bg-surface-container transition-all">
+                        <div class="inline-flex items-center gap-2 mb-2">
+                            <span aria-hidden="true" class="material-symbols-outlined text-secondary text-[20px]">precision_manufacturing</span>
+                            <span class="font-mono-code text-mono-code font-bold text-secondary">ETAPA 06</span>
+                        </div>
+                        <h3 class="font-headline-card text-headline-card text-on-surface font-bold mb-space-xs">
+                Aja com regras e limites definidos
+            </h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Configure regras de automação e travas de orçamento. Revise ajustes em lote e compartilhe relatórios com a identidade da sua agência.
+            </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA Centralizado -->
+        <div class="mt-space-md">
+            <a class="inline-flex items-center gap-space-sm px-space-xl py-space-md rounded-xl font-body-md text-body-md font-semibold text-on-primary bg-gradient-to-r from-primary-container to-secondary-container hover:shadow-[0_0_24px_rgba(0,180,199,0.3)] transition-all" href="#planos">
+                <span>Começar minha operação</span>
+                <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+@code {
+    private ElementReference timelineElement;
+    private IJSObjectReference? module, controller;
+
+    /// <summary>Inicializa as interações após a renderização interativa.</summary>
+    /// <param name="firstRender">Indica a primeira renderização do componente.</param>
+    /// <returns>Tarefa de inicialização dos módulos visuais.</returns>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./landing/js/timeline.js");
+        controller = await module.InvokeAsync<IJSObjectReference>("initialize", timelineElement);
+    }
+
+    /// <summary>Libera os módulos, referências e observadores visuais.</summary>
+    /// <returns>Tarefa de liberação dos recursos.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (controller is not null) { await controller.InvokeVoidAsync("dispose"); await controller.DisposeAsync(); }
+            if (module is not null) await module.DisposeAsync();
+
+        }
+        catch (JSDisconnectedException) { /* O circuito já foi encerrado. */ }
+    }
+}

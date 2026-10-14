@@ -45,10 +45,10 @@ public sealed class OnboardingPageTests : BunitTestBase
 
     /// <summary>
     /// Valida que a página de onboarding renderiza a estrutura inicial da Etapa 1 (Dados Corporativos)
-    /// com a barra de progresso (stepper) e o Live Tenant Preview lateral.
+    /// com a barra de progresso e formulário centralizado, sem prévia lateral.
     /// </summary>
     [Fact]
-    public void OnboardingPage_ShouldRenderInitialStepAndLivePreview()
+    public void OnboardingPage_ShouldCenterInitialStepWithoutLivePreview()
     {
         // Act
         var cut = Render<OnboardingPage>();
@@ -56,10 +56,12 @@ public sealed class OnboardingPageTests : BunitTestBase
         // Assert
         cut.Find(".onboarding-stepper").Should().NotBeNull();
         cut.Find(".onboarding-wizard-panel").Should().NotBeNull();
-        cut.Find(".live-preview-panel").Should().NotBeNull();
+        cut.FindAll(".live-preview-panel").Should().BeEmpty();
+        cut.Find(".onboarding-split-container").GetAttribute("data-layout").Should().Be("centered");
         cut.Find("#company-name").Should().NotBeNull();
         cut.Find("#company-cnpj").Should().NotBeNull();
-        cut.Find(".preview-url-box").TextContent.Should().Contain(".admetricspro.com.br");
+        cut.Find(".onboarding-brand img").GetAttribute("src").Should().Be("images/landing/brand-mark.svg");
+        cut.Find(".onboarding-login-button").GetAttribute("href").Should().Be("/login");
     }
 
     /// <summary>
@@ -91,7 +93,7 @@ public sealed class OnboardingPageTests : BunitTestBase
         var cut = Render<OnboardingPage>();
 
         cut.Find("#company-name").Change("Agência Beta");
-        cut.Find("#company-cnpj").Change("12345678901"); // CPF inválido
+        cut.Find("#company-cnpj").Input("12345678901"); // CPF inválido
 
         // Act
         var advanceButton = cut.Find(".wizard-actions .btn-wizard-primary");
@@ -113,7 +115,7 @@ public sealed class OnboardingPageTests : BunitTestBase
         var cut = Render<OnboardingPage>();
 
         cut.Find("#company-name").Change("Agência Beta");
-        cut.Find("#company-cnpj").Change("52998224725"); // CPF válido
+        cut.Find("#company-cnpj").Input("52998224725"); // CPF válido
 
         // Act
         var advanceButton = cut.Find(".wizard-actions .btn-wizard-primary");
@@ -133,7 +135,7 @@ public sealed class OnboardingPageTests : BunitTestBase
         var cut = Render<OnboardingPage>();
 
         cut.Find("#company-name").Change("Vanguarda Digital Ltda");
-        cut.Find("#company-cnpj").Change("12345678000195"); // CNPJ válido
+        cut.Find("#company-cnpj").Input("12345678000195"); // CNPJ válido
 
         // Act
         var advanceButton = cut.Find(".wizard-actions .btn-wizard-primary");
@@ -141,6 +143,46 @@ public sealed class OnboardingPageTests : BunitTestBase
 
         // Assert
         cut.Find("#subdomain-input").Should().NotBeNull();
+    }
+
+    /// <summary>Mantém a prévia apenas na identidade e centraliza as etapas seguintes.</summary>
+    [Fact]
+    public void OnboardingPage_ShouldShowPreviewOnlyDuringBrandCustomization()
+    {
+        var cut = Render<OnboardingPage>();
+        cut.Find("#company-name").Change("Agência Beta");
+        cut.Find("#company-cnpj").Input("52998224725");
+        cut.Find(".wizard-actions .btn-wizard-primary").Click();
+        cut.FindAll(".live-preview-panel").Should().HaveCount(1);
+        cut.Find(".onboarding-split-container").GetAttribute("data-layout").Should().Be("identity");
+        cut.Find("#subdomain-input").Input("vanguarda");
+        cut.Find(".wizard-actions .btn-wizard-primary").Click();
+        cut.FindAll(".live-preview-panel").Should().BeEmpty();
+        cut.Find(".trial-guarantee").TextContent.Should().Contain("14 dias").And.Contain("cartão");
+        cut.Find(".wizard-actions .btn-wizard-primary").Click();
+        cut.FindAll(".live-preview-panel").Should().BeEmpty();
+        cut.Find(".onboarding-split-container").GetAttribute("data-layout").Should().Be("centered");
+    }
+
+    /// <summary>Impede avanço enquanto a consulta de disponibilidade estiver pendente.</summary>
+    [Fact]
+    public async Task OnboardingPage_ShouldWaitForSubdomainValidationBeforeAdvancing()
+    {
+        var response = new TaskCompletionSource<BuildingBlocks.Domain.Primitives.Result<Master.Application.Tenants.Queries.CheckSubdomainAvailability.SubdomainAvailabilityResponse>>();
+        _onboardingClientService.CheckSubdomainAvailabilityAsync("pendente", Arg.Any<CancellationToken>()).Returns(response.Task);
+        var cut = Render<OnboardingPage>();
+        cut.Find("#company-name").Change("Agência Beta");
+        cut.Find("#company-cnpj").Input("52998224725");
+        cut.Find(".wizard-actions .btn-wizard-primary").Click();
+        var pending = cut.Find("#subdomain-input").InputAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "pendente" });
+        cut.WaitForAssertion(() => cut.Find("[data-testid='subdomain-validation']").GetAttribute("data-state").Should().Be("checking"));
+        cut.Find(".wizard-actions .btn-wizard-primary").Click();
+        cut.FindAll(".trial-guarantee").Should().BeEmpty();
+        cut.Find(".status-pill.error").TextContent.Should().Contain("Aguarde");
+        response.SetResult(BuildingBlocks.Domain.Primitives.Result<Master.Application.Tenants.Queries.CheckSubdomainAvailability.SubdomainAvailabilityResponse>.Success(new("pendente", true)));
+        await pending;
+        cut.Find(".wizard-actions .btn-wizard-primary").Click();
+        cut.Find(".trial-guarantee").Should().NotBeNull();
     }
 
     /// <summary>
@@ -184,6 +226,6 @@ public sealed class OnboardingPageTests : BunitTestBase
         // Assert
         cut.Find(".preview-url-box").TextContent.Should().Contain("vanguarda.admetricspro.com.br");
         cut.Find(".mockup-brand").TextContent.Should().Contain("Vanguarda Tech");
-        cut.Find(".telemetry-terminal").TextContent.Should().Contain("Tenant_vanguarda");
+        cut.Find(".brand-preview-caption").TextContent.Should().Contain("demonstrativos");
     }
 }

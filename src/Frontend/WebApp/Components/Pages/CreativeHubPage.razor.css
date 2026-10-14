@@ -1,5 +1,5 @@
 .creative-hub-container {
-    background-color: #f8fafc;
+    background-color: var(--tenant-surface, #171b27);
     min-height: calc(100vh - 60px);
 }
 

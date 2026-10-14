@@ -4,8 +4,8 @@
 @inject ITenantOnboardingClientService OnboardingClientService
 
 <div class="step-heading">
-    <h2>Subdomínio Dedicado & Marca</h2>
-    <p>Defina o endereço exclusivo de isolamento e a personalização White-Label da sua organização.</p>
+    <h2>Subdomínio & Identidade</h2>
+    <p>Escolha seu endereço e suas cores. Veja ao lado como a identidade da sua operação vai aparecer.</p>
 </div>
 
 <div class="form-group">
@@ -15,29 +15,40 @@
                type="text"
                class="subdomain-input"
                placeholder="sua-empresa"
+               maxlength="60"
+               autocapitalize="none"
+               spellcheck="false"
+               aria-describedby="subdomain-feedback"
+               @bind:event="oninput"
                @bind="Model.Subdomain"
                @bind:after="CheckSubdomainAsync" />
         <span class="subdomain-suffix">.admetricspro.com.br</span>
     </div>
 
-    @if (_isCheckingSubdomain)
-    {
-        <div class="status-pill warning">
-            <span>Checando disponibilidade...</span>
-        </div>
-    }
-    else if (!string.IsNullOrWhiteSpace(_subdomainStatusMessage))
-    {
-        <div class="status-pill @(_isSubdomainAvailable ? "success" : "error")">
-            <span>@(_isSubdomainAvailable ? "✓" : "⚠") @_subdomainStatusMessage</span>
-        </div>
-    }
+    <div id="subdomain-feedback">
+        @if (_isCheckingSubdomain || !string.IsNullOrWhiteSpace(_subdomainStatusMessage))
+        {
+            <FieldValidationStatus TestId="subdomain-validation" State="@SubdomainState"
+                Message="@(_isCheckingSubdomain ? "Verificando subdomínio…" : _subdomainStatusMessage)" />
+        }
+        @if (Model.IsSubdomainVerified && !_isCheckingSubdomain)
+        {
+            <div class="subdomain-access-preview" data-testid="subdomain-access-preview">
+                <span class="access-preview-label">Seu endereço de acesso será</span>
+                <div class="access-preview-address">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                    <code>https://@(Model.GetSanitizedSubdomain()).admetricspro.com.br</code>
+                </div>
+                <small>Prévia do endereço. O acesso será criado ao concluir o cadastro.</small>
+            </div>
+        }
+    </div>
 </div>
 
 <div class="form-group">
     <label class="form-label" for="custom-domain-input">Domínio Personalizado CNAME (Opcional)</label>
     <div class="input-with-icon">
-        <span class="input-icon">🌐</span>
+        <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg></span>
         <input id="custom-domain-input"
                type="text"
                class="custom-input"
@@ -45,7 +56,7 @@
                @bind="Model.CustomDomain"
                @bind:after="OnFieldChanged" />
     </div>
-    <small style="color: #64748b; font-size: 0.78rem; margin-top: 0.25rem;">
+    <small style="color: #8c909f; font-size: 0.78rem; margin-top: 0.25rem;">
         Permite que seus clientes acessem relatórios diretamente em seu domínio próprio corporativo.
     </small>
 </div>
@@ -74,16 +85,22 @@
 </div>
 
 @code {
+    /// <summary>Dados compartilhados da identidade visual e do endereço.</summary>
     [Parameter, EditorRequired]
     public TenantOnboardingFormModel Model { get; set; } = null!;
 
+    /// <summary>Notifica a atualização da prévia de identidade.</summary>
     [Parameter]
     public EventCallback OnStateChanged { get; set; }
 
+    private int _requestVersion;
+    private string SubdomainState => _isCheckingSubdomain ? "checking" : Model.IsSubdomainVerified ? "success" : Model.GetSanitizedSubdomain().Length < 3 ? "idle" : "error";
     private bool _isCheckingSubdomain;
-    private bool _isSubdomainAvailable = true;
+
     private string? _subdomainStatusMessage;
 
+    /// <summary>Confirma novamente a disponibilidade ao retornar à etapa.</summary>
+    /// <returns>Tarefa de verificação pela Web API.</returns>
     protected override async Task OnInitializedAsync()
     {
         if (!string.IsNullOrWhiteSpace(Model.Subdomain))
@@ -94,29 +111,42 @@
 
     private async Task CheckSubdomainAsync()
     {
+        var version = ++_requestVersion;
+        Model.IsSubdomainVerified = false;
+        _isCheckingSubdomain = false;
         var sanitized = Model.GetSanitizedSubdomain();
         if (string.IsNullOrWhiteSpace(sanitized) || sanitized.Length < 3)
         {
             _subdomainStatusMessage = "Informe pelo menos 3 caracteres.";
-            _isSubdomainAvailable = false;
+
+            await OnFieldChanged();
+            return;
+        }
+
+        if (sanitized.Length > 60 || sanitized.Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-')))
+        {
+            _subdomainStatusMessage = "Use apenas letras, números e hífens no subdomínio.";
             await OnFieldChanged();
             return;
         }
 
         _isCheckingSubdomain = true;
+        _subdomainStatusMessage = null;
+        await OnFieldChanged();
         var checkResult = await OnboardingClientService.CheckSubdomainAvailabilityAsync(sanitized);
+        if (version != _requestVersion || sanitized != Model.GetSanitizedSubdomain()) return;
         _isCheckingSubdomain = false;
 
         if (checkResult.IsSuccess && checkResult.Value.IsAvailable)
         {
-            _isSubdomainAvailable = true;
-            _subdomainStatusMessage = "Subdomínio reservado para sua instância!";
+            Model.IsSubdomainVerified = true;
+            _subdomainStatusMessage = "Subdomínio disponível para seu cadastro!";
         }
         else
         {
-            _isSubdomainAvailable = false;
-            _subdomainStatusMessage = checkResult.IsSuccess 
-                ? checkResult.Value.Reason 
+
+            _subdomainStatusMessage = checkResult.IsSuccess
+                ? checkResult.Value.Reason ?? "Subdomínio não disponível para cadastro."
                 : "Não foi possível validar o subdomínio.";
         }
 

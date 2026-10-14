@@ -22,6 +22,12 @@ public sealed class TenantOnboardingFormModel
     [RegularExpression(@"^\d{3}\.\d{3}\.\d{3}\-\d{2}$|^\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}$|^\d{11}$|^\d{14}$", ErrorMessage = "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.")]
     public string Cnpj { get; set; } = string.Empty;
 
+    /// <summary>Indica que o documento atual foi validado e está disponível pela Web API.</summary>
+    public bool IsTaxDocumentVerified { get; set; }
+
+    /// <summary>Indica que o subdomínio atual foi confirmado como disponível pela Web API.</summary>
+    public bool IsSubdomainVerified { get; set; }
+
     /// <summary>
     /// Segmento de mercado da organização.
     /// </summary>
@@ -108,6 +114,14 @@ public sealed class TenantOnboardingFormModel
     /// </summary>
     [Range(typeof(bool), "true", "true", ErrorMessage = "É necessário aceitar os termos de serviço.")]
     public bool AcceptTerms { get; set; } = true;
+
+    /// <summary>Verifica os cinco critérios de senha apresentados no cadastro.</summary>
+    /// <returns>Verdadeiro quando há oito caracteres, maiúscula, minúscula, número e símbolo.</returns>
+    public bool HasValidAdminPassword() => AdminPassword.Length >= 8
+        && AdminPassword.Any(char.IsUpper)
+        && AdminPassword.Any(char.IsLower)
+        && AdminPassword.Any(char.IsDigit)
+        && AdminPassword.Any(c => !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c));
 
     /// <summary>
     /// Obtém o CNPJ/CPF sanitizado (apenas números).

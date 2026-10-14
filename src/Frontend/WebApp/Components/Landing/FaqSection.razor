@@ -1,0 +1,33 @@
+@* <summary>Seção pública do AdMetricsPro, preservando a composição e as interações da referência.</summary> *@
+<section class="relative z-10 w-full py-space-3xl px-gutter-mobile lg:px-gutter bg-surface-container-lowest/50" id="faq">
+    <div class="max-w-[860px] mx-auto flex flex-col items-center">
+        <div class="text-center max-w-[760px] mb-space-2xl">
+            <h2 class="font-headline-section text-headline-section text-on-surface font-bold tracking-tight mb-space-sm">
+                Perguntas Frequentes
+            </h2>
+            <p class="font-body-lg text-body-lg text-on-surface-variant">
+                Entenda conexões, análise de criativos, atribuição e os primeiros passos na plataforma.
+            </p>
+        </div>
+
+        <div class="w-full flex flex-col gap-space-sm">
+            @foreach (var faq in LandingContent.Faqs)
+            {
+                <div class="faq-item rounded-xl bg-surface-container-low shadow-sm overflow-hidden">
+                    <button id="@($"faq-question-{faq.Id}")" type="button" aria-expanded="@((ActiveFaq == faq.Id).ToString().ToLowerInvariant())" aria-controls="@($"faq-answer-{faq.Id}")" class="faq-toggle w-full p-space-lg flex items-center justify-between text-left" @onclick="() => ToggleFaq(faq.Id)">
+                        <span class="font-headline-card text-[18px] font-semibold text-on-surface">@faq.Question</span>
+                        <span aria-hidden="true" class="material-symbols-outlined text-secondary transition-transform duration-200 @(ActiveFaq == faq.Id ? "rotate-180" : "")">expand_more</span>
+                    </button>
+                    <div id="@($"faq-answer-{faq.Id}")" role="region" aria-labelledby="@($"faq-question-{faq.Id}")" hidden="@(ActiveFaq != faq.Id)" class="faq-content px-space-lg pb-space-lg">
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">@faq.Answer</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    private int ActiveFaq = 1;
+    private void ToggleFaq(int id) => ActiveFaq = ActiveFaq == id ? 0 : id;
+}

@@ -1,57 +1,14 @@
-.tenant-app-shell {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    background-color: #0b0f19;
-    color: #f1f5f9;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+.tenant-app-shell { display: flex; flex-direction: column; min-height: 100vh; background: #01030f; color: #fff; font-family: 'Inter',sans-serif; }
+.tenant-layout-body { display: flex; flex: 1; min-height: 0; position: relative; }
+.tenant-main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; margin-left: 284px; padding: 32px; background: radial-gradient(ellipse at top,color-mix(in srgb,var(--tenant-primary-color) 4%,transparent),transparent 65%); }
+.tenant-mobile-toggle { display: none; position: fixed; top: 14px; left: 16px; z-index: 60; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--tenant-border); border-radius: 10px; background: var(--tenant-surface); color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px #0004; }
+.tenant-mobile-toggle svg { width: 18px; height: 18px; }
+#blazor-error-ui { display: none; background: #93000a; color: #ffdad6; position: fixed; inset: auto 0 0; padding: 12px 20px; z-index: 200; }
+#blazor-error-ui .reload { color: #fff; text-decoration: underline; margin-left: 8px; }
+#blazor-error-ui .dismiss { position: absolute; right: 16px; cursor: pointer; }
+@media (max-width: 1024px) {
+    .tenant-main-content { margin-left: 0; padding: 76px 20px 24px; }
+    .tenant-mobile-toggle { display: inline-flex; }
+    .sidebar-is-open .tenant-mobile-toggle { visibility: hidden; }
 }
-
-.tenant-layout-body {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    position: relative;
-}
-
-.tenant-main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 1.5rem 2rem;
-    overflow-y: auto;
-    background: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.04) 0%, transparent 60%);
-}
-
-#blazor-error-ui {
-    background: #dc2626;
-    bottom: 0;
-    box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.5);
-    display: none;
-    left: 0;
-    padding: 0.75rem 1.25rem;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
-    color: #ffffff;
-    font-size: 0.875rem;
-}
-
-#blazor-error-ui .reload {
-    color: #fef08a;
-    margin-left: 0.5rem;
-    text-decoration: underline;
-}
-
-#blazor-error-ui .dismiss {
-    cursor: pointer;
-    position: absolute;
-    right: 1rem;
-    top: 0.75rem;
-}
-
-@media (max-width: 640px) {
-    .tenant-main-content {
-        padding: 1rem;
-    }
-}
+@media (max-width: 640px) { .tenant-main-content { padding-inline: 16px; } }

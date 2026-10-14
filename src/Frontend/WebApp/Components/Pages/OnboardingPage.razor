@@ -10,22 +10,26 @@
 @inject ITenantSessionStateProvider SessionProvider
 @inject NavigationManager NavigationManager
 
-<PageTitle>Cadastro & Onboarding de Inquilino — AdMetricsPro</PageTitle>
+<PageTitle>Comece seu teste gratuito — AdMetricsPro</PageTitle>
+<HeadContent>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet" />
+</HeadContent>
 
 <div class="onboarding-page-wrapper">
     <!-- Navbar Minimalista Superior -->
     <header class="onboarding-navbar">
         <a href="/" class="onboarding-brand">
-            <div class="onboarding-brand-logo">A</div>
-            <span>AdMetric<span style="color: #4edea3;">Pro</span></span>
+            <img src="images/landing/brand-mark.svg" alt="" width="40" height="40" />
+            <span>AdMetricsPro</span>
         </a>
         <div class="onboarding-nav-link">
-            Já possui uma conta? <a href="/login"><strong>Fazer Login</strong></a>
+            <span>Já possui uma conta?</span>
+            <a class="onboarding-login-button" href="/login">Fazer login <span aria-hidden="true">→</span></a>
         </div>
     </header>
 
     <!-- Container Principal Split-Screen -->
-    <div class="onboarding-split-container">
+    <div class="onboarding-split-container" data-layout="@(_currentStep == 2 ? "identity" : _currentStep == 3 ? "plans" : "centered")">
         <!-- Coluna Esquerda: Wizard de Onboarding -->
         <main class="onboarding-wizard-panel">
             <OnboardingStepper CurrentStep="_currentStep" />
@@ -82,14 +86,17 @@
                             class="btn-wizard-primary"
                             disabled="@_isSubmitting"
                             @onclick="SubmitOnboardingAsync">
-                        <span>Concluir Cadastro & Provisionar Banco &rarr;</span>
+                        <span>Começar meus 14 dias gratuitos &rarr;</span>
                     </button>
                 }
             </div>
         </main>
 
         <!-- Coluna Direita: Live Tenant Cockpit Preview -->
-        <LiveTenantPreviewCard Model="_formModel" />
+        @if (_currentStep == 2)
+        {
+            <LiveTenantPreviewCard Model="_formModel" />
+        }
     </div>
 
     <!-- Modal de Provisionamento em Tempo Real -->
@@ -158,6 +165,12 @@
             }
         }
 
+        if (_currentStep == 1 && !_formModel.IsTaxDocumentVerified)
+        {
+            _errorMessage = "Aguarde a confirmação de que seu CPF ou CNPJ está válido e disponível.";
+            return;
+        }
+
         // Validação da Etapa 2
         if (_currentStep == 2)
         {
@@ -167,6 +180,12 @@
                 _errorMessage = "Por favor, informe um subdomínio válido com no mínimo 3 caracteres.";
                 return;
             }
+        }
+
+        if (_currentStep == 2 && !_formModel.IsSubdomainVerified)
+        {
+            _errorMessage = "Aguarde a confirmação de disponibilidade do subdomínio.";
+            return;
         }
 
         if (_currentStep < 4)
@@ -192,9 +211,9 @@
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_formModel.AdminPassword) || _formModel.AdminPassword.Length < 8)
+        if (!_formModel.HasValidAdminPassword())
         {
-            _errorMessage = "A senha deve conter no mínimo 8 caracteres.";
+            _errorMessage = "A senha precisa de 8 caracteres, letras maiúsculas e minúsculas, número e símbolo.";
             return;
         }
 

@@ -9,430 +9,147 @@
 @inject ITenantStateProvider TenantStateProvider
 
 <PageTitle>Login — @(_branding?.CompanyName ?? "AdMetricsPro")</PageTitle>
+<HeadContent>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet" />
+</HeadContent>
 
 <div class="tenant-login-wrapper" style="@(_branding?.ToCssVariables())">
-    <div class="login-backdrop-glow"></div>
+    <header class="login-page-header">
+        <div class="login-header-inner">
+            <a class="login-header-brand" href="/" aria-label="AdMetricsPro — página inicial">
+                <img src="images/landing/brand-mark.svg" alt="" width="40" height="40" />
+                <span>AdMetricsPro</span>
+            </a>
+            <div class="login-header-actions">
+                <span>Ainda não tem uma conta?</span>
+                <a class="login-header-signup" href="/onboarding">Crie seu Cockpit</a>
+            </div>
+        </div>
+    </header>
+    <main class="login-main">
+        <div class="login-backdrop-glow" aria-hidden="true"></div>
 
-    <div class="login-card" style="@(_branding?.ToCssVariables())">
-        <!-- Cabeçalho do Card com White-Label Branding Dinâmico -->
-        <div class="login-brand-header">
-            @if (!string.IsNullOrWhiteSpace(_branding?.LogoUrl))
-            {
-                <img src="@_branding.LogoUrl" alt="@_branding.CompanyName" class="login-tenant-logo" />
-            }
-            else
-            {
-                <div class="login-brand-icon">
-                    <span class="material-symbols-outlined">insights</span>
-                </div>
-            }
-
-            <h1 class="login-title">
-                @(_branding is not null && _branding.Subdomain != "default" ? _branding.CompanyName : "AdMetricsPro")
-            </h1>
-
-            <p class="login-subtitle">
-                @if (!string.IsNullOrWhiteSpace(_subdomain) && _subdomain != "default")
+        <div class="login-card" style="@(_branding?.ToCssVariables())">
+            <!-- Cabeçalho do Card com White-Label Branding Dinâmico -->
+            <div class="login-brand-header">
+                <div class="login-brand-identity">
+                @if (!string.IsNullOrWhiteSpace(_branding?.LogoUrl))
                 {
-                    <span class="tenant-badge">
-                        <span class="badge-dot"></span>
-                        Ambiente Dedicado: <strong>@_subdomain</strong>
-                    </span>
+                    <img src="@_branding.LogoUrl" alt="@_branding.CompanyName" class="login-tenant-logo" />
                 }
                 else
                 {
-                    <span>Cockpit de Gestão Unificada de Tráfego Pago</span>
+                    <img src="images/landing/brand-mark.svg" alt="" class="login-default-logo" width="40" height="40" />
                 }
-            </p>
-        </div>
 
-        <!-- Alerta de Erro Semântico do Envelope Result -->
-        @if (!string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            <div class="alert-error" role="alert">
-                <span class="material-symbols-outlined alert-icon">error</span>
-                <span>@_errorMessage</span>
+                <h1 class="login-title">
+                    @(_branding is not null && _branding.Subdomain != "default" ? _branding.CompanyName : "AdMetricsPro")
+                </h1>
+                </div>
+
+                <p class="login-subtitle">
+                    @if (!string.IsNullOrWhiteSpace(_subdomain) && _subdomain != "default")
+                    {
+                        <span class="tenant-badge">
+                            <span class="badge-dot"></span>
+                            Ambiente Dedicado: <strong>@_subdomain</strong>
+                        </span>
+                    }
+                    else
+                    {
+                        <span>Cockpit de Gestão Unificada de Tráfego Pago</span>
+                    }
+                </p>
             </div>
-        }
 
-        <!-- Formulário de Autenticação Reativo -->
-        <form @onsubmit="HandleLoginAsync" @onsubmit:preventDefault class="login-form">
-            <!-- Se o subdomínio não foi detectado automaticamente pela URL, permite informar manualmente -->
-            @if (string.IsNullOrWhiteSpace(_subdomain) || _subdomain == "default")
+            <!-- Alerta de Erro Semântico do Envelope Result -->
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
             {
+                <div class="alert-error" role="alert">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v6m0 4v.1"/></svg>
+                    <span>@_errorMessage</span>
+                </div>
+            }
+
+            <!-- Formulário de Autenticação Reativo -->
+            <form @onsubmit="HandleLoginAsync" @onsubmit:preventDefault class="login-form">
+                <!-- Se o subdomínio não foi detectado automaticamente pela URL, permite informar manualmente -->
+                @if (string.IsNullOrWhiteSpace(_subdomain) || _subdomain == "default")
+                {
+                    <div class="form-group">
+                        <label class="form-label" for="subdomain-input">Subdomínio da Agência (Opcional)</label>
+                        <div class="input-with-suffix">
+                            <input id="subdomain-input"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="minha-agencia"
+                                   @bind="_formModel.Subdomain"
+                                   @onblur="OnSubdomainBlurAsync" />
+                            <span class="input-suffix">.admetricspro.com.br</span>
+                        </div>
+                    </div>
+                }
+
                 <div class="form-group">
-                    <label class="form-label" for="subdomain-input">Subdomínio da Agência (Opcional)</label>
-                    <div class="input-with-suffix">
-                        <input id="subdomain-input"
-                               type="text"
+                    <label class="form-label" for="email-input">E-mail Corporativo</label>
+                    <div class="input-wrapper">
+                        <svg class="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>
+                        <input id="email-input"
+                               type="email"
                                class="form-control"
-                               placeholder="minha-agencia"
-                               @bind="_formModel.Subdomain"
-                               @onblur="OnSubdomainBlurAsync" />
-                        <span class="input-suffix">.admetricspro.com.br</span>
+                               placeholder="gestor@suaempresa.com.br"
+                               autocomplete="username"
+                               @bind="_formModel.Email" />
                     </div>
                 </div>
-            }
 
-            <div class="form-group">
-                <label class="form-label" for="email-input">E-mail Corporativo</label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined field-icon">mail</span>
-                    <input id="email-input"
-                           type="email"
-                           class="form-control"
-                           placeholder="gestor@suaempresa.com.br"
-                           autocomplete="username"
-                           @bind="_formModel.Email" />
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <label class="form-label" for="password-input" style="margin-bottom: 0;">Senha de Acesso</label>
+                        <a href="javascript:void(0)" class="forgot-password-link">Esqueceu a senha?</a>
+                    </div>
+                    <div class="input-wrapper">
+                        <svg class="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                        <input id="password-input"
+                               type="@(_showPassword ? "text" : "password")"
+                               class="form-control"
+                               placeholder="••••••••••••"
+                               autocomplete="current-password"
+                               @bind="_formModel.Password" />
+                        <button type="button" class="btn-toggle-password" @onclick="TogglePasswordVisibility" aria-label="@(_showPassword ? "Ocultar senha" : "Mostrar senha")" aria-controls="password-input" aria-pressed="@(_showPassword ? "true" : "false")">
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
+                            @if (_showPassword) { <path d="m3 3 18 18" /> }</svg>
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                    <label class="form-label" for="password-input" style="margin-bottom: 0;">Senha de Acesso</label>
-                    <a href="javascript:void(0)" class="forgot-password-link">Esqueceu a senha?</a>
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="_formModel.RememberMe" />
+                        <span>Lembrar desta sessão por 30 dias</span>
+                    </label>
                 </div>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined field-icon">lock</span>
-                    <input id="password-input"
-                           type="@(_showPassword ? "text" : "password")"
-                           class="form-control"
-                           placeholder="••••••••••••"
-                           autocomplete="current-password"
-                           @bind="_formModel.Password" />
-                    <button type="button" class="btn-toggle-password" @onclick="TogglePasswordVisibility" aria-label="Mostrar ou ocultar senha">
-                        <span class="material-symbols-outlined">@(_showPassword ? "visibility_off" : "visibility")</span>
-                    </button>
-                </div>
+
+                <button type="submit" class="btn-login-submit" disabled="@_isSubmitting">
+                    @if (_isSubmitting)
+                    {
+                        <span class="spinner-sm"></span>
+                        <span>Autenticando no Cockpit...</span>
+                    }
+                    else
+                    {
+                        <span>Entrar no Cockpit</span>
+                    }
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <span>Ainda não possui uma conta?</span>
+                <a href="/onboarding" class="link-register">Crie seu Cockpit</a>
             </div>
-
-            <div class="form-options">
-                <label class="checkbox-label">
-                    <input type="checkbox" @bind="_formModel.RememberMe" />
-                    <span>Lembrar desta sessão por 30 dias</span>
-                </label>
-            </div>
-
-            <button type="submit" class="btn-login-submit" disabled="@_isSubmitting">
-                @if (_isSubmitting)
-                {
-                    <span class="spinner-sm"></span>
-                    <span>Autenticando no Cockpit...</span>
-                }
-                else
-                {
-                    <span>Entrar no Cockpit &rarr;</span>
-                }
-            </button>
-        </form>
-
-        <div class="login-footer">
-            <span>Ainda não possui uma conta?</span>
-            <a href="/register" class="link-register">Crie seu cockpit em 2 minutos</a>
         </div>
-    </div>
+    </main>
 </div>
-
-<style>
-    .tenant-login-wrapper {
-        min-height: calc(100vh - 80px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem 1rem;
-        position: relative;
-        background: #090d16;
-        color: #f1f5f9;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    }
-
-    .login-backdrop-glow {
-        position: absolute;
-        width: 500px;
-        height: 500px;
-        background: radial-gradient(circle, var(--tenant-primary, #4f46e5) 0%, rgba(15, 23, 42, 0) 70%);
-        opacity: 0.18;
-        filter: blur(80px);
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-    }
-
-    .login-card {
-        position: relative;
-        z-index: 2;
-        width: 100%;
-        max-width: 440px;
-        background: rgba(15, 23, 42, 0.85);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        padding: 2.5rem;
-        box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .login-card:hover {
-        border-color: rgba(255, 255, 255, 0.14);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 25px -5px var(--tenant-primary, #4f46e5);
-    }
-
-    .login-brand-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-
-    .login-brand-icon {
-        width: 52px;
-        height: 52px;
-        margin: 0 auto 1rem;
-        background: linear-gradient(135deg, var(--tenant-primary, #4f46e5), #38bdf8);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #ffffff;
-        box-shadow: 0 8px 20px -4px var(--tenant-primary, #4f46e5);
-    }
-
-    .login-tenant-logo {
-        max-height: 48px;
-        margin-bottom: 1rem;
-        object-fit: contain;
-    }
-
-    .login-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        letter-spacing: -0.025em;
-        margin: 0 0 0.5rem 0;
-        color: #ffffff;
-    }
-
-    .login-subtitle {
-        font-size: 0.875rem;
-        color: #94a3b8;
-        margin: 0;
-    }
-
-    .tenant-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 12px;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 9999px;
-        font-size: 0.8rem;
-        color: #e2e8f0;
-    }
-
-    .badge-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #4edea3;
-        box-shadow: 0 0 8px #4edea3;
-    }
-
-    .alert-error {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 0.875rem 1rem;
-        background: rgba(239, 68, 68, 0.12);
-        border: 1px solid rgba(239, 68, 68, 0.35);
-        border-radius: 10px;
-        color: #fca5a5;
-        font-size: 0.875rem;
-        margin-bottom: 1.5rem;
-        animation: fadeIn 0.2s ease-in;
-    }
-
-    .alert-icon {
-        font-size: 1.25rem;
-        color: #ef4444;
-        flex-shrink: 0;
-    }
-
-    .login-form {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-    }
-
-    .form-group {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .form-label {
-        font-size: 0.8125rem;
-        font-weight: 500;
-        color: #cbd5e1;
-        margin-bottom: 0.4rem;
-    }
-
-    .input-wrapper, .input-with-suffix {
-        position: relative;
-        display: flex;
-        align-items: center;
-    }
-
-    .field-icon {
-        position: absolute;
-        left: 12px;
-        color: #64748b;
-        font-size: 1.2rem;
-        pointer-events: none;
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 0.75rem 1rem 0.75rem 2.6rem;
-        background: rgba(15, 23, 42, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 10px;
-        color: #ffffff;
-        font-size: 0.9375rem;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .input-with-suffix .form-control {
-        padding-left: 1rem;
-        padding-right: 140px;
-    }
-
-    .input-suffix {
-        position: absolute;
-        right: 12px;
-        font-size: 0.8125rem;
-        color: #64748b;
-        pointer-events: none;
-    }
-
-    .form-control:focus {
-        outline: none;
-        border-color: var(--tenant-primary, #4f46e5);
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
-    }
-
-    .btn-toggle-password {
-        position: absolute;
-        right: 12px;
-        background: transparent;
-        border: none;
-        color: #64748b;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        padding: 4px;
-    }
-
-    .btn-toggle-password:hover {
-        color: #94a3b8;
-    }
-
-    .form-options {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .checkbox-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.8125rem;
-        color: #94a3b8;
-        cursor: pointer;
-    }
-
-    .checkbox-label input {
-        accent-color: var(--tenant-primary, #4f46e5);
-    }
-
-    .forgot-password-link {
-        font-size: 0.8125rem;
-        color: var(--tenant-primary, #38bdf8);
-        text-decoration: none;
-        transition: opacity 0.2s ease;
-    }
-
-    .forgot-password-link:hover {
-        text-decoration: underline;
-        opacity: 0.85;
-    }
-
-    .btn-login-submit {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        width: 100%;
-        padding: 0.875rem 1.5rem;
-        background: linear-gradient(135deg, var(--tenant-primary, #4f46e5), #3b82f6);
-        color: #ffffff;
-        font-weight: 600;
-        font-size: 0.9375rem;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.4);
-        transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-        margin-top: 0.5rem;
-    }
-
-    .btn-login-submit:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px 0 rgba(79, 70, 229, 0.5);
-    }
-
-    .btn-login-submit:disabled {
-        opacity: 0.65;
-        cursor: not-allowed;
-    }
-
-    .spinner-sm {
-        width: 18px;
-        height: 18px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top-color: #ffffff;
-        border-radius: 50%;
-        animation: spin 0.6s linear infinite;
-    }
-
-    .login-footer {
-        margin-top: 2rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        text-align: center;
-        font-size: 0.875rem;
-        color: #94a3b8;
-    }
-
-    .link-register {
-        display: block;
-        margin-top: 0.35rem;
-        color: #4edea3;
-        font-weight: 600;
-        text-decoration: none;
-    }
-
-    .link-register:hover {
-        text-decoration: underline;
-    }
-
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-4px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-</style>
 
 @code {
     private TenantLoginModel _formModel = new();

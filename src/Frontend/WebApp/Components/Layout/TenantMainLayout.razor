@@ -7,6 +7,8 @@
 @inject NavigationManager NavigationManager
 
 <HeadContent>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/tenant-workspace.css" />
     <title>@(string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Name) ? "AdMetricsPro" : TenantStateProvider.CurrentTenant.Name)</title>
     @if (!string.IsNullOrWhiteSpace(TenantStateProvider.CurrentTenant.Branding.FaviconUrl))
     {
@@ -14,8 +16,12 @@
     }
 </HeadContent>
 
-<div class="tenant-app-shell" style="@TenantStateProvider.CurrentTenant.Branding.ToCssVariables()">
-    <TenantTopHeader OnToggleSidebar="ToggleSidebar" />
+<div class="tenant-app-shell @(_isSidebarOpen ? "sidebar-is-open" : "")" @onkeydown="HandleKeyDown" style="@TenantStateProvider.CurrentTenant.Branding.ToCssVariables()">
+    <button type="button" class="tenant-mobile-toggle" aria-label="Alternar navegação móvel"
+            aria-controls="tenant-sidebar" aria-expanded="@(_isSidebarOpen ? "true" : "false")" @onclick="ToggleSidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+        <span>Menu</span>
+    </button>
     <TenantTrialBanner DaysRemaining="@TenantStateProvider.CurrentTenant.TrialDaysRemaining" IsTrial="@TenantStateProvider.CurrentTenant.IsTrial" />
 
     <div class="tenant-layout-body">
@@ -96,6 +102,11 @@
                 await InvokeAsync(StateHasChanged);
             }
         }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") CloseSidebar();
     }
 
     private void ToggleSidebar()

@@ -45,4 +45,9 @@ public interface IWorkspaceContextStateProvider
     /// Limpa o workspace selecionado, redefinindo para a visão consolidada.
     /// </summary>
     void Clear();
+
+    /// <summary>Limpa o workspace atual e remove sua seleção persistida no navegador.</summary>
+    /// <param name="cancellationToken">Token de cancelamento da limpeza.</param>
+    /// <returns>Tarefa de remoção do contexto persistido.</returns>
+    Task ClearAsync(CancellationToken cancellationToken = default);
 }

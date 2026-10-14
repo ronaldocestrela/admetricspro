@@ -48,4 +48,9 @@ public interface ITenantSessionStateProvider
     /// Encerra a sessão atual, remove os dados persistidos do navegador e restaura as configurações institucionais padrão.
     /// </summary>
     void ClearSession();
+
+    /// <summary>Encerra a sessão e aguarda sua remoção do navegador sem bloquear o circuito.</summary>
+    /// <param name="cancellationToken">Token de cancelamento da limpeza.</param>
+    /// <returns>Tarefa de remoção da sessão persistida.</returns>
+    Task ClearSessionAsync(CancellationToken cancellationToken = default);
 }

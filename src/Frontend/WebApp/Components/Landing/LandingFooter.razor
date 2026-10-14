@@ -1,62 +1,50 @@
-@namespace WebApp.Components.Landing
-
-<!--
-    LandingFooter: Rodapé institucional com links de governança, conformidade LGPD e dados corporativos.
--->
-<footer class="landing-footer">
-    <div class="landing-container">
-        <div class="footer-top">
-            <div class="footer-brand-col">
-                <a href="/" class="landing-brand" style="margin-bottom: 1rem;">
-                    <div class="brand-icon-wrapper">
-                        <span class="material-symbols-outlined">insights</span>
-                    </div>
-                    <span>AdMetric <span class="brand-accent">Pro</span></span>
-                </a>
-                <p style="color: var(--lp-text-on-surface-variant); font-size: 0.9rem; line-height: 1.6;">
-                    SaaS de Gestão Unificada de Tráfego Pago com IA Preditiva, Isolamento Multitenant por Banco de Dados e Automação de Escala.
+@* <summary>Seção pública do AdMetricsPro, preservando a composição e as interações da referência.</summary> *@
+<footer class="relative z-10 w-full py-space-3xl px-gutter-mobile lg:px-gutter bg-surface-container-lowest/80">
+    <div class="max-w-[1200px] mx-auto flex flex-col gap-space-2xl">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-space-xl">
+            <!-- Coluna Marca -->
+            <div class="lg:col-span-2 flex flex-col items-start gap-space-sm">
+                <div class="flex items-center gap-space-sm">
+                    <img alt="AdMetricsPro" class="h-8 w-auto object-contain" src="images/landing/brand-mark.svg" />
+                    <span class="font-headline-card text-headline-card text-on-surface font-bold tracking-tight">AdMetricsPro</span>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant max-w-[340px]">
+                    Análise multicanal, criativos e controle de orçamento para quem precisa transformar dados de mídia em decisões.
                 </p>
             </div>
 
-            <div class="footer-links-group">
-                <div class="footer-col">
-                    <span class="footer-col-title">Produto</span>
-                    <a href="#recursos" class="footer-link">Recursos &amp; Automação</a>
-                    <a href="#integracoes" class="footer-link">Conectores de Mídia</a>
-                    <a href="#metricas-ia" class="footer-link">Cockpit Analítico</a>
-                    <a href="#precos" class="footer-link">Tabela de Planos</a>
-                </div>
+            <!-- Coluna Produto -->
+            <div class="flex flex-col gap-space-xs text-body-sm">
+                <span class="font-mono-code text-[12px] font-bold text-on-surface uppercase mb-space-xs">Produto</span>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#hero">Visão do Produto</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#como-funciona">Como Funciona</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#recursos">Recursos</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#para-quem">Para Quem É</a>
+            </div>
 
-                <div class="footer-col">
-                    <span class="footer-col-title">Plataforma</span>
-                    <a href="/login" class="footer-link">Portal do Cliente</a>
-                    <a href="/api/v1/health" class="footer-link">Status da Infraestrutura</a>
-                    <a href="/docs" class="footer-link">Documentação de API</a>
-                    <a href="/changelog" class="footer-link">Notas de Versão</a>
-                </div>
+            <!-- Coluna Plataforma -->
+            <div class="flex flex-col gap-space-xs text-body-sm">
+                <span class="font-mono-code text-[12px] font-bold text-on-surface uppercase mb-space-xs">Plataforma</span>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#planos">Planos e Preços</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="/login">Acessar Conta</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#faq">FAQ</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="/onboarding">Começar Teste Grátis</a>
+            </div>
 
-                <div class="footer-col">
-                    <span class="footer-col-title">Segurança &amp; Legal</span>
-                    <a href="/privacidade" class="footer-link">Política de Privacidade</a>
-                    <a href="/termos" class="footer-link">Termos de Serviço</a>
-                    <a href="/seguranca" class="footer-link">Conformidade LGPD</a>
-                    <a href="/suporte" class="footer-link">Central de Ajuda</a>
-                </div>
+            <!-- Coluna Ajuda e Confiança -->
+            <div class="flex flex-col gap-space-xs text-body-sm">
+                <span class="font-mono-code text-[12px] font-bold text-on-surface uppercase mb-space-xs">Ajuda e Confiança</span>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#seguranca">Segurança e Governança</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#faq">Dúvidas Frequentes</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="/onboarding">Criar minha conta</a>
+                <span class="text-outline text-[12px]">Teste por 14 dias sem cartão</span>
             </div>
         </div>
 
-        <div class="footer-bottom">
-            <span>&copy; @DateTime.UtcNow.Year AdMetricsPro. Todos os direitos reservados. Monólito Modular .NET 10.</span>
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: var(--lp-secondary);">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--lp-secondary); display: inline-block;"></span>
-                    Sistemas Operacionais 100%
-                </span>
-            </div>
+        <!-- Copyright Rodapé -->
+        <div class="pt-space-lg flex flex-col sm:flex-row items-center justify-between text-body-sm text-outline gap-space-sm">
+            <span>© @DateTime.UtcNow.Year AdMetricsPro. Todos os direitos reservados.</span>
+            <span class="font-mono-code text-[11px]">Gestão Unificada de Tráfego Pago</span>
         </div>
     </div>
 </footer>
-
-@code {
-    // Componente de rodapé da Landing Page do AdMetricsPro.
-}

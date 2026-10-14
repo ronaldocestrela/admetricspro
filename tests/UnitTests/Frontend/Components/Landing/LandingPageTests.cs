@@ -1,180 +1,144 @@
 using Bunit;
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using UnitTests.Frontend.Common;
 using WebApp.Components.Landing;
 using WebApp.Components.Pages;
-using Xunit;
 
 namespace UnitTests.Frontend.Components.Landing;
 
-/// <summary>
-/// Testes unitários com bUnit para a Landing Page e seus componentes atômicos,
-/// validando fidelidade visual, elementos de conversão e estrutura de dados do Stitch.
-/// </summary>
+/// <summary>Verifica a estrutura e as interações da landing page adaptada da referência Sendium.</summary>
 public sealed class LandingPageTests : BunitTestBase
 {
-    /// <summary>
-    /// Valida que a Navbar institucional exibe o logotipo oficial do AdMetric Pro,
-    /// os links de navegação âncora e os botões de ação para login e teste gratuito.
-    /// </summary>
-    [Fact]
-    public void LandingNavbar_ShouldRenderBrandLinksAndCallToActions()
+    /// <summary>Configura os módulos visuais sem exigir navegador nos testes de componentes.</summary>
+    public LandingPageTests()
     {
-        // Act
-        var cut = Render<LandingNavbar>();
-
-        // Assert
-        cut.Find(".landing-brand").TextContent.Should().Contain("AdMetric");
-        cut.Find(".landing-brand").TextContent.Should().Contain("Pro");
-        cut.Find("a[href='#recursos']").TextContent.Trim().Should().Be("Recursos");
-        cut.Find("a[href='#integracoes']").TextContent.Trim().Should().Be("Integrações");
-        cut.Find("a[href='#metricas-ia']").TextContent.Trim().Should().Be("Métricas & IA");
-        cut.Find("a[href='#depoimentos']").TextContent.Trim().Should().Be("Casos de Sucesso");
-        cut.Find("a[href='#precos']").TextContent.Trim().Should().Be("Preços");
-        cut.Find(".btn-login").GetAttribute("href").Should().Be("/login");
-        cut.Find(".btn-signup").TextContent.Should().Contain("Começar Teste Grátis");
+        JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
-    /// <summary>
-    /// Valida que o menu mobile é alternado ao clicar no botão de alternância.
-    /// </summary>
+    /// <summary>Exige as dez seções, âncoras válidas e conteúdo específico do produto.</summary>
     [Fact]
-    public void LandingNavbar_WhenMobileMenuButtonClicked_ShouldToggleDropdown()
+    public void HomePage_ShouldPreserveReferenceStructureAndUseSupportedProductClaims()
     {
-        // Act & Arrange
-        var cut = Render<LandingNavbar>();
-        cut.FindAll(".mobile-nav-dropdown").Should().BeEmpty();
-
-        // Clicar para abrir
-        var toggleBtn = cut.Find(".btn-mobile-menu");
-        toggleBtn.Click();
-
-        // Assert: Dropdown deve estar visível
-        cut.Find(".mobile-nav-dropdown").Should().NotBeNull();
-
-        // Clicar para fechar
-        toggleBtn.Click();
-        cut.FindAll(".mobile-nav-dropdown").Should().BeEmpty();
-    }
-
-    /// <summary>
-    /// Valida que o Hero renderiza a tag de novo release, headline com ênfase em IA preditiva,
-    /// CTAs principais e os selos de confiança.
-    /// </summary>
-    [Fact]
-    public void HeroSection_ShouldRenderHeadlineAnnouncementAndTrustBadges()
-    {
-        // Act
-        var cut = Render<HeroSection>();
-
-        // Assert
-        cut.Find(".release-pill").TextContent.Should().Contain("IA Preditiva de ROAS 3.0 disponível");
-        cut.Find("h1").TextContent.Should().Contain("Escale seu tráfego pago com inteligência preditiva");
-        cut.Find(".cta-trial").TextContent.Should().Contain("Iniciar Teste Grátis de 14 Dias");
-        cut.Find(".cta-demo").TextContent.Should().Contain("Agendar Demonstração ao Vivo");
-        
-        var trustBadges = cut.FindAll(".trust-badge");
-        trustBadges.Should().HaveCountGreaterThanOrEqualTo(3);
-        cut.Markup.Should().Contain("Sem cartão de crédito");
-        cut.Markup.Should().Contain("Integração em 2 minutos");
-        cut.Markup.Should().Contain("+R$ 180M gerenciados em ads");
-    }
-
-    /// <summary>
-    /// Valida que o cockpit analítico em mockup exibe o alerta dinâmico da IA e os 4 KPIs essenciais
-    /// com valores fiéis ao Stitch (Investimento, Receita, ROAS 4.30x e CPA).
-    /// </summary>
-    [Fact]
-    public void LiveCockpitMockup_ShouldRenderFloatingAiAlertAndEssentialKpis()
-    {
-        // Act
-        var cut = Render<LiveCockpitMockup>();
-
-        // Assert
-        var aiAlert = cut.Find(".ai-floating-pill");
-        aiAlert.TextContent.Should().Contain("IA Otimizou em Tempo Real");
-        aiAlert.TextContent.Should().Contain("R$ 3.200");
-
-        var kpiCards = cut.FindAll(".kpi-metric-card");
-        kpiCards.Should().HaveCount(4);
-
-        // Investimento Total
-        cut.Markup.Should().Contain("R$ 428.500");
-        // Receita Gerada
-        cut.Markup.Should().Contain("R$ 1.842.550");
-        // ROAS Médio Consolidado
-        cut.Markup.Should().Contain("4.30");
-        // Gráfico Vetorial SVG presente
-        cut.Find("svg.analytical-chart").Should().NotBeNull();
-    }
-
-    /// <summary>
-    /// Valida que a fita de integrações apresenta as principais plataformas de anúncios e e-commerce.
-    /// </summary>
-    [Fact]
-    public void IntegrationsSection_ShouldRenderSupportedMediaPlatforms()
-    {
-        // Act
-        var cut = Render<IntegrationsSection>();
-
-        // Assert
-        cut.Markup.Should().Contain("Meta Ads");
-        cut.Markup.Should().Contain("Google Ads");
-        cut.Markup.Should().Contain("TikTok Ads");
-        cut.Markup.Should().Contain("Bing Ads");
-        cut.Markup.Should().Contain("Shopify");
-    }
-
-    /// <summary>
-    /// Valida que a grade Bento de benefícios apresenta os 3 pilares de valor do produto.
-    /// </summary>
-    [Fact]
-    public void BentoBenefitsSection_ShouldRenderThreeValuePillars()
-    {
-        // Act
-        var cut = Render<BentoBenefitsSection>();
-
-        // Assert
-        var featureCards = cut.FindAll(".bento-card");
-        featureCards.Should().HaveCountGreaterThanOrEqualTo(3);
-        cut.Markup.Should().Contain("Regras Automatizadas");
-        cut.Markup.Should().Contain("Detector de Fadiga");
-        cut.Markup.Should().Contain("Atribuição Multi-Toque");
-    }
-
-    /// <summary>
-    /// Valida a renderização da prova social com depoimentos avaliados em 5 estrelas.
-    /// </summary>
-    [Fact]
-    public void SocialProofSection_ShouldRenderCustomerTestimonialsWithRatings()
-    {
-        // Act
-        var cut = Render<SocialProofSection>();
-
-        // Assert
-        var testimonialCards = cut.FindAll(".testimonial-card");
-        testimonialCards.Should().HaveCountGreaterThanOrEqualTo(3);
-        cut.FindAll(".star-rating").Should().NotBeEmpty();
-    }
-
-    /// <summary>
-    /// Valida a composição completa da Landing Page em Home.razor.
-    /// </summary>
-    [Fact]
-    public void HomePage_ShouldRenderFullLandingPageStructure()
-    {
-        // Act
         var cut = Render<Home>();
+        cut.FindAll("main section").Should().HaveCount(10);
+        cut.Find("h1").TextContent.Should().Contain("verba");
+        cut.Markup.Should().Contain("Detector de Fadiga de Criativos");
+        cut.Markup.Should().Contain("Atribuição Multi-Toque");
+        cut.Markup.Should().Contain("MER Unificado");
+        cut.Markup.Should().NotContain("Telegram").And.NotContain("Sendium");
+        cut.FindAll(".hero-carousel-image").Should().HaveCount(3);
+        cut.FindAll(".timeline-node").Should().HaveCount(6);
+        cut.FindAll("[role='tab']").Should().HaveCount(4);
+        cut.FindAll("[role='tabpanel'] .p-space-md.rounded-lg").Should().HaveCount(24);
+        cut.FindAll(".faq-item").Should().HaveCount(6);
+        cut.FindAll(".pricing-card").Should().HaveCount(3);
+        foreach (var link in cut.FindAll("a[href^='#']"))
+        {
+            var href = link.GetAttribute("href")!;
+            cut.FindAll(href).Should().ContainSingle($"a âncora {href} deve existir");
+        }
+        cut.FindAll("a[href='/onboarding']").Should().NotBeEmpty();
+        cut.FindAll("a[href='/login']").Should().NotBeEmpty();
+        cut.Find("[data-scroll-reveal-root]").HasAttribute("data-reveal-pending").Should().BeFalse(
+            "o conteúdo pré-renderizado deve ser legível antes da inicialização dos efeitos");
+    }
 
-        // Assert
-        cut.FindComponent<LandingNavbar>().Should().NotBeNull();
-        cut.FindComponent<HeroSection>().Should().NotBeNull();
-        cut.FindComponent<LiveCockpitMockup>().Should().NotBeNull();
-        cut.FindComponent<IntegrationsSection>().Should().NotBeNull();
-        cut.FindComponent<BentoBenefitsSection>().Should().NotBeNull();
-        cut.FindComponent<SocialProofSection>().Should().NotBeNull();
-        cut.FindComponent<ConversionBannerSection>().Should().NotBeNull();
-        cut.FindComponent<LandingFooter>().Should().NotBeNull();
+    /// <summary>Preserva a ordem da arquitetura de informação da referência.</summary>
+    [Fact]
+    public void HomePage_ShouldKeepSectionOrder()
+    {
+        var cut = Render<Home>();
+        cut.FindAll("main section h2, main section h1").Select(x => x.TextContent.Trim()).Should().Equal(
+            "Sua verba merece decisões melhores. Seu tráfego também.",
+            "Você compra mídia. Mas consegue enxergar o que ela entrega?",
+            "Da primeira conexão à próxima decisão de investimento.",
+            "Por que escolher o AdMetricsPro?",
+            "Para quem precisa fazer a verba trabalhar melhor.",
+            "Cresça com controle sobre dados, acessos e decisões.",
+            "Escolha a estrutura para o seu próximo estágio.",
+            "Perguntas Frequentes",
+            "Pare de juntar relatórios. Comece a enxergar decisões.");
+    }
+
+    /// <summary>Fecha o menu móvel ao escolher um destino e atualiza o estado acessível.</summary>
+    [Fact]
+    public void Navbar_ShouldToggleMobileMenuAndCloseOnNavigation()
+    {
+        var cut = Render<LandingNavbar>();
+        cut.Find("#mobile-menu").HasAttribute("hidden").Should().BeTrue();
+        cut.Find("#mobile-menu-toggle").Click();
+        cut.Find("#mobile-menu-toggle").GetAttribute("aria-expanded").Should().Be("true");
+        cut.Find("#mobile-menu").HasAttribute("hidden").Should().BeFalse();
+        cut.Find("#mobile-menu a[href='#recursos']").Click();
+        cut.Find("#mobile-menu").HasAttribute("hidden").Should().BeTrue();
+        cut.Find("#mobile-menu-toggle").GetAttribute("aria-expanded").Should().Be("false");
+    }
+
+    /// <summary>Mantém a indicação da seção ativa e o fechamento por interop do navegador.</summary>
+    [Fact]
+    public async Task Navbar_ShouldRespondToBrowserNavigationState()
+    {
+        var cut = Render<LandingNavbar>();
+        await cut.InvokeAsync(() => cut.Instance.SetActiveSection("recursos"));
+        cut.Find("nav[aria-label='Navegação principal'] a[href='#recursos']")
+            .GetAttribute("aria-current").Should().Be("location");
+        cut.Find("#mobile-menu-toggle").Click();
+        await cut.InvokeAsync(cut.Instance.CloseMenu);
+        cut.Find("#mobile-menu").HasAttribute("hidden").Should().BeTrue();
+    }
+
+    /// <summary>Preserva a seleção manual, a navegação circular e o avanço pelo temporizador.</summary>
+    [Fact]
+    public async Task Hero_ShouldNavigateDemonstrationsManuallyAndThroughInterop()
+    {
+        var cut = Render<HeroSection>();
+        cut.Find(".hero-carousel-image.is-active").GetAttribute("src").Should().EndWith("overview.svg");
+        cut.Find("button[aria-label='Imagem anterior']").Click();
+        cut.Find(".hero-carousel-image.is-active").GetAttribute("src").Should().EndWith("pacing.svg");
+        cut.Find("button[aria-label='Próxima imagem']").Click();
+        cut.Find(".hero-carousel-image.is-active").GetAttribute("src").Should().EndWith("overview.svg");
+        cut.Find("button[aria-label='Imagem 2']").Click();
+        cut.Find(".hero-carousel-image.is-active").GetAttribute("src").Should().EndWith("creatives.svg");
+        await cut.InvokeAsync(cut.Instance.AdvanceSlide);
+        cut.Find(".hero-carousel-image.is-active").GetAttribute("src").Should().EndWith("pacing.svg");
+        cut.Find(".hero-carousel-controls span").TextContent.Should().Contain("dados demonstrativos");
+    }
+
+    /// <summary>Troca o painel e mantém os vínculos acessíveis entre abas e conteúdo.</summary>
+    [Fact]
+    public void Resources_ShouldSelectMatchingPanel()
+    {
+        var cut = Render<ResourcesSection>();
+        cut.Find("#resource-tab-3").Click();
+        cut.Find("#resource-tab-3").GetAttribute("aria-selected").Should().Be("true");
+        cut.Find("#resource-tab-1").GetAttribute("aria-selected").Should().Be("false");
+        cut.Find("#resource-panel-3").ClassList.Should().NotContain("hidden");
+        cut.Find("#resource-panel-1").ClassList.Should().Contain("hidden");
+        cut.Find("#resource-panel-3").TextContent.Should().Contain("Pacing de orçamento");
+    }
+
+    /// <summary>Abre apenas uma resposta por vez e permite recolher a pergunta ativa.</summary>
+    [Fact]
+    public void Faq_ShouldKeepOneAnswerOpenAndAllowClosing()
+    {
+        var cut = Render<FaqSection>();
+        cut.Find("#faq-question-1").GetAttribute("aria-expanded").Should().Be("true");
+        cut.Find("#faq-question-3").Click();
+        cut.Find("#faq-answer-1").HasAttribute("hidden").Should().BeTrue();
+        cut.Find("#faq-answer-3").HasAttribute("hidden").Should().BeFalse();
+        cut.Find("#faq-answer-3").TextContent.Should().Contain("jornadas de conversão fornecidas");
+        cut.Find("#faq-question-3").Click();
+        cut.FindAll(".faq-content:not([hidden])").Should().BeEmpty();
+    }
+
+    /// <summary>Evita oferta sem destino e identifica os valores comerciais como referências.</summary>
+    [Fact]
+    public void Pricing_ShouldUseSignupAndExplainCommercialConditions()
+    {
+        var cut = Render<PricingSection>();
+        cut.FindAll(".pricing-card a").Should().HaveCount(3)
+            .And.OnlyContain(a => a.GetAttribute("href") == "/onboarding");
+        cut.Find("p").TextContent.Should().Contain("14 dias gratuitos").And.Contain("cadastro");
+        cut.FindAll("h3").Select(x => x.TextContent.Trim()).Should().Equal("Starter", "Pro", "Enterprise");
     }
 }

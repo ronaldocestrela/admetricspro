@@ -1,60 +1,90 @@
-@namespace WebApp.Components.Landing
+@* <summary>Seção pública do AdMetricsPro, preservando a composição e as interações da referência.</summary> *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
-<!--
-    LandingNavbar: Cabeçalho institucional fixo com navegação suave, logotipo oficial e CTAs de ação rápida.
--->
-<header class="landing-header">
-    <div class="landing-container landing-header-inner">
-        <a href="/" class="landing-brand">
-            <div class="brand-icon-wrapper">
-                <span class="material-symbols-outlined">insights</span>
-            </div>
-            <span>AdMetric <span class="brand-accent">Pro</span></span>
-        </a>
+<header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
+    <div class="h-[76px] max-w-[1200px] mx-auto px-gutter-mobile lg:px-gutter flex items-center justify-between gap-space-md">
+        <div class="flex items-center gap-space-sm">
+            <a class="flex items-center gap-space-sm focus:outline-none" href="#hero">
+                <img alt="AdMetricsPro" class="header-logo" src="images/landing/brand-mark.svg" />
+                <span class="font-headline-card text-headline-card text-on-surface tracking-tight hidden sm:inline">AdMetricsPro</span>
+            </a>
+        </div>
 
-        <nav class="landing-nav-links">
-            <a href="#recursos" class="landing-nav-link">Recursos</a>
-            <a href="#integracoes" class="landing-nav-link">Integrações</a>
-            <a href="#metricas-ia" class="landing-nav-link">Métricas &amp; IA</a>
-            <a href="#depoimentos" class="landing-nav-link">Casos de Sucesso</a>
-            <a href="#precos" class="landing-nav-link">Preços</a>
-        </nav>
+        <nav class="hidden lg:flex items-center gap-space-lg" aria-label="Navegação principal">
+                @foreach (var link in LandingContent.Navigation)
+                {
+                    <a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" href="@("#" + link.Id)" aria-current="@(ActiveSection == link.Id ? "location" : null)" @onclick="CloseMobileMenu">@link.Label</a>
+                }
 
-        <div class="landing-header-actions">
-            <a href="/login" class="btn-login">Entrar</a>
-            <a href="/register" class="btn-signup">Começar Teste Grátis</a>
-            <button type="button" class="btn-mobile-menu" @onclick="ToggleMobileMenu" aria-label="Alternar menu de navegação">
-                <span class="material-symbols-outlined">@(_isMobileMenuOpen ? "close" : "menu")</span>
+            </nav>
+
+        <div class="flex items-center gap-space-sm">
+            <a class="hidden sm:inline-flex items-center justify-center px-space-md py-space-sm rounded-lg font-body-sm text-body-sm text-on-surface bg-surface-container-high hover:bg-surface-variant hover:text-on-surface transition-all focus:outline-none" href="/login">Entrar</a>
+            <a class="inline-flex items-center justify-center px-space-md py-space-sm rounded-lg font-body-sm text-body-sm font-semibold text-on-primary bg-gradient-to-r from-primary-container to-secondary-container hover:opacity-95 shadow-[0_0_20px_rgba(0,180,199,0.3)] transition-all focus:outline-none" href="#planos">Começar agora</a>
+            <button id="mobile-menu-toggle" aria-label="@(IsMobileMenuOpen ? "Fechar menu" : "Abrir menu")" aria-expanded="@IsMobileMenuOpen.ToString().ToLowerInvariant()" aria-controls="mobile-menu" class="lg:hidden p-space-xs rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container focus:outline-none" @onclick="ToggleMobileMenu" type="button">
+                <span aria-hidden="true" class="material-symbols-outlined">menu</span>
             </button>
         </div>
     </div>
 
-    @if (_isMobileMenuOpen)
-    {
-        <div class="mobile-nav-dropdown">
-            <a href="#recursos" class="mobile-nav-link" @onclick="CloseMobileMenu">Recursos</a>
-            <a href="#integracoes" class="mobile-nav-link" @onclick="CloseMobileMenu">Integrações</a>
-            <a href="#metricas-ia" class="mobile-nav-link" @onclick="CloseMobileMenu">Métricas &amp; IA</a>
-            <a href="#depoimentos" class="mobile-nav-link" @onclick="CloseMobileMenu">Casos de Sucesso</a>
-            <a href="#precos" class="mobile-nav-link" @onclick="CloseMobileMenu">Preços</a>
-            <div class="mobile-nav-actions">
-                <a href="/login" class="btn-login" style="text-align: center;">Entrar</a>
-                <a href="/register" class="btn-signup" style="text-align: center; width: 100%;">Começar Teste Grátis</a>
-            </div>
+        <div id="mobile-menu" hidden="@(!IsMobileMenuOpen)" class="lg:hidden bg-surface-container-low px-gutter-mobile py-space-md shadow-2xl">
+            <nav class="flex flex-col gap-space-xs" aria-label="Navegação móvel">
+                @foreach (var link in LandingContent.Navigation)
+                {
+                    <a class="px-space-md py-space-sm rounded-lg hover:bg-surface-container font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" href="@("#" + link.Id)" aria-current="@(ActiveSection == link.Id ? "location" : null)" @onclick="CloseMobileMenu">@link.Label</a>
+                }
+                <a class="sm:hidden px-space-md py-space-sm rounded-lg bg-surface-container-high" href="/login" @onclick="CloseMobileMenu">Entrar</a>
+            </nav>
         </div>
-    }
 </header>
 
 @code {
-    private bool _isMobileMenuOpen;
+    private bool IsMobileMenuOpen { get; set; }
+    private string ActiveSection = "hero";
+    private DotNetObjectReference<LandingNavbar>? reference;
+    private IJSObjectReference? viewportModule, spyModule, viewport, spy;
 
-    private void ToggleMobileMenu()
+    private void ToggleMobileMenu() => IsMobileMenuOpen = !IsMobileMenuOpen;
+    private void CloseMobileMenu() => IsMobileMenuOpen = false;
+
+    /// <summary>Atualiza o estado visual por interação no navegador.</summary>
+    /// <returns>Tarefa de atualização da interface.</returns>
+    [JSInvokable]
+    public Task CloseMenu() => InvokeAsync(() => { CloseMobileMenu(); StateHasChanged(); });
+
+    /// <summary>Atualiza o estado visual por interação no navegador.</summary>
+    /// <returns>Tarefa de atualização da interface.</returns>
+    /// <param name="id">Âncora da seção visível.</param>
+    [JSInvokable]
+    public Task SetActiveSection(string id) => InvokeAsync(() => { ActiveSection = id; StateHasChanged(); });
+
+    /// <summary>Inicializa as interações após a renderização interativa.</summary>
+    /// <param name="firstRender">Indica a primeira renderização do componente.</param>
+    /// <returns>Tarefa de inicialização dos módulos visuais.</returns>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        _isMobileMenuOpen = !_isMobileMenuOpen;
+        if (!firstRender) return;
+        reference = DotNetObjectReference.Create(this);
+        viewportModule = await JS.InvokeAsync<IJSObjectReference>("import", "./landing/js/viewport.js");
+        spyModule = await JS.InvokeAsync<IJSObjectReference>("import", "./landing/js/scroll-spy.js");
+        viewport = await viewportModule.InvokeAsync<IJSObjectReference>("initialize", reference);
+        spy = await spyModule.InvokeAsync<IJSObjectReference>("initialize", reference);
     }
 
-    private void CloseMobileMenu()
+    /// <summary>Libera os módulos, referências e observadores visuais.</summary>
+    /// <returns>Tarefa de liberação dos recursos.</returns>
+    public async ValueTask DisposeAsync()
     {
-        _isMobileMenuOpen = false;
+        try
+        {
+            foreach (var instance in new[] { viewport, spy })
+                if (instance is not null) { await instance.InvokeVoidAsync("dispose"); await instance.DisposeAsync(); }
+            foreach (var module in new[] { viewportModule, spyModule })
+                if (module is not null) await module.DisposeAsync();
+
+        }
+        catch (JSDisconnectedException) { /* O circuito já foi encerrado. */ }
+        finally { reference?.Dispose(); }
     }
 }

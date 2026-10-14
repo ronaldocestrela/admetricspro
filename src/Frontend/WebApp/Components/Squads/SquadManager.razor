@@ -17,7 +17,7 @@
     <!-- Cabeçalho Principal -->
     <header class="squad-header">
         <div class="header-info">
-            <h1 class="page-title">Squads & Governança de Carteiras</h1>
+            <h1 class="page-title">Squads & <span class="tenant-title-accent">Governança de Carteiras</span></h1>
             <p class="page-subtitle">
                 Organize equipes internas da <strong>@AgencyName</strong>, distribua contas com segurança e garanta o isolamento de carteira por operador.
             </p>
@@ -195,7 +195,7 @@
                     <div class="squad-card @(!squad.IsActive ? "card-inactive" : "")">
                         <div class="squad-card-header">
                             <div class="squad-card-title-box">
-                                <h2 class="squad-name">@squad.Name</h2>
+                                <h2 class="squad-name"><TenantComposedName Text="@squad.Name" /></h2>
                                 <span class="squad-id" title="@squad.Id">ID: @squad.Id.ToString()[..8]...</span>
                             </div>
                             <span class="status-badge @(squad.IsActive ? "badge-active" : "badge-paused")">
@@ -357,7 +357,7 @@
                                 {
                                     <div class="member-row">
                                         <div class="member-info">
-                                            <span class="member-name">@member.FullName</span>
+                                            <span class="member-name"><TenantComposedName Text="@member.FullName" /></span>
                                             <span class="member-email">@member.Email</span>
                                         </div>
                                         <span class="role-pill">@member.Role</span>
@@ -426,7 +426,7 @@
                                 {
                                     <div class="ws-row">
                                         <div class="ws-info">
-                                            <span class="ws-name">@ws.Name</span>
+                                            <span class="ws-name"><TenantComposedName Text="@ws.Name" /></span>
                                             <span class="ws-meta">@ws.CnpjOrCpf • Verba: @ws.MonthlyAdSpendBudget.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
                                         </div>
                                         <button type="button"
@@ -460,7 +460,7 @@
                                                checked="@_selectedWorkspaceIdsToAdd.Contains(ws.Id)"
                                                @onchange="(e) => ToggleWorkspaceSelection(ws.Id, (bool)(e.Value ?? false))" />
                                         <div class="item-label-group">
-                                            <span class="item-primary-text">@ws.Name</span>
+                                            <span class="item-primary-text"><TenantComposedName Text="@ws.Name" /></span>
                                             <span class="item-secondary-text">@ws.CnpjOrCpf • Verba: @ws.MonthlyAdSpendBudget.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
                                         </div>
                                     </label>
@@ -534,7 +534,7 @@
                                 {
                                     <div class="portfolio-ws-card">
                                         <div class="ws-card-header">
-                                            <span class="ws-name">@ws.Name</span>
+                                            <span class="ws-name"><TenantComposedName Text="@ws.Name" /></span>
                                             <span class="status-badge badge-active">Autorizado</span>
                                         </div>
                                         <div class="ws-card-body">

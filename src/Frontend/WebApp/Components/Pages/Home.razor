@@ -1,39 +1,98 @@
 @page "/"
 @layout WebApp.Components.Landing.LandingLayout
 @using WebApp.Components.Landing
-@inject ITenantStateProvider TenantStateProvider
+@using WebApp.Models.Landing
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
-<PageTitle>AdMetric Pro — Escale seu tráfego pago com inteligência preditiva</PageTitle>
+<PageTitle>AdMetricsPro — Clareza para investir. Controle para crescer.</PageTitle>
+<HeadContent>
+    <meta name="description" content="Centralize Meta, Google, Bing e TikTok Ads. Identifique fadiga de criativos, compare atribuição e MER e controle o orçamento. Teste grátis por 14 dias." />
+    <link rel="stylesheet" href="landing/landing.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+</HeadContent>
 
-<!-- Banner contextual de tenant se houver tenant ativo na sessão -->
-@if (TenantStateProvider.CurrentTenant is not null && TenantStateProvider.CurrentTenant.TenantId != Guid.Empty)
-{
-    <div style="background: rgba(79, 70, 229, 0.2); border-bottom: 1px solid rgba(79, 70, 229, 0.4); padding: 0.6rem 1rem; text-align: center; font-size: 0.85rem; color: #ffffff; z-index: 101; position: relative; margin-top: 4.25rem;">
-        <span>Ambiente ativo: <strong>@TenantStateProvider.CurrentTenant.Name</strong></span>
-        @if (!string.IsNullOrEmpty(TenantStateProvider.CurrentTenant.CustomDomain))
-        {
-            <span style="color: var(--lp-tertiary); margin-left: 0.5rem;">(@TenantStateProvider.CurrentTenant.CustomDomain)</span>
-        }
-        <a href="/dashboard" style="margin-left: 1rem; color: var(--lp-secondary); font-weight: 700; text-decoration: underline;">
-            Acessar Painel do Workspace &rarr;
-        </a>
-    </div>
-}
-
+<div class="admetrics-landing">
 <LandingNavbar />
+<a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+<main id="main-content" class="w-full pt-[76px]">
+<div data-scroll-reveal-root class="flex flex-col w-full relative selection:bg-secondary/20 selection:text-secondary text-on-surface">
+    <!-- Canvas de partículas -->
+    <canvas aria-hidden="true" class="fixed inset-0 pointer-events-none z-0 w-full h-full" id="admetrics-interactive-canvas"></canvas>
 
-<main>
     <HeroSection />
-    <LiveCockpitMockup />
-    <IntegrationsSection />
-    <BentoBenefitsSection />
-    <SocialProofSection />
-    <ConversionBannerSection />
-</main>
+    <PositioningStrip />
+    <ProblemSection />
+    <HowItWorksSection />
+    <ResourcesSection />
+    <AudienceSection />
+    <TrustSection />
+    <PricingSection />
+    <FaqSection />
+    <CTASection />
+</div>
 
+</main>
 <LandingFooter />
+</div>
 
 @code {
-    // Página inicial oficial (Landing Page) do AdMetricsPro.
-    // Renderiza a experiência de apresentação do produto e conversão baseada no Stitch.
+    private IJSObjectReference? _particlesModule;
+    private IJSObjectReference? _scrollRevealModule;
+    private IJSObjectReference? _particles;
+    private IJSObjectReference? _scrollReveal;
+
+    /// <summary>Inicializa partículas e revelação na sessão interativa.</summary>
+    /// <param name="firstRender">Indica a primeira renderização.</param>
+    /// <returns>Tarefa de inicialização visual.</returns>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Preparar as entradas antes de iniciar os efeitos de fundo.
+            _scrollRevealModule = await JS.InvokeAsync<IJSObjectReference>("import", "./landing/js/scroll-reveal.js");
+            _scrollReveal = await _scrollRevealModule.InvokeAsync<IJSObjectReference>("initializeScrollReveal");
+
+            // Carregar e inicializar o módulo de partículas
+            _particlesModule = await JS.InvokeAsync<IJSObjectReference>("import", "./landing/js/particles.js");
+            _particles = await _particlesModule.InvokeAsync<IJSObjectReference>("initializeParticles", "admetrics-interactive-canvas");
+
+        }
+    }
+
+    /// <summary>Libera efeitos de fundo e observadores da página.</summary>
+    /// <returns>Tarefa de liberação visual.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var instance in new[] { _particles, _scrollReveal })
+        {
+            if (instance is null) continue;
+            try { await instance.InvokeVoidAsync("dispose"); await instance.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+        if (_particlesModule is not null)
+        {
+            try
+            {
+                await _particlesModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // O browser foi fechado, ignora
+            }
+        }
+
+        if (_scrollRevealModule is not null)
+        {
+            try
+            {
+                await _scrollRevealModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // O browser foi fechado, ignora
+            }
+        }
+    }
 }

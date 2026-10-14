@@ -92,28 +92,19 @@ public sealed class TenantSessionStateProvider : ITenantSessionStateProvider
     }
 
     /// <inheritdoc />
-    public void ClearSession()
+    public void ClearSession() => _ = ClearSessionAsync();
+
+    /// <inheritdoc />
+    public async Task ClearSessionAsync(CancellationToken cancellationToken = default)
     {
         _currentSession = null;
         _tenantStateProvider.SetTenant(TenantState.Default);
-
-        if (_storage != null)
-        {
-            try
-            {
-                var vt = _storage.RemoveItemAsync(StorageKey);
-                if (!vt.IsCompletedSuccessfully)
-                {
-                    vt.AsTask().GetAwaiter().GetResult();
-                }
-            }
-            catch
-            {
-                // Silencioso
-            }
-        }
-
         OnSessionChanged?.Invoke();
+        if (_storage is not null)
+        {
+            try { await _storage.RemoveItemAsync(StorageKey, cancellationToken); }
+            catch { /* A sessão em memória permanece encerrada se o navegador desconectar. */ }
+        }
     }
 
     private void ApplySession(AuthenticatedTenantUserDto session)
@@ -122,14 +113,14 @@ public sealed class TenantSessionStateProvider : ITenantSessionStateProvider
 
         _currentSession = session;
 
-        var primary = session.Branding?.PrimaryColor ?? "#4f46e5";
-        var secondary = session.Branding?.SecondaryColor ?? "#0f172a";
+        var primary = session.Branding?.PrimaryColor ?? TenantBranding.Default.PrimaryColor;
+        var secondary = session.Branding?.SecondaryColor ?? TenantBranding.Default.SecondaryColor;
         var companyName = session.Branding?.AgencyName ?? session.Subdomain;
 
         var branding = new TenantBranding(
             PrimaryColor: primary,
             SecondaryColor: secondary,
-            AccentColor: "#38bdf8",
+            AccentColor: TenantBranding.Default.AccentColor,
             LogoUrl: session.Branding?.LightLogoUrl,
             DarkLogoUrl: session.Branding?.DarkLogoUrl,
             FaviconUrl: session.Branding?.FaviconUrl,

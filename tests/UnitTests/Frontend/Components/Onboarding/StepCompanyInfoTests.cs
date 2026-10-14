@@ -60,7 +60,7 @@ public sealed class StepCompanyInfoTests : BunitTestBase
 
         // Act - digita CPF inválido
         var input = cut.Find("#company-cnpj");
-        input.Change("12345678901");
+        input.Input("12345678901");
 
         // Assert
         var errorPill = cut.Find(".status-pill.error");
@@ -81,7 +81,7 @@ public sealed class StepCompanyInfoTests : BunitTestBase
 
         // Act - digita CPF válido
         var input = cut.Find("#company-cnpj");
-        input.Change("52998224725");
+        input.Input("52998224725");
 
         // Assert
         model.Cnpj.Should().Be("529.982.247-25");
@@ -108,7 +108,7 @@ public sealed class StepCompanyInfoTests : BunitTestBase
 
         // Act - digita CNPJ em uso
         var input = cut.Find("#company-cnpj");
-        input.Change("12345678000195");
+        input.Input("12345678000195");
 
         // Assert
         var errorPill = cut.Find(".status-pill.error");

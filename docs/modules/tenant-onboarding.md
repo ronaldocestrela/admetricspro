@@ -3,7 +3,7 @@
 > **Módulo:** Master / Frontend WebApp (Blazor Server .NET 10)  
 > **Rotas:** `/register` e `/onboarding`  
 > **Layout:** `LandingLayout.razor` (Full-width clean view)  
-> **Design de Referência (Google Stitch):** Projeto ID `12765985270394356342` | Screen ID `3dbfaa4e77c64cfdab9dd6b167479b8e`  
+> **Design de referência:** Landing page pública do AdMetricsPro.
 > **Isolamento de Dados:** Database-per-Tenant (Instância física dedicada no Microsoft SQL Server).
 
 ---
@@ -12,7 +12,9 @@
 
 O módulo de **Onboarding & Provisionamento de Tenant** provê a experiência de autoatendimento (*Self-Service*) e registro guiado para novos assinantes e agências de performance do **AdMetricsPro**. 
 
-A tela é concebida sob o padrão **Split-Screen (60% formulário progressivo / 40% live preview interativo)** com estética Dark Mode, efeitos glassmórficos (`backdrop-filter: blur(20px)`), acentos em violeta elétrico (`#4f46e5`), verde esmeralda (`#4edea3`) e ciano tecnológico (`#4cd7f6`), em conformidade total com o design gerado no Google Stitch.
+A tela acompanha a LP: fundo `#01030f`, superfícies escuras, Inter, destaques azul/ciano, bordas neon e CTAs com gradiente. As etapas Empresa e Administrador são centralizadas; Plano & Recursos usa uma composição centralizada mais ampla. A divisão com a prévia de marca aparece somente em Subdomínio & Identidade, empilhando em telas menores.
+
+O cabeçalho fixo usa a mesma marca e logo da LP. A orientação “Já possui uma conta?” fica separada do botão “Fazer login”.
 
 ---
 
@@ -24,6 +26,7 @@ sequenceDiagram
     actor User as Novo Inquilino (Gestor)
     participant UI as OnboardingPage.razor (Blazor Server)
     participant Svc as TenantOnboardingClientService
+    participant API as Web API HTTP
     participant Med as MediatR Pipeline
     participant Hdl as RegisterTenantOnboardingCommandHandler
     participant Prov as TenantProvisioningService
@@ -32,11 +35,12 @@ sequenceDiagram
 
     User->>UI: Digita subdomínio desejado (ex: "vanguarda")
     UI->>Svc: CheckSubdomainAvailabilityAsync("vanguarda")
-    Svc->>Med: CheckSubdomainAvailabilityQuery
+    Svc->>API: GET /api/v1/tenants/check-subdomain
+    API->>Med: CheckSubdomainAvailabilityQuery
     Med-->>UI: Result<SubdomainAvailabilityResponse> (Disponível = true)
-    UI-->>User: Atualiza Live Tenant Preview com URL dinamicamente
+    UI-->>User: Exibe confirmação e prévia do endereço de acesso
 
-    User->>UI: Conclui etapas e clica em "Concluir Cadastro & Provisionar"
+    User->>UI: Conclui etapas e clica em "Começar meus 14 dias gratuitos"
     UI->>UI: Abre modal de telemetria de infraestrutura (Terminal UI)
     UI->>Svc: RegisterTenantAsync(formModel)
     Svc->>Med: RegisterTenantOnboardingCommand
@@ -180,10 +184,10 @@ Os componentes do onboarding residem em `src/Frontend/WebApp/Components/Onboardi
 | `OnboardingPage.razor` | Página raiz nas rotas `/register` e `/onboarding`. Gerencia o estado do wizard (passos 1 a 4) e orquestra a telemetria do modal de infraestrutura. |
 | `OnboardingStepper.razor` | Barra superior de progresso com estados completados e ativo destacado. |
 | `StepCompanyInfo.razor` | Etapa 1: Coleta de dados fiscais (Razão Social, CNPJ com máscara, segmento e volume em mídia). |
-| `StepSubdomainIdentity.razor` | Etapa 2: Subdomínio com debounce assíncrono de disponibilidade, CNAME e paleta de cores. |
-| `StepPlanSelection.razor` | Etapa 3: Switch mensal/anual e cards de planos (Starter, Pro em destaque glow e Enterprise). |
-| `StepAdminAccount.razor` | Etapa 4: Dados do gestor, confirmação de senha com régua de força e aceite de termos LGPD. |
-| `LiveTenantPreviewCard.razor` | Painel direito fixo com simulação em tempo real do ambiente do cliente, URL, mini cockpit e selos de segurança. |
+| `StepSubdomainIdentity.razor` | Etapa 2: Consulta assíncrona de disponibilidade, confirmação contextual, prévia do endereço, CNAME e cores. Respostas de valores anteriores são descartadas. |
+| `StepPlanSelection.razor` | Etapa 3: Garantia de 14 dias em primeiro plano, sem cartão; seletor mensal/anual e cards com a mesma aparência da LP. |
+| `StepAdminAccount.razor` | Etapa 4: Dados do gestor, botão de mostrar/ocultar em ambos os campos de senha e cinco critérios dinâmicos abaixo deles. |
+| `LiveTenantPreviewCard.razor` | Prévia ilustrativa apenas na etapa 2, com URL, marca e cores atualizadas. Valores do cockpit são demonstrativos. |
 | `ProvisioningConsoleModal.razor` | Modal em tela cheia com spinner circular, terminal de telemetria em tempo real e CTA de acesso. |
 
 ---
@@ -194,4 +198,61 @@ Os componentes do onboarding residem em `src/Frontend/WebApp/Components/Onboardi
   - `CheckSubdomainAvailabilityQueryHandlerTests.cs`: Valida subdomínio disponível, reservado e duplicado com sugestão.
   - `RegisterTenantOnboardingCommandTests.cs`: Valida regras estritas do FluentValidation e execução do handler.
 - **Frontend (`tests/UnitTests/Frontend/Components/Onboarding/`):**
-  - `OnboardingPageTests.cs`: Valida renderização inicial, bloqueio de avanço sem dados obrigatórios, estados do stepper e reatividade do preview lateral.
+  - `OnboardingPageTests.cs`: Valida renderização inicial, bloqueio de avanço sem dados obrigatórios, estados do stepper, prévia exclusiva da etapa 2 e bloqueio de avanço enquanto a disponibilidade estiver pendente.
+
+
+## 6. Experiência de cadastro alinhada à landing page
+
+### Validação de CPF/CNPJ e subdomínio
+
+Os campos usam eventos de digitação (`oninput`) e o cliente HTTP existente. A indicação acompanha a consulta real, sem atraso artificial para simular processamento:
+
+1. Ao editar, a confirmação anterior é invalidada.
+2. Documento incompleto ou subdomínio curto apresentam orientação discreta. Documento com dígitos inválidos e subdomínio com caracteres inválidos não enviam consulta de disponibilidade.
+3. Durante a consulta, a bolinha giratória acompanha “Verificando CPF…”, “Verificando CNPJ…” ou “Verificando subdomínio…”.
+4. Ao confirmar, o texto entra suavemente e o check é desenhado. O estado depende do `Result<T>` e da disponibilidade retornada pela API.
+5. Cada consulta recebe uma versão local. Respostas de entradas anteriores não podem substituir o estado do valor atual.
+6. O avanço exige a confirmação de documento válido/disponível e de subdomínio disponível. A consulta é de disponibilidade, não reserva o endereço nem garante que outro cadastro não o utilize antes da conclusão; a API continua validando unicidade na criação.
+
+`FieldValidationStatus.razor` reside em `Components/Shared/Components`. O componente usa mensagens específicas, `role="status"`, `aria-live="polite"`, `aria-atomic` e `aria-busy`. Movimento reduzido suspende rotação e transições, mantendo legendas e check legíveis.
+
+Após a confirmação do subdomínio, a área logo abaixo do campo mostra `https://{subdominio}.admetricspro.com.br`. Trata-se de uma prévia, não de um link já provisionado. Ela desaparece quando o campo é editado, durante nova consulta, em entrada inválida ou indisponibilidade. A prévia lateral continua reagindo à paleta; o fundo do mini cockpit usa a cor secundária e o destaque usa a primária.
+
+### Senha do administrador
+
+Os dois campos possuem botões acessíveis de mostrar/ocultar, preservando o valor digitado. O campo principal atualiza os critérios a cada digitação:
+
+- Mínimo de oito caracteres.
+- Uma letra maiúscula.
+- Uma letra minúscula.
+- Um número.
+- Um símbolo que não seja espaço, como `!`, `@`, `#`, `$` ou `%`.
+
+Cada regra atendida recebe check, risco horizontal animado e texto cinza; ao remover o caractere que atende a regra, ela volta ao estado pendente. A confirmação informa se as senhas coincidem. O cadastro pelo wizard exige os cinco critérios, confirmação e aceite. A alteração é de apresentação e validação do formulário; o contrato e o validador backend existente não foram alterados.
+
+### Planos e teste gratuito
+
+Os valores saíram da LP e são mostrados em Plano & Recursos. Antes dos cards, a chamada principal destaca **14 dias gratuitos**, **R$ 0 no cadastro** e **nenhum cartão ou dado de pagamento necessário agora**. A frase editorial é:
+
+> Use agora. Deixe o pagamento para quando perceber que está fazendo a melhor escolha para o seu negócio.
+
+O texto explicita que a experimentação dura 14 dias e que a assinatura é uma decisão posterior. O visitante experimenta os recursos do plano escolhido; não é prometida liberação automática de todos os tiers nem aumento garantido de faturamento.
+
+Os três cards preservam superfícies, bordas neon e destaque de Pro usados na LP, com botões de seleção acessíveis por teclado e `aria-pressed`. A seleção permanece no modelo ao avançar/voltar. Valores mensais de referência: Starter R$ 197, Pro R$ 497 e Enterprise R$ 1.497, alinhados aos defaults do checkout. A antiga referência de Enterprise a R$ 1.290 foi substituída. O catálogo efetivo pode alterar valores e limites, que continuam sujeitos à confirmação no checkout.
+
+No ciclo anual, a apresentação aplica os 20% previstos no checkout e exibe o equivalente mensal com centavos e a referência total anual. Nenhum pagamento é processado nesta etapa; os campos de cartão não existem no formulário.
+
+### Fronteiras e testes
+
+As flags `IsTaxDocumentVerified` e `IsSubdomainVerified` pertencem ao estado visual. Não são enviadas no payload de criação; o cliente segue enviando somente os campos do contrato existente. Não houve acesso direto a banco pelo frontend, criação de endpoint nem alteração de provisionamento ou cobrança.
+
+Os testes de experiência foram escritos e executados com falha antes da implementação. A suíte inclui loading real com resposta pendente, confirmação, resposta obsoleta, prévia do endereço, cinco regras de senha, visibilidade da senha, seleção de plano, ausência de valores na LP e disposição correta das quatro etapas.
+
+```bash
+dotnet test tests/UnitTests/Frontend/UnitTests.Frontend.csproj --no-restore
+```
+
+
+Validação final: 281 testes de frontend aprovados. A conferência no Chrome percorreu as quatro etapas com um mock somente de consultas, confirmou spinner → check, URL verificada, atualização das cores, seleção de plano e cinco critérios de senha. Desktop de 1440px e tamanhos de 1024px, 390px e 320px foram conferidos, sem rolagem horizontal nas telas verificadas. Não houve criação de conta, provisionamento ou pagamento durante essa conferência.
+
+As regras visuais novas são limitadas a `.onboarding-page-wrapper`; os estilos base preexistentes foram preservados para os componentes de outras telas que os utilizam.

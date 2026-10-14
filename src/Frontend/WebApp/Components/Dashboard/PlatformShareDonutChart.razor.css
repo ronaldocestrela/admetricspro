@@ -19,13 +19,13 @@
 .donut-title {
     font-size: 15px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin: 0;
 }
 
 .donut-subtitle {
     font-size: 12px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
 }
 
 .donut-body {
@@ -116,7 +116,7 @@
 .brand-name {
     font-size: 12px;
     font-weight: 600;
-    color: #E2E8F0;
+    color: var(--tenant-text, #fff);
 }
 
 .legend-values {
@@ -128,12 +128,12 @@
 .brand-pct {
     font-size: 12px;
     font-weight: 700;
-    color: #38BDF8;
+    color: var(--tenant-primary-color, #4e8eff);
 }
 
 .brand-spend {
     font-size: 11px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
 }
 
 .donut-empty-state {
@@ -142,11 +142,11 @@
     align-items: center;
     justify-content: center;
     padding: 30px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     gap: 8px;
 }
 
 .donut-empty-state p {
     font-size: 13px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
 }

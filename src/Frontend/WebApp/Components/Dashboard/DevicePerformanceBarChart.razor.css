@@ -19,13 +19,13 @@
 .device-title {
     font-size: 15px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     margin: 0;
 }
 
 .device-subtitle {
     font-size: 12px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
 }
 
 .device-body {
@@ -63,7 +63,7 @@
 }
 
 .device-icon {
-    color: #38BDF8;
+    color: var(--tenant-primary-color, #4e8eff);
     display: flex;
     align-items: center;
 }
@@ -71,7 +71,7 @@
 .device-name {
     font-size: 13px;
     font-weight: 600;
-    color: #E2E8F0;
+    color: var(--tenant-text, #fff);
 }
 
 .device-stats {
@@ -82,7 +82,7 @@
 
 .device-spend {
     font-size: 12px;
-    color: #CBD5E1;
+    color: var(--tenant-copy, #c2c6d6);
     font-weight: 600;
 }
 
@@ -105,7 +105,7 @@
 
 .device-progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, #3B82F6, #38BDF8);
+    background: linear-gradient(90deg, var(--tenant-primary-color, #4e8eff), var(--tenant-primary-color, #4e8eff));
     border-radius: 3px;
     transition: width 0.4s ease;
 }
@@ -115,11 +115,11 @@
     align-items: center;
     justify-content: space-between;
     font-size: 11px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
 }
 
 .device-share {
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     font-weight: 500;
 }
 
@@ -129,11 +129,11 @@
     align-items: center;
     justify-content: center;
     padding: 30px;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     gap: 8px;
 }
 
 .device-empty-state p {
     font-size: 13px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
 }

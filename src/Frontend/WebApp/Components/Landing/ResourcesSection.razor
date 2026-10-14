@@ -1,0 +1,362 @@
+@* <summary>Seção pública do AdMetricsPro, preservando a composição e as interações da referência.</summary> *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<section class="relative z-10 w-full py-space-3xl px-gutter-mobile lg:px-gutter bg-surface-container-lowest/50" id="recursos">
+    <div class="max-w-[1200px] mx-auto flex flex-col items-center">
+        <!-- Pergunta "Por que o AdMetricsPro?" -->
+        <div class="text-center max-w-[760px] mb-space-2xl">
+            <h2 class="font-headline-section text-headline-section text-on-surface font-bold tracking-tight mb-space-sm">
+                Por que escolher o AdMetricsPro?
+            </h2>
+        </div>
+
+        <!-- Cards selecionáveis com linha azul neon -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-lg w-full mb-space-2xl relative" role="group" aria-label="Diferenciais AdMetricsPro">
+            <!-- Card 1 -->
+            <article class="relative p-space-xl rounded-xl bg-surface-container-low shadow-sm flex flex-col text-left">
+                <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary mb-space-md">
+                    <span class="material-symbols-outlined">visibility</span>
+                </div>
+                <h3 class="font-headline-card text-headline-card text-on-surface font-semibold mb-space-xs">
+                Detector de Fadiga de Criativos
+            </h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Cruze a tendência de CTR com a frequência de exposição para identificar peças saudáveis, em alerta ou fatigadas e priorizar a renovação.
+            </p>
+                <!-- Linha azul neon embaixo -->
+            </article>
+
+            <!-- Card 2 -->
+            <article class="relative p-space-xl rounded-xl bg-surface-container-low shadow-sm flex flex-col text-left">
+                <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-space-md">
+                    <span class="material-symbols-outlined">hub</span>
+                </div>
+                <h3 class="font-headline-card text-headline-card text-on-surface font-semibold mb-space-xs">
+                Atribuição Multi-Toque &amp; MER Unificado
+            </h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Compare primeiro toque, último toque e modelo linear nas jornadas disponíveis. Relacione a receita total informada ao investimento consolidado com o MER.
+            </p>
+            </article>
+
+            <!-- Card 3 -->
+            <article class="relative p-space-xl rounded-xl bg-surface-container-low shadow-sm flex flex-col text-left">
+                <div class="w-10 h-10 rounded-lg bg-secondary-fixed-dim/10 flex items-center justify-center text-secondary-fixed-dim mb-space-md">
+                    <span class="material-symbols-outlined">dataset</span>
+                </div>
+                <h3 class="font-headline-card text-headline-card text-on-surface font-semibold mb-space-xs">
+                Orçamento com direção e limites
+            </h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Acompanhe o ritmo de gasto, estime o fechamento do mês e configure regras e travas para agir sobre desvios de investimento.
+            </p>
+            </article>
+
+            <!-- Card 4 -->
+            <article class="relative p-space-xl rounded-xl bg-surface-container-low shadow-sm flex flex-col text-left">
+                <div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary mb-space-md">
+                    <span class="material-symbols-outlined">account_tree</span>
+                </div>
+                <h3 class="font-headline-card text-headline-card text-on-surface font-semibold mb-space-xs">
+                Uma operação que acompanha sua agência
+            </h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Organize clientes, squads e acessos. Apresente relatórios e o portal com sua identidade, conforme os recursos do plano.
+            </p>
+            </article>
+        </div>
+
+        <!-- 4 Cards de Navegação por Aba no Topo -->
+        <div @ref="featureGrid" class="feature-selector grid grid-cols-2 lg:grid-cols-4 gap-space-sm w-full mb-space-xl" role="tablist" aria-label="Categorias de recursos">
+            <button id="resource-tab-1" role="tab" data-feature="1" aria-selected="@((ActiveTab == 1).ToString().ToLowerInvariant())" aria-controls="resource-panel-1" class="tab-button p-space-md rounded-xl @(ActiveTab == 1 ? "bg-surface-container" : "bg-surface-container-low") text-left transition-all shadow-sm" @onclick="() => SetActiveTab(1)">
+                <span class="material-symbols-outlined text-secondary text-[24px] mb-1">track_changes</span>
+                <span class="font-body-md font-semibold text-on-surface block">Integrações e visão</span>
+            </button>
+            <button id="resource-tab-2" role="tab" data-feature="2" aria-selected="@((ActiveTab == 2).ToString().ToLowerInvariant())" aria-controls="resource-panel-2" class="tab-button p-space-md rounded-xl @(ActiveTab == 2 ? "bg-surface-container" : "bg-surface-container-low") text-left transition-all shadow-sm" @onclick="() => SetActiveTab(2)">
+                <span class="material-symbols-outlined text-primary text-[24px] mb-1">insights</span>
+                <span class="font-body-md font-semibold text-on-surface block">Análise e criativos</span>
+            </button>
+            <button id="resource-tab-3" role="tab" data-feature="3" aria-selected="@((ActiveTab == 3).ToString().ToLowerInvariant())" aria-controls="resource-panel-3" class="tab-button p-space-md rounded-xl @(ActiveTab == 3 ? "bg-surface-container" : "bg-surface-container-low") text-left transition-all shadow-sm" @onclick="() => SetActiveTab(3)">
+                <span class="material-symbols-outlined text-secondary-fixed-dim text-[24px] mb-1">account_balance_wallet</span>
+                <span class="font-body-md font-semibold text-on-surface block">Automação e verba</span>
+            </button>
+            <button id="resource-tab-4" role="tab" data-feature="4" aria-selected="@((ActiveTab == 4).ToString().ToLowerInvariant())" aria-controls="resource-panel-4" class="tab-button p-space-md rounded-xl @(ActiveTab == 4 ? "bg-surface-container" : "bg-surface-container-low") text-left transition-all shadow-sm" @onclick="() => SetActiveTab(4)">
+                <span class="material-symbols-outlined text-tertiary text-[24px] mb-1">shield</span>
+                <span class="font-body-md font-semibold text-on-surface block">Gestão e governança</span>
+            </button>
+            <span @ref="featureLine" class="feature-neon-indicator" aria-hidden="true"></span>
+        </div>
+
+        <!-- Painel de Conteúdo das Abas -->
+        <div class="w-full bg-surface-container-low p-space-xl rounded-2xl shadow-xl">
+            <!-- Aba 1: Integrações e visão -->
+            <div id="resource-panel-1" role="tabpanel" aria-labelledby="resource-tab-1" class="tab-content flex flex-col @(ActiveTab == 1 ? "block" : "hidden")">
+                <div class="mb-space-md">
+                    <h3 class="font-headline-card text-headline-card text-on-surface font-bold">
+                Integrações e visão multicanal
+            </h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Enxergue as redes de anúncios no mesmo contexto, com filtros para encontrar o que merece atenção.
+            </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Meta Ads</span>
+                            <span class="font-body-sm text-on-surface-variant">Conecte contas e acompanhe campanhas, conjuntos e anúncios em uma visão organizada.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Google Ads</span>
+                            <span class="font-body-sm text-on-surface-variant">Reúna campanhas de pesquisa e seus indicadores para comparar investimento e retorno.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Bing Ads</span>
+                            <span class="font-body-sm text-on-surface-variant">Inclua a operação de mídia da Microsoft na análise entre canais.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">TikTok Ads</span>
+                            <span class="font-body-sm text-on-surface-variant">Traga a performance das campanhas do TikTok para o mesmo ambiente de trabalho.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Sincronização de campanhas e métricas</span>
+                            <span class="font-body-sm text-on-surface-variant">Atualize a estrutura das contas e o histórico de indicadores nos ciclos de sincronização.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Filtros e comparação de períodos</span>
+                            <span class="font-body-sm text-on-surface-variant">Analise por workspace, plataforma e período para contextualizar mudanças de desempenho.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aba 2: Análise e criativos -->
+            <div id="resource-panel-2" role="tabpanel" aria-labelledby="resource-tab-2" class="tab-content flex flex-col @(ActiveTab == 2 ? "block" : "hidden")">
+                <div class="mb-space-md">
+                    <h3 class="font-headline-card text-headline-card text-on-surface font-bold">
+                Análise, atribuição e criativos
+            </h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Transforme métricas e jornadas disponíveis em contexto para renovar criativos e distribuir investimento.
+            </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Detector de Fadiga de Criativos</span>
+                            <span class="font-body-sm text-on-surface-variant">Avalie tendência de CTR e frequência com pelo menos três dias de métricas disponíveis.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Comparação de criativos</span>
+                            <span class="font-body-sm text-on-surface-variant">Compare peças e indicadores para escolher quais variações merecem sua atenção.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Atribuição Multi-Toque</span>
+                            <span class="font-body-sm text-on-surface-variant">Compare primeiro toque, último toque e distribuição linear nas jornadas fornecidas.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">MER Unificado</span>
+                            <span class="font-body-sm text-on-surface-variant">Divida a receita total informada pelo investimento consolidado e avalie a eficiência da operação.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">ROAS e CAC consolidados</span>
+                            <span class="font-body-sm text-on-surface-variant">Analise retorno agregado e custo de aquisição com os dados de receita e novos clientes disponíveis.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Normalização de moedas e campanhas</span>
+                            <span class="font-body-sm text-on-surface-variant">Compare valores na moeda de análise e organize a classificação das campanhas.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aba 3: Automação e verba -->
+            <div id="resource-panel-3" role="tabpanel" aria-labelledby="resource-tab-3" class="tab-content flex flex-col @(ActiveTab == 3 ? "block" : "hidden")">
+                <div class="mb-space-md">
+                    <h3 class="font-headline-card text-headline-card text-on-surface font-bold">
+                Automação e controle de verba
+            </h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Defina como agir sobre campanhas e acompanhe os limites da sua operação.
+            </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary-fixed-dim mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Regras por indicadores</span>
+                            <span class="font-body-sm text-on-surface-variant">Configure condições de desempenho para orientar ações sobre campanhas.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary-fixed-dim mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Pacing de orçamento</span>
+                            <span class="font-body-sm text-on-surface-variant">Acompanhe gasto realizado, ritmo de consumo e desvio em relação ao orçamento planejado.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary-fixed-dim mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Projeção de fechamento do mês</span>
+                            <span class="font-body-sm text-on-surface-variant">Estime o gasto ao fim do período a partir do ritmo observado para planejar ajustes.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary-fixed-dim mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Travas de overspending</span>
+                            <span class="font-body-sm text-on-surface-variant">Defina limites e mecanismos de pausa para reduzir o risco de ultrapassar o orçamento.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary-fixed-dim mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Verificação de páginas de destino</span>
+                            <span class="font-body-sm text-on-surface-variant">Identifique falhas de disponibilidade e configure ações para campanhas afetadas.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-secondary-fixed-dim mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Copiloto de tráfego</span>
+                            <span class="font-body-sm text-on-surface-variant">Revise diagnósticos de segmentações semelhantes e termos disputados, com sugestões baseadas nos dados disponíveis.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aba 4: Gestão e governança -->
+            <div id="resource-panel-4" role="tabpanel" aria-labelledby="resource-tab-4" class="tab-content flex flex-col @(ActiveTab == 4 ? "block" : "hidden")">
+                <div class="mb-space-md">
+                    <h3 class="font-headline-card text-headline-card text-on-surface font-bold">
+                Gestão, marca e governança
+            </h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Ganhe organização interna e uma apresentação consistente para cada cliente.
+            </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-tertiary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Workspaces por cliente</span>
+                            <span class="font-body-sm text-on-surface-variant">Organize contas e campanhas por operação, com o contexto de cada cliente.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-tertiary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Squads e carteiras</span>
+                            <span class="font-body-sm text-on-surface-variant">Distribua clientes entre equipes e delimite a visibilidade das carteiras.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-tertiary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Papéis e permissões</span>
+                            <span class="font-body-sm text-on-surface-variant">Defina quem pode visualizar, editar e administrar os recursos da operação.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-tertiary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">White-label e domínio próprio</span>
+                            <span class="font-body-sm text-on-surface-variant">Personalize cores, logos e domínio conforme o suporte do seu plano.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-tertiary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Relatórios com sua marca</span>
+                            <span class="font-body-sm text-on-surface-variant">Gere, agende e compartilhe relatórios de desempenho para reduzir entregas manuais.</span>
+                        </div>
+                    </div>
+                    <div class="p-space-md rounded-lg bg-surface-container flex items-start gap-space-sm">
+                        <span class="material-symbols-outlined text-tertiary mt-0.5">check_circle</span>
+                        <div>
+                            <span class="font-body-md font-semibold text-on-surface block">Edição em lote e auditoria</span>
+                            <span class="font-body-sm text-on-surface-variant">Revise alterações de campanhas em conjunto e consulte os registros de ações da equipe.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private int ActiveTab { get; set; } = 1;
+    private int renderedTab;
+    private ElementReference featureGrid, featureLine;
+    private IJSObjectReference? lineModule, lineController;
+
+    /// <summary>Inicializa as interações após a renderização interativa.</summary>
+    /// <param name="firstRender">Indica a primeira renderização do componente.</param>
+    /// <returns>Tarefa de inicialização dos módulos visuais.</returns>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            lineModule = await JS.InvokeAsync<IJSObjectReference>("import", "./landing/js/feature-line.js");
+            lineController = await lineModule.InvokeAsync<IJSObjectReference>("initialize", featureGrid, featureLine, ActiveTab);
+            renderedTab = ActiveTab;
+        }
+        else if (lineController is not null && renderedTab != ActiveTab)
+        {
+            renderedTab = ActiveTab;
+            await lineController.InvokeVoidAsync("select", ActiveTab);
+        }
+    }
+
+    /// <summary>Libera os módulos, referências e observadores visuais.</summary>
+    /// <returns>Tarefa de liberação dos recursos.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (lineController is not null) { await lineController.InvokeVoidAsync("dispose"); await lineController.DisposeAsync(); }
+            if (lineModule is not null) await lineModule.DisposeAsync();
+
+        }
+        catch (JSDisconnectedException) { /* O circuito já foi encerrado. */ }
+    }
+
+    private void SetActiveTab(int tab)
+    {
+        ActiveTab = tab;
+    }
+
+}

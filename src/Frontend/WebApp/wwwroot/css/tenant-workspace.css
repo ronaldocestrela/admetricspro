@@ -1,0 +1,345 @@
+/* Identidade compartilhada apenas pela área autenticada do cliente. */
+.tenant-app-shell {
+    --tenant-app-bg: #01030f;
+    --tenant-surface: color-mix(in srgb,#171b27 94%,var(--tenant-secondary-color,#090e19));
+    --tenant-surface-elevated: color-mix(in srgb,#1b1f2b 92%,var(--tenant-secondary-color,#090e19));
+    --tenant-border: #42475370;
+    --tenant-text: #fff;
+    --tenant-copy: #c2c6d6;
+    --tenant-muted: #8c909f;
+    --tenant-primary-soft: color-mix(in srgb,var(--tenant-primary-color,#4e8eff) 10%,#090e19);
+    --bg-app: var(--tenant-app-bg);
+    --bg-surface: var(--tenant-surface);
+    --bg-surface-elevated: var(--tenant-surface-elevated);
+    --text-primary: var(--tenant-text);
+    --text-secondary: var(--tenant-copy);
+    --text-muted: var(--tenant-muted);
+    --border-subtle: var(--tenant-border);
+    --primary-color: var(--tenant-primary-color);
+    --surface-color: var(--tenant-surface);
+    --border-color: var(--tenant-border);
+    --radius-lg: 16px;
+    color-scheme: dark;
+    line-height: 1.6;
+}
+.tenant-app-shell .tenant-main-content > * { width: 100%; max-width: 1400px; margin-inline: auto; }
+.tenant-app-shell .tenant-main-content > .container-fluid { padding: 0 !important; }
+.tenant-app-shell :is(h1,h2,h3,h4,h5,h6) { color: var(--tenant-text); letter-spacing: -.03em; line-height: 1.3; }
+.tenant-app-shell :is(.page-title,.dashboard-welcome-title) { font-size: clamp(24px,2.2vw,32px); font-weight: 700; margin: 0 0 10px; }
+.tenant-app-shell :is(.section-title,.matrix-title,.card-title) { font-size: 20px; font-weight: 600; }
+.tenant-app-shell :is(.page-description,.page-subtitle,.section-subtitle,.matrix-subtitle,.dashboard-welcome-subtitle) { color: var(--tenant-copy); font-size: 13px; line-height: 1.75; }
+.tenant-app-shell :is(.tenant-name-accent,.tenant-title-accent) { color: var(--tenant-primary-color,#4e8eff); }
+.tenant-app-shell :is(.page-header,.copilot-page-header,.squad-header,.matrix-header,.dashboard-header-section) { margin-bottom: 28px; gap: 20px; flex-wrap: wrap; }
+.tenant-app-shell :is(.header-actions,.dashboard-header-actions,.matrix-controls,.action-buttons) { flex-wrap: wrap; gap: 12px; }
+.tenant-app-shell :is(.dashboard-header-content,.header-info) { min-width: 0; }
+.tenant-app-shell .sidebar-brand-name .tenant-composed-name { display: inline; }
+.tenant-app-shell :is(.card,.dashboard-widget,.chart-card,.metric-card,.rbac-matrix-card,.audit-log-card,.report-card) { background: var(--tenant-surface); color: var(--tenant-text); border-radius: 16px; border-color: var(--tenant-border); box-shadow: 0 6px 24px #0002; }
+.tenant-app-shell .card { border: 1px solid var(--tenant-border); overflow: hidden; }
+.tenant-app-shell .card-header { padding: 20px 24px; background: var(--tenant-surface-elevated); border-bottom: 1px solid var(--tenant-border); }
+.tenant-app-shell .card-body { padding: 24px; }
+.tenant-app-shell .card-footer { padding: 18px 24px; background: #01030f25; border-top: 1px solid var(--tenant-border); }
+.tenant-app-shell :is(.empty-state,.loading-state,.info-banner) { border-radius: 16px; padding: 32px; background: var(--tenant-surface); border: 1px solid var(--tenant-border); color: var(--tenant-copy); }
+.tenant-app-shell :is(button,input,select,textarea) { font-family: inherit; }
+.tenant-app-shell :is(input:not([type='checkbox']):not([type='radio']):not([type='color']),select,textarea) { color: var(--tenant-text); background-color: var(--tenant-surface-elevated); border-color: var(--tenant-border); border-radius: 10px; }
+.tenant-app-shell :is(.form-control,.form-select) { min-height: 42px; padding: 10px 14px; font-size: 13px; width: 100%; border: 1px solid var(--tenant-border); }
+.tenant-app-shell :is(input,textarea)::placeholder { color: var(--tenant-muted); }
+.tenant-app-shell :is(input,select,textarea):focus { outline: none; border-color: var(--tenant-primary-color); box-shadow: 0 0 0 3px color-mix(in srgb,var(--tenant-primary-color) 12%,transparent); }
+.tenant-app-shell :is(input[type='checkbox'],input[type='radio']) { accent-color: var(--tenant-primary-color); }
+.tenant-app-shell .form-label { display: block; color: var(--tenant-copy); font-size: 12px; font-weight: 600; margin-bottom: 7px; }
+.tenant-app-shell :is(.btn,.btn-primary,.btn-secondary,.btn-refresh,.refresh-btn,.btn-back,.btn-retry) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--tenant-border); border-radius: 10px; font-size: 12px; font-weight: 600; line-height: 1.4; text-decoration: none; cursor: pointer; transition: background 180ms,border-color 180ms,box-shadow 180ms; }
+.tenant-app-shell :is(.btn-primary,.btn-generate,.btn-save) { color: #fff; background: linear-gradient(110deg,var(--tenant-primary-color),color-mix(in srgb,var(--tenant-primary-color) 60%,var(--tenant-accent-color))); border-color: transparent; box-shadow: 0 0 18px color-mix(in srgb,var(--tenant-primary-color) 12%,transparent); }
+.tenant-app-shell :is(.btn-primary,.btn-save,.btn-generate):hover:not(:disabled) { box-shadow: 0 0 22px color-mix(in srgb,var(--tenant-primary-color) 25%,transparent); }
+.tenant-app-shell :is(.btn-secondary,.btn-outline-secondary,.btn-light,.btn-back,.btn-refresh,.refresh-btn,.btn-retry) { background: var(--tenant-surface-elevated); color: var(--tenant-copy); }
+.tenant-app-shell :is(.btn-outline-primary,.btn-outline-info) { background: var(--tenant-primary-soft); border-color: color-mix(in srgb,var(--tenant-primary-color) 40%,transparent); color: var(--tenant-primary-color); }
+.tenant-app-shell :is(.btn-danger,.btn-outline-danger) { color: #ffb4ab; background: #ffb4ab12; border-color: #ffb4ab30; }
+.tenant-app-shell :is(.btn-success,.btn-outline-success) { color: #33e280; background: #33e2800a; border-color: #33e28030; }
+.tenant-app-shell .btn-sm { padding: 7px 10px; font-size: 11px; }
+.tenant-app-shell button:disabled { opacity: .5; cursor: not-allowed; }
+.tenant-app-shell :is(a,button):focus-visible { outline: 2px solid var(--tenant-primary-color); outline-offset: 4px; }
+.tenant-app-shell :is(table,.table) { width: 100%; border-collapse: collapse; color: var(--tenant-copy); font-size: 12px; background: transparent; }
+.tenant-app-shell :is(table,.table) th { padding: 14px 16px; text-align: left; font-size: 10px; letter-spacing: .04em; font-weight: 600; color: var(--tenant-muted); background: var(--tenant-surface-elevated); }
+.tenant-app-shell :is(table,.table) td { padding: 14px 16px; border-bottom: 1px solid var(--tenant-border); vertical-align: middle; }
+.tenant-app-shell :is(table,.table) tbody tr:hover { background: #ffffff03; }
+.tenant-app-shell .table-responsive { overflow-x: auto; max-width: 100%; border-radius: 12px; }
+.tenant-app-shell .table-striped tbody tr:nth-child(even) { background: #ffffff02; }
+.tenant-app-shell .nav { display: flex; flex-wrap: wrap; list-style: none; padding: 0; }
+.tenant-app-shell .nav-pills .nav-link { border: 1px solid var(--tenant-border); border-radius: 10px; background: var(--tenant-surface); color: var(--tenant-copy); padding: 10px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tenant-app-shell .nav-pills .nav-link.active { background: var(--tenant-primary-soft); border-color: var(--tenant-primary-color); color: var(--tenant-primary-color); box-shadow: 0 2px 0 var(--tenant-primary-color); }
+.tenant-app-shell .badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; padding: 4px 8px; font-size: 10px; font-weight: 600; line-height: 1.5; }
+.tenant-app-shell .badge.bg-primary { background: var(--tenant-primary-soft) !important; color: var(--tenant-primary-color) !important; }
+.tenant-app-shell .badge.bg-secondary { background: var(--tenant-surface-elevated) !important; color: var(--tenant-copy) !important; }
+.tenant-app-shell :is(.text-dark,.text-black) { color: var(--tenant-text) !important; }
+.tenant-app-shell .text-muted { color: var(--tenant-muted) !important; }
+.tenant-app-shell :is(.text-primary,.text-info) { color: var(--tenant-primary-color) !important; }
+.tenant-app-shell .text-success { color: #33e280 !important; }
+.tenant-app-shell .text-danger { color: #ffb4ab !important; }
+.tenant-app-shell .text-warning { color: #ffd166 !important; }
+.tenant-app-shell :is(.bg-white,.bg-light) { background: var(--tenant-surface) !important; }
+.tenant-app-shell .bg-dark { background: #01030f !important; }
+.tenant-app-shell .border-bottom { border-bottom: 1px solid var(--tenant-border); }
+.tenant-app-shell .border-top { border-top: 1px solid var(--tenant-border); }
+.tenant-app-shell .border { border: 1px solid var(--tenant-border); }
+.tenant-app-shell .border-0 { border: 0; }
+.tenant-app-shell .alert { display: flex; align-items: center; gap: 10px; padding: 14px 16px; margin-bottom: 20px; border: 1px solid var(--tenant-border); border-radius: 12px; font-size: 12px; line-height: 1.6; }
+.tenant-app-shell .alert-success { background: #33e2800a; border-color: #33e28030; color: #33e280; }
+.tenant-app-shell :is(.alert-danger,.alert-error-banner,.error-banner) { background: #ffb4ab0a; border-color: #ffb4ab30; color: #ffb4ab; }
+.tenant-app-shell .alert-info { background: var(--tenant-primary-soft); border-color: color-mix(in srgb,var(--tenant-primary-color) 25%,transparent); color: var(--tenant-copy); }
+.tenant-app-shell .alert-warning { background: #ffd1660a; border-color: #ffd16630; color: #ffd166; }
+.tenant-app-shell .btn-close { border: 0; background: transparent; color: inherit; margin-left: auto; padding: 4px; cursor: pointer; }
+.tenant-app-shell .btn-close::before { content: '×'; font-size: 20px; }
+.tenant-app-shell .modal { position: fixed; inset: 0; z-index: 150; overflow-y: auto; padding: 24px; background: #01030fb0; backdrop-filter: blur(8px); }
+.tenant-app-shell .modal-dialog { width: 100%; max-width: 640px; margin: 5vh auto; }
+.tenant-app-shell .modal-dialog.modal-lg { max-width: 960px; }
+.tenant-app-shell .modal-dialog.modal-xl { max-width: 1120px; }
+.tenant-app-shell .modal-content { display: flex; flex-direction: column; border: 1px solid var(--tenant-border); background: var(--tenant-surface); border-radius: 18px; box-shadow: 0 20px 60px #0006; overflow: hidden; }
+.tenant-app-shell .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 24px; border-bottom: 1px solid var(--tenant-border); }
+.tenant-app-shell .modal-title { color: var(--tenant-text); font-size: 20px; font-weight: 600; }
+.tenant-app-shell .modal-body { padding: 24px; }
+.tenant-app-shell .modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 18px 24px; border-top: 1px solid var(--tenant-border); }
+.tenant-app-shell .spinner-border { display: inline-block; width: 28px; height: 28px; border: 2px solid var(--tenant-border); border-top-color: var(--tenant-primary-color); border-radius: 50%; animation: tenant-spin 800ms linear infinite; }
+.tenant-app-shell .spinner-border-sm { width: 16px; height: 16px; }
+.tenant-app-shell .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tenant-app-shell .tenant-trial-banner { margin-left: 284px; }
+.tenant-app-shell .trial-message { font-size: 12px; }
+@keyframes tenant-spin { to { transform: rotate(360deg); } }
+@media (max-width: 1024px) { .tenant-app-shell .tenant-trial-banner { margin-left: 0; padding-left: 112px; } }
+@media (max-width: 640px) {
+    .tenant-app-shell :is(.page-header,.copilot-page-header,.squad-header,.matrix-header,.dashboard-header-section) { gap: 16px; }
+    .tenant-app-shell .modal { padding: 12px; }
+    .tenant-app-shell :is(.modal-header,.modal-body,.card-body) { padding: 18px; }
+    .tenant-app-shell .trial-actions-group { width: 100%; }
+    .tenant-app-shell .tenant-trial-banner { padding: 12px 16px 12px 112px; }
+}
+@media (prefers-reduced-motion: reduce) { .tenant-app-shell *, .tenant-app-shell *::before, .tenant-app-shell *::after { animation: none !important; transition: none !important; } }
+
+.tenant-app-shell .d-flex {display:flex;}
+.tenant-app-shell .d-block {display:block;}
+.tenant-app-shell .d-inline-flex {display:inline-flex;}
+.tenant-app-shell .d-inline-block {display:inline-block;}
+.tenant-app-shell .d-none {display:none;}
+.tenant-app-shell .flex-column {flex-direction:column;}
+.tenant-app-shell .flex-row {flex-direction:row;}
+.tenant-app-shell .flex-wrap {flex-wrap:wrap;}
+.tenant-app-shell .flex-grow-1 {flex-grow:1;}
+.tenant-app-shell .align-items-center {align-items:center;}
+.tenant-app-shell .align-items-start {align-items:flex-start;}
+.tenant-app-shell .align-items-end {align-items:flex-end;}
+.tenant-app-shell .justify-content-between {justify-content:space-between;}
+.tenant-app-shell .justify-content-center {justify-content:center;}
+.tenant-app-shell .justify-content-end {justify-content:flex-end;}
+.tenant-app-shell .w-100 {width:100%;}
+.tenant-app-shell .h-100 {height:100%;}
+.tenant-app-shell .text-center {text-align:center;}
+.tenant-app-shell .text-end {text-align:right;}
+.tenant-app-shell .text-start {text-align:left;}
+.tenant-app-shell .text-nowrap {white-space:nowrap;}
+.tenant-app-shell .small {font-size:12px;}
+.tenant-app-shell .fw-bold {font-weight:700;}
+.tenant-app-shell .fw-semibold {font-weight:600;}
+.tenant-app-shell .fw-normal {font-weight:400;}
+.tenant-app-shell .font-monospace {font-family:'JetBrains Mono',monospace;}
+.tenant-app-shell .overflow-auto {overflow:auto;}
+.tenant-app-shell .rounded {border-radius:8px;}
+.tenant-app-shell .rounded-3 {border-radius:12px;}
+.tenant-app-shell .rounded-4 {border-radius:16px;}
+.tenant-app-shell .rounded-circle {border-radius:50%;}
+.tenant-app-shell .shadow-sm {box-shadow:0 4px 16px #0002;}
+.tenant-app-shell .mx-auto {margin-inline:auto;}
+.tenant-app-shell .ms-auto {margin-left:auto;}
+.tenant-app-shell .row {display:flex;flex-wrap:wrap;margin-inline:-10px;}
+.tenant-app-shell .col {flex:1 0 0;min-width:0;}
+.tenant-app-shell .col-12 {width:100%;}
+.tenant-app-shell .position-relative {position:relative;}
+.tenant-app-shell .position-absolute {position:absolute;}
+.tenant-app-shell .align-middle {vertical-align:middle;}
+.tenant-app-shell .row > * {padding-inline:10px;min-width:0;}
+.tenant-app-shell .p-0 {padding:0;}
+.tenant-app-shell .m-0 {margin:0;}
+.tenant-app-shell .gap-0 {gap:0;}
+.tenant-app-shell .mb-0 {margin-bottom:0;}
+.tenant-app-shell .mt-0 {margin-top:0;}
+.tenant-app-shell .ms-0 {margin-left:0;}
+.tenant-app-shell .me-0 {margin-right:0;}
+.tenant-app-shell .pb-0 {padding-bottom:0;}
+.tenant-app-shell .pt-0 {padding-top:0;}
+.tenant-app-shell .px-0 {padding-inline:0;}
+.tenant-app-shell .py-0 {padding-block:0;}
+.tenant-app-shell .mx-0 {margin-inline:0;}
+.tenant-app-shell .my-0 {margin-block:0;}
+.tenant-app-shell .p-1 {padding:4px;}
+.tenant-app-shell .m-1 {margin:4px;}
+.tenant-app-shell .gap-1 {gap:4px;}
+.tenant-app-shell .mb-1 {margin-bottom:4px;}
+.tenant-app-shell .mt-1 {margin-top:4px;}
+.tenant-app-shell .ms-1 {margin-left:4px;}
+.tenant-app-shell .me-1 {margin-right:4px;}
+.tenant-app-shell .pb-1 {padding-bottom:4px;}
+.tenant-app-shell .pt-1 {padding-top:4px;}
+.tenant-app-shell .px-1 {padding-inline:4px;}
+.tenant-app-shell .py-1 {padding-block:4px;}
+.tenant-app-shell .mx-1 {margin-inline:4px;}
+.tenant-app-shell .my-1 {margin-block:4px;}
+.tenant-app-shell .p-2 {padding:8px;}
+.tenant-app-shell .m-2 {margin:8px;}
+.tenant-app-shell .gap-2 {gap:8px;}
+.tenant-app-shell .mb-2 {margin-bottom:8px;}
+.tenant-app-shell .mt-2 {margin-top:8px;}
+.tenant-app-shell .ms-2 {margin-left:8px;}
+.tenant-app-shell .me-2 {margin-right:8px;}
+.tenant-app-shell .pb-2 {padding-bottom:8px;}
+.tenant-app-shell .pt-2 {padding-top:8px;}
+.tenant-app-shell .px-2 {padding-inline:8px;}
+.tenant-app-shell .py-2 {padding-block:8px;}
+.tenant-app-shell .mx-2 {margin-inline:8px;}
+.tenant-app-shell .my-2 {margin-block:8px;}
+.tenant-app-shell .p-3 {padding:16px;}
+.tenant-app-shell .m-3 {margin:16px;}
+.tenant-app-shell .gap-3 {gap:16px;}
+.tenant-app-shell .mb-3 {margin-bottom:16px;}
+.tenant-app-shell .mt-3 {margin-top:16px;}
+.tenant-app-shell .ms-3 {margin-left:16px;}
+.tenant-app-shell .me-3 {margin-right:16px;}
+.tenant-app-shell .pb-3 {padding-bottom:16px;}
+.tenant-app-shell .pt-3 {padding-top:16px;}
+.tenant-app-shell .px-3 {padding-inline:16px;}
+.tenant-app-shell .py-3 {padding-block:16px;}
+.tenant-app-shell .mx-3 {margin-inline:16px;}
+.tenant-app-shell .my-3 {margin-block:16px;}
+.tenant-app-shell .p-4 {padding:24px;}
+.tenant-app-shell .m-4 {margin:24px;}
+.tenant-app-shell .gap-4 {gap:24px;}
+.tenant-app-shell .mb-4 {margin-bottom:24px;}
+.tenant-app-shell .mt-4 {margin-top:24px;}
+.tenant-app-shell .ms-4 {margin-left:24px;}
+.tenant-app-shell .me-4 {margin-right:24px;}
+.tenant-app-shell .pb-4 {padding-bottom:24px;}
+.tenant-app-shell .pt-4 {padding-top:24px;}
+.tenant-app-shell .px-4 {padding-inline:24px;}
+.tenant-app-shell .py-4 {padding-block:24px;}
+.tenant-app-shell .mx-4 {margin-inline:24px;}
+.tenant-app-shell .my-4 {margin-block:24px;}
+.tenant-app-shell .p-5 {padding:32px;}
+.tenant-app-shell .m-5 {margin:32px;}
+.tenant-app-shell .gap-5 {gap:32px;}
+.tenant-app-shell .mb-5 {margin-bottom:32px;}
+.tenant-app-shell .mt-5 {margin-top:32px;}
+.tenant-app-shell .ms-5 {margin-left:32px;}
+.tenant-app-shell .me-5 {margin-right:32px;}
+.tenant-app-shell .pb-5 {padding-bottom:32px;}
+.tenant-app-shell .pt-5 {padding-top:32px;}
+.tenant-app-shell .px-5 {padding-inline:32px;}
+.tenant-app-shell .py-5 {padding-block:32px;}
+.tenant-app-shell .mx-5 {margin-inline:32px;}
+.tenant-app-shell .my-5 {margin-block:32px;}
+@media (min-width:768px) {
+.tenant-app-shell .col-md-1 {width:8.33333%;flex:0 0 auto;}
+.tenant-app-shell .col-md-2 {width:16.6667%;flex:0 0 auto;}
+.tenant-app-shell .col-md-3 {width:25%;flex:0 0 auto;}
+.tenant-app-shell .col-md-4 {width:33.3333%;flex:0 0 auto;}
+.tenant-app-shell .col-md-5 {width:41.6667%;flex:0 0 auto;}
+.tenant-app-shell .col-md-6 {width:50%;flex:0 0 auto;}
+.tenant-app-shell .col-md-7 {width:58.3333%;flex:0 0 auto;}
+.tenant-app-shell .col-md-8 {width:66.6667%;flex:0 0 auto;}
+.tenant-app-shell .col-md-9 {width:75%;flex:0 0 auto;}
+.tenant-app-shell .col-md-10 {width:83.3333%;flex:0 0 auto;}
+.tenant-app-shell .col-md-11 {width:91.6667%;flex:0 0 auto;}
+.tenant-app-shell .col-md-12 {width:100%;flex:0 0 auto;}
+.tenant-app-shell .flex-md-row {flex-direction:row;}
+.tenant-app-shell .align-items-md-center {align-items:center;}
+.tenant-app-shell .d-md-flex {display:flex;}
+.tenant-app-shell .d-md-block {display:block;}
+.tenant-app-shell .d-md-none {display:none;}
+}
+@media (min-width:1024px) {
+.tenant-app-shell .col-lg-1 {width:8.33333%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-2 {width:16.6667%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-3 {width:25%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-4 {width:33.3333%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-5 {width:41.6667%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-6 {width:50%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-7 {width:58.3333%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-8 {width:66.6667%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-9 {width:75%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-10 {width:83.3333%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-11 {width:91.6667%;flex:0 0 auto;}
+.tenant-app-shell .col-lg-12 {width:100%;flex:0 0 auto;}
+.tenant-app-shell .flex-lg-row {flex-direction:row;}
+.tenant-app-shell .align-items-lg-center {align-items:center;}
+.tenant-app-shell .d-lg-flex {display:flex;}
+.tenant-app-shell .d-lg-block {display:block;}
+.tenant-app-shell .d-lg-none {display:none;}
+}
+
+/* Ícones vetoriais locais para os componentes que já usam classes bi. */
+.tenant-app-shell .bi {display:inline-block;width:1em;height:1em;flex-shrink:0;vertical-align:-.12em;background:currentColor;mask:var(--tenant-icon) center / contain no-repeat;}
+.tenant-app-shell .bi-plus-lg { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%204v16M4%2012h16%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-arrow-left { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m10%205-7%207%207%207M3%2012h18%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-arrow-left-right { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208h18m-5-5%205%205-5%205M21%2016H3m5-5-5%205%205%205%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-arrow-clockwise { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%208a9%209%200%201%200%201%207M20%203v5h-5%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-arrow-repeat { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%2011a9%209%200%200%201%2016-5m0-4v4h-4M21%2013a9%209%200%200%201-16%205m0%204v-4h4%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-box-arrow-up-right { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M14%203h7v7m0-7L10%2014M10%203H4v17h17v-6%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-calendar2-check { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2216%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M7%202v6m10-6v6M3%2011h18m-14%205%203%203%206-6%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-calendar2-x { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2216%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M7%202v6m10-6v6M3%2011h18m-11%203%206%206m0-6-6%206%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-check-circle-fill { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22m7%2012%203%203%207-7%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-clipboard { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%224%22%20width%3D%2214%22%20height%3D%2217%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M9%204V2h6v2%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-clipboard-check { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%224%22%20width%3D%2214%22%20height%3D%2217%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M9%204V2h6v2m-7%209%203%203%205-6%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-clock-history { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208a9%209%200%201%201-1%205M3%203v5h5m4-1v5l3%202%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-download { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203v12m-5-5%205%205%205-5M4%2017v4h16v-4%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-envelope { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2214%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22m3%206%209%207%209-7%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-exclamation-circle-fill { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%206v7m0%204v.1%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-exclamation-octagon-fill { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m7%202-5%205v10l5%205h10l5-5V7l-5-5ZM12%207v6m0%204v.1%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-exclamation-triangle { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%203%2010%2018H2ZM12%209v5m0%203v.1%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-file-earmark-x { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M14%202H5v20h14V7Zm0%200v5h5M8%2012l6%206m0-6-6%206%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-graph-up-arrow { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%203v18h18M6%2016l5-6%204%202%206-7m-5%200h5v5%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-image { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%2F%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22m3%2018%206-7%204%205%203-3%205%205%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-images { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%223%22%20width%3D%2215%22%20height%3D%2215%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M3%206v15h15M7%2015l4-5%203%204%203-3%204%205%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-info-circle { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%2010v7m0-11v.1%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-intersect { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%2213%22%20height%3D%2213%22%20rx%3D%222%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%229%22%20width%3D%2213%22%20height%3D%2213%22%20rx%3D%222%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-layers-fill { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%202%2010%206-10%206L2%208Zm-10%2012%2010%206%2010-6M2%2018l10%205%2010-5%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-lightbulb { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M8%2017a7%207%200%201%201%208%200v4H8Zm0%201h8m-6%205h4%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-lock-fill { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%2210%22%20width%3D%2214%22%20height%3D%2211%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M8%2010V7a4%204%200%200%201%208%200v3%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-magic { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m3%2021%2013-13%203%203L6%2024M16%202v4m-2-2h4M5%204v4M3%206h4m14%209v4m-2-2h4%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-pause-circle { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M9%207v10m6-10v10%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-pencil { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m3%2017%2013-13%204%204L7%2021H3Zm10-10%204%204%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-play-circle { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22m10%207%207%205-7%205Z%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-send { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m2%203%2020%209-20%209%204-9Zm4%209h16%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-shield-check { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%202%209%204v6c0%206-9%2010-9%2010S3%2018%203%2012V6Zm-5%209%203%203%207-7%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-shield-fill-exclamation { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%202%209%204v6c0%206-9%2010-9%2010S3%2018%203%2012V6ZM12%207v6m0%204v.1%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-sliders { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%204v16m8-16v16m8-16v16M1%208h6m2%208h6m2-10h6%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-trash { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%206h18M9%206V3h6v3M5%206l1%2015h12l1-15M10%2010v7m4-7v7%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-trophy-fill { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M7%202h10v8a5%205%200%200%201-10%200ZM7%204H3v3a4%204%200%200%200%204%204m10-7h4v3a4%204%200%200%201-4%204m-5%204v6m-5%200h10%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-facebook { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M15%2022V13h4l1-4h-5V6c0-2%201-2%204-2V1h-4c-4%200-5%203-5%205v3H6v4h4v9%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-google { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M21%2010h-9v4h5a6%206%200%201%201-2-9l3-3a10%2010%200%201%200%203%208Z%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-microsoft { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2%202h8v8H2Zm12%200h8v8h-8ZM2%2014h8v8H2Zm12%200h8v8h-8Z%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-tiktok { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M14%203v12a5%205%200%201%201-5-5M14%203c0%204%204%205%207%205%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-whatsapp { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%2021l1-5a9%209%200%201%201%204%204ZM8%207c-2%202%201%207%204%209%202%201%204%200%204-2l-3-2-1%201-2-2%201-1Z%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-exclamation-triangle-fill { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m12%203%2010%2018H2ZM12%209v5m0%203v.1%22%2F%3E%3C%2Fsvg%3E"); }
+.tenant-app-shell .bi-info-circle-fill { --tenant-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%2010v7m0-11v.1%22%2F%3E%3C%2Fsvg%3E"); }
+
+.tenant-app-shell .g-3 {row-gap:16px;}
+.tenant-app-shell .g-4 {row-gap:24px;}
+
+.tenant-app-shell .col-6 {width:50%;flex:0 0 auto;}
+.tenant-app-shell .fs-4 {font-size:24px;}
+.tenant-app-shell .fs-5 {font-size:20px;}
+.tenant-app-shell .fs-6 {font-size:16px;}
+.tenant-app-shell .h3 {font-size:26px;}
+.tenant-app-shell .border-start {border-left:1px solid var(--tenant-border);}
+.tenant-app-shell .border-4 {border-width:4px;}
+.tenant-app-shell .border-success {border-color:#33e280;}
+.tenant-app-shell .border-warning {border-color:#ffd166;}
+.tenant-app-shell .border-danger {border-color:#ffb4ab;}
+.tenant-app-shell .bg-success {background:#33e28012;color:#33e280;}
+.tenant-app-shell .bg-warning {background:#ffd16612;color:#ffd166;}
+.tenant-app-shell .bg-danger {background:#ffb4ab12;color:#ffb4ab;}
+.tenant-app-shell .bg-info {background:var(--tenant-primary-soft);color:var(--tenant-primary-color);}
+.tenant-app-shell .text-secondary {color:var(--tenant-copy)!important;}
+.tenant-app-shell .btn-link {background:transparent;border:0;color:var(--tenant-primary-color);}
+@media (min-width:768px) {.tenant-app-shell .col-6.col-md-3 {width:25%;}}
+@media (max-width:640px) {.tenant-app-shell .col-6 {width:100%;}}
+
+.tenant-app-shell .dashboard-metrics-section .metrics-grid {grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;}
+.tenant-app-shell .tenant-main-content > .container-fluid > .d-flex h3 {font-size:28px;}
+@media (min-width:1600px) {.tenant-app-shell .dashboard-metrics-section .metrics-grid {grid-template-columns:repeat(6,minmax(0,1fr));}}
+@media (max-width:767px) {.tenant-app-shell .dashboard-metrics-section .metrics-grid {grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (max-width:480px) {.tenant-app-shell .dashboard-metrics-section .metrics-grid {grid-template-columns:minmax(0,1fr);}}

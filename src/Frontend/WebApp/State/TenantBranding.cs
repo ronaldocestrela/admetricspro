@@ -25,11 +25,11 @@ public record TenantBranding(
     /// Configuração padrão institucional do AdMetricsPro.
     /// </summary>
     public static TenantBranding Default => new(
-        PrimaryColor: "#2563EB",
-        SecondaryColor: "#0F172A",
-        AccentColor: "#38BDF8",
-        LogoUrl: "/images/admetricspro-logo.svg",
-        DarkLogoUrl: "/images/admetricspro-logo-dark.svg",
+        PrimaryColor: "#4E8EFF",
+        SecondaryColor: "#090E19",
+        AccentColor: "#4BD8EC",
+        LogoUrl: "/images/landing/brand-mark.svg",
+        DarkLogoUrl: "/images/landing/brand-mark.svg",
         FaviconUrl: "/favicon.ico",
         CompanyName: "AdMetricsPro",
         ShowPoweredBy: true);
@@ -40,6 +40,9 @@ public record TenantBranding(
     /// <returns>Bloco de estilos formatado com as variáveis CSS de marca.</returns>
     public string ToCssVariables()
     {
-        return $"--tenant-primary-color: {PrimaryColor}; --tenant-primary: {PrimaryColor}; --tenant-secondary-color: {SecondaryColor}; --tenant-secondary: {SecondaryColor}; --tenant-accent-color: {AccentColor}; --tenant-accent: {AccentColor};";
+        var primary = string.IsNullOrWhiteSpace(PrimaryColor) ? Default.PrimaryColor : PrimaryColor;
+        var secondary = string.IsNullOrWhiteSpace(SecondaryColor) ? Default.SecondaryColor : SecondaryColor;
+        var accent = string.IsNullOrWhiteSpace(AccentColor) ? Default.AccentColor : AccentColor;
+        return $"--tenant-primary-color: {primary}; --tenant-primary: {primary}; --tenant-secondary-color: {secondary}; --tenant-secondary: {secondary}; --tenant-accent-color: {accent}; --tenant-accent: {accent};";
     }
 }

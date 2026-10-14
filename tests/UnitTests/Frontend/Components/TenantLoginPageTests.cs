@@ -43,6 +43,37 @@ public sealed class TenantLoginPageTests : BunitTestBase
         cut.Find("button[type='submit']").TextContent.Should().Contain("Entrar");
     }
 
+    /// <summary>Exige cabeçalho da LP, marca padrão e CTA de cadastro sem promessas de tempo.</summary>
+    [Fact]
+    public void TenantLoginPage_ShouldUseLandingBrandHeaderAndSignupButtons()
+    {
+        var cut = Render<TenantLoginPage>();
+        var brand = cut.Find(".login-header-brand");
+        brand.GetAttribute("href").Should().Be("/");
+        brand.TextContent.Should().Contain("AdMetricsPro");
+        brand.QuerySelector("img")!.GetAttribute("src").Should().Be("images/landing/brand-mark.svg");
+        cut.Find(".login-default-logo").GetAttribute("src").Should().Be("images/landing/brand-mark.svg");
+        cut.Find(".login-title").TextContent.Trim().Should().Be("AdMetricsPro");
+        cut.Find(".link-register").TextContent.Trim().Should().Be("Crie seu Cockpit");
+        cut.Find(".link-register").GetAttribute("href").Should().Be("/onboarding");
+        cut.Find(".login-header-signup").GetAttribute("href").Should().Be("/onboarding");
+        cut.Find(".btn-login-submit").TextContent.Trim().Should().Be("Entrar no Cockpit");
+    }
+
+    /// <summary>O botão de senha preserva o valor e informa o estado de visibilidade.</summary>
+    [Fact]
+    public void TenantLoginPage_ShouldKeepPasswordWhenVisibilityIsToggled()
+    {
+        var cut = Render<TenantLoginPage>();
+        cut.Find("#password-input").Change("Senha123!");
+        cut.Find(".btn-toggle-password").Click();
+        cut.Find("#password-input").GetAttribute("type").Should().Be("text");
+        cut.Find("#password-input").GetAttribute("value").Should().Be("Senha123!");
+        cut.Find(".btn-toggle-password").GetAttribute("aria-label").Should().Be("Ocultar senha");
+        cut.Find(".btn-toggle-password").Click();
+        cut.Find("#password-input").GetAttribute("type").Should().Be("password");
+    }
+
     /// <summary>
     /// Valida que quando o subdomínio é passado como query parameter, os metadados de branding são carregados dinamicamente.
     /// </summary>

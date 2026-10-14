@@ -18,7 +18,7 @@
     <!-- Cabeçalho Principal -->
     <header class="workspaces-header">
         <div class="header-info">
-            <h1 class="page-title">Clientes & Workspaces</h1>
+            <h1 class="page-title">Clientes & <span class="tenant-title-accent">Workspaces</span></h1>
             <p class="page-subtitle">
                 Gerencie a carteira de clientes, orçamentos de mídia e status operacional da agência <strong>@AgencyName</strong>.
             </p>
@@ -183,7 +183,7 @@
                         <tr class="@(!workspace.IsActive ? "row-inactive" : "")">
                             <td>
                                 <div class="client-name-cell">
-                                    <span class="client-name">@workspace.Name</span>
+                                    <span class="client-name"><TenantComposedName Text="@workspace.Name" /></span>
                                     <span class="client-id" title="@workspace.Id">ID: @workspace.Id.ToString()[..8]...</span>
                                 </div>
                             </td>

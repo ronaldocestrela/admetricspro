@@ -1,65 +1,137 @@
-@namespace WebApp.Components.Landing
+@* <summary>Seção pública do AdMetricsPro, preservando a composição e as interações da referência.</summary> *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
-<!--
-    HeroSection: Apresentação principal do AdMetricsPro com tags de release, headline de alto impacto, CTAs e trust badges.
--->
-<section class="hero-section">
-    <div class="hero-ambient-glow"></div>
-    <div class="hero-ambient-glow-secondary"></div>
+<section class="relative z-10 w-full min-h-[740px] flex items-center justify-center py-space-3xl px-gutter-mobile lg:px-gutter" id="hero">
+    <div class="hero-layout max-w-[1200px] w-full mx-auto">
+        <div class="hero-copy">
+        <!-- H1 Headline -->
+        <h1 class="font-headline-hero text-headline-hero text-on-surface tracking-tight leading-[1.08] mb-space-lg">
+                Sua verba merece <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-container to-secondary-container">decisões melhores.</span> Seu tráfego também.
+            </h1>
 
-    <div class="landing-container hero-content">
-        <!-- Feature Announcement Pill -->
-        <div class="release-pill">
-            <span class="pill-dot"></span>
-            <span class="pill-tag">Novo Release</span>
-            <span style="color: var(--lp-outline);">•</span>
-            <span>IA Preditiva de ROAS 3.0 disponível</span>
-            <span class="material-symbols-outlined" style="font-size: 16px; color: var(--lp-tertiary);">arrow_forward</span>
+        <!-- Subtítulo -->
+        <p class="font-body-lg text-body-lg text-on-surface-variant max-w-[700px] mb-space-lg">
+                O AdMetricsPro reúne Meta, Google, Bing e TikTok Ads para você enxergar o retorno entre canais, identificar criativos em desgaste e controlar o orçamento antes que o desperdício cresça.
+            </p>
+
+        <!-- Badges Compactos com Bullet -->
+        <div class="flex flex-wrap items-center justify-center gap-space-xs text-on-surface-variant text-body-sm font-body-sm mb-space-lg">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low">
+                <span class="material-symbols-outlined text-secondary text-base">check_circle</span>Quatro redes de anúncios
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low">
+                <span class="material-symbols-outlined text-secondary text-base">check_circle</span>MER Unificado
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low">
+                <span class="material-symbols-outlined text-secondary text-base">check_circle</span>Fadiga de criativos
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low">
+                <span class="material-symbols-outlined text-secondary text-base">check_circle</span>Proteção de orçamento
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low">
+                <span class="material-symbols-outlined text-secondary text-base">check_circle</span>Clientes e squads
+            </span>
         </div>
 
-        <!-- Main Headline -->
-        <h1 class="hero-title">
-            Escale seu tráfego pago com <span class="text-gradient">inteligência preditiva</span> e ROAS máximo
-        </h1>
-
-        <!-- Subtitle -->
-        <p class="hero-subtitle">
-            Centralize campanhas do Meta, Google, Bing e TikTok em um só cockpit. Automatize regras de otimização, corte gastos com criativos ruins e multiplique suas conversões em tempo real.
-        </p>
-
-        <!-- CTA Row -->
-        <div class="hero-cta-group">
-            <a href="/register" class="cta-trial">
-                <span>Iniciar Teste Grátis de 14 Dias</span>
-                <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+        <!-- Dupla de CTAs -->
+        <div class="flex flex-wrap items-center justify-center gap-space-md mb-space-lg">
+            <a class="w-full sm:w-auto inline-flex items-center justify-center gap-space-sm px-space-xl py-space-md rounded-xl font-body-md text-body-md font-semibold text-on-primary bg-gradient-to-r from-primary-container to-secondary-container hover:shadow-[0_0_24px_rgba(0,180,199,0.4)] transition-all transform hover:-translate-y-0.5" href="/onboarding">
+                <span>Testar por 14 dias</span>
+                <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
             </a>
-            <a href="#demo" class="cta-demo">
-                <span class="material-symbols-outlined" style="color: var(--lp-tertiary);">play_circle</span>
-                <span>Agendar Demonstração ao Vivo</span>
+            <a class="w-full sm:w-auto inline-flex items-center justify-center px-space-xl py-space-md rounded-xl font-body-md text-body-md font-medium text-on-surface bg-surface-container hover:bg-surface-container-high transition-all" href="#como-funciona">
+                Conhecer a plataforma
             </a>
         </div>
 
-        <!-- Trust Badges -->
-        <div class="hero-trust-badges">
-            <div class="trust-badge">
-                <span class="material-symbols-outlined" style="color: var(--lp-secondary); font-size: 18px;">verified</span>
-                <span>Sem cartão de crédito</span>
+        <p class="font-body-sm text-body-sm text-outline mb-space-lg">
+                Comece com 14 dias de teste grátis, sem cartão. Conecte suas contas e veja sua operação em um único painel.
+            </p>
+
+        <!-- 3 Destaques com Divisores Sutis -->
+        <div class="hero-highlights grid grid-cols-3 gap-space-md w-full max-w-[600px]">
+            <div class="flex flex-col items-center">
+                <span class="font-mono-code text-mono-code text-secondary font-semibold">CRIATIVOS</span>
+                <span class="font-body-sm text-body-sm text-on-surface">Identifique desgaste</span>
             </div>
-            <span style="color: var(--lp-outline-variant);">•</span>
-            <div class="trust-badge">
-                <span class="material-symbols-outlined" style="color: var(--lp-tertiary); font-size: 18px;">bolt</span>
-                <span>Integração em 2 minutos</span>
+            <div class="flex flex-col items-center">
+                <span class="font-mono-code text-mono-code text-primary font-semibold">ATRIBUIÇÃO</span>
+                <span class="font-body-sm text-body-sm text-on-surface">Compare os canais</span>
             </div>
-            <span style="color: var(--lp-outline-variant);">•</span>
-            <div class="trust-badge">
-                <span class="material-symbols-outlined" style="color: var(--lp-primary); font-size: 18px;">query_stats</span>
-                <span style="color: #ffffff; font-weight: 600;">+R$ 180M gerenciados em ads</span>
+            <div class="flex flex-col items-center">
+                <span class="font-mono-code text-mono-code text-tertiary font-semibold">ORÇAMENTO</span>
+                <span class="font-body-sm text-body-sm text-on-surface">Controle o ritmo</span>
+            </div>
+        </div>
+        </div>
+        <div @ref="carouselElement" data-reveal-atomic class="hero-carousel" role="region" aria-roledescription="carrossel" aria-label="Demonstrações do AdMetricsPro">
+            <div class="hero-carousel-images">
+                @for (var i = 0; i < Slides.Length; i++)
+                {
+                    var slide = Slides[i];
+                    <img src="@slide.Source" alt="@slide.Description" class="hero-carousel-image @(ActiveSlide == i ? "is-active" : "")"
+                         aria-hidden="@((ActiveSlide != i).ToString().ToLowerInvariant())" width="@slide.Width" height="@slide.Height" />
+                }
+            </div>
+            <div class="hero-carousel-controls">
+                <button type="button" aria-label="Imagem anterior" @onclick="PreviousSlide">‹</button>
+                <span>@Slides[ActiveSlide].Description</span>
+                <button type="button" aria-label="Próxima imagem" @onclick="NextSlide">›</button>
+            </div>
+            <div class="hero-carousel-dots" role="group" aria-label="Selecionar imagem">
+                @for (var i = 0; i < Slides.Length; i++)
+                {
+                    var index = i;
+                    <button type="button" class="@(ActiveSlide == i ? "is-active" : "")" aria-label="@($"Imagem {i + 1}")"
+                            aria-pressed="@((ActiveSlide == i).ToString().ToLowerInvariant())" @onclick="() => ActiveSlide = index"></button>
+                }
             </div>
         </div>
     </div>
 </section>
 
 @code {
-    // Componente Hero principal da Landing Page do AdMetricsPro.
-    // Contém a proposta de valor essencial, chamada para ação (CTA) e selos de confiança.
+    private ElementReference carouselElement;
+    private int ActiveSlide;
+    private IJSObjectReference? carouselModule, carousel;
+    private DotNetObjectReference<HeroSection>? reference;
+    private static readonly (string Source, string Description, int Width, int Height)[] Slides =
+    [
+        ("images/landing/overview.svg", "Visão multicanal · dados demonstrativos", 960, 720),
+        ("images/landing/creatives.svg", "Fadiga de criativos · dados demonstrativos", 960, 720),
+        ("images/landing/pacing.svg", "Pacing de orçamento · dados demonstrativos", 960, 720)
+    ];
+
+    /// <summary>Atualiza o estado visual por interação no navegador.</summary>
+    /// <returns>Tarefa de atualização da interface.</returns>
+    [JSInvokable]
+    public Task AdvanceSlide() => InvokeAsync(() => { NextSlide(); StateHasChanged(); });
+    private void NextSlide() => ActiveSlide = (ActiveSlide + 1) % Slides.Length;
+    private void PreviousSlide() => ActiveSlide = (ActiveSlide + Slides.Length - 1) % Slides.Length;
+
+    /// <summary>Inicializa as interações após a renderização interativa.</summary>
+    /// <param name="firstRender">Indica a primeira renderização do componente.</param>
+    /// <returns>Tarefa de inicialização dos módulos visuais.</returns>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        reference = DotNetObjectReference.Create(this);
+        carouselModule = await JS.InvokeAsync<IJSObjectReference>("import", "./landing/js/carousel.js");
+        carousel = await carouselModule.InvokeAsync<IJSObjectReference>("initialize", carouselElement, reference);
+    }
+
+    /// <summary>Libera os módulos, referências e observadores visuais.</summary>
+    /// <returns>Tarefa de liberação dos recursos.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (carousel is not null) { await carousel.InvokeVoidAsync("dispose"); await carousel.DisposeAsync(); }
+            if (carouselModule is not null) await carouselModule.DisposeAsync();
+
+        }
+        catch (JSDisconnectedException) { /* O circuito já foi encerrado. */ }
+        finally { reference?.Dispose(); }
+    }
 }

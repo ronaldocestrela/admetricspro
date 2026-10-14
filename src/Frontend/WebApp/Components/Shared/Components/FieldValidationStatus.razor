@@ -1,0 +1,34 @@
+@namespace WebApp.Components.Shared
+
+<div class="field-validation status-pill @State" data-testid="@TestId" data-state="@State"
+     role="status" aria-live="polite" aria-atomic="true" aria-busy="@(State == "checking" ? "true" : "false")">
+    <div class="validation-content" @key="State">
+        @if (State == "checking")
+        {
+            <span class="validation-spinner" aria-hidden="true"></span>
+        }
+        else if (State == "success")
+        {
+            <svg class="validation-check" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m7 12 3 3 7-7" />
+            </svg>
+        }
+        else if (State == "error")
+        {
+            <span class="validation-error-icon" aria-hidden="true">!</span>
+        }
+        <span>@Message</span>
+    </div>
+</div>
+
+@code {
+    /// <summary>Estado da validação: checking, success, error ou idle.</summary>
+    [Parameter] public string State { get; set; } = "idle";
+
+    /// <summary>Mensagem específica do campo em validação.</summary>
+    [Parameter] public string? Message { get; set; }
+
+    /// <summary>Identificador estável do estado visual para testes.</summary>
+    [Parameter] public string? TestId { get; set; }
+}

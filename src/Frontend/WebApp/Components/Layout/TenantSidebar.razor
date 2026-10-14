@@ -1,9 +1,15 @@
 @namespace WebApp.Components.Layout
 @inject ITenantStateProvider TenantStateProvider
+@inject ITenantSessionStateProvider TenantSessionStateProvider
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@inject IWorkspaceClientService WorkspaceClientService
+@inject NavigationManager NavigationManager
+@using Tenants.Application.Workspaces.DTOs
+@implements IDisposable
 
-<aside class="tenant-sidebar @(IsOpen ? "open" : "")">
+<aside id="tenant-sidebar" class="tenant-sidebar @(IsOpen ? "open" : "")">
     <div class="sidebar-header">
-        <div class="sidebar-brand">
+        <a class="sidebar-brand" href="/dashboard">
             @if (!string.IsNullOrEmpty(TenantStateProvider.CurrentTenant.Branding.LogoUrl))
             {
                 <img src="@TenantStateProvider.CurrentTenant.Branding.LogoUrl" 
@@ -19,7 +25,7 @@
             <span class="sidebar-brand-name" title="@TenantStateProvider.CurrentTenant.Name">
                 @TenantStateProvider.CurrentTenant.Name
             </span>
-        </div>
+        </a>
 
         <button type="button" class="sidebar-close-btn" @onclick="HandleClose" aria-label="Fechar menu de navegação">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -30,11 +36,25 @@
     </div>
 
     <div class="sidebar-scroll-area">
-        <nav class="sidebar-navigation">
+        <div class="sidebar-workspace-wrapper">
+            <label for="sidebar-workspace-select" class="sidebar-workspace-label">Cliente ativo</label>
+            <select id="sidebar-workspace-select" class="sidebar-workspace-select"
+                    value="@(WorkspaceContextStateProvider.CurrentWorkspaceId?.ToString() ?? "")"
+                    @onchange="HandleWorkspaceChanged" disabled="@_isLoadingWorkspaces">
+                <option value="">Todos os clientes</option>
+                @foreach (var workspace in _workspaces)
+                {
+                    <option value="@workspace.Id">@workspace.Name</option>
+                }
+            </select>
+            @if (_isLoadingWorkspaces) { <span class="sidebar-workspace-hint" role="status">Carregando clientes…</span> }
+            @if (!string.IsNullOrWhiteSpace(_workspaceError)) { <span class="sidebar-workspace-hint" role="status">@_workspaceError</span> }
+        </div>
+        <nav class="sidebar-navigation" aria-label="Navegação da área do cliente">
             <div class="nav-section-label">Central Operacional</div>
             <ul class="nav-links-list">
                 <li>
-                    <NavLink href="dashboard" Match="NavLinkMatch.All" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="dashboard" Match="NavLinkMatch.All" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="3" width="7" height="7"></rect>
                             <rect x="14" y="3" width="7" height="7"></rect>
@@ -45,7 +65,7 @@
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink href="workspaces" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="workspaces" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                         </svg>
@@ -53,7 +73,7 @@
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink href="squads" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="squads" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                             <circle cx="9" cy="7" r="4"></circle>
@@ -64,7 +84,7 @@
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink href="integrations" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="integrations" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="16 18 22 12 16 6"></polyline>
                             <polyline points="8 6 2 12 8 18"></polyline>
@@ -77,7 +97,7 @@
             <div class="nav-section-label">Inteligência & Otimização</div>
             <ul class="nav-links-list">
                 <li>
-                    <NavLink href="copilot" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="copilot" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 2a8 8 0 0 1 8 8v1a8 8 0 0 1-8 8H8l-4 3v-3a8 8 0 0 1-4-8V10a8 8 0 0 1 8-8z"></path>
                             <circle cx="9" cy="10" r="1"></circle>
@@ -87,7 +107,7 @@
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink href="creatives" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="creatives" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
                             <line x1="7" y1="2" x2="7" y2="22"></line>
@@ -98,7 +118,7 @@
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink href="campaigns/bulk" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="campaigns/bulk" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
                             <polyline points="2 17 12 22 22 17"></polyline>
@@ -108,7 +128,7 @@
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink href="reports" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="reports" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
@@ -124,7 +144,7 @@
             <div class="nav-section-label">Governança & Marca</div>
             <ul class="nav-links-list">
                 <li>
-                    <NavLink href="rbac" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="rbac" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                         </svg>
@@ -132,7 +152,7 @@
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink href="settings/white-label" class="nav-link-item">
+                    <NavLink @onclick="HandleClose" href="settings/white-label" class="nav-link-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="3"></circle>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -145,6 +165,14 @@
     </div>
 
     <div class="sidebar-footer">
+        <div class="sidebar-user-identity">
+            <div class="sidebar-user-avatar" aria-hidden="true">@(string.IsNullOrWhiteSpace(UserName) ? "G" : UserName[..1].ToUpperInvariant())</div>
+            <div class="sidebar-user-meta"><span class="sidebar-user-name">@UserName</span><span class="sidebar-user-role">@UserRole</span></div>
+        </div>
+        <button type="button" class="sidebar-logout-btn" disabled="@_isLoggingOut" @onclick="HandleLogout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M9 12h12m-5-5 5 5-5 5" /></svg>
+            <span>@(_isLoggingOut ? "Saindo…" : "Sair da conta")</span>
+        </button>
         <div class="tenant-status-pill">
             <span class="status-indicator"></span>
             <span class="status-text">Ambiente Isolado</span>
@@ -158,6 +186,79 @@
 }
 
 @code {
+    private IReadOnlyList<WorkspaceDto> _workspaces = Array.Empty<WorkspaceDto>();
+    private bool _isLoadingWorkspaces;
+    private string? _workspaceError;
+    private int _requestVersion;
+    private bool _disposed;
+    private bool _isLoggingOut;
+    private string UserName => TenantSessionStateProvider.CurrentSession?.FullName ?? "Gestor";
+    private string UserRole => TenantSessionStateProvider.CurrentSession?.Role switch
+    {
+        "Owner" => "Administrador", "Manager" => "Gestor", "Operator" => "Operador", "Guest" => "Convidado", _ => "Gestor"
+    };
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleContextChanged;
+        await LoadWorkspacesAsync();
+    }
+
+    private void HandleContextChanged() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
+    private void HandleSessionChanged()
+    {
+        if (!_disposed) _ = InvokeAsync(async () => { await LoadWorkspacesAsync(); if (!_disposed) StateHasChanged(); });
+    }
+
+    private async Task LoadWorkspacesAsync()
+    {
+        var request = ++_requestVersion;
+        if (!TenantSessionStateProvider.IsAuthenticated && TenantStateProvider.CurrentTenant.TenantId == Guid.Empty)
+        {
+            _workspaces = Array.Empty<WorkspaceDto>();
+            _workspaceError = null;
+            _isLoadingWorkspaces = false;
+            return;
+        }
+        _isLoadingWorkspaces = true;
+        _workspaceError = null;
+        var result = await WorkspaceClientService.GetWorkspacesAsync(true);
+        if (_disposed || request != _requestVersion) return;
+        _isLoadingWorkspaces = false;
+        if (result.IsSuccess) _workspaces = result.Value;
+        else { _workspaces = Array.Empty<WorkspaceDto>(); _workspaceError = "Não foi possível carregar seus clientes."; }
+    }
+
+    private async Task HandleWorkspaceChanged(ChangeEventArgs args)
+    {
+        if (Guid.TryParse(args.Value?.ToString(), out var id))
+        {
+            var workspace = _workspaces.FirstOrDefault(item => item.Id == id);
+            if (workspace is not null) await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(workspace.Id, workspace.Name);
+        }
+        else await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(null, null);
+    }
+
+    private async Task HandleLogout()
+    {
+        if (_isLoggingOut) return;
+        _isLoggingOut = true;
+        await WorkspaceContextStateProvider.ClearAsync();
+        await TenantSessionStateProvider.ClearSessionAsync();
+        NavigationManager.NavigateTo("/login");
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _disposed = true;
+        _requestVersion++;
+        TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleContextChanged;
+    }
+
     /// <summary>
     /// Indica se a barra lateral está aberta em modo móvel/responsivo.
     /// </summary>

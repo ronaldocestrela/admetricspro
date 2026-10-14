@@ -62,7 +62,7 @@
     align-items: center;
     gap: 0.5rem;
     background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
     font-size: 0.875rem;
     font-weight: 600;
     padding: 0.65rem 1.25rem;
@@ -137,7 +137,7 @@
 
 .icon-clients {
     background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
+    color: var(--tenant-primary-color, #4e8eff);
 }
 
 .icon-active {
@@ -265,7 +265,7 @@
 }
 
 .filter-pill:hover {
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
 }
 
 .filter-pill.active {
@@ -325,7 +325,7 @@
 
 .client-name {
     font-weight: 600;
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
 }
 
 .client-id {
@@ -341,14 +341,14 @@
     background: rgba(15, 23, 42, 0.6);
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
-    color: #cbd5e1;
+    color: var(--tenant-copy, #c2c6d6);
 }
 
 .segment-badge {
     display: inline-block;
     font-size: 0.775rem;
     background: rgba(56, 189, 248, 0.1);
-    color: #38bdf8;
+    color: var(--tenant-primary-color, #4e8eff);
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
     font-weight: 500;
@@ -356,7 +356,7 @@
 
 .cell-budget {
     font-weight: 600;
-    color: #f1f5f9;
+    color: var(--tenant-text, #fff);
 }
 
 .cell-date {
@@ -382,7 +382,7 @@
 
 .badge-paused {
     background: rgba(148, 163, 184, 0.15);
-    color: #94a3b8;
+    color: var(--tenant-muted, #8c909f);
     border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
@@ -412,7 +412,7 @@
 }
 
 .btn-icon:hover {
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
     border-color: var(--primary-color, #38bdf8);
     background: rgba(56, 189, 248, 0.1);
 }
@@ -454,7 +454,7 @@
 .empty-state h3 {
     margin: 0;
     font-size: 1.15rem;
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
 }
 
 .empty-state p {
@@ -494,7 +494,7 @@
 }
 
 .modal-dialog {
-    background: #1e293b;
+    background: var(--tenant-surface, #171b27);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
     width: 100%;
@@ -525,13 +525,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #38bdf8;
+    color: var(--tenant-primary-color, #4e8eff);
 }
 
 .modal-title {
     margin: 0;
     font-size: 1.15rem;
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
     font-weight: 600;
 }
 
@@ -551,7 +551,7 @@
 }
 
 .btn-close-modal:hover {
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
 }
 
 .modal-body {
@@ -583,18 +583,18 @@
 }
 
 .form-control {
-    background: #0f172a;
+    background: var(--tenant-surface, #171b27);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
     padding: 0.65rem 0.85rem;
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
     font-size: 0.875rem;
     outline: none;
     transition: border-color 0.2s ease;
 }
 
 .form-control:focus {
-    border-color: #38bdf8;
+    border-color: var(--tenant-primary-color, #4e8eff);
     box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
 }
 
@@ -631,7 +631,7 @@
 
 .btn-cancel:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.05);
-    color: #ffffff;
+    color: var(--tenant-text, #fff);
 }
 
 .spinner {
@@ -639,7 +639,7 @@
     width: 14px;
     height: 14px;
     border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #ffffff;
+    border-top-color: var(--tenant-text, #fff);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

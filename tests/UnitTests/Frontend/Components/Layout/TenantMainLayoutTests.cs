@@ -30,8 +30,8 @@ public sealed class TenantMainLayoutTests : BunitTestBase
 
         var styleAttribute = appShell.GetAttribute("style");
         styleAttribute.Should().NotBeNull();
-        styleAttribute.Should().Contain("--tenant-primary-color: #2563EB;");
-        styleAttribute.Should().Contain("--tenant-secondary-color: #0F172A;");
+        styleAttribute.Should().Contain("--tenant-primary-color: #4E8EFF;");
+        styleAttribute.Should().Contain("--tenant-secondary-color: #090E19;");
     }
 
     /// <summary>
@@ -61,7 +61,7 @@ public sealed class TenantMainLayoutTests : BunitTestBase
         var cut = Render<TenantMainLayout>();
 
         // Assert
-        var logoImg = cut.Find("img.tenant-brand-logo");
+        var logoImg = cut.Find("img.sidebar-logo");
         logoImg.Should().NotBeNull();
         logoImg.GetAttribute("src").Should().Be("https://cdn.example.com/agencia-alfa-logo.svg");
         logoImg.GetAttribute("alt").Should().Be("Agência Alfa");
@@ -94,8 +94,8 @@ public sealed class TenantMainLayoutTests : BunitTestBase
         var cut = Render<TenantMainLayout>();
 
         // Assert
-        cut.FindAll("img.tenant-brand-logo").Should().BeEmpty();
-        var monogram = cut.Find(".tenant-brand-initials");
+        cut.FindAll("img.sidebar-logo").Should().BeEmpty();
+        var monogram = cut.Find(".sidebar-initials-badge");
         monogram.Should().NotBeNull();
         monogram.TextContent.Trim().Should().Be("VD");
     }
@@ -117,7 +117,10 @@ public sealed class TenantMainLayoutTests : BunitTestBase
             }));
 
         // Assert
-        cut.Find(".tenant-top-header").Should().NotBeNull();
+        cut.FindAll(".tenant-top-header").Should().BeEmpty();
+        cut.FindAll("header.tenant-brand-wrapper").Should().BeEmpty();
+        cut.Find("#sidebar-workspace-select").Should().NotBeNull();
+        cut.Find(".sidebar-logout-btn").Should().NotBeNull();
         cut.Find(".tenant-sidebar").Should().NotBeNull();
         cut.Find(".tenant-trial-banner").Should().NotBeNull();
         cut.Find("#tenant-dashboard-content").TextContent.Should().Be("Conteúdo Operacional do Dashboard");

@@ -21,7 +21,7 @@
 .filter-label {
     font-size: 12px;
     font-weight: 600;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     text-transform: uppercase;
     letter-spacing: 0.03em;
 }
@@ -36,7 +36,7 @@
     background: rgba(30, 41, 59, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     padding: 8px 12px;
     font-size: 13px;
     font-weight: 500;
@@ -52,7 +52,7 @@
 
 .form-select:focus {
     border-color: var(--tenant-primary, #2563EB);
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tenant-primary-color) 25%, transparent);
 }
 
 .form-select:disabled {
@@ -71,7 +71,7 @@
     gap: 6px;
     background: rgba(30, 41, 59, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #E2E8F0;
+    color: var(--tenant-text, #fff);
     padding: 9px 16px;
     border-radius: 8px;
     font-size: 13px;
@@ -85,8 +85,8 @@
 .btn-refresh:hover:not(:disabled) {
     background: var(--tenant-primary, #2563EB);
     border-color: var(--tenant-primary, #2563EB);
-    color: #FFFFFF;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    color: var(--tenant-text, #fff);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--tenant-primary-color) 30%, transparent);
 }
 
 .btn-refresh:disabled {
@@ -99,7 +99,7 @@
     width: 13px;
     height: 13px;
     border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #FFFFFF;
+    border-top-color: var(--tenant-text, #fff);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

@@ -67,14 +67,14 @@
 .pacing-label {
     font-size: 14px;
     font-weight: 600;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     letter-spacing: -0.01em;
 }
 
 .pacing-client-name {
     font-size: 13px;
     font-weight: 500;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     margin-left: 4px;
 }
 
@@ -164,14 +164,14 @@
 .value-number {
     font-size: 22px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
 }
 
 .value-caption {
     font-size: 11px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
@@ -273,23 +273,23 @@
     top: -12px;
     height: 42px;
     width: 2px;
-    background: #38BDF8;
+    background: var(--tenant-primary-color, #4e8eff);
     z-index: 5;
     transform: translateX(-50%);
     transition: left 0.4s ease;
-    box-shadow: 0 0 8px #38BDF8;
+    box-shadow: 0 0 8px var(--tenant-primary-color, #4e8eff);
 }
 
 .needle-pin {
     width: 10px;
     height: 10px;
-    background: #38BDF8;
+    background: var(--tenant-primary-color, #4e8eff);
     border: 2px solid #0F172A;
     border-radius: 50%;
     position: absolute;
     top: -4px;
     left: -4px;
-    box-shadow: 0 0 10px #38BDF8;
+    box-shadow: 0 0 10px var(--tenant-primary-color, #4e8eff);
 }
 
 .needle-line {
@@ -304,7 +304,7 @@
     transform: translateX(-50%);
     background: rgba(15, 23, 42, 0.95);
     border: 1px solid rgba(56, 189, 248, 0.4);
-    color: #38BDF8;
+    color: var(--tenant-primary-color, #4e8eff);
     font-size: 10px;
     font-weight: 600;
     padding: 2px 6px;
@@ -325,12 +325,12 @@
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
     font-weight: 500;
 }
 
 .track-label-center {
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
 }
 
 /* Grid de Métricas Táticas */
@@ -366,7 +366,7 @@
 .cell-label {
     font-size: 11px;
     font-weight: 500;
-    color: #94A3B8;
+    color: var(--tenant-muted, #8c909f);
     text-transform: uppercase;
     letter-spacing: 0.03em;
 }
@@ -374,12 +374,12 @@
 .cell-value {
     font-size: 16px;
     font-weight: 700;
-    color: #F8FAFC;
+    color: var(--tenant-text, #fff);
     font-variant-numeric: tabular-nums;
 }
 
 .cell-value.highlight {
-    color: #38BDF8;
+    color: var(--tenant-primary-color, #4e8eff);
 }
 
 .cell-value.status-ontrack {
@@ -396,7 +396,7 @@
 
 .cell-sub {
     font-size: 11px;
-    color: #64748B;
+    color: var(--tenant-muted, #8c909f);
 }
 
 /* Caixa de Recomendação */

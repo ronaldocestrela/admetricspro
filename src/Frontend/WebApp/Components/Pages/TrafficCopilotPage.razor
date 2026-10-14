@@ -19,7 +19,7 @@
 <div class="copilot-page-container">
     <div class="copilot-page-header">
         <div class="header-left">
-            <h1 class="page-title">Copiloto de Otimização via IA</h1>
+            <h1 class="page-title">Copiloto de <span class="tenant-title-accent">Otimização via IA</span></h1>
             <p class="page-subtitle">Auditor autônomo de tráfego pago, detecção de sobreposições, canibalização de termos e ações em 1 clique.</p>
         </div>
 
@@ -116,110 +116,7 @@
     }
 </div>
 
-<style>
-    .copilot-page-container {
-        padding: 24px;
-        max-width: 1280px;
-        margin: 0 auto;
-        color: #f8fafc;
-    }
-    .copilot-page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-    .page-title {
-        font-size: 1.75rem;
-        font-weight: 800;
-        margin: 0;
-        letter-spacing: -0.02em;
-    }
-    .page-subtitle {
-        font-size: 0.95rem;
-        color: #94a3b8;
-        margin: 4px 0 0;
-    }
-    .header-right {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .workspace-selector {
-        background: rgba(30, 41, 59, 0.9);
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        color: #f8fafc;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 0.9rem;
-    }
-    .btn-refresh {
-        background: rgba(59, 130, 246, 0.15);
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        color: #60a5fa;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 0.88rem;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        transition: all 0.2s ease;
-    }
-    .btn-refresh:hover:not(:disabled) {
-        background: rgba(59, 130, 246, 0.25);
-    }
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 60px 20px;
-        gap: 16px;
-        color: #94a3b8;
-    }
-    .section-sub-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 32px 0 16px;
-    }
-    .section-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin: 0;
-    }
-    .anomalies-count {
-        font-size: 0.85rem;
-        color: #94a3b8;
-    }
-    .empty-anomalies-state {
-        text-align: center;
-        padding: 48px 24px;
-        background: rgba(30, 41, 59, 0.4);
-        border: 1px dashed rgba(148, 163, 184, 0.2);
-        border-radius: 12px;
-    }
-    .empty-icon {
-        font-size: 2.5rem;
-        margin-bottom: 12px;
-        display: block;
-    }
-    .empty-anomalies-state h3 {
-        margin: 0 0 6px;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #f1f5f9;
-    }
-    .empty-anomalies-state p {
-        margin: 0;
-        color: #94a3b8;
-        font-size: 0.9rem;
-    }
-</style>
+
 
 @code {
     /// <summary>

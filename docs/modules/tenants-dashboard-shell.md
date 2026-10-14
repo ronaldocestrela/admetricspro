@@ -1,75 +1,60 @@
-# Especificação de Módulo: Shell do Dashboard do Tenant (`TenantMainLayout`)
+# Área autenticada do cliente: layout, tema e navegação
 
-Este documento especifica a arquitetura, design system, tokens CSS e componentes que formam a casca visual (Shell) da aplicação autenticada de inquilinos (`WebApp`), conforme definido na **Subfase 3.1** do roadmap e nas diretrizes inegociáveis de [AGENTS.md](file:///home/rony/LPR/AdMetricsPro/AGENTS.md).
+## Objetivo e composição
 
----
+A área do cliente segue a identidade da landing page: fundo escuro, superfícies discretas, tipografia Inter, bordas suaves e destaques na cor da marca. A composição e as ações das telas existentes foram preservadas; o cabeçalho superior duplicado foi removido e suas ações passaram para o menu lateral.
 
-## 1. Visão Geral e Princípios Arquiteturais
+| Componente | Responsabilidade |
+| --- | --- |
+| `TenantMainLayout` | Aplica o tema no container `.tenant-app-shell`, renderiza sidebar, banner de avaliação, conteúdo e controle móvel de abertura. |
+| `TenantSidebar` | Marca com link para `/dashboard`, seleção global de cliente, navegação, identificação do usuário e saída da conta. |
+| `TenantTrialBanner` | Mantém a informação do período de avaliação e o acesso a `/settings/billing`. |
+| `TenantComposedName` | Destaca, na cor primária, o trecho após a primeira palavra de nomes compostos. Para AdMetricsPro, destaca Pro. |
 
-A casca visual do inquilino fornece a interface de trabalho cotidiana para gestores de tráfego, administradores e proprietários de agências. Opera sob os seguintes fundamentos:
+`TenantTopHeader` permanece no repositório por compatibilidade, mas não é renderizado nesse layout. Em desktop, a barra lateral tem 284 px e acompanha a tela. Em telas de até 1024 px funciona como gaveta com overlay, fechamento por botão, Escape ou seleção de uma rota. O conteúdo conserva seus próprios títulos.
 
-1. **Frontend Estritamente de Apresentação:** O layout consome dados visuais e contextuais através de provedores de estado em memória do circuito SignalR (`ITenantStateProvider`, `ITenantSessionStateProvider`). Não há conexão direta com bancos de dados ou instâncias de `DbContext`.
-2. **Injeção Dinâmica de Tema (White-Label CSS):** As cores e customizações da agência são convertidas em variáveis CSS globais injetadas inline no elemento raiz (`.tenant-app-shell`), permitindo estilização imediata com suporte a modo escuro e glassmorphism.
-3. **Monograma de Iniciais de Fallback:** Agências sem logotipo gráfico cadastrado recebem automaticamente um monograma estilizado com as iniciais da agência (ex.: "Vanguarda Digital" -> `VD`).
-4. **Alerta de Período de Testes (Trial Banner):** Notificação transparente e não obstrutiva do período de avaliação gratuita com contagem de dias restantes e atalho para ativação definitiva.
-5. **Navegação Operacional Padronizada:** Acesso rápido às 5 seções centrais da plataforma de tráfego pago.
+## Tema e identidade do cliente
 
----
-
-## 2. Componentes Estruturais do Shell
-
-| Componente | Arquivo | Responsabilidade |
-| :--- | :--- | :--- |
-| `TenantMainLayout` | `Components/Layout/TenantMainLayout.razor` | Layout mestre que encapsula a casca geral, injeção de CSS de White-Label e orquestra o cabeçalho, sidebar e body. |
-| `TenantTopHeader` | `Components/Layout/TenantTopHeader.razor` | Cabeçalho superior com botão toggle móvel, logotipo/monograma da agência, widget de usuário e ação de logout. |
-| `TenantSidebar` | `Components/Layout/TenantSidebar.razor` | Barra de navegação lateral fixa em desktop e gaveta retrátil com overlay em dispositivos móveis. |
-| `TenantTrialBanner` | `Components/Layout/TenantTrialBanner.razor` | Banner superior informativo de teste gratuito (Trial) com CTA de conversão e opção de dispensar na sessão. |
-
----
-
-## 3. Tokens de Tema e Variáveis CSS (White-Label)
-
-O layout injeta as seguintes propriedades customizadas CSS no container raiz `.tenant-app-shell`:
+As cores explicitamente configuradas pelo cliente têm prioridade. Somente cores ausentes ou vazias recebem os padrões da LP:
 
 ```css
---tenant-primary-color: #2563EB;   /* Cor primária canônica da marca */
---tenant-primary: #2563EB;         /* Alias retrocompatível */
---tenant-secondary-color: #0F172A; /* Cor de fundo/secundária */
---tenant-secondary: #0F172A;       /* Alias retrocompatível */
---tenant-accent-color: #38BDF8;    /* Cor de realce e botões de destaque */
---tenant-accent: #38BDF8;          /* Alias retrocompatível */
+--tenant-primary-color: #4E8EFF;
+--tenant-secondary-color: #090E19;
+--tenant-accent-color: #4BD8EC;
 ```
 
----
+`TenantBranding.ToCssVariables()` também publica os aliases `--tenant-primary`, `--tenant-secondary` e `--tenant-accent`. A primária colore títulos compostos nas páginas, controles e botões. Textos do menu lateral mantêm cor neutra, inclusive nomes de marca e usuário; o item ativo conserva seu indicador visual. O banner de avaliação mantém amarelo no selo, borda e botão para facilitar a identificação. A secundária participa da composição das superfícies; a cor de destaque participa dos gradientes. Cores semânticas de sucesso, alerta, falha e identificação das plataformas são preservadas. Logo cadastrada é mantida; nomes sem imagem usam monograma. A identidade padrão utiliza `/images/landing/brand-mark.svg`.
 
-## 4. Estrutura de Navegação Operacional
+`wwwroot/css/tenant-workspace.css` concentra tokens, formulários, botões, tabelas, estados vazios, alertas, modais e utilitários necessários às telas existentes. Todos os seletores são limitados a `.tenant-app-shell`, evitando interferência na LP, autenticação, onboarding ou backoffice. CSS isolado dos componentes utiliza os mesmos tokens. Ícones de classes existentes usam máscaras SVG locais.
 
-A barra lateral (`TenantSidebar`) organiza as rotas operacionais do inquilino:
+## Cliente ativo e encerramento da sessão
 
-```text
-[ Central Operacional ]
- ├── Visão Geral (Dashboard)          -> /dashboard
- ├── Clientes (Workspaces)            -> /workspaces
- ├── Times (Squads)                   -> /squads
- └── Integrações de Anúncios          -> /integrations
+O seletor consulta `IWorkspaceClientService.GetWorkspacesAsync(activeOnly: true)` e permite selecionar um cliente ou todos os clientes. O contexto continua em `IWorkspaceContextStateProvider`, com notificação das telas assinantes e persistência protegida no navegador. Durante carregamento o seletor fica desabilitado; falhas mostram mensagem contextual. Nenhuma consulta a banco ocorre no frontend.
 
-[ Governança & Marca ]
- └── Configurações White-Label        -> /settings/white-label
-```
+A ação de sair fica no rodapé do menu lateral, desabilitada enquanto executa. Ela aguarda `WorkspaceContextStateProvider.ClearAsync()` e `TenantSessionStateProvider.ClearSessionAsync()`, removendo contexto e sessão persistidos antes de navegar para `/login`. A remoção é assíncrona para evitar bloqueio do circuito Blazor por espera síncrona em interoperabilidade com o navegador. Ausência de armazenamento disponível mantém o tratamento gracioso existente.
 
----
+## Telas e contratos HTTP revisados
 
-## 5. Banner Informativo de Trial (`TenantTrialBanner`)
+Os clientes HTTP e os contratos de negócio existentes permanecem em uso. Não foram criados endpoints, modificados payloads ou substituído o padrão `Result<T>`.
 
-- **Texto Padrão:** `Ambiente de Testes (Trial) — 14 dias restantes.`
-- **Botão de Ação (CTA):** `Ativar Plano Definitivo` (direciona para `/settings/billing`).
-- **Comportamento de Fechamento:** O botão de fechar (`x`) oculta o banner na sessão ativa sem interromper a navegação.
+| Tela | Endpoints versionados consumidos |
+| --- | --- |
+| `/dashboard` | GET `/api/v1/analytics/dashboard/executive`, GET `/api/v1/automations/pacing/portfolio`, GET `/api/v1/automations/pacing/workspaces/{id}`, GET `/api/v1/tenants/ftux-status`. |
+| `/workspaces` | GET/POST `/api/v1/workspaces`, GET/PUT `/api/v1/workspaces/{id}`, PATCH `/api/v1/workspaces/{id}/toggle-status`. |
+| `/squads` | GET/POST `/api/v1/squads`, GET/PUT `/api/v1/squads/{id}`, PATCH `/api/v1/squads/{id}/status`, associação e remoção em `/{id}/members` e `/{id}/workspaces`, GET `/api/v1/squads/users/{id}/portfolio`, GET `/api/v1/tenants/users`. |
+| `/integrations` | `/api/v1/integrations/oauth/authorize-url`, `/status/{workspaceId}`, `/callback`, `/refresh` e exclusão em `/{workspaceId}/{platform}`. |
+| `/copilot` | GET `/api/v1/analytics/copilot/diagnostic`, POST `/api/v1/analytics/copilot/actions/execute`. |
+| `/creatives` | GET `/api/v1/analytics/creatives/overview`, `/fatigue` e `/comparison`. |
+| `/campaigns/bulk` | GET `/api/v1/integrations/campaigns`, POST `/api/v1/integrations/campaigns/bulk`. |
+| `/reports` | CRUD `/api/v1/workspaces/{id}/reports/schedules`, POST `/reports/generate`, POST `/reports/schedules/{id}/dispatch`, GET `/reports/history`, GET `/reports/{id}/pdf`, dentro do mesmo workspace. |
+| `/rbac` | GET `/api/v1/tenants/rbac/matrix`, GET `/api/v1/tenants/rbac/users/{id}/permissions`, PUT `/api/v1/tenants/users/{id}/role`, GET `/api/v1/tenants/audit-logs`. |
+| `/settings/white-label` | GET/PUT `/api/v1/tenants/branding`, GET/PUT/DELETE `/api/v1/tenants/cname`. |
+| `/settings/billing` | GET `/api/v1/billing/checkout/preview`, POST `/api/v1/billing/checkout`, GET `/api/v1/billing/checkout/{transactionId}/status`. |
 
----
+Filtros, tabelas, gráficos, permissões, integrações, edição de campanhas e contratação mantêm seus comportamentos e limites existentes. Esta mudança é de apresentação e organização do shell; não muda a arquitetura de acesso à API.
 
-## 6. Cobertura de Testes (TDD com bUnit)
+## Validação
 
-Todos os componentes possuem 100% de cobertura bUnit em `tests/UnitTests/Frontend/Components/Layout/`:
-- `TenantMainLayoutTests.cs`: Injeção de variáveis CSS, renderização de logo e monograma fallback, toggle móvel e reatividade a mudanças de estado.
-- `TenantSidebarTests.cs`: Presença e links das 5 rotas obrigatórias, classe `.open` e acionamento de callback de fechamento.
-- `TenantTrialBannerTests.cs`: Renderização de texto, botão CTA e capacidade de dispensar.
+Testes bUnit foram escritos antes das alterações funcionais para verificar ausência do cabeçalho duplicado, controles no menu, contexto global, saída assíncrona, cores personalizadas, fallback de cores vazias e destaque dos nomes. O cenário de armazenamento pendente reproduziu o bloqueio no logout antes da correção.
+
+A suíte completa do frontend passou com 289 testes. A inspeção em navegador percorreu 11 telas com dados HTTP simulados e uma marca personalizada, verificou seleção do cliente e logout e avaliou larguras de 1440, 1024, 390 e 320 px. Não houve exceções JavaScript nem transbordamento horizontal da página. As verificações visuais utilizaram fixtures locais, sem escrita nos dados reais do cliente; integrações externas e pagamento não foram executados.

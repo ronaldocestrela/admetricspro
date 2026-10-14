@@ -105,4 +105,13 @@ public sealed class WorkspaceContextStateProvider : IWorkspaceContextStateProvid
         _currentWorkspaceName = null;
         OnWorkspaceChanged?.Invoke();
     }
+
+    /// <inheritdoc />
+    public async Task ClearAsync(CancellationToken cancellationToken = default)
+    {
+        Clear();
+        try { await _storage.RemoveItemAsync(StorageKey, cancellationToken); }
+        catch { /* O contexto em memória permanece limpo se o navegador desconectar. */ }
+    }
+
 }

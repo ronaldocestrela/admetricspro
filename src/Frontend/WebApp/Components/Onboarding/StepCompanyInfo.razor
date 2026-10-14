@@ -6,13 +6,13 @@
 
 <div class="step-heading">
     <h2>Dados Corporativos & Fiscais</h2>
-    <p>Identifique sua organização para dimensionamento da infraestrutura dedicada do AdMetricsPro.</p>
+    <p>Conte um pouco sobre sua operação. Vamos preparar seu espaço para começar o teste gratuito.</p>
 </div>
 
 <div class="form-group">
     <label class="form-label" for="company-name">Razão Social ou Nome Fantasia *</label>
     <div class="input-with-icon">
-        <span class="input-icon">🏢</span>
+        <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1m-5 10v-6h4v6"/></svg></span>
         <input id="company-name"
                type="text"
                class="custom-input"
@@ -26,28 +26,26 @@
     <div class="form-group">
         <label class="form-label" for="company-cnpj">CPF ou CNPJ da Empresa / Gestor *</label>
         <div class="input-with-icon">
-            <span class="input-icon">📋</span>
+            <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 10h6m-6 4h6"/></svg></span>
             <input id="company-cnpj"
                    type="text"
                    class="custom-input"
                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
                    maxlength="18"
+                   inputmode="numeric"
+                   aria-describedby="document-feedback"
+                   @bind:event="oninput"
                    @bind="Model.Cnpj"
                    @bind:after="OnDocumentChangedAsync" />
         </div>
 
-        @if (_isCheckingDocument)
-        {
-            <div class="status-pill warning" style="margin-top: 0.5rem;">
-                <span>Checando disponibilidade do documento...</span>
-            </div>
-        }
-        else if (!string.IsNullOrWhiteSpace(_documentStatusMessage))
-        {
-            <div class="status-pill @(_isDocumentValid && _isDocumentAvailable ? "success" : "error")" style="margin-top: 0.5rem;">
-                <span>@(_isDocumentValid && _isDocumentAvailable ? "✓" : "⚠") @_documentStatusMessage</span>
-            </div>
-        }
+        <div id="document-feedback">
+            @if (_isCheckingDocument || !string.IsNullOrWhiteSpace(_documentStatusMessage))
+            {
+                <FieldValidationStatus TestId="document-validation" State="@DocumentState"
+                    Message="@(_isCheckingDocument ? $"Verificando {Model.GetDocumentType()}…" : _documentStatusMessage)" />
+            }
+        </div>
     </div>
 
     <div class="form-group">
@@ -91,11 +89,15 @@
     [Parameter]
     public EventCallback OnStateChanged { get; set; }
 
+    private int _requestVersion;
+    private string DocumentState => _isCheckingDocument ? "checking" : _isDocumentValid && _isDocumentAvailable ? "success" : Model.GetSanitizedCnpj().Length is 11 or 14 ? "error" : "idle";
     private bool _isCheckingDocument;
     private bool _isDocumentValid = true;
     private bool _isDocumentAvailable = true;
     private string? _documentStatusMessage;
 
+    /// <summary>Revalida o documento ao retornar à etapa.</summary>
+    /// <returns>Tarefa de verificação pela API.</returns>
     protected override async Task OnInitializedAsync()
     {
         if (!string.IsNullOrWhiteSpace(Model.Cnpj))
@@ -106,6 +108,9 @@
 
     private async Task OnDocumentChangedAsync()
     {
+        var version = ++_requestVersion;
+        Model.IsTaxDocumentVerified = false;
+        _isCheckingDocument = false;
         var sanitized = Model.GetSanitizedCnpj();
 
         if (string.IsNullOrWhiteSpace(sanitized))
@@ -149,10 +154,12 @@
         await OnFieldChanged();
 
         var checkResult = await OnboardingClientService.CheckTaxDocumentAvailabilityAsync(sanitized);
+        if (version != _requestVersion || sanitized != Model.GetSanitizedCnpj()) return;
         _isCheckingDocument = false;
 
-        if (checkResult.IsSuccess && checkResult.Value.IsAvailable)
+        if (checkResult.IsSuccess && checkResult.Value.IsValid && checkResult.Value.IsAvailable)
         {
+            Model.IsTaxDocumentVerified = true;
             _isDocumentValid = true;
             _isDocumentAvailable = true;
             _documentStatusMessage = $"{checkResult.Value.DocumentType} válido e disponível para registro!";
@@ -161,8 +168,8 @@
         {
             _isDocumentValid = checkResult.IsSuccess && checkResult.Value.IsValid;
             _isDocumentAvailable = false;
-            _documentStatusMessage = checkResult.IsSuccess 
-                ? checkResult.Value.Reason 
+            _documentStatusMessage = checkResult.IsSuccess
+                ? checkResult.Value.Reason ?? $"{docType} não disponível para cadastro."
                 : "Não foi possível validar o documento fiscal.";
         }
 

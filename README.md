@@ -14,6 +14,10 @@ O **AdMetricsPro** é uma plataforma corporativa para consolidação, monitorame
 
 ---
 
+## Landing page pública
+
+A rota `/` usa a composição visual da referência local `sendium-lp`, adaptada ao AdMetricsPro no WebApp Blazor Server. O conteúdo destaca fadiga de criativos, atribuição multicanal, MER, controle de orçamento e gestão de agências. Consulte a [análise, estrutura e condições comerciais da LP](docs/modules/landing-page.md).
+
 ## 🛠️ Tecnologias & Arquitetura
 
 - **Linguagem & Runtime:** C# 14 / [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
