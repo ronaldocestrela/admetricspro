@@ -3,6 +3,8 @@ using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Application.Persistence;
 using Integrations.Domain.Campaigns;
+using Integrations.Application.Meta;
+using MediatR;
 
 namespace Integrations.Application.Campaigns.Commands.Mutations;
 
@@ -13,16 +15,18 @@ public sealed class AdjustCampaignBudgetCommandHandler : ICommandHandler<AdjustC
 {
     private readonly ICampaignHierarchyRepository _hierarchyRepository;
     private readonly IIntegrationsUnitOfWork _unitOfWork;
+    private readonly ISender _sender;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="AdjustCampaignBudgetCommandHandler"/>.
     /// </summary>
     public AdjustCampaignBudgetCommandHandler(
         ICampaignHierarchyRepository hierarchyRepository,
-        IIntegrationsUnitOfWork unitOfWork)
+        IIntegrationsUnitOfWork unitOfWork, ISender sender)
     {
         _hierarchyRepository = hierarchyRepository ?? throw new ArgumentNullException(nameof(hierarchyRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _sender = sender;
     }
 
     /// <inheritdoc />
@@ -60,6 +64,8 @@ public sealed class AdjustCampaignBudgetCommandHandler : ICommandHandler<AdjustC
             return Result.Failure(Error.Validation("Campaign.NoBudgetSpecified", "Informe um orçamento fixo ou um percentual de variação."));
         }
 
+        var external = await MetaCampaignMutationForwarder.ForwardAsync(campaign, _hierarchyRepository, _sender, cancellationToken, budget: newBudget);
+        if (external.IsFailure) return external;
         var updateResult = campaign.UpdateDailyBudget(newBudget);
         if (updateResult.IsFailure)
         {

@@ -50,6 +50,13 @@ public sealed class ReallocateBudgetCommandHandler : ICommandHandler<ReallocateB
             return Result.Failure(Error.Validation("Campaign.WorkspaceMismatch", "Ambas as campanhas devem pertencer ao mesmo workspace."));
         }
 
+        foreach (var campaign in new[] { sourceCampaign, targetCampaign }.Where(c => c.Platform == "MetaAds"))
+        {
+            var accounts = await _hierarchyRepository.GetAccountsForSyncAsync(campaign.WorkspaceId, campaign.ConnectedAdAccountId, "MetaAds", cancellationToken);
+            if (!accounts.Any(a => a.Id == campaign.ConnectedAdAccountId && a.WorkspaceId == campaign.WorkspaceId && a.IsDemo))
+                return Result.Failure(Error.Validation("Meta.ReallocationRequiresReconciliation", "Realocação entre campanhas Meta reais exige reconciliação de duas escritas. Altere os orçamentos individualmente."));
+        }
+
         var sourceBudget = sourceCampaign.DailyBudget ?? 0m;
         if (sourceBudget <= 0m)
         {

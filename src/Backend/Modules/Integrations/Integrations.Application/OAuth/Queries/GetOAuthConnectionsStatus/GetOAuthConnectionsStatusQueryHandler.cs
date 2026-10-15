@@ -42,7 +42,7 @@ public sealed class GetOAuthConnectionsStatusQueryHandler
             v.Platform,
             v.ExternalAccountId,
             v.ExternalAccountName,
-            v.Status,
+            v.AccessTokenExpiresAtUtc <= DateTime.UtcNow && v.Status != "Revoked" ? "Expired" : v.Status,
             v.Scopes,
             v.AccessTokenExpiresAtUtc,
             v.IsExpiringSoon(ExpirationWarningThreshold),

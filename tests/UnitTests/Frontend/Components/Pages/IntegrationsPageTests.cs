@@ -22,6 +22,26 @@ namespace UnitTests.Frontend.Components.Pages;
 /// </summary>
 public sealed class IntegrationsPageTests : BunitTestBase
 {
+    /// <summary>Após OAuth o usuário deve escolher uma conta real do workspace.</summary>
+    [Fact]
+    public void IntegrationsPage_WithPendingMetaAuthorization_AllowsAccountSelection()
+    {
+        WorkspaceClientService.GetWorkspacesAsync(Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<WorkspaceDto>>.Success(new[] { _workspace1 }));
+        OAuthIntegrationsClientService.GetConnectionsStatusAsync(_workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<OAuthConnectionStatusDto>>.Success(new[] {
+                new OAuthConnectionStatusDto(Guid.NewGuid(), _workspaceId, "MetaAds", "user_11", "João", "AwaitingAccountSelection",
+                    "ads_read", DateTime.UtcNow.AddDays(50), false, DateTime.UtcNow, null) }));
+        OAuthIntegrationsClientService.GetMetaAdAccountsAsync(_workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<global::Integrations.Domain.Meta.MetaAdAccount>>.Success(new[] {
+                new global::Integrations.Domain.Meta.MetaAdAccount("act_11", "Anúncios Cliente A", "BRL", "America/Sao_Paulo", 1, new[] { "ANALYZE" }) }));
+        OAuthIntegrationsClientService.GetLinkedAdAccountsAsync(_workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto>>.Success(Array.Empty<Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto>()));
+        var cut = Render<IntegrationsPage>();
+        cut.Find("[data-testid='btn-meta-accounts']").Click();
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Anúncios Cliente A"));
+        cut.Find("[data-testid='meta-account-act_11']").Should().NotBeNull();
+    }
     private readonly Guid _workspaceId = Guid.NewGuid();
     private readonly WorkspaceDto _workspace1;
     private readonly WorkspaceDto _workspace2;

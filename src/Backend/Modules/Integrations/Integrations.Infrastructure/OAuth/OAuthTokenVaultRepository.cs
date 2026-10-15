@@ -11,6 +11,27 @@ namespace Integrations.Infrastructure.OAuth;
 /// </summary>
 public sealed class OAuthTokenVaultRepository : IOAuthTokenVaultRepository
 {
+    /// <inheritdoc />
+    public async Task RegisterStateAsync(string state, DateTime expiresAtUtc, CancellationToken cancellationToken)
+    {
+        var context = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (context.IsSuccess)
+            await context.Value.OAuthAuthorizationStates.AddAsync(new(HashState(state), expiresAtUtc), cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ConsumeStateAsync(string state, CancellationToken cancellationToken)
+    {
+        var context = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (context.IsFailure) return false;
+        var hash = HashState(state);
+        return await context.Value.OAuthAuthorizationStates
+            .Where(s => s.StateHash == hash && s.ExpiresAtUtc > DateTime.UtcNow)
+            .ExecuteDeleteAsync(cancellationToken) == 1;
+    }
+
+    private static string HashState(string state) => Convert.ToHexString(
+        System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(state)));
     private readonly ITenantDbContextAccessor _contextAccessor;
 
     /// <summary>

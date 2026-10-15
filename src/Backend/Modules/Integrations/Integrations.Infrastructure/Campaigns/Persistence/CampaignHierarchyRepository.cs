@@ -293,7 +293,7 @@ public sealed class CampaignHierarchyRepository : ICampaignHierarchyRepository
         }
 
         var query = contextResult.Value.ConnectedAdAccounts
-            .Where(a => a.WorkspaceId == workspaceId);
+            .Where(a => a.WorkspaceId == workspaceId && a.Status == "Connected");
 
         if (connectedAdAccountId.HasValue && connectedAdAccountId.Value != Guid.Empty)
         {

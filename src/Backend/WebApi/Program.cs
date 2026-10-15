@@ -19,6 +19,8 @@ using WebApi.Extensions;
 DotEnvLoader.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+// O callback contém code/state na query; não registrar URLs de entrada em logs padrão.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 builder.Configuration.AddDotEnvFile();
 
 // Configuração de serviços
@@ -26,7 +28,15 @@ builder.Services.Configure<RouteOptions>(options =>
 {
     options.LowercaseUrls = true;
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<WebApi.Security.IntegrationAccessFilter>());
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+{
+    var originalFactory = options.InvalidModelStateResponseFactory;
+    options.InvalidModelStateResponseFactory = context => WebApi.Security.IntegrationAccessFilter.Protects(context.HttpContext.Request.Path)
+        ? new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(BuildingBlocks.Domain.Primitives.Result.Failure(
+            BuildingBlocks.Domain.Primitives.Error.Validation("Request.Invalid", "Os campos da requisição de integração são inválidos.")))
+        : originalFactory(context);
+});
 builder.Services.AddOpenApiDocumentation();
 builder.Services.AddHealthChecks();
 
@@ -47,6 +57,10 @@ builder.Services.AddAnalyticsInfrastructure(builder.Configuration);
 builder.Services.AddAutomationsApplication();
 builder.Services.AddAutomationsInfrastructure(builder.Configuration);
 builder.Services.AddEmailInfrastructure(builder.Configuration);
+builder.Services.AddOptions<WebApi.Background.MetaSynchronizationOptions>()
+    .BindConfiguration("Integrations:MetaSynchronization")
+    .Validate(o => o.IntervalMinutes >= 5 && o.LookbackDays is >= 1 and <= 90, "Intervalo Meta deve ser >= 5 minutos e lookback entre 1 e 90 dias.");
+builder.Services.AddHostedService<WebApi.Background.MetaSynchronizationWorker>();
 builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
 {
     builder.Configuration.GetSection(Master.Infrastructure.Services.ImpersonationJwtOptions.SectionName).Bind(options);
@@ -79,8 +93,10 @@ if (!app.Environment.IsEnvironment("Testing") &&
 // Pipeline de middlewares HTTP
 app.UseOpenApiAndScalar();
 
+app.UseAuthentication();
 app.UseTenantResolution();
 app.UseRouting();
+app.UseAuthorization();
 
 app.MapHealthChecks("/health");
 app.MapControllers();

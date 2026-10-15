@@ -13,15 +13,17 @@ public sealed class TrafficCopilotClientService : ITrafficCopilotClientService
 {
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
+    private readonly ITenantSessionStateProvider? _session;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="TrafficCopilotClientService"/>.
     /// </summary>
-    public TrafficCopilotClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider)
+    public TrafficCopilotClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _session = session;
     }
 
     /// <inheritdoc />
@@ -146,6 +148,8 @@ public sealed class TrafficCopilotClientService : ITrafficCopilotClientService
 
     private void AppendTenantHeader(HttpRequestMessage request)
     {
+        if (!string.IsNullOrWhiteSpace(_session?.CurrentSession?.AccessToken))
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _session.CurrentSession.AccessToken);
         var tenantId = _tenantStateProvider.CurrentTenant?.TenantId ?? Guid.Empty;
         if (tenantId != Guid.Empty)
         {

@@ -12,6 +12,8 @@ namespace Tenants.Application.Integrations.DTOs;
 /// <param name="Status">Status operacional da conexão.</param>
 /// <param name="IsDemo">Indica se é uma conta em modo demonstração.</param>
 /// <param name="CreatedAtUtc">Data de vinculação.</param>
+/// <param name="TimeZone">Fuso horário informado pela plataforma.</param>
+/// <param name="LastSyncedAtUtc">Última sincronização conhecida.</param>
 public sealed record ConnectedAdAccountDto(
     Guid Id,
     Guid WorkspaceId,
@@ -21,4 +23,6 @@ public sealed record ConnectedAdAccountDto(
     string Currency,
     string Status,
     bool IsDemo,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    string? TimeZone = null,
+    DateTime? LastSyncedAtUtc = null);

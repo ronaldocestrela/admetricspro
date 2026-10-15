@@ -13,6 +13,7 @@ public sealed class OAuthIntegrationsClientService : IOAuthIntegrationsClientSer
 {
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
+    private readonly ITenantSessionStateProvider _session;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
@@ -20,10 +21,12 @@ public sealed class OAuthIntegrationsClientService : IOAuthIntegrationsClientSer
     /// </summary>
     /// <param name="httpClient">Cliente HTTP injetado.</param>
     /// <param name="tenantStateProvider">Provedor de estado do inquilino.</param>
-    public OAuthIntegrationsClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider)
+    /// <param name="session">Sessão autenticada do circuito.</param>
+    public OAuthIntegrationsClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider session)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _session = session;
     }
 
     /// <inheritdoc />
@@ -137,7 +140,8 @@ public sealed class OAuthIntegrationsClientService : IOAuthIntegrationsClientSer
         string code,
         string state,
         string redirectUri,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? providerError = null)
     {
         try
         {
@@ -145,6 +149,7 @@ public sealed class OAuthIntegrationsClientService : IOAuthIntegrationsClientSer
             var encodedState = Uri.EscapeDataString(state);
             var encodedRedirect = Uri.EscapeDataString(redirectUri);
             var uri = $"/api/v1/integrations/oauth/callback?code={encodedCode}&state={encodedState}&redirectUri={encodedRedirect}";
+            if (!string.IsNullOrEmpty(providerError)) uri += "&error=" + Uri.EscapeDataString(providerError);
 
             using var message = new HttpRequestMessage(HttpMethod.Get, uri);
             AppendTenantHeader(message);
@@ -164,10 +169,52 @@ public sealed class OAuthIntegrationsClientService : IOAuthIntegrationsClientSer
 
     private void AppendTenantHeader(HttpRequestMessage request)
     {
+        if (!string.IsNullOrWhiteSpace(_session.CurrentSession?.AccessToken))
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _session.CurrentSession.AccessToken);
         var tenantId = _tenantStateProvider.CurrentTenant?.TenantId;
         if (tenantId.HasValue && tenantId.Value != Guid.Empty)
         {
             request.Headers.TryAddWithoutValidation("X-Tenant-Id", tenantId.Value.ToString());
         }
+    }
+
+    /// <inheritdoc />
+    public Task<Result<IReadOnlyList<Integrations.Domain.Meta.MetaAdAccount>>> GetMetaAdAccountsAsync(Guid workspaceId, CancellationToken cancellationToken = default) =>
+        SendMetaAsync<IReadOnlyList<Integrations.Domain.Meta.MetaAdAccount>>(HttpMethod.Get, $"/api/v1/integrations/meta/ad-accounts?workspaceId={workspaceId}", null, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<Result<IReadOnlyList<Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto>>> GetLinkedAdAccountsAsync(Guid workspaceId, CancellationToken cancellationToken = default) =>
+        SendMetaAsync<IReadOnlyList<Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto>>(HttpMethod.Get, $"/api/v1/integrations/connected-accounts?workspaceId={workspaceId}", null, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<Result<IReadOnlyList<Guid>>> SelectMetaAdAccountsAsync(Guid workspaceId, IReadOnlyList<string> accountIds, CancellationToken cancellationToken = default) =>
+        SendMetaAsync<IReadOnlyList<Guid>>(HttpMethod.Post, "/api/v1/integrations/meta/ad-accounts/select", new { workspaceId, accountIds }, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<Result> DisconnectMetaAdAccountAsync(Guid workspaceId, Guid accountId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/integrations/meta/ad-accounts/{accountId}?workspaceId={workspaceId}");
+            AppendTenantHeader(request);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<Result>(JsonOptions, cancellationToken) ?? Result.Failure(Error.Failure("Meta.InvalidResponse", "Resposta inválida da API."));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
+        { return Result.Failure(Error.Failure("Meta.NetworkError", "Não foi possível comunicar com a API.")); }
+    }
+
+    private async Task<Result<T>> SendMetaAsync<T>(HttpMethod method, string uri, object? body, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(method, uri);
+            AppendTenantHeader(request);
+            if (body is not null) request.Content = JsonContent.Create(body);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<Result<T>>(JsonOptions, cancellationToken) ?? Result<T>.Failure(Error.Failure("Meta.InvalidResponse", "Resposta inválida da API."));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
+        { return Result<T>.Failure(Error.Failure("Meta.NetworkError", "Não foi possível comunicar com a API.")); }
     }
 }

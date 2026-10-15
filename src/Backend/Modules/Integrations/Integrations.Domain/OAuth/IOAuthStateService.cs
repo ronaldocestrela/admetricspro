@@ -14,8 +14,9 @@ public interface IOAuthStateService
     /// <param name="workspaceId">Identificador do workspace.</param>
     /// <param name="platform">Plataforma alvo.</param>
     /// <param name="redirectUri">URI de redirecionamento de retorno.</param>
+    /// <param name="userId">Usuário autenticado que iniciou a autorização.</param>
     /// <returns>String codificada em Base64 contendo payload e assinatura HMAC.</returns>
-    string GenerateState(Guid tenantId, Guid workspaceId, string platform, string redirectUri);
+    string GenerateState(Guid tenantId, Guid workspaceId, string platform, string redirectUri, Guid userId = default);
 
     /// <summary>
     /// Valida a assinatura, verifica a janela de expiração e extrai o payload original do estado.
@@ -33,9 +34,13 @@ public interface IOAuthStateService
 /// <param name="Platform">Nome da plataforma de anúncios.</param>
 /// <param name="RedirectUri">URI de redirecionamento autorizada.</param>
 /// <param name="CreatedAtUtc">Data/hora UTC de criação do estado para controle de TTL.</param>
+/// <param name="UserId">Usuário que iniciou o fluxo.</param>
+/// <param name="Nonce">Valor aleatório exclusivo do fluxo.</param>
 public sealed record OAuthStatePayload(
     Guid TenantId,
     Guid WorkspaceId,
     string Platform,
     string RedirectUri,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    Guid UserId = default,
+    string Nonce = "");

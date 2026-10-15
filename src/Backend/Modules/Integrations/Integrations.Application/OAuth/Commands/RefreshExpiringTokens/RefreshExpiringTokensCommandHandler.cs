@@ -51,6 +51,14 @@ public sealed class RefreshExpiringTokensCommandHandler : ICommandHandler<Refres
 
         foreach (var vault in expiringTokens)
         {
+            // Tokens Meta de usuário não possuem refresh token. Expiração futura exige reconexão,
+            // mas a credencial ainda válida não deve ser desativada preventivamente.
+            if (vault.Platform == "MetaAds")
+            {
+                if (vault.AccessTokenExpiresAtUtc <= DateTime.UtcNow)
+                { vault.MarkExpired(); _vaultRepository.Update(vault); }
+                continue;
+            }
             try
             {
                 // Determina o token base para renovação: refresh_token se existir; caso contrário, access_token atual (ex: Meta)

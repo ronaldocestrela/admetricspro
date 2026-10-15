@@ -14,17 +14,20 @@ public sealed class WorkspaceClientService : IWorkspaceClientService
 {
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
+    private readonly ITenantSessionStateProvider? _session;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="WorkspaceClientService"/>.
     /// </summary>
     /// <param name="httpClient">Cliente HTTP para consumo da Web API.</param>
+    /// <param name="session">Sessão autenticada do usuário.</param>
     /// <param name="tenantStateProvider">Provedor de estado do inquilino ativo.</param>
-    public WorkspaceClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider)
+    public WorkspaceClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _session = session;
     }
 
     /// <inheritdoc />
@@ -183,6 +186,8 @@ public sealed class WorkspaceClientService : IWorkspaceClientService
 
     private void AppendTenantHeader(HttpRequestMessage request)
     {
+        if (!string.IsNullOrWhiteSpace(_session?.CurrentSession?.AccessToken))
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _session.CurrentSession.AccessToken);
         var tenantId = _tenantStateProvider.CurrentTenant?.TenantId;
         if (tenantId.HasValue && tenantId.Value != Guid.Empty)
         {

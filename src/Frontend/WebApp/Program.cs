@@ -8,6 +8,7 @@ using WebApp.State;
 DotEnvLoader.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 builder.Configuration.AddDotEnvFile();
 
 // Registros de componentes interativos do Blazor Server
@@ -57,7 +58,10 @@ builder.Services.AddHttpClient<ITenantBrandingClientService, TenantBrandingClien
 builder.Services.AddHttpClient<ITenantCnameClientService, TenantCnameClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<IOAuthIntegrationsClientService, OAuthIntegrationsClientService>(client => client.BaseAddress = apiUri)
+    .RemoveAllLoggers()
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<IMetaAdsClientService, MetaAdsClientService>(client => { client.BaseAddress = apiUri; client.Timeout = TimeSpan.FromMinutes(5); })
+    .RemoveAllLoggers().ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<IAnalyticsDashboardClientService, AnalyticsDashboardClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<IBudgetPacingClientService, BudgetPacingClientService>(client => client.BaseAddress = apiUri)

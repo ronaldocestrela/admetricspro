@@ -9,6 +9,23 @@ namespace UnitTests.Backend.Integrations.OAuth;
 /// </summary>
 public sealed class OAuthStateServiceTests
 {
+    /// <summary>Dois fluxos simultâneos devem possuir nonces independentes.</summary>
+    [Fact]
+    public void GenerateState_WithSameContextAndTimestamp_IsUnpredictableAndUnique()
+    {
+        var now = DateTime.UtcNow;
+        var first = _service.GenerateStateWithTimestamp(_tenantId, _workspaceId, Platform, RedirectUri, now);
+        var second = _service.GenerateStateWithTimestamp(_tenantId, _workspaceId, Platform, RedirectUri, now);
+        first.Should().NotBe(second);
+    }
+
+    /// <summary>Um estado assinado com timestamp futuro não é uma autorização válida.</summary>
+    [Fact]
+    public void ValidateAndUnpackState_WithFutureTimestamp_IsRejected()
+    {
+        var state = _service.GenerateStateWithTimestamp(_tenantId, _workspaceId, Platform, RedirectUri, DateTime.UtcNow.AddMinutes(10));
+        _service.ValidateAndUnpackState(state).IsFailure.Should().BeTrue();
+    }
     private const string TestSigningKey = "v3ryS3cur3AndLong3n0ughK3yForHmacSha256Signature!12345";
     private readonly OAuthStateService _service = new(TestSigningKey);
     private readonly Guid _tenantId = Guid.NewGuid();

@@ -3,6 +3,8 @@ using BuildingBlocks.Application.Security;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Application.Persistence;
 using Integrations.Domain.OAuth;
+using BuildingBlocks.Application.Integrations;
+using MediatR;
 
 namespace Integrations.Application.OAuth.Commands.RevokeOAuthConnection;
 
@@ -16,6 +18,7 @@ public sealed class RevokeOAuthConnectionCommandHandler : ICommandHandler<Revoke
     private readonly IAdNetworkAuthService _authService;
     private readonly IOAuthEncryptionService _encryptionService;
     private readonly IIntegrationsUnitOfWork _unitOfWork;
+    private readonly ISender _sender;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="RevokeOAuthConnectionCommandHandler"/>.
@@ -24,12 +27,13 @@ public sealed class RevokeOAuthConnectionCommandHandler : ICommandHandler<Revoke
         IOAuthTokenVaultRepository vaultRepository,
         IAdNetworkAuthService authService,
         IOAuthEncryptionService encryptionService,
-        IIntegrationsUnitOfWork unitOfWork)
+        IIntegrationsUnitOfWork unitOfWork, ISender sender)
     {
         _vaultRepository = vaultRepository ?? throw new ArgumentNullException(nameof(vaultRepository));
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _sender = sender;
     }
 
     /// <inheritdoc />
@@ -61,7 +65,12 @@ public sealed class RevokeOAuthConnectionCommandHandler : ICommandHandler<Revoke
                 Error.NotFound("RevokeOAuth.NotFound", $"Nenhuma conexão OAuth ativa encontrada para a plataforma '{normalizedPlatform}'."));
         }
 
-        try
+        if (normalizedPlatform == OAuthPlatform.MetaAds)
+        {
+            var disconnect = await _sender.Send(new DisconnectMetaAccountsCommand(request.WorkspaceId), cancellationToken);
+            if (disconnect.IsFailure) return disconnect;
+        }
+        else try
         {
             var rawToken = _encryptionService.Decrypt(vault.EncryptedAccessToken);
             await _authService.RevokeTokenAsync(normalizedPlatform, rawToken, cancellationToken);

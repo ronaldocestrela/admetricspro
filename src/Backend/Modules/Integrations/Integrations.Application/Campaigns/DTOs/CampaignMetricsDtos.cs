@@ -76,6 +76,6 @@ public sealed record CampaignMetricDto(
     decimal Ctr,
     decimal Cpc,
     decimal Cpm,
-    decimal Cpa,
-    decimal Roas,
+    decimal? Cpa,
+    decimal? Roas,
     DateTime SyncedAtUtc);

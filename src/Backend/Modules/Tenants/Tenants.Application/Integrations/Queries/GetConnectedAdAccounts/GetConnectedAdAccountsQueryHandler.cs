@@ -39,7 +39,9 @@ public sealed class GetConnectedAdAccountsQueryHandler : IQueryHandler<GetConnec
             a.Currency,
             a.Status,
             a.IsDemo,
-            a.CreatedAtUtc)).ToList();
+            a.CreatedAtUtc,
+            a.TimeZone,
+            a.LastSyncedAtUtc)).ToList();
 
         return Result<IReadOnlyList<ConnectedAdAccountDto>>.Success(dtos);
     }

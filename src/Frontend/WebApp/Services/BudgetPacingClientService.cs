@@ -13,17 +13,20 @@ public sealed class BudgetPacingClientService : IBudgetPacingClientService
 {
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
+    private readonly ITenantSessionStateProvider? _session;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="BudgetPacingClientService"/>.
     /// </summary>
     /// <param name="httpClient">Cliente HTTP injetado apontando para a Web API.</param>
+    /// <param name="session">Sessão autenticada do usuário.</param>
     /// <param name="tenantStateProvider">Provedor de estado do inquilino atual na sessão.</param>
-    public BudgetPacingClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider)
+    public BudgetPacingClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _session = session;
     }
 
     /// <inheritdoc />

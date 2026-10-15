@@ -1,168 +1,68 @@
-using System.Net.Http.Headers;
+using System.Globalization;
 using System.Text.Json;
 using BuildingBlocks.Domain.Campaigns;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Tenants;
+using Integrations.Application.Options;
 using Integrations.Domain.Campaigns.Models;
 using Integrations.Domain.Campaigns.Resilience;
 using Integrations.Domain.Campaigns.Sync;
+using Integrations.Infrastructure.Meta;
+using Microsoft.Extensions.Options;
 
 namespace Integrations.Infrastructure.Campaigns.Sync;
 
-/// <summary>
-/// Adaptador para ingestão de métricas analíticas da Meta Ads Graph API v21.0 (endpoint /insights).
-/// </summary>
+/// <summary>Ingestão diária paginada sem somar ações de tipos diferentes como conversões.</summary>
 public sealed class MetaAdsMetricsSyncAdapter : ICampaignMetricsSyncAdapter
 {
-    private readonly HttpClient _httpClient;
-    private readonly IHierarchyRateLimitPolicy _rateLimitPolicy;
+    private readonly MetaGraphClient _graph;
 
-    /// <summary>
-    /// Inicializa uma nova instância de <see cref="MetaAdsMetricsSyncAdapter"/>.
-    /// </summary>
-    /// <param name="httpClient">Cliente HTTP injetado.</param>
-    /// <param name="rateLimitPolicy">Política de resiliência e controle de taxa.</param>
-    public MetaAdsMetricsSyncAdapter(
-        HttpClient httpClient,
-        IHierarchyRateLimitPolicy rateLimitPolicy)
-    {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _rateLimitPolicy = rateLimitPolicy ?? throw new ArgumentNullException(nameof(rateLimitPolicy));
-    }
+    /// <summary>Configura o adaptador de métricas com transporte seguro da Meta.</summary>
+    /// <param name="httpClient">Cliente HTTP.</param>
+    /// <param name="rateLimitPolicy">Contrato existente; retries são tratados por página no transporte Meta.</param>
+    /// <param name="options">Configurações da versão Graph e do aplicativo.</param>
+    public MetaAdsMetricsSyncAdapter(HttpClient httpClient, IHierarchyRateLimitPolicy rateLimitPolicy, IOptions<MetaAdsOAuthOptions> options)
+        => _graph = new MetaGraphClient(httpClient, options.Value);
 
     /// <inheritdoc />
     public string Platform => "MetaAds";
 
     /// <inheritdoc />
-    public async Task<Result<IReadOnlyList<UnifiedMetricItem>>> FetchMetricsAsync(
-        ConnectedAdAccount account,
-        string? decryptedAccessToken,
-        DateTime startDateUtc,
-        DateTime endDateUtc,
-        MetricGranularity granularity,
+    public async Task<Result<IReadOnlyList<UnifiedMetricItem>>> FetchMetricsAsync(ConnectedAdAccount account,
+        string? decryptedAccessToken, DateTime startDateUtc, DateTime endDateUtc, MetricGranularity granularity,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(decryptedAccessToken))
+            return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(Error.Unauthorized("MetaAds.EmptyAccessToken", "Reconecte a autorização Meta."));
+        if (granularity != MetricGranularity.Daily)
+            return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(Error.Validation("Meta.UnsupportedGranularity", "A sincronização Meta suporta granularidade diária; hourly não é um valor válido de time_increment."));
+        if (endDateUtc.Date < startDateUtc.Date || (endDateUtc.Date - startDateUtc.Date).TotalDays > 366)
+            return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(Error.Validation("Meta.InvalidDateRange", "Selecione um intervalo de até 366 dias."));
+        var id = account.ExternalAccountId.StartsWith("act_", StringComparison.Ordinal) ? account.ExternalAccountId : $"act_{account.ExternalAccountId}";
+        if (id.Length < 5 || !id[4..].All(char.IsAsciiDigit))
+            return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(Error.Validation("Meta.InvalidAccountId", "ID de conta Meta inválido."));
+        var range = Uri.EscapeDataString(JsonSerializer.Serialize(new { since = startDateUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), until = endDateUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }));
+        var response = await _graph.ReadCollectionAsync($"{id}/insights?level=campaign&time_increment=1&time_range={range}&use_unified_attribution_setting=true&fields=campaign_id,date_start,date_stop,spend,impressions,clicks&limit=100", decryptedAccessToken, cancellationToken);
+        if (response.IsFailure) return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(response.Error);
+        var items = new List<UnifiedMetricItem>();
+        foreach (var row in response.Value)
         {
-            return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(
-                Error.Unauthorized("MetaAds.EmptyAccessToken", "Token de acesso da Meta Ads não informado ou expirado."));
+            var campaignId = row.TryGetProperty("campaign_id", out var cid) ? cid.GetString() : null;
+            var dateText = row.TryGetProperty("date_start", out var dateValue) ? dateValue.GetString() : null;
+            if (string.IsNullOrWhiteSpace(campaignId) || !DateTime.TryParseExact(dateText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ||
+                !TryDecimal(row, "spend", out var spend) || !TryDecimal(row, "impressions", out var impressions) || !TryDecimal(row, "clicks", out var clicks))
+                return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(Error.Failure("Meta.InvalidMetric", "A Meta retornou uma métrica sem identificação, data ou valores válidos."));
+            // O modelo unificado não define evento de conversão: não inferir compras a partir de actions.
+            // A consulta detalhada de Insights deve definir explicitamente a ação para CPA/ROAS.
+            items.Add(new(campaignId, null, null, DateTime.SpecifyKind(date.Date, DateTimeKind.Utc), null,
+                spend, (long)impressions, (long)clicks, 0m, 0m, account.Currency));
         }
-
-        var externalId = account.ExternalAccountId.StartsWith("act_", StringComparison.OrdinalIgnoreCase)
-            ? account.ExternalAccountId
-            : $"act_{account.ExternalAccountId}";
-
-        var timeIncrement = granularity == MetricGranularity.Hourly ? "hourly" : "1";
-        var datePreset = $"{startDateUtc:yyyy-MM-dd},{endDateUtc:yyyy-MM-dd}";
-
-        return await _rateLimitPolicy.ExecuteAsync(async ct =>
-        {
-            try
-            {
-                var url = $"https://graph.facebook.com/v21.0/{externalId}/insights?" +
-                          $"level=campaign&time_increment={timeIncrement}&time_range={{\"since\":\"{startDateUtc:yyyy-MM-dd}\",\"until\":\"{endDateUtc:yyyy-MM-dd}\"}}&" +
-                          $"fields=campaign_id,spend,impressions,clicks,actions,action_values&limit=100";
-
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", decryptedAccessToken);
-
-                using var response = await _httpClient.SendAsync(request, ct);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var statusCode = (int)response.StatusCode;
-                    return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(
-                        Error.Failure("MetaAds.InsightsError", $"Falha ao consultar métricas da Meta Ads. HTTP {statusCode}"));
-                }
-
-                // Parse básico ou retorno de lista consolidada
-                var content = await response.Content.ReadAsStringAsync(ct);
-                var items = ParseMetaInsights(content, account.Currency, granularity);
-
-                return Result<IReadOnlyList<UnifiedMetricItem>>.Success(items);
-            }
-            catch (Exception ex)
-            {
-                return Result<IReadOnlyList<UnifiedMetricItem>>.Failure(
-                    Error.Failure("MetaAds.InsightsException", $"Exceção ao comunicar com a Meta Insights API: {ex.Message}"));
-            }
-        }, Platform, cancellationToken);
+        return Result<IReadOnlyList<UnifiedMetricItem>>.Success(items);
     }
 
-    private static IReadOnlyList<UnifiedMetricItem> ParseMetaInsights(string json, string currency, MetricGranularity granularity)
+    private static bool TryDecimal(JsonElement row, string key, out decimal value)
     {
-        var list = new List<UnifiedMetricItem>();
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
-            {
-                return list;
-            }
-
-            foreach (var element in data.EnumerateArray())
-            {
-                var cmpId = element.TryGetProperty("campaign_id", out var cid) ? cid.GetString() ?? "" : "";
-                var spend = element.TryGetProperty("spend", out var sp) && decimal.TryParse(sp.GetString(), out var s) ? s : 0m;
-                var impressions = element.TryGetProperty("impressions", out var imp) && long.TryParse(imp.GetString(), out var i) ? i : 0L;
-                var clicks = element.TryGetProperty("clicks", out var cl) && long.TryParse(cl.GetString(), out var c) ? c : 0L;
-                var dateStr = element.TryGetProperty("date_start", out var ds) ? ds.GetString() : null;
-                var date = DateTime.TryParse(dateStr, out var d) ? DateTime.SpecifyKind(d.Date, DateTimeKind.Utc) : DateTime.UtcNow.Date;
-
-                int? hour = null;
-                if (granularity == MetricGranularity.Hourly && element.TryGetProperty("hourly_stats_aggregated_by_audience_time_zone", out var hEl))
-                {
-                    var hStr = hEl.GetString();
-                    if (int.TryParse(hStr?.Split(':')[0], out var h))
-                    {
-                        hour = h;
-                    }
-                }
-
-                decimal conversions = 0m;
-                decimal conversionValue = 0m;
-
-                if (element.TryGetProperty("actions", out var actions) && actions.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var action in actions.EnumerateArray())
-                    {
-                        if (action.TryGetProperty("value", out var val) && decimal.TryParse(val.GetString(), out var cv))
-                        {
-                            conversions += cv;
-                        }
-                    }
-                }
-
-                if (element.TryGetProperty("action_values", out var actionVals) && actionVals.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var actVal in actionVals.EnumerateArray())
-                    {
-                        if (actVal.TryGetProperty("value", out var v) && decimal.TryParse(v.GetString(), out var rv))
-                        {
-                            conversionValue += rv;
-                        }
-                    }
-                }
-
-                list.Add(new UnifiedMetricItem(
-                    ExternalCampaignId: cmpId,
-                    ExternalAdSetId: null,
-                    ExternalAdId: null,
-                    Date: date,
-                    Hour: hour,
-                    Spend: spend,
-                    Impressions: impressions,
-                    Clicks: clicks,
-                    Conversions: conversions,
-                    ConversionValue: conversionValue,
-                    Currency: currency));
-            }
-        }
-        catch
-        {
-            // Fallback seguro em parse
-        }
-
-        return list;
+        value = 0;
+        return row.TryGetProperty(key, out var field) && decimal.TryParse(field.ToString(), NumberStyles.Number, CultureInfo.InvariantCulture, out value) && value >= 0;
     }
 }

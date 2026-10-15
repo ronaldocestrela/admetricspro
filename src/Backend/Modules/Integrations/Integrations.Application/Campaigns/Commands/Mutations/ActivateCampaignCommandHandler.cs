@@ -3,6 +3,8 @@ using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Application.Persistence;
 using Integrations.Domain.Campaigns;
+using Integrations.Application.Meta;
+using MediatR;
 
 namespace Integrations.Application.Campaigns.Commands.Mutations;
 
@@ -13,18 +15,21 @@ public sealed class ActivateCampaignCommandHandler : ICommandHandler<ActivateCam
 {
     private readonly ICampaignHierarchyRepository _hierarchyRepository;
     private readonly IIntegrationsUnitOfWork _unitOfWork;
+    private readonly ISender _sender;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="ActivateCampaignCommandHandler"/>.
     /// </summary>
     /// <param name="hierarchyRepository">Repositório de persistência da hierarquia de campanhas.</param>
+    /// <param name="sender">Mediador para operações reais na Meta.</param>
     /// <param name="unitOfWork">Unidade de trabalho do módulo de integrações.</param>
     public ActivateCampaignCommandHandler(
         ICampaignHierarchyRepository hierarchyRepository,
-        IIntegrationsUnitOfWork unitOfWork)
+        IIntegrationsUnitOfWork unitOfWork, ISender sender)
     {
         _hierarchyRepository = hierarchyRepository ?? throw new ArgumentNullException(nameof(hierarchyRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _sender = sender;
     }
 
     /// <inheritdoc />
@@ -41,6 +46,8 @@ public sealed class ActivateCampaignCommandHandler : ICommandHandler<ActivateCam
             return Result.Failure(Error.Validation("Campaign.WorkspaceMismatch", "A campanha não pertence ao workspace informado."));
         }
 
+        var external = await MetaCampaignMutationForwarder.ForwardAsync(campaign, _hierarchyRepository, _sender, cancellationToken, status: "ACTIVE");
+        if (external.IsFailure) return external;
         var activateResult = campaign.Activate();
         if (activateResult.IsFailure)
         {

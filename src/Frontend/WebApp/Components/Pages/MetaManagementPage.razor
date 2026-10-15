@@ -1,0 +1,544 @@
+@page "/workspaces/{WorkspaceId:guid}/meta"
+@layout TenantMainLayout
+@implements IDisposable
+@using System.Text.Json
+@using System.Text.Json.Nodes
+@using Microsoft.AspNetCore.Components.Forms
+@using global::Integrations.Application.Meta
+@using global::Integrations.Application.Campaigns.DTOs
+@using global::Integrations.Domain.Meta
+@using global::Tenants.Application.Integrations.DTOs
+@inject IOAuthIntegrationsClientService Connections
+@inject IMetaAdsClientService Meta
+@inject IBulkCampaignClientService Campaigns
+@inject ITenantSessionStateProvider Session
+
+<PageTitle>Meta Ads · AdMetricsPro</PageTitle>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Meta Ads</h1>
+        <a class="btn btn-outline-secondary" href="@($"/workspaces/{WorkspaceId}/integrations")">Conexão e contas</a>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(_feedback)) { <div class="alert alert-info" role="status">@_feedback</div> }
+    @if (_accounts.Count == 0)
+    {
+        <p>Conecte a Meta e vincule uma conta de anúncios para gerenciar este cliente.</p>
+    }
+    else
+    {
+        <div class="card p-3 mb-3">
+            <label class="form-label">Conta de anúncios</label>
+            <select class="form-select mb-2" value="@_accountId" @onchange="ChangeAccountAsync" disabled="@_busy">
+                @foreach (var account in _accounts) { <option value="@account.Id">@account.AccountName · @account.Currency</option> }
+            </select>
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+                <label>De <input class="form-control" type="date" @bind="_since" /></label>
+                <label>Até <input class="form-control" type="date" @bind="_until" /></label>
+                <button class="btn btn-outline-primary" disabled="@_busy" @onclick="SynchronizeAsync">@(_busy ? "Processando…" : "Sincronizar dados da Meta")</button>
+                <button class="btn btn-primary" data-testid="meta-create-campaign" disabled="@_busy" @onclick='() => OpenForm("campaigns")'>Criar campanha</button>
+                <button class="btn btn-outline-primary" disabled="@_busy" @onclick='() => OpenForm("adcreatives")'>Criar criativo</button>
+            </div>
+        </div>
+        <div class="card p-3 mb-3">
+            <h2 class="h5">Campanhas e anúncios</h2>
+            <div class="d-flex gap-2 mb-3">
+                <input class="form-control" placeholder="Pesquisar campanha" @bind="_search" @bind:event="oninput" />
+                <select class="form-select" @bind="_statusFilter"><option value="">Todos os status</option><option>Active</option><option>Paused</option><option>Archived</option></select>
+            </div>
+            @foreach (var campaign in _campaigns.Where(c => c.ConnectedAdAccountId == _accountId && c.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) && (_statusFilter.Length == 0 || c.Status == _statusFilter)))
+            {
+                <details class="border rounded p-3 mb-2" @key="campaign.Id">
+                    <summary><strong>@campaign.Name</strong> · @campaign.Objective · Configurado: @campaign.Status</summary>
+                    <div class="d-flex flex-wrap gap-2 my-2">
+                        <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick='() => ShowDetailsAsync("campaigns", campaign.ExternalCampaignId)'>Estado na Meta</button>
+                        <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick='() => OpenForm("campaigns", campaign.ExternalCampaignId, campaign.Name)'>Editar</button>
+                        <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="() => OpenAdSetAsync(campaign)">Novo conjunto</button>
+                        <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick='() => SetStatusAsync("campaigns", campaign.ExternalCampaignId, "PAUSED")'>Pausar</button>
+                        <button class="btn btn-sm btn-outline-success" disabled="@_busy" @onclick='() => RequestActivation("campaigns", campaign.ExternalCampaignId, campaign.Name)'>Ativar</button>
+                    </div>
+                    @foreach (var set in campaign.AdSets)
+                    {
+                        <details class="border rounded p-2 ms-2 mb-2" @key="set.Id">
+                            <summary>@set.Name · Configurado: @set.Status</summary>
+                            <div class="d-flex flex-wrap gap-2 my-2">
+                                <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick='() => ShowDetailsAsync("adsets", set.ExternalAdSetId)'>Estado na Meta</button>
+                                <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick='() => OpenForm("adsets", set.ExternalAdSetId, set.Name, objective: campaign.Objective)'>Editar</button>
+                                <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick='() => OpenForm("ads", parent: set.ExternalAdSetId)'>Novo anúncio</button>
+                                <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick='() => SetStatusAsync("adsets", set.ExternalAdSetId, "PAUSED")'>Pausar</button>
+                                <button class="btn btn-sm btn-outline-success" disabled="@_busy" @onclick='() => RequestActivation("adsets", set.ExternalAdSetId, set.Name)'>Ativar</button>
+                            </div>
+                            @foreach (var ad in set.Ads)
+                            {
+                                <div class="border-top py-2" @key="ad.Id">
+                                    <span>@ad.Name · Configurado: @ad.Status</span>
+                                    <button class="btn btn-sm btn-link" disabled="@_busy" @onclick='() => ShowDetailsAsync("ads", ad.ExternalAdId)'>Veiculação e revisão</button>
+                                    <button class="btn btn-sm btn-link" disabled="@_busy" @onclick='() => OpenForm("ads", ad.ExternalAdId, ad.Name)'>Editar</button>
+                                    <button class="btn btn-sm btn-link" disabled="@_busy" @onclick='() => SetStatusAsync("ads", ad.ExternalAdId, "PAUSED")'>Pausar</button>
+                                    <button class="btn btn-sm btn-link" disabled="@_busy" @onclick='() => RequestActivation("ads", ad.ExternalAdId, ad.Name)'>Ativar</button>
+                                </div>
+                            }
+                        </details>
+                    }
+                </details>
+            }
+            @if (_campaigns.All(c => c.ConnectedAdAccountId != _accountId)) { <p>Sincronize para carregar as campanhas desta conta.</p> }
+        </div>
+        <div class="card p-3 mb-3">
+            <h2 class="h5">Desempenho diário</h2>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <select class="form-select w-auto" @bind="_insightLevel"><option value="account">Conta</option><option value="campaign">Campanha</option><option value="adset">Conjunto</option><option value="ad">Anúncio</option></select>
+                <select class="form-select w-auto" @bind="_breakdown"><option value="">Sem detalhamento</option><option value="publisher_platform">Plataforma</option><option value="device_platform">Dispositivo</option><option value="platform_position">Posicionamento</option></select>
+                <select class="form-select w-auto" @bind="_conversionAction"><option value="">Sem evento de conversão</option><option value="purchase">Compra</option><option value="lead">Lead</option><option value="offsite_conversion.fb_pixel_purchase">Compra no pixel</option></select>
+                <button class="btn btn-outline-primary" disabled="@_busy" @onclick="LoadInsightsAsync">Consultar período</button>
+            </div>
+            <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Dia</th><th>Recurso</th><th>Gasto</th><th>Alcance</th><th>Impressões</th><th>Cliques / no link</th><th>CPC</th><th>CPA</th><th>ROAS</th></tr></thead><tbody>
+                @foreach (var row in _insights)
+                {
+                    <tr><td>@row.DateStart.ToString("dd/MM/yyyy")</td><td>@(row.AdId ?? row.AdSetId ?? row.CampaignId ?? "Conta") @row.BreakdownValue</td><td>@Number(row.Spend)</td><td>@row.Reach</td><td>@row.Impressions</td><td>@row.Clicks / @row.LinkClicks</td><td>@Number(row.Cpc)</td><td>@Number(row.Cpa)</td><td>@Number(row.Roas)</td></tr>
+                }
+            </tbody></table></div>
+            <p class="text-muted small mb-0">Valores na moeda da conta. Cada linha representa um dia no fuso da conta. Alcance e frequência não são somados entre linhas. “—” indica dado indisponível.</p>
+        </div>
+    }
+    @if (_activation is { } activation)
+    {
+        <div class="card border-warning p-3 mb-3" role="dialog" aria-label="Confirmar ativação">
+            <p>Ativar <strong>@activation.Name</strong> pode iniciar veiculação e gerar gastos conforme orçamento e aprovação da Meta.</p>
+            <div><button class="btn btn-success me-2" disabled="@_busy" @onclick="ConfirmActivationAsync">Confirmar ativação</button><button class="btn btn-outline-secondary" @onclick="() => _activation = null">Cancelar</button></div>
+        </div>
+    }
+    @if (_form is { } form)
+    {
+        <div class="card p-3 mb-3" role="dialog" aria-label="Configurar recurso Meta">
+            <h2 class="h5">@(_editingId is null ? "Criar" : "Editar") @ResourceName(_formResource)</h2>
+            <label class="form-label">Nome <input class="form-control" maxlength="200" @bind="form.Name" /></label>
+            @if (_formResource == "campaigns" && _editingId is null)
+            {
+                <label class="form-label">Objetivo <select class="form-select" @bind="form.Objective"><option value="OUTCOME_AWARENESS">Reconhecimento</option><option value="OUTCOME_TRAFFIC">Tráfego</option><option value="OUTCOME_ENGAGEMENT">Engajamento</option><option value="OUTCOME_LEADS">Leads</option><option value="OUTCOME_APP_PROMOTION">Aplicativo</option><option value="OUTCOME_SALES">Vendas</option></select></label>
+                <label class="form-label">Categoria especial <select class="form-select" @bind="form.SpecialCategory"><option value="">Nenhuma</option><option value="HOUSING">Moradia</option><option value="EMPLOYMENT">Emprego</option><option value="FINANCIAL_PRODUCTS_SERVICES">Produtos e serviços financeiros</option><option value="ISSUES_ELECTIONS_POLITICS">Temas sociais, eleições e política</option></select></label>
+            }
+            @if (_formResource is "campaigns" or "adsets")
+            {
+                <label class="form-label">Orçamento diário em @Currency (opcional) <input class="form-control" type="number" min="0.01" step="0.01" @bind="form.DailyBudget" /></label>
+            }
+            @if (_formResource == "adsets" && _editingId is null)
+            {
+                <label class="form-label">Otimização <select class="form-select" @bind="form.OptimizationGoal">@foreach (var goal in OptimizationGoals(form.Objective)) { <option value="@goal">@goal</option> }</select></label>
+                <label class="form-label">Países (códigos como BR, PT) <input class="form-control" @bind="form.Countries" /></label>
+                @if (!form.Restricted)
+                {
+                    <div class="d-flex gap-2"><label>Idade mínima <input class="form-control" type="number" min="13" max="65" @bind="form.MinAge" /></label><label>Idade máxima <input class="form-control" type="number" min="13" max="65" @bind="form.MaxAge" /></label></div>
+                    <label class="form-label">Gênero <select class="form-select" @bind="form.Gender"><option value="">Todos</option><option value="1">Homens</option><option value="2">Mulheres</option></select></label>
+                }
+                <div class="d-flex gap-2 my-2">
+                    <select class="form-select" @bind="_targetingType"><option value="adinterest">Interesses</option><option value="adlocale">Idiomas</option><option value="adgeolocation">Países</option></select>
+                    <input class="form-control" placeholder="Pesquisar na Meta" @bind="_targetingTerm" />
+                    <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="SearchTargetingAsync">Pesquisar</button>
+                </div>
+                @foreach (var option in _targetingResults)
+                {
+                    <button class="btn btn-sm btn-outline-secondary me-1 mb-1" @onclick="() => SelectTargeting(option)">@Text(option, "name")</button>
+                }
+                <p class="small">@form.Interests.Count interesse(s) e @form.Locales.Count idioma(s) selecionados.</p>
+                <label class="form-label">Posicionamento <select class="form-select" @bind="form.Placement"><option value="automatic">Automático</option><option value="facebook-feed">Feed do Facebook</option></select></label>
+                <div class="d-flex gap-2"><label>Início UTC <input class="form-control" type="datetime-local" @bind="form.StartUtc" /></label><label>Fim UTC <input class="form-control" type="datetime-local" @bind="form.EndUtc" /></label></div>
+                @if (form.Objective is "OUTCOME_SALES" or "OUTCOME_LEADS")
+                {
+                    <label class="form-label">Pixel <input class="form-control" @bind="form.PixelId" /></label>
+                    <label class="form-label">Evento <select class="form-select" @bind="form.ConversionEvent"><option value="PURCHASE">Compra</option><option value="LEAD">Lead</option></select></label>
+                }
+                @if (form.Objective == "OUTCOME_APP_PROMOTION")
+                {
+                    <label class="form-label">ID do aplicativo <input class="form-control" @bind="form.ApplicationId" /></label>
+                    <label class="form-label">URL na loja de aplicativos <input class="form-control" type="url" @bind="form.StoreUrl" /></label>
+                }
+                <button class="btn btn-sm btn-outline-secondary my-2" disabled="@_busy" @onclick="LoadAudiencesAsync">Carregar públicos existentes</button>
+                <label class="form-label">Público personalizado ou semelhante <select class="form-select" @bind="form.AudienceId"><option value="">Sem público específico</option>@foreach (var audience in _audiences) { <option value="@Text(audience, "id")">@Text(audience, "name")</option> }</select></label>
+                <label class="form-label">Excluir público autorizado <select class="form-select" @bind="form.ExcludedAudienceId"><option value="">Sem exclusão</option>@foreach (var audience in _audiences) { <option value="@Text(audience, "id")">@Text(audience, "name")</option> }</select></label>
+            }
+            @if (_formResource == "ads")
+            {
+                <label class="form-label">@(_editingId is null ? "ID do criativo" : "ID do novo criativo (opcional)") <input class="form-control" @bind="form.CreativeId" /></label>
+            }
+            @if (_formResource == "adcreatives")
+            {
+                <button class="btn btn-sm btn-outline-secondary my-2" disabled="@_busy" @onclick="LoadPagesAsync">Carregar páginas autorizadas</button>
+                <label class="form-label">Página <select class="form-select" @bind="form.PageId"><option value="">Selecione uma página</option>@foreach (var page in _pages) { <option value="@Text(page, "id")">@Text(page, "name")</option> }</select></label>
+                <button class="btn btn-sm btn-outline-secondary my-2" disabled="@_busy" @onclick='() => LoadAssetsAsync("instagram_accounts")'>Carregar identidades Instagram</button>
+                <label class="form-label">Instagram (opcional) <select class="form-select" @bind="form.InstagramUserId"><option value="">Identidade padrão da página</option>@foreach (var identity in _instagramAccounts) { <option value="@Text(identity, "id")">@Text(identity, "username")</option> }</select></label>
+                <label class="form-label">Formato <select class="form-select" @bind="form.Format"><option value="image">Imagem</option><option value="video">Vídeo</option><option value="carousel">Carrossel</option></select></label>
+                <label class="form-label">Enviar imagem ou vídeo <InputFile class="form-control" OnChange="UploadMediaAsync" accept="image/png,image/jpeg,video/mp4" disabled="@_busy" /></label>
+                <p class="small">@_mediaFeedback</p>
+                @if (form.Format != "carousel") { <label class="form-label">@(form.Format == "video" ? "Vídeo enviado" : "Imagem enviada") <input class="form-control" @bind="form.MediaId" /></label> }
+                @if (form.Format == "video") { <label class="form-label">URL da miniatura <input class="form-control" type="url" @bind="form.ThumbnailUrl" /></label> }
+                @if (_videoOperationId.HasValue && form.Format == "video")
+                { <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="CheckVideoAsync">Verificar processamento do vídeo</button> }
+                <label class="form-label">Texto principal <textarea class="form-control" @bind="form.Body"></textarea></label>
+                <label class="form-label">Título <input class="form-control" @bind="form.Headline" /></label>
+                <label class="form-label">Descrição <input class="form-control" @bind="form.Description" /></label>
+                <label class="form-label">URL de destino <input class="form-control" type="url" @bind="form.Link" /></label>
+                <label class="form-label">Chamada para ação <select class="form-select" @bind="form.Cta"><option value="LEARN_MORE">Saiba mais</option><option value="SHOP_NOW">Comprar agora</option><option value="SIGN_UP">Cadastre-se</option><option value="CONTACT_US">Fale conosco</option></select></label>
+                <label class="form-label">Parâmetros de rastreamento <input class="form-control" placeholder="utm_source=meta&utm_medium=paid" @bind="form.UrlTags" /></label>
+                @if (form.Format == "carousel")
+                {
+                    @foreach (var card in form.Cards)
+                    {
+                        <fieldset class="border rounded p-2 mb-2"><legend class="h6">Cartão</legend><label>Imagem <input class="form-control" placeholder="Hash da imagem enviada" @bind="card.ImageHash" /></label><label>Título <input class="form-control" @bind="card.Title" /></label><label>Destino <input class="form-control" type="url" @bind="card.Link" /></label></fieldset>
+                    }
+                    <button class="btn btn-sm btn-outline-secondary" disabled="@(form.Cards.Count >= 10)" @onclick="() => form.Cards.Add(new())">Adicionar cartão</button>
+                }
+            }
+            <p class="small text-muted mt-2">Novas campanhas, conjuntos e anúncios serão criados pausados. A Meta valida as combinações e permissões da conta.</p>
+            <div><button class="btn btn-primary me-2" data-testid="meta-save-resource" disabled="@(_busy || _writeUncertain)" @onclick="SaveFormAsync">Salvar na Meta</button><button class="btn btn-outline-secondary" @onclick="() => _form = null">Fechar</button></div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Workspace cujo gerenciamento foi solicitado pela rota.</summary>
+    [Parameter] public Guid WorkspaceId { get; set; }
+    private Guid _loadedWorkspace;
+    private Guid _accountId;
+    private List<ConnectedAdAccountDto> _accounts = new();
+    private List<CampaignHierarchyDto> _campaigns = new();
+    private List<MetaInsight> _insights = new();
+    private List<JsonElement> _pages = new(), _audiences = new();
+    private List<JsonElement> _targetingResults = new(), _instagramAccounts = new();
+    private string _targetingType = "adinterest", _targetingTerm = "";
+    private DateOnly _since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)), _until = DateOnly.FromDateTime(DateTime.UtcNow);
+    private string _search = "", _statusFilter = "", _insightLevel = "campaign", _breakdown = "", _conversionAction = "", _formResource = "", _parent = "", _lastCreativeId = "";
+    private string? _feedback, _mediaFeedback, _editingId;
+    private Guid _operationId = Guid.NewGuid();
+    private Guid? _videoOperationId;
+    private string? _videoState;
+    private bool _busy, _writeUncertain;
+    private FormData? _form;
+    private Activation? _activation;
+    private CancellationTokenSource _contextCancellation = new();
+    private string Currency => _accounts.FirstOrDefault(a => a.Id == _accountId)?.Currency ?? "";
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedWorkspace == WorkspaceId) return;
+        _contextCancellation.Cancel(); _contextCancellation.Dispose(); _contextCancellation = new();
+        _accounts.Clear(); _campaigns.Clear(); _insights.Clear(); _pages.Clear(); _audiences.Clear(); _instagramAccounts.Clear(); _targetingResults.Clear();
+        _form = null; _activation = null; _accountId = Guid.Empty; _lastCreativeId = ""; _feedback = null; _videoOperationId = null; _videoState = null;
+        _loadedWorkspace = WorkspaceId;
+        await LoadAccountsAsync();
+    }
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !Session.IsAuthenticated && await Session.RestoreSessionAsync())
+        { await LoadAccountsAsync(); StateHasChanged(); }
+    }
+    private async Task LoadAccountsAsync()
+    {
+        var workspace = WorkspaceId;
+        var result = await Connections.GetLinkedAdAccountsAsync(workspace);
+        if (workspace != WorkspaceId) return;
+        if (result.IsFailure) { _feedback = result.Error.Description; return; }
+        _accounts = result.Value.Where(a => a.WorkspaceId == workspace && !a.IsDemo && a.Platform == "MetaAds" && a.Status == "Connected").ToList();
+        _accountId = _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
+        if (_accountId != Guid.Empty) await LoadCampaignsAsync();
+    }
+    private async Task ChangeAccountAsync(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var account)) return;
+        _contextCancellation.Cancel(); _contextCancellation.Dispose(); _contextCancellation = new();
+        _accountId = account; _form = null; _activation = null; _insights.Clear(); _pages.Clear(); _audiences.Clear(); _instagramAccounts.Clear(); _targetingResults.Clear(); _videoOperationId = null; _videoState = null;
+        await LoadCampaignsAsync();
+    }
+    private async Task LoadCampaignsAsync()
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        var result = await Campaigns.GetCampaignsForBulkAsync(workspace, "MetaAds", cancellationToken: _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        if (result.IsSuccess) _campaigns = result.Value.ToList(); else _feedback = result.Error.Description;
+    }
+    private async Task RunAsync(Func<Task> action)
+    {
+        if (_busy) return;
+        _busy = true;
+        try { await action(); }
+        catch (OperationCanceledException) { }
+        finally { _busy = false; }
+    }
+    private Task SynchronizeAsync() => RunAsync(async () =>
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        _feedback = "Sincronizando campanhas, conjuntos, anúncios e métricas…";
+        var result = await Meta.SyncAsync(workspace, account, _since, _until, _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        _feedback = result.IsSuccess ? "Sincronização concluída." : result.Error.Description;
+        if (result.IsSuccess) await LoadCampaignsAsync();
+    });
+    private Task LoadInsightsAsync() => RunAsync(async () =>
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        var result = await Meta.GetInsightsAsync(workspace, account, new(_since, _until, _insightLevel, NullIfEmpty(_breakdown), NullIfEmpty(_conversionAction)), _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        if (result.IsSuccess) { _insights = result.Value.ToList(); _feedback = "Métricas consultadas."; } else _feedback = result.Error.Description;
+    });
+    private void OpenForm(string resource, string? externalId = null, string? name = null, string? parent = null, string? objective = null)
+    {
+        _formResource = resource; _editingId = externalId; _parent = parent ?? ""; _operationId = Guid.NewGuid(); _writeUncertain = false;
+        _form = new() { Name = name ?? "", Objective = objective ?? "OUTCOME_TRAFFIC", CreativeId = externalId is null ? _lastCreativeId : "" };
+        _form.OptimizationGoal = OptimizationGoals(_form.Objective).First();
+        _targetingResults.Clear();
+    }
+    private Task OpenAdSetAsync(CampaignHierarchyDto campaign) => RunAsync(async () =>
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        var result = await Meta.GetResourceAsync(workspace, account, "campaigns", campaign.ExternalCampaignId, _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        if (result.IsFailure) { _feedback = result.Error.Description; return; }
+        OpenForm("adsets", parent: campaign.ExternalCampaignId, objective: campaign.Objective);
+        if (_form is not null) _form.Restricted = result.Value.TryGetProperty("special_ad_categories", out var categories) && categories.ValueKind == JsonValueKind.Array && categories.EnumerateArray().Any(c => c.GetString() != "NONE");
+    });
+    private Task SearchTargetingAsync() => RunAsync(async () =>
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        var result = await Meta.SearchTargetingAsync(workspace, account, _targetingType, _targetingTerm, _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        if (result.IsSuccess) _targetingResults = result.Value.ToList(); else _feedback = result.Error.Description;
+    });
+    private void SelectTargeting(JsonElement option)
+    {
+        if (_form is not { } form) return;
+        if (_targetingType == "adinterest") form.Interests.Add(Text(option, "id"));
+        if (_targetingType == "adlocale" && long.TryParse(Text(option, "key"), out var key)) form.Locales.Add(key);
+        if (_targetingType == "adgeolocation" && Text(option, "type") == "country")
+            form.Countries = string.Join(',', form.Countries.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Append(Text(option, "key")).Distinct());
+    }
+    private Task SaveFormAsync() => RunAsync(async () =>
+    {
+        if (_form is not { } form) return;
+        var workspace = WorkspaceId; var account = _accountId;
+        var data = BuildData(form);
+        if (data is null) return;
+        var validation = MetaWriteValidation.Validate(_formResource, _editingId, data.Value, false);
+        if (validation.IsFailure) { _feedback = validation.Error.Description; return; }
+        var result = await Meta.WriteAsync(new(_operationId, workspace, account, _formResource, _editingId, validation.Value), _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        if (result.IsSuccess)
+        {
+            if (_formResource == "adcreatives") _lastCreativeId = result.Value.ExternalId;
+            _feedback = $"Salvo na Meta: {result.Value.ExternalId}. Sincronize para atualizar a lista.";
+            _form = null;
+        }
+        else { _feedback = result.Error.Description; _writeUncertain = result.Error.Code is "Meta.WriteOutcomeUnknown" or "Meta.NetworkError" or "Meta.RequestTimeout" or "Meta.OperationAlreadySubmitted"; if (!_writeUncertain) _operationId = Guid.NewGuid(); }
+    });
+    private JsonElement? BuildData(FormData form)
+    {
+        var data = new JsonObject { ["name"] = form.Name };
+        if (form.DailyBudget.HasValue)
+        {
+            // A interface monetária inicial cobre moedas com centavos; outras contas continuam disponíveis para leitura e APIs em unidade mínima.
+            if (Currency is not ("BRL" or "USD" or "EUR")) { _feedback = "A edição de orçamento nesta tela está disponível para BRL, USD e EUR."; return null; }
+            if (form.DailyBudget.Value > long.MaxValue / 100m) { _feedback = "O orçamento informado excede o limite suportado."; return null; }
+            var minor = form.DailyBudget.Value * 100m;
+            if (minor != decimal.Truncate(minor)) { _feedback = "Use até duas casas decimais no orçamento."; return null; }
+            data["daily_budget"] = minor.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        if (_editingId is not null)
+        {
+            if (_formResource == "ads" && form.CreativeId.Length > 0) data["creative"] = new JsonObject { ["creative_id"] = form.CreativeId };
+            return JsonSerializer.SerializeToElement(data);
+        }
+        if (_formResource == "campaigns") { data["objective"] = form.Objective; data["special_ad_categories"] = form.SpecialCategory.Length == 0 ? new JsonArray() : new JsonArray(form.SpecialCategory); }
+        if (_formResource == "adsets")
+        {
+            data["campaign_id"] = _parent; data["billing_event"] = "IMPRESSIONS"; data["optimization_goal"] = form.OptimizationGoal;
+            var targeting = new JsonObject { ["geo_locations"] = new JsonObject { ["countries"] = JsonSerializer.SerializeToNode(form.Countries.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(c => c.ToUpperInvariant()).ToArray()) } };
+            if (!form.Restricted)
+            {
+                if (form.MinAge.HasValue) targeting["age_min"] = form.MinAge.Value;
+                if (form.MaxAge.HasValue) targeting["age_max"] = form.MaxAge.Value;
+                if (int.TryParse(form.Gender, out var gender)) targeting["genders"] = new JsonArray(gender);
+            }
+            if (form.Locales.Count > 0) targeting["locales"] = JsonSerializer.SerializeToNode(form.Locales.ToArray());
+            if (form.Interests.Count > 0) targeting["flexible_spec"] = new JsonArray(new JsonObject { ["interests"] = JsonSerializer.SerializeToNode(form.Interests.Select(id => new { id }).ToArray()) });
+            if (form.Placement == "facebook-feed") { targeting["publisher_platforms"] = new JsonArray("facebook"); targeting["facebook_positions"] = new JsonArray("feed"); }
+            if (form.AudienceId.Length > 0) targeting["custom_audiences"] = new JsonArray(new JsonObject { ["id"] = form.AudienceId });
+            if (form.ExcludedAudienceId.Length > 0) targeting["exclusions"] = new JsonObject { ["custom_audiences"] = new JsonArray(new JsonObject { ["id"] = form.ExcludedAudienceId }) };
+            data["targeting"] = targeting;
+            if (form.StartUtc.HasValue) data["start_time"] = DateTime.SpecifyKind(form.StartUtc.Value, DateTimeKind.Utc).ToString("O");
+            if (form.EndUtc.HasValue) data["end_time"] = DateTime.SpecifyKind(form.EndUtc.Value, DateTimeKind.Utc).ToString("O");
+            if (form.PixelId.Length > 0) data["promoted_object"] = new JsonObject { ["pixel_id"] = form.PixelId, ["custom_event_type"] = form.ConversionEvent };
+            if (form.ApplicationId.Length > 0) data["promoted_object"] = new JsonObject { ["application_id"] = form.ApplicationId, ["object_store_url"] = form.StoreUrl };
+        }
+        if (_formResource == "ads") { data["adset_id"] = _parent; data["creative"] = new JsonObject { ["creative_id"] = form.CreativeId }; }
+        if (_formResource == "adcreatives")
+        {
+            if (form.Format == "video" && _videoState is not null && !string.Equals(_videoState, "ready", StringComparison.OrdinalIgnoreCase))
+            { _feedback = "Verifique o processamento e aguarde o vídeo ficar pronto."; return null; }
+            if (!Uri.TryCreate(form.Link, UriKind.Absolute, out var link) || link.Scheme is not ("https" or "http")) { _feedback = "Informe uma URL de destino válida."; return null; }
+            var story = new JsonObject { ["page_id"] = form.PageId };
+            if (form.InstagramUserId.Length > 0) story["instagram_user_id"] = form.InstagramUserId;
+            var cta = new JsonObject { ["type"] = form.Cta, ["value"] = new JsonObject { ["link"] = form.Link } };
+            if (form.Format == "video")
+                story["video_data"] = new JsonObject { ["video_id"] = form.MediaId, ["message"] = form.Body, ["title"] = form.Headline, ["link_description"] = form.Description, ["image_url"] = form.ThumbnailUrl, ["call_to_action"] = cta };
+            else
+            {
+                var linkData = new JsonObject { ["link"] = form.Link, ["message"] = form.Body, ["name"] = form.Headline, ["description"] = form.Description, ["call_to_action"] = cta };
+                if (form.Format == "image") linkData["image_hash"] = form.MediaId;
+                else linkData["child_attachments"] = JsonSerializer.SerializeToNode(form.Cards.Select(c => new { image_hash = c.ImageHash, name = c.Title, link = c.Link }).ToArray());
+                story["link_data"] = linkData;
+            }
+            data["object_story_spec"] = story;
+            if (form.UrlTags.Length > 0) data["url_tags"] = form.UrlTags;
+        }
+        return JsonSerializer.SerializeToElement(data);
+    }
+    private Task LoadPagesAsync() => LoadAssetsAsync("promote_pages");
+    private Task LoadAudiencesAsync() => LoadAssetsAsync("customaudiences");
+    private Task LoadAssetsAsync(string asset) => RunAsync(async () =>
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        var result = await Meta.GetAssetsAsync(workspace, account, asset, _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        if (result.IsFailure) { _feedback = result.Error.Description; return; }
+        if (asset == "promote_pages") _pages = result.Value.ToList();
+        else if (asset == "instagram_accounts") _instagramAccounts = result.Value.ToList();
+        else _audiences = result.Value.ToList();
+    });
+    private Task UploadMediaAsync(InputFileChangeEventArgs args) => RunAsync(async () =>
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        var file = args.File;
+        if (file.Size > 100_000_000) { _feedback = "Arquivo acima de 100 MB."; return; }
+        using var stream = file.OpenReadStream(100_000_000, _contextCancellation.Token);
+        using var content = new MemoryStream(); await stream.CopyToAsync(content, _contextCancellation.Token);
+        var uploadOperation = Guid.NewGuid();
+        var result = await Meta.UploadAsync(workspace, account, uploadOperation, file.Name, file.ContentType, content.ToArray(), _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        if (result.IsSuccess)
+        {
+            if (_form is not null) _form.MediaId = result.Value.ExternalId;
+            if (result.Value.MediaType == "video") { _videoOperationId = uploadOperation; _videoState = result.Value.State; }
+            _mediaFeedback = $"Mídia: {result.Value.ExternalId} · {result.Value.State}";
+        }
+        else _feedback = result.Error.Description;
+    });
+    private Task CheckVideoAsync() => RunAsync(async () =>
+    {
+        if (_videoOperationId is not { } operation) return;
+        var workspace = WorkspaceId; var account = _accountId;
+        var result = await Meta.GetVideoStatusAsync(workspace, account, operation, _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        if (result.IsSuccess) { _videoState = result.Value.State; _mediaFeedback = $"Vídeo: {result.Value.State}"; } else _feedback = result.Error.Description;
+    });
+    private Task ShowDetailsAsync(string resource, string id) => RunAsync(async () =>
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        var result = await Meta.GetResourceAsync(workspace, account, resource, id, _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        _feedback = result.IsSuccess ? $"Configurado: {Text(result.Value, "status")} · Efetivo: {Text(result.Value, "effective_status")}." +
+            (result.Value.TryGetProperty("issues_info", out var issues) && issues.ValueKind == JsonValueKind.Array && issues.GetArrayLength() > 0 ? " A Meta informou problemas de veiculação; consulte a revisão do anúncio." : "") : result.Error.Description;
+    });
+    private void RequestActivation(string resource, string id, string name) => _activation = new(resource, id, name);
+    private async Task ConfirmActivationAsync() { if (_activation is { } target) { _activation = null; await SetStatusAsync(target.Resource, target.Id, "ACTIVE", true); } }
+    private Task SetStatusAsync(string resource, string id, string status, bool confirm = false) => RunAsync(async () =>
+    {
+        var workspace = WorkspaceId; var account = _accountId;
+        var result = await Meta.WriteAsync(new(Guid.NewGuid(), workspace, account, resource, id, JsonSerializer.SerializeToElement(new { status }), confirm), _contextCancellation.Token);
+        if (workspace != WorkspaceId || account != _accountId) return;
+        _feedback = result.IsSuccess ? "Status configurado atualizado na Meta. A veiculação depende do estado efetivo e da aprovação." : result.Error.Description;
+    });
+    private static string Text(JsonElement element, string field) => element.TryGetProperty(field, out var value) ? value.ToString() : "—";
+    private static string Number(decimal? value) => value?.ToString("N2") ?? "—";
+    private static string? NullIfEmpty(string value) => value.Length == 0 ? null : value;
+    private static string ResourceName(string resource) => resource switch { "campaigns" => "campanha", "adsets" => "conjunto", "ads" => "anúncio", _ => "criativo" };
+    private static string[] OptimizationGoals(string objective) => objective switch { "OUTCOME_AWARENESS" => ["REACH", "IMPRESSIONS"], "OUTCOME_ENGAGEMENT" => ["POST_ENGAGEMENT"], "OUTCOME_LEADS" => ["LEAD_GENERATION", "OFFSITE_CONVERSIONS"], "OUTCOME_SALES" => ["OFFSITE_CONVERSIONS"], "OUTCOME_APP_PROMOTION" => ["APP_INSTALLS"], _ => ["LINK_CLICKS", "LANDING_PAGE_VIEWS"] };
+    private sealed record Activation(string Resource, string Id, string Name);
+    private sealed class CardData { 
+        /// <summary>Imagem do cartão.</summary>
+        public string ImageHash { get; set; } = ""; 
+        /// <summary>Título do cartão.</summary>
+        public string Title { get; set; } = ""; 
+        /// <summary>URL de destino.</summary>
+        public string Link { get; set; } = ""; }
+    private sealed class FormData
+    {
+        /// <summary>Indica restrições de categoria especial da campanha pai.</summary>
+        public bool Restricted { get; set; }
+        /// <summary>Idade mínima quando elegível.</summary>
+        public int? MinAge { get; set; }
+        /// <summary>Idade máxima quando elegível.</summary>
+        public int? MaxAge { get; set; }
+        /// <summary>Gênero quando elegível.</summary>
+        public string Gender { get; set; } = "";
+        /// <summary>Interesses encontrados na busca oficial.</summary>
+        public HashSet<string> Interests { get; } = new();
+        /// <summary>Idiomas encontrados na busca oficial.</summary>
+        public HashSet<long> Locales { get; } = new();
+        /// <summary>Público excluído autorizado.</summary>
+        public string ExcludedAudienceId { get; set; } = "";
+        /// <summary>Identidade Instagram autorizada.</summary>
+        public string InstagramUserId { get; set; } = "";
+        
+        /// <summary>Nome do recurso.</summary>
+        public string Name { get; set; } = ""; 
+        /// <summary>Objetivo publicitário selecionado.</summary>
+        public string Objective { get; set; } = "OUTCOME_TRAFFIC"; 
+        /// <summary>Categoria especial declarada.</summary>
+        public string SpecialCategory { get; set; } = "";
+        
+        /// <summary>Orçamento diário na moeda da conta.</summary>
+        public decimal? DailyBudget { get; set; } 
+        /// <summary>Objetivo de otimização.</summary>
+        public string OptimizationGoal { get; set; } = "LINK_CLICKS"; 
+        /// <summary>Países da segmentação.</summary>
+        public string Countries { get; set; } = "BR";
+        
+        /// <summary>Estratégia de posicionamento.</summary>
+        public string Placement { get; set; } = "automatic"; 
+        /// <summary>Pixel autorizado.</summary>
+        public string PixelId { get; set; } = ""; 
+        /// <summary>Evento de conversão.</summary>
+        public string ConversionEvent { get; set; } = "PURCHASE";
+        
+        /// <summary>Aplicativo promovido.</summary>
+        public string ApplicationId { get; set; } = ""; 
+        /// <summary>Destino na loja de aplicativos.</summary>
+        public string StoreUrl { get; set; } = ""; 
+        /// <summary>Público selecionado.</summary>
+        public string AudienceId { get; set; } = "";
+        
+        /// <summary>Início UTC.</summary>
+        public DateTime? StartUtc { get; set; } 
+        /// <summary>Fim UTC.</summary>
+        public DateTime? EndUtc { get; set; } 
+        /// <summary>Criativo associado.</summary>
+        public string CreativeId { get; set; } = "";
+        
+        /// <summary>Formato da mídia.</summary>
+        public string Format { get; set; } = "image"; 
+        /// <summary>Identificador da mídia enviada.</summary>
+        public string MediaId { get; set; } = ""; 
+        /// <summary>Página autorizada.</summary>
+        public string PageId { get; set; } = ""; 
+        /// <summary>Miniatura do vídeo.</summary>
+        public string ThumbnailUrl { get; set; } = "";
+        
+        /// <summary>Texto principal.</summary>
+        public string Body { get; set; } = ""; 
+        /// <summary>Título publicitário.</summary>
+        public string Headline { get; set; } = ""; 
+        /// <summary>Descrição do criativo.</summary>
+        public string Description { get; set; } = ""; 
+        /// <summary>URL de destino.</summary>
+        public string Link { get; set; } = ""; 
+        /// <summary>Chamada para ação.</summary>
+        public string Cta { get; set; } = "LEARN_MORE"; 
+        /// <summary>Parâmetros de rastreamento.</summary>
+        public string UrlTags { get; set; } = "";
+        
+        /// <summary>Cartões do carrossel.</summary>
+        public List<CardData> Cards { get; } = new() { new(), new() };
+    }
+    /// <inheritdoc />
+    public void Dispose() { _contextCancellation.Cancel(); _contextCancellation.Dispose(); }
+}

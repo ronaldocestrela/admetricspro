@@ -14,17 +14,20 @@ public sealed class BulkCampaignClientService : IBulkCampaignClientService
 {
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
+    private readonly ITenantSessionStateProvider? _session;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="BulkCampaignClientService"/>.
     /// </summary>
     /// <param name="httpClient">Cliente HTTP configurado.</param>
+    /// <param name="session">Sessão autenticada para chamadas de integração.</param>
     /// <param name="tenantStateProvider">Provedor de estado do inquilino na sessão.</param>
-    public BulkCampaignClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider)
+    public BulkCampaignClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _session = session;
     }
 
     /// <inheritdoc />

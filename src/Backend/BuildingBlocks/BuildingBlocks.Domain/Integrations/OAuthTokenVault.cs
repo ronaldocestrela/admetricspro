@@ -9,6 +9,12 @@ namespace BuildingBlocks.Domain.Integrations;
 /// </summary>
 public sealed class OAuthTokenVault : Entity<Guid>
 {
+    /// <summary>Identifica o contexto criptográfico da credencial sem incluir tokens ou chaves.</summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="connectionId">Cofre da conexão.</param>
+    /// <param name="platform">Plataforma canônica.</param>
+    /// <returns>Finalidade autenticada do ciphertext.</returns>
+    public static string EncryptionPurpose(Guid workspaceId, Guid connectionId, string platform) => $"{platform}:{workspaceId:D}:{connectionId:D}";
     private OAuthTokenVault(
         Guid id,
         Guid workspaceId,
@@ -252,6 +258,8 @@ public sealed class OAuthTokenVault : Entity<Guid>
     public void Revoke()
     {
         Status = OAuthConnectionStatus.Revoked;
+        EncryptedAccessToken = string.Empty;
+        EncryptedRefreshToken = null;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
@@ -263,4 +271,22 @@ public sealed class OAuthTokenVault : Entity<Guid>
         Status = OAuthConnectionStatus.Expired;
         UpdatedAtUtc = DateTime.UtcNow;
     }
+
+    /// <summary>Atualiza a identidade autorizadora e os escopos efetivamente concedidos após reconexão.</summary>
+    /// <param name="authorizerId">ID do usuário Meta que concedeu acesso.</param>
+    /// <param name="authorizerName">Nome do autorizador.</param>
+    /// <param name="scopes">Escopos concedidos.</param>
+    public void UpdateAuthorization(string? authorizerId, string? authorizerName, string scopes)
+    {
+        ExternalAccountId = authorizerId ?? "default";
+        ExternalAccountName = authorizerName ?? Platform;
+        Scopes = scopes;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Exige seleção explícita de contas após conexão ou reconexão Meta.</summary>
+    public void AwaitAccountSelection() { Status = "AwaitingAccountSelection"; UpdatedAtUtc = DateTime.UtcNow; }
+
+    /// <summary>Confirma que a autorização possui contas selecionadas.</summary>
+    public void Activate() { Status = OAuthConnectionStatus.Active; UpdatedAtUtc = DateTime.UtcNow; }
 }

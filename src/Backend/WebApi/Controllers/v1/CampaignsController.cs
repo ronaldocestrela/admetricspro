@@ -14,6 +14,7 @@ namespace WebApi.Controllers.v1;
 /// Controlador responsável pela gestão estrutural de campanhas, conjuntos de anúncios e criativos sincronizados
 /// das plataformas de mídia paga (Meta Ads, Google Ads, TikTok Ads e Bing Ads).
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/integrations/[controller]")]
 public sealed class CampaignsController : ControllerBase

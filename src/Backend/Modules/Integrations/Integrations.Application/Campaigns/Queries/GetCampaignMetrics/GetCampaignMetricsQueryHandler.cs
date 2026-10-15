@@ -76,8 +76,8 @@ public sealed class GetCampaignMetricsQueryHandler : IQueryHandler<GetCampaignMe
             Ctr: m.Ctr,
             Cpc: m.Cpc,
             Cpm: m.Cpm,
-            Cpa: m.Cpa,
-            Roas: m.Roas,
+            Cpa: m.Platform == "MetaAds" && m.Conversions == 0 ? null : m.Cpa,
+            Roas: m.Platform == "MetaAds" && m.ConversionValue == 0 ? null : m.Roas,
             SyncedAtUtc: m.SyncedAtUtc)).ToList();
 
         return Result<IReadOnlyList<CampaignMetricDto>>.Success(dtos);

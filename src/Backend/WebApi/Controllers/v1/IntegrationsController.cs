@@ -12,6 +12,7 @@ namespace WebApi.Controllers.v1;
 /// <summary>
 /// Controlador responsável pela gestão de integrações e contas de anúncios conectadas ao inquilino.
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/[controller]")]
 public sealed class IntegrationsController : ControllerBase

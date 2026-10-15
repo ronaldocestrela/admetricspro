@@ -14,6 +14,14 @@ namespace UnitTests.Backend.Integrations;
 /// </summary>
 public sealed class IntegrationsMutationCommandHandlersTests
 {
+    /// <summary>Configura contas demonstrativas para testes das mutações locais.</summary>
+    public IntegrationsMutationCommandHandlersTests()
+    {
+        _hierarchyRepository.GetAccountsForSyncAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), "MetaAds", Arg.Any<CancellationToken>())
+            .Returns(call => new[] { BuildingBlocks.Domain.Tenants.ConnectedAdAccount.Create(call.ArgAt<Guid?>(1)!.Value,
+                call.ArgAt<Guid>(0), "MetaAds", "demo", "Demonstração", isDemo: true).Value });
+    }
+
     private readonly ICampaignHierarchyRepository _hierarchyRepository = Substitute.For<ICampaignHierarchyRepository>();
     private readonly IIntegrationsUnitOfWork _unitOfWork = Substitute.For<IIntegrationsUnitOfWork>();
     private readonly Guid _workspaceId = Guid.NewGuid();
@@ -39,7 +47,7 @@ public sealed class IntegrationsMutationCommandHandlersTests
         _hierarchyRepository.GetCampaignByIdAsync(campaignId, Arg.Any<CancellationToken>())
             .Returns(campaign);
 
-        var handler = new PauseCampaignCommandHandler(_hierarchyRepository, _unitOfWork);
+        var handler = new PauseCampaignCommandHandler(_hierarchyRepository, _unitOfWork, NSubstitute.Substitute.For<MediatR.ISender>());
         var command = new PauseCampaignCommand(_workspaceId, campaignId, "Alarme de CPA");
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -59,7 +67,7 @@ public sealed class IntegrationsMutationCommandHandlersTests
         _hierarchyRepository.GetCampaignByIdAsync(campaignId, Arg.Any<CancellationToken>())
             .Returns((Campaign?)null);
 
-        var handler = new PauseCampaignCommandHandler(_hierarchyRepository, _unitOfWork);
+        var handler = new PauseCampaignCommandHandler(_hierarchyRepository, _unitOfWork, NSubstitute.Substitute.For<MediatR.ISender>());
         var command = new PauseCampaignCommand(_workspaceId, campaignId);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -89,7 +97,7 @@ public sealed class IntegrationsMutationCommandHandlersTests
         _hierarchyRepository.GetCampaignByIdAsync(campaignId, Arg.Any<CancellationToken>())
             .Returns(campaign);
 
-        var handler = new AdjustCampaignBudgetCommandHandler(_hierarchyRepository, _unitOfWork);
+        var handler = new AdjustCampaignBudgetCommandHandler(_hierarchyRepository, _unitOfWork, NSubstitute.Substitute.For<MediatR.ISender>());
         // Reduz em 20% (-20%)
         var command = new AdjustCampaignBudgetCommand(_workspaceId, campaignId, PercentageChange: -20m);
 

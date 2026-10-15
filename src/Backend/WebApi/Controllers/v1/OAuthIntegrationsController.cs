@@ -15,6 +15,7 @@ namespace WebApi.Controllers.v1;
 /// Controlador responsável pelo Hub de Integrações OAuth2 com gerenciadores de anúncios (Meta, Google, Bing, TikTok)
 /// e gerenciamento de credenciais cifradas no Token Vault.
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/integrations/oauth")]
 public sealed class OAuthIntegrationsController : ControllerBase
@@ -69,6 +70,7 @@ public sealed class OAuthIntegrationsController : ControllerBase
     /// Processa o retorno da plataforma de anúncios após consentimento do usuário, troca o código por tokens e cifra em AES-256 no vault.
     /// </summary>
     /// <param name="code">Código de autorização retornado pela rede externa.</param>
+    /// <param name="error">Negativa de autorização retornada pela plataforma.</param>
     /// <param name="state">Estado assinado anti-CSRF.</param>
     /// <param name="redirectUri">URI de retorno utilizada.</param>
     /// <param name="cancellationToken">Token de cancelamento.</param>
@@ -79,12 +81,13 @@ public sealed class OAuthIntegrationsController : ControllerBase
     [ProducesResponseType(typeof(Result<OAuthConnectionStatusDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Result<OAuthConnectionStatusDto>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<Result<OAuthConnectionStatusDto>>> HandleOAuthCallback(
-        [FromQuery] string code,
+        [FromQuery] string? code,
         [FromQuery] string state,
         [FromQuery] string redirectUri,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        [FromQuery] string? error = null)
     {
-        var command = new HandleOAuthCallbackCommand(code, state, redirectUri);
+        var command = new HandleOAuthCallbackCommand(code ?? string.Empty, state, redirectUri, error);
         var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)

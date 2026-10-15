@@ -16,6 +16,14 @@ namespace UnitTests.Backend.Integrations.Campaigns;
 /// </summary>
 public sealed class BulkCampaignOperationCommandHandlerTests
 {
+    /// <summary>Configura contas demonstrativas para testes das mutações locais.</summary>
+    public BulkCampaignOperationCommandHandlerTests()
+    {
+        _hierarchyRepository.GetAccountsForSyncAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), "MetaAds", Arg.Any<CancellationToken>())
+            .Returns(call => new[] { BuildingBlocks.Domain.Tenants.ConnectedAdAccount.Create(call.ArgAt<Guid?>(1)!.Value,
+                call.ArgAt<Guid>(0), "MetaAds", "demo", "Demonstração", isDemo: true).Value });
+    }
+
     private readonly ICampaignHierarchyRepository _hierarchyRepository = Substitute.For<ICampaignHierarchyRepository>();
     private readonly IIntegrationsUnitOfWork _unitOfWork = Substitute.For<IIntegrationsUnitOfWork>();
     private readonly Guid _workspaceId = Guid.NewGuid();
@@ -84,7 +92,7 @@ public sealed class BulkCampaignOperationCommandHandlerTests
             }
         }
 
-        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork);
+        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork, NSubstitute.Substitute.For<MediatR.ISender>());
         var command = new BulkCampaignOperationCommand(_workspaceId, operations);
 
         // Act
@@ -203,7 +211,7 @@ public sealed class BulkCampaignOperationCommandHandlerTests
             new(camp5Id, BulkCampaignActionType.Activate)
         };
 
-        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork);
+        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork, NSubstitute.Substitute.For<MediatR.ISender>());
         var command = new BulkCampaignOperationCommand(_workspaceId, operations);
 
         // Act
@@ -239,7 +247,7 @@ public sealed class BulkCampaignOperationCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WhenOperationsListIsEmpty()
     {
-        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork);
+        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork, NSubstitute.Substitute.For<MediatR.ISender>());
         var command = new BulkCampaignOperationCommand(_workspaceId, Array.Empty<BulkCampaignOperationItem>());
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -256,7 +264,7 @@ public sealed class BulkCampaignOperationCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WhenWorkspaceIdIsEmpty()
     {
-        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork);
+        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork, NSubstitute.Substitute.For<MediatR.ISender>());
         var command = new BulkCampaignOperationCommand(Guid.Empty, new[]
         {
             new BulkCampaignOperationItem(Guid.NewGuid(), BulkCampaignActionType.Pause)
@@ -276,7 +284,7 @@ public sealed class BulkCampaignOperationCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WhenBatchSizeExceedsMaximumLimit()
     {
-        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork);
+        var handler = new BulkCampaignOperationCommandHandler(_hierarchyRepository, _unitOfWork, NSubstitute.Substitute.For<MediatR.ISender>());
         var operations = Enumerable.Range(1, 101)
             .Select(_ => new BulkCampaignOperationItem(Guid.NewGuid(), BulkCampaignActionType.Pause))
             .ToList();

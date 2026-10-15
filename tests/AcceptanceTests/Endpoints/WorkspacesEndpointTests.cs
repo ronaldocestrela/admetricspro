@@ -8,6 +8,11 @@ using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Tenants.Application.Persistence;
 using Tenants.Application.Workspaces.Repositories;
 using WebApi.Models;
@@ -46,8 +51,12 @@ public sealed class WorkspacesEndpointTests : IClassFixture<WebApplicationFactor
 
         var client = _factory.WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            { ["TenantJwt:SecretKey"] = JwtTestKey }));
             builder.ConfigureServices(services =>
             {
+                services.AddScoped<Tenants.Application.Rbac.Services.IPermissionEvaluator, TestPermissionEvaluator>();
+                services.AddScoped<Tenants.Application.Squads.Services.IUserPortfolioService, TestPortfolio>();
                 services.AddScoped<IWorkspaceRepository>(_ => fakeRepo);
                 services.AddScoped<ITenantUnitOfWork>(_ => fakeUow);
                 services.AddScoped<IRequestHandler<GetTenantPlanLimitsQuery, Result<TenantPlanLimitsDto>>>(_ => fakeLimitsHandler);
@@ -55,6 +64,7 @@ public sealed class WorkspacesEndpointTests : IClassFixture<WebApplicationFactor
         }).CreateClient();
 
         client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        client.DefaultRequestHeaders.Authorization = new("Bearer", CreateJwt());
 
         var request = new CreateWorkspaceApiRequest("Cliente Beta LTDA", ValidCpf, 5000m, "E-commerce");
 
@@ -95,8 +105,12 @@ public sealed class WorkspacesEndpointTests : IClassFixture<WebApplicationFactor
 
         var client = _factory.WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            { ["TenantJwt:SecretKey"] = JwtTestKey }));
             builder.ConfigureServices(services =>
             {
+                services.AddScoped<Tenants.Application.Rbac.Services.IPermissionEvaluator, TestPermissionEvaluator>();
+                services.AddScoped<Tenants.Application.Squads.Services.IUserPortfolioService, TestPortfolio>();
                 services.AddScoped<IWorkspaceRepository>(_ => fakeRepo);
                 services.AddScoped<ITenantUnitOfWork>(_ => fakeUow);
                 services.AddScoped<IRequestHandler<GetTenantPlanLimitsQuery, Result<TenantPlanLimitsDto>>>(_ => fakeLimitsHandler);
@@ -104,6 +118,7 @@ public sealed class WorkspacesEndpointTests : IClassFixture<WebApplicationFactor
         }).CreateClient();
 
         client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        client.DefaultRequestHeaders.Authorization = new("Bearer", CreateJwt());
 
         var request = new CreateWorkspaceApiRequest("Cliente Excedente", ValidCpf, 5000m, "Varejo");
 
@@ -129,13 +144,18 @@ public sealed class WorkspacesEndpointTests : IClassFixture<WebApplicationFactor
 
         var client = _factory.WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            { ["TenantJwt:SecretKey"] = JwtTestKey }));
             builder.ConfigureServices(services =>
             {
+                services.AddScoped<Tenants.Application.Rbac.Services.IPermissionEvaluator, TestPermissionEvaluator>();
+                services.AddScoped<Tenants.Application.Squads.Services.IUserPortfolioService, TestPortfolio>();
                 services.AddScoped<IWorkspaceRepository>(_ => fakeRepo);
             });
         }).CreateClient();
 
         client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        client.DefaultRequestHeaders.Authorization = new("Bearer", CreateJwt());
 
         // Act
         var response = await client.GetAsync("/api/v1/workspaces");
@@ -157,19 +177,46 @@ public sealed class WorkspacesEndpointTests : IClassFixture<WebApplicationFactor
 
         var client = _factory.WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            { ["TenantJwt:SecretKey"] = JwtTestKey }));
             builder.ConfigureServices(services =>
             {
+                services.AddScoped<Tenants.Application.Rbac.Services.IPermissionEvaluator, TestPermissionEvaluator>();
+                services.AddScoped<Tenants.Application.Squads.Services.IUserPortfolioService, TestPortfolio>();
                 services.AddScoped<IWorkspaceRepository>(_ => fakeRepo);
             });
         }).CreateClient();
 
         client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        client.DefaultRequestHeaders.Authorization = new("Bearer", CreateJwt());
 
         // Act
         var response = await client.GetAsync($"/api/v1/workspaces/{Guid.NewGuid()}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private const string JwtTestKey = "workspaces-only-test-jwt-key-minimum-32-characters";
+    private static string CreateJwt() => new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
+        issuer: "AdMetricsPro.Tenants", audience: "AdMetricsPro.ClientApp",
+        claims: [new Claim("sub", Guid.NewGuid().ToString()), new Claim("tenant_id", TestTenantId.ToString())],
+        expires: DateTime.UtcNow.AddMinutes(10), signingCredentials: new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtTestKey)), SecurityAlgorithms.HmacSha256)));
+
+    private sealed class TestPermissionEvaluator : Tenants.Application.Rbac.Services.IPermissionEvaluator
+    {
+        public Task<Result<bool>> HasPermissionAsync(Guid userId, BuildingBlocks.Domain.Tenants.TenantPermission permission,
+            Tenants.Application.Rbac.Models.PermissionContext? context = null, CancellationToken cancellationToken = default) => Task.FromResult(Result<bool>.Success(true));
+        public IReadOnlySet<BuildingBlocks.Domain.Tenants.TenantPermission> GetPermissionsForRole(BuildingBlocks.Domain.Tenants.TenantRole role) => new HashSet<BuildingBlocks.Domain.Tenants.TenantPermission>();
+        public Task<Result<IReadOnlySet<BuildingBlocks.Domain.Tenants.TenantPermission>>> GetPermissionsForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<IReadOnlySet<BuildingBlocks.Domain.Tenants.TenantPermission>>.Success(new HashSet<BuildingBlocks.Domain.Tenants.TenantPermission>()));
+    }
+    private sealed class TestPortfolio(IWorkspaceRepository workspaces) : Tenants.Application.Squads.Services.IUserPortfolioService
+    {
+        public Task<Result<bool>> HasAccessToWorkspaceAsync(Guid userId, Guid workspaceId, CancellationToken cancellationToken = default) => Task.FromResult(Result<bool>.Success(true));
+        public async Task<Result<IReadOnlyList<Guid>>> GetAccessibleWorkspaceIdsAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            Result<IReadOnlyList<Guid>>.Success((await workspaces.GetAllAsync(cancellationToken: cancellationToken)).Select(w => w.Id).ToArray());
     }
 
     private sealed class FakeWorkspaceRepository : IWorkspaceRepository

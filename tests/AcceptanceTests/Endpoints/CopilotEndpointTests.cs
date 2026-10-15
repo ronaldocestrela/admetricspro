@@ -27,10 +27,10 @@ public sealed class CopilotEndpointTests : IClassFixture<WebApplicationFactory<P
     }
 
     /// <summary>
-    /// Valida que a consulta de diagnóstico sem identificação de tenant retorna 400 com envelope Result estruturado em JSON.
+    /// Valida que a consulta de diagnóstico sem autenticação retorna 401 com envelope Result estruturado em JSON.
     /// </summary>
     [Fact]
-    public async Task GetCopilotDiagnostic_WithoutTenantHeader_ShouldReturnBadRequestWithResultJson()
+    public async Task GetCopilotDiagnostic_WithoutAuthentication_ShouldReturnUnauthorizedWithResultJson()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -40,18 +40,18 @@ public sealed class CopilotEndpointTests : IClassFixture<WebApplicationFactory<P
         var response = await client.GetAsync($"/api/v1/analytics/copilot/diagnostic?workspaceId={workspaceId}");
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         var envelope = await response.Content.ReadFromJsonAsync<Result<DailyDiagnosticReportDto>>(JsonOptions);
         envelope.Should().NotBeNull();
         envelope!.IsFailure.Should().BeTrue();
-        envelope.Error.Code.Should().Be("Tenant.ContextNotResolved");
+        envelope.Error.Code.Should().Be("Auth.Unauthorized");
     }
 
     /// <summary>
-    /// Valida que a consulta de diagnóstico com WorkspaceId vazio retorna 400 com envelope Result estruturado em JSON.
+    /// Valida que a consulta de diagnóstico sem autenticação e com WorkspaceId vazio retorna 401 com envelope Result estruturado em JSON.
     /// </summary>
     [Fact]
-    public async Task GetCopilotDiagnostic_WithEmptyWorkspace_ShouldReturnBadRequestWithResultJson()
+    public async Task GetCopilotDiagnostic_WithEmptyWorkspaceWithoutAuthentication_ShouldReturnUnauthorizedWithResultJson()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -61,10 +61,10 @@ public sealed class CopilotEndpointTests : IClassFixture<WebApplicationFactory<P
         var response = await client.GetAsync($"/api/v1/analytics/copilot/diagnostic?workspaceId={Guid.Empty}");
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         var envelope = await response.Content.ReadFromJsonAsync<Result<DailyDiagnosticReportDto>>(JsonOptions);
         envelope.Should().NotBeNull();
         envelope!.IsFailure.Should().BeTrue();
-        envelope.Error.Code.Should().Be("Copilot.InvalidWorkspaceId");
+        envelope.Error.Code.Should().Be("Auth.Unauthorized");
     }
 }

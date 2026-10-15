@@ -13,12 +13,22 @@ namespace UnitTests.Backend.Integrations.OAuth;
 /// </summary>
 public sealed class MetaAdsOAuthAdapterTests
 {
+    /// <summary>White-label pode usar callbacks adicionais explícitos, sem aceitar URI arbitrária.</summary>
+    [Fact]
+    public void ValidateAuthorization_AllowsOnlyConfiguredCallbacks()
+    {
+        _options.AdditionalRedirectUris = new[] { "https://cliente.example/integrations" };
+        var adapter = new MetaAdsOAuthAdapter(new HttpClient(), Options.Create(_options));
+        adapter.ValidateAuthorization("https://cliente.example/integrations").IsSuccess.Should().BeTrue();
+        adapter.ValidateAuthorization("https://attacker.example/integrations").IsFailure.Should().BeTrue();
+    }
     private readonly MetaAdsOAuthOptions _options = new()
     {
         AppId = "meta_app_12345",
         AppSecret = "meta_secret_67890",
         DefaultScopes = "ads_read,ads_management,read_insights",
-        GraphApiVersion = "v21.0"
+        GraphApiVersion = "v21.0",
+        RedirectUri = "https://app.admetricspro.com/callback"
     };
 
     /// <summary>
@@ -52,6 +62,9 @@ public sealed class MetaAdsOAuthAdapterTests
         var handler = new TestHttpMessageHandler((request, _) =>
         {
             var uri = request.RequestUri!.ToString();
+
+            if (uri.Contains("debug_token"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{"data":{"is_valid":true,"app_id":"meta_app_12345","user_id":"100020003000","scopes":["ads_read","ads_management"]}}""") };
 
             if (uri.Contains("grant_type=fb_exchange_token"))
             {
@@ -143,14 +156,14 @@ public sealed class MetaAdsOAuthAdapterTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("MetaAds.OAuthFailed");
-        result.Error.Description.Should().Contain("This authorization code has been used.");
+        result.Error.Description.Should().NotContain("This authorization code has been used.");
     }
 
     /// <summary>
     /// Valida renovação preventiva de token estendendo para novos 60 dias.
     /// </summary>
     [Fact]
-    public async Task RefreshTokenAsync_DeveEstenderValidadeDoToken()
+    public async Task RefreshTokenAsync_DeveExigirReautorizacao()
     {
         // Arrange
         var handler = new TestHttpMessageHandler((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
@@ -172,8 +185,7 @@ public sealed class MetaAdsOAuthAdapterTests
         var result = await adapter.RefreshTokenAsync("current_token");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.AccessToken.Should().Be("EAABb123RefreshedLongLivedToken");
-        result.Value.AccessTokenExpiresAtUtc!.Value.Should().BeAfter(DateTime.UtcNow.AddDays(55));
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Meta.ReauthorizationRequired");
     }
 }

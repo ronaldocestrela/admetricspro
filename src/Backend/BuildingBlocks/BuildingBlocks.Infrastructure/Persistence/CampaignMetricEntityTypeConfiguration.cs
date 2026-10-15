@@ -70,7 +70,7 @@ public sealed class CampaignMetricEntityTypeConfiguration : IEntityTypeConfigura
             m.Date,
             m.Hour,
             m.Granularity
-        }).IsUnique();
+        }).IsUnique().HasFilter(null);
 
         builder.Property(m => m.Spend)
             .HasPrecision(18, 4)

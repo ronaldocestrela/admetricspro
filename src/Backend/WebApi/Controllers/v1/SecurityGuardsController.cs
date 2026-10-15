@@ -13,6 +13,7 @@ namespace WebApi.Controllers.v1;
 /// <summary>
 /// Controlador responsável pelas travas de segurança operacional (Overspending e Detector de links 404/500).
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/automations/guards")]
 public sealed class SecurityGuardsController : ControllerBase

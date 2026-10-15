@@ -177,7 +177,7 @@
                 @foreach (var platform in StandardPlatforms)
                 {
                     var connection = _connections.FirstOrDefault(c => string.Equals(c.Platform, platform.Key, StringComparison.OrdinalIgnoreCase));
-                    var isConnected = connection != null && string.Equals(connection.Status, "Active", StringComparison.OrdinalIgnoreCase);
+                    var isConnected = connection != null && (string.Equals(connection.Status, "Active", StringComparison.OrdinalIgnoreCase) || connection.Status == "AwaitingAccountSelection");
                     var status = ResolvePlatformStatus(connection);
 
                     <div class="platform-card @platform.BrandColorClass @(isConnected ? "is-connected" : "is-disconnected")"
@@ -205,7 +205,7 @@
                             {
                                 <div class="connection-details">
                                     <div class="detail-item">
-                                        <span class="detail-title">Conta Vinculada:</span>
+                                        <span class="detail-title">@(platform.Key == "MetaAds" ? "Autorizado por:" : "Conta Vinculada:")</span>
                                         <span class="detail-text fw-bold text-truncate" title="@(connection.ExternalAccountName ?? connection.ExternalAccountId)">
                                             @(connection.ExternalAccountName ?? connection.ExternalAccountId ?? "Conta Conectada")
                                         </span>
@@ -256,6 +256,12 @@
                         </div>
 
                         <div class="card-actions">
+                            @if (platform.Key == "MetaAds" && isConnected)
+                            {
+                                <a class="btn btn-outline-primary btn-sm" href="@($"/workspaces/{_selectedWorkspaceId}/meta")">Gerenciar anúncios</a>
+                                <button class="btn btn-outline-primary btn-sm" data-testid="btn-meta-accounts"
+                                        disabled="@_isMetaBusy" @onclick="LoadMetaAccountsAsync">Selecionar contas de anúncios</button>
+                            }
                             @if (isConnected)
                             {
                                 <button class="btn btn-outline-danger btn-sm w-100"
@@ -297,6 +303,30 @@
                     </div>
                 }
             </div>
+            @if (_metaAccountsWorkspaceId == _selectedWorkspaceId && _metaAccountsLoaded)
+            {
+                <section class="card p-3 mt-3" data-testid="meta-account-selector">
+                    <h3>Contas de anúncios deste cliente</h3>
+                    <p>Selecione as contas que pertencem a este workspace. A autorização será verificada novamente ao salvar.</p>
+                    @foreach (var account in _metaAccounts)
+                    {
+                        <label class="d-block mb-2" @key="account.Id">
+                            <input type="checkbox" data-testid="meta-account-@account.Id" checked="@_selectedMetaAccountIds.Contains(account.Id)"
+                                   disabled="@_isMetaBusy" @onchange="e => ToggleMetaAccount(account.Id, e.Value is true)" />
+                            @account.Name — @account.Id · @account.Currency · @account.TimeZone
+                        </label>
+                    }
+                    @if (_metaAccounts.Count == 0) { <p>Nenhuma conta de anúncios acessível por esta autorização.</p> }
+                    <button class="btn btn-primary btn-sm" disabled="@(_isMetaBusy || _selectedMetaAccountIds.Count == 0)" @onclick="SaveMetaAccountsAsync">Vincular contas selecionadas</button>
+                    @foreach (var account in _linkedMetaAccounts.Where(a => a.Status == "Connected"))
+                    {
+                        <div class="d-flex justify-content-between mt-2" @key="account.Id">
+                            <span>@account.AccountName · @account.ExternalAccountId</span>
+                            <button class="btn btn-outline-danger btn-sm" disabled="@_isMetaBusy" @onclick="() => UnlinkMetaAccountAsync(account.Id)">Desvincular deste cliente</button>
+                        </div>
+                    }
+                </section>
+            }
 
             <!-- Painel Informativo sobre o Pipeline de Ingestão da Fase 2 -->
             <div class="pipeline-info-card mt-4">
@@ -390,6 +420,19 @@
     [SupplyParameterFromQuery(Name = "state")]
     public string? State { get; set; }
 
+    /// <summary>Negativa de consentimento devolvida pela Meta.</summary>
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? ProviderError { get; set; }
+
+    private bool _callbackProcessing;
+    private bool _callbackProcessed;
+    private bool _isMetaBusy;
+    private bool _metaAccountsLoaded;
+    private Guid _metaAccountsWorkspaceId;
+    private List<global::Integrations.Domain.Meta.MetaAdAccount> _metaAccounts = new();
+    private HashSet<string> _selectedMetaAccountIds = new(StringComparer.Ordinal);
+    private List<global::Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto> _linkedMetaAccounts = new();
+
     private List<WorkspaceDto> _workspaces = new();
     private Guid _selectedWorkspaceId;
     private List<OAuthConnectionStatusDto> _connections = new();
@@ -430,7 +473,7 @@
         await LoadWorkspacesAsync();
 
         // Processa callback OAuth se retornou com code e state
-        if (!string.IsNullOrEmpty(Code) && !string.IsNullOrEmpty(State))
+        if (TenantSessionStateProvider.IsAuthenticated && !string.IsNullOrEmpty(State))
         {
             await ProcessOAuthCallbackAsync();
         }
@@ -451,6 +494,7 @@
                     await InvokeAsync(StateHasChanged);
                 }
             }
+            if (TenantSessionStateProvider.IsAuthenticated) await ProcessOAuthCallbackAsync();
         }
     }
 
@@ -521,6 +565,13 @@
 
     private async Task LoadConnectionsAsync()
     {
+        if (_metaAccountsWorkspaceId != _selectedWorkspaceId)
+        {
+            _metaAccountsLoaded = false;
+            _metaAccounts.Clear();
+            _linkedMetaAccounts.Clear();
+            _selectedMetaAccountIds.Clear();
+        }
         if (_selectedWorkspaceId == Guid.Empty)
         {
             _isLoadingConnections = false;
@@ -659,14 +710,20 @@
 
     private async Task ProcessOAuthCallbackAsync()
     {
-        if (string.IsNullOrEmpty(Code) || string.IsNullOrEmpty(State)) return;
+        if (_callbackProcessing || _callbackProcessed || !TenantSessionStateProvider.IsAuthenticated || string.IsNullOrEmpty(State) ||
+            (string.IsNullOrEmpty(Code) && string.IsNullOrEmpty(ProviderError))) return;
+        _callbackProcessing = true;
 
         var redirectUri = Navigation.BaseUri.TrimEnd('/') + "/integrations";
-        var result = await OAuthClient.HandleOAuthCallbackAsync(Code, State, redirectUri);
+        var result = await OAuthClient.HandleOAuthCallbackAsync(Code ?? string.Empty, State, redirectUri, providerError: ProviderError);
+        _callbackProcessed = true;
+        _callbackProcessing = false;
 
         if (result.IsSuccess)
         {
-            _feedbackMessage = $"Conexão com {result.Value.Platform} estabelecida com sucesso no Token Vault!";
+            _selectedWorkspaceId = result.Value.WorkspaceId;
+            await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(_selectedWorkspaceId, _workspaces.FirstOrDefault(w => w.Id == _selectedWorkspaceId)?.Name);
+            _feedbackMessage = result.Value.Platform == "MetaAds" ? "Meta autorizada. Selecione as contas de anúncios deste cliente." : $"Conexão com {result.Value.Platform} estabelecida com sucesso!";
             _isSuccessFeedback = true;
             await LoadConnectionsAsync();
         }
@@ -675,10 +732,69 @@
             _feedbackMessage = $"Falha no processamento de autorização: {result.Error.Description}";
             _isSuccessFeedback = false;
         }
+        Navigation.NavigateTo("/integrations", replace: true);
+    }
+
+    private void ToggleMetaAccount(string id, bool selected)
+    { if (selected) _selectedMetaAccountIds.Add(id); else _selectedMetaAccountIds.Remove(id); }
+
+    private async Task LoadMetaAccountsAsync()
+    {
+        var workspaceId = _selectedWorkspaceId;
+        _isMetaBusy = true;
+        try
+        {
+            var available = await OAuthClient.GetMetaAdAccountsAsync(workspaceId);
+            var linked = await OAuthClient.GetLinkedAdAccountsAsync(workspaceId);
+            if (_selectedWorkspaceId != workspaceId) return;
+            if (available.IsFailure || linked.IsFailure)
+            {
+                _feedbackMessage = available.IsFailure ? available.Error.Description : linked.Error.Description;
+                _isSuccessFeedback = false;
+                return;
+            }
+            _metaAccountsWorkspaceId = workspaceId;
+            _metaAccountsLoaded = true;
+            _metaAccounts = available.Value.ToList();
+            _linkedMetaAccounts = linked.Value.Where(a => a.Platform == "MetaAds" && !a.IsDemo).ToList();
+            _selectedMetaAccountIds = _linkedMetaAccounts.Where(a => a.Status == "Connected").Select(a => a.ExternalAccountId).ToHashSet(StringComparer.Ordinal);
+        }
+        finally { _isMetaBusy = false; }
+    }
+
+    private async Task SaveMetaAccountsAsync()
+    {
+        var workspaceId = _selectedWorkspaceId;
+        _isMetaBusy = true;
+        try
+        {
+            var result = await OAuthClient.SelectMetaAdAccountsAsync(workspaceId, _selectedMetaAccountIds.ToArray());
+            if (_selectedWorkspaceId != workspaceId) return;
+            _feedbackMessage = result.IsSuccess ? "Contas vinculadas a este cliente." : result.Error.Description;
+            _isSuccessFeedback = result.IsSuccess;
+            if (result.IsSuccess) { await LoadConnectionsAsync(); await LoadMetaAccountsAsync(); }
+        }
+        finally { _isMetaBusy = false; }
+    }
+
+    private async Task UnlinkMetaAccountAsync(Guid accountId)
+    {
+        var workspaceId = _selectedWorkspaceId;
+        _isMetaBusy = true;
+        try
+        {
+            var result = await OAuthClient.DisconnectMetaAdAccountAsync(workspaceId, accountId);
+            if (_selectedWorkspaceId != workspaceId) return;
+            _feedbackMessage = result.IsSuccess ? "Conta desvinculada deste cliente." : result.Error.Description;
+            _isSuccessFeedback = result.IsSuccess;
+            if (result.IsSuccess) await LoadMetaAccountsAsync();
+        }
+        finally { _isMetaBusy = false; }
     }
 
     private static (string Label, string BadgeClass) ResolvePlatformStatus(OAuthConnectionStatusDto? connection)
     {
+        if (connection?.Status == "AwaitingAccountSelection") return ("Selecione as contas", "bg-warning text-dark");
         if (connection == null || string.IsNullOrWhiteSpace(connection.Status))
         {
             return ("Não Conectado", "badge-disconnected");

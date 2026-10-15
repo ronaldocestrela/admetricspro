@@ -6,6 +6,18 @@ namespace Integrations.Domain.OAuth;
 /// </summary>
 public interface IOAuthTokenVaultRepository
 {
+    /// <summary>Registra o hash de um state pendente no banco do tenant.</summary>
+    /// <param name="state">State assinado.</param>
+    /// <param name="expiresAtUtc">Validade UTC.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Tarefa de inclusão, consolidada pelo UnitOfWork.</returns>
+    Task RegisterStateAsync(string state, DateTime expiresAtUtc, CancellationToken cancellationToken);
+
+    /// <summary>Consome atomicamente o state antes da troca de código, impedindo replay entre instâncias.</summary>
+    /// <param name="state">State assinado.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>True somente para o primeiro consumo dentro da validade.</returns>
+    Task<bool> ConsumeStateAsync(string state, CancellationToken cancellationToken);
     /// <summary>
     /// Obtém o registro de credenciais ativas para um determinado workspace e plataforma.
     /// </summary>

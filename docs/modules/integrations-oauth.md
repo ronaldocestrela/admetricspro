@@ -1,5 +1,7 @@
 # Módulo Integrations — Hub de Autenticação OAuth2 e Token Vault
 
+> Para o fluxo Meta atual, consultar [Meta Marketing API](meta-marketing-api.md) e os ADRs 0039/0040. As validações, estados, permissões e limites específicos da Meta estão detalhados nessa especificação.
+
 Este documento especifica a arquitetura técnica, fluxos de autorização, contratos de API, escopos requeridos e estratégias de segurança para a integração com as 4 redes de anúncios (**Meta Ads**, **Google Ads**, **Bing Ads** e **TikTok Ads**), com armazenamento seguro das credenciais no **Token Vault** criptografado com **AES-256** no banco de dados dedicado do inquilino.
 
 ---
@@ -12,12 +14,12 @@ O Hub de Integrações OAuth2 unifica a experiência de conexão com plataformas
    - Adaptadores especializados (`MetaAdsOAuthAdapter`, `GoogleAdsOAuthAdapter`, `BingAdsOAuthAdapter`, `TikTokAdsOAuthAdapter`) implementam o contrato universal `IOAuthAdapter`.
    - O serviço `IAdNetworkAuthService` orquestra dinamicamente as chamadas de autorização, troca de código e renovação.
 2. **Proteção Anti-CSRF via State Assinado:**
-   - O `OAuthStateService` gera tokens de estado HMAC-SHA256 contendo `TenantId`, `WorkspaceId`, `Platform`, `RedirectUri` e carimbo UTC com expiração curta (TTL de 15 minutos).
+   - O `OAuthStateService` gera tokens de estado HMAC-SHA256 contendo `TenantId`, `UserId`, `WorkspaceId`, `Platform`, `RedirectUri`, nonce aleatório e carimbo UTC com expiração curta (TTL de 15 minutos).
 3. **Cofre de Credenciais (Token Vault):**
    - Os tokens sensíveis (`access_token` e `refresh_token`) nunca são expostos em texto claro.
-   - São criptografados com **AES-256-CBC** com IV aleatório exclusivo para cada registro via `IEncryptionService` antes de serem gravados na tabela `OAuthTokenVaults` do banco operacional do tenant.
+   - Na Meta, são criptografados com **AES-256-GCM**, chave externa e contexto autenticado de tenant/workspace/conexão; os demais provedores preservam compatibilidade com o armazenamento legado antes de serem gravados na tabela `OAuthTokenVaults` do banco operacional do tenant.
 4. **Renovação Preventiva de Tokens:**
-   - Tokens com expiração próxima (< 72 horas) podem ser renovados em lote através do endpoint `/api/v1/integrations/oauth/refresh` ou jobs programados em segundo plano.
+   - Provedores com refresh token podem ser renovados em lote quando próximos da expiração (< 72 horas); tokens de usuário Meta exigem reconexão e não são renovados indefinidamente. As operações de renovação podem ser disparadas através do endpoint `/api/v1/integrations/oauth/refresh` ou jobs programados em segundo plano.
 
 ---
 
@@ -25,7 +27,7 @@ O Hub de Integrações OAuth2 unifica a experiência de conexão com plataformas
 
 | Plataforma | Endpoints OAuth2 | Escopos Mandatórios | Duração do Token |
 | :--- | :--- | :--- | :--- |
-| **Meta Ads** | Auth: `https://www.facebook.com/v21.0/dialog/oauth`<br>Token: `https://graph.facebook.com/v21.0/oauth/access_token` | `ads_read`, `ads_management`, `read_insights`, `business_management` | 60 dias (após troca por *long-lived token*) |
+| **Meta Ads** | Auth: `https://www.facebook.com/v26.0/dialog/oauth`<br>Token: `https://graph.facebook.com/v26.0/oauth/access_token` | `ads_read`, `ads_management` | 60 dias (após troca por *long-lived token*) |
 | **Google Ads** | Auth: `https://accounts.google.com/o/oauth2/v2/auth`<br>Token: `https://oauth2.googleapis.com/token` | `https://www.googleapis.com/auth/adwords`<br>(com `access_type=offline` e `prompt=consent`) | Access: 1 hora<br>Refresh: Contínuo (até revogação) |
 | **Bing Ads** | Auth: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`<br>Token: `https://login.microsoftonline.com/common/oauth2/v2.0/token` | `https://ads.microsoft.com/msads.manage`, `offline_access` | Access: 1 hora<br>Refresh: 90 dias |
 | **TikTok Ads** | Auth: `https://business-api.tiktok.com/portal/auth`<br>Token: `https://business-api.tiktok.com/open_api/v1.3/oauth2/access_token/` | `user.info.basic`, `video.list`, `advertiser.insights` | Access: 24 horas<br>Refresh: 365 dias |
@@ -49,7 +51,7 @@ O Hub de Integrações OAuth2 unifica a experiência de conexão com plataformas
   "isFailure": false,
   "error": { "code": "", "description": "", "type": 0 },
   "value": {
-    "authorizationUrl": "https://www.facebook.com/v21.0/dialog/oauth?client_id=12345&redirect_uri=https%3A%2F%2Fapp.admetricspro.com%2Fcallback&state=eyJUZW5hbnRJZCI6...&scope=ads_read%2Cads_management",
+    "authorizationUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=12345&redirect_uri=https%3A%2F%2Fapp.admetricspro.com%2Fcallback&state=eyJUZW5hbnRJZCI6...&scope=ads_read%2Cads_management",
     "state": "eyJUZW5hbnRJZCI6...signature"
   }
 }
@@ -75,10 +77,10 @@ O Hub de Integrações OAuth2 unifica a experiência de conexão com plataformas
     "id": "b7d2f928-1111-4444-9999-000000000001",
     "workspaceId": "c8a3e742-2222-4444-8888-000000000002",
     "platform": "MetaAds",
-    "externalAccountId": "act_1020304050",
+    "externalAccountId": "100020003000",
     "externalAccountName": "Agência de Performance Alfa",
     "status": "Active",
-    "scopes": "ads_read,ads_management,read_insights",
+    "scopes": "ads_read,ads_management",
     "accessTokenExpiresAtUtc": "2026-11-14T19:30:00Z",
     "isExpiringSoon": false,
     "createdAtUtc": "2026-09-15T19:30:00Z",
@@ -120,7 +122,7 @@ O Hub de Integrações OAuth2 unifica a experiência de conexão com plataformas
       "id": "b7d2f928-1111-4444-9999-000000000001",
       "workspaceId": "c8a3e742-2222-4444-8888-000000000002",
       "platform": "MetaAds",
-      "externalAccountId": "act_1020304050",
+      "externalAccountId": "100020003000",
       "externalAccountName": "Meta Ads Principal",
       "status": "Active",
       "scopes": "ads_read,ads_management",
@@ -165,10 +167,12 @@ O Hub de Integrações OAuth2 unifica a experiência de conexão com plataformas
 
 ## 4. Segurança em Repouso (Token Vault)
 
-- A entidade `OAuthTokenVault` armazena `EncryptedAccessToken` e `EncryptedRefreshToken`.
-- Criptografia executada com algoritmo **AES-256-CBC** e vetor de inicialização criptograficamente aleatório (16 bytes) gerado para cada gravação.
-- O ciphertext persistido possui o formato `Convert.ToBase64String(IV + CipherBytes)`.
-- A chave de criptografia de 32 bytes é injetada externamente e isolada das camadas de apresentação e persistência física.
+- Credenciais Meta usam AES-256-GCM com nonce aleatório, chave externa e dados autenticados de tenant/workspace/conexão.
+- O formato persistido é `gcm1.` seguido de Base64 de nonce, tag e ciphertext. Tokens não aparecem nos DTOs.
+- O state é assinado, vinculado ao usuário e tem consumo persistente de uso único antes da troca do código.
+- Credenciais Meta legadas precisam ser reconectadas. Outros provedores preservam a compatibilidade existente.
+- Ao desconectar, as credenciais locais são apagadas do cofre; histórico e metadados permanecem.
+- Ver configuração, ciclo de expiração e regras de desconexão em [Meta Marketing API](meta-marketing-api.md).
 
 ---
 

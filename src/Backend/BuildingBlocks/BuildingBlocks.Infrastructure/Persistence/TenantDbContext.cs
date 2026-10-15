@@ -62,6 +62,12 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<BuildingBlocks.Domain.Integrations.OAuthTokenVault> OAuthTokenVaults => Set<BuildingBlocks.Domain.Integrations.OAuthTokenVault>();
 
+    /// <summary>Autorizações OAuth pendentes com consumo atômico e uso único.</summary>
+    public DbSet<BuildingBlocks.Domain.Integrations.OAuthAuthorizationState> OAuthAuthorizationStates => Set<BuildingBlocks.Domain.Integrations.OAuthAuthorizationState>();
+
+    /// <summary>Diário de idempotência e auditoria de operações Meta.</summary>
+    public DbSet<BuildingBlocks.Domain.Integrations.MetaApiOperation> MetaApiOperations => Set<BuildingBlocks.Domain.Integrations.MetaApiOperation>();
+
     /// <summary>
     /// Gets the operational immutable audit logs table recording role updates and sensitive actions.
     /// </summary>
@@ -132,6 +138,24 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SquadWorkspaceEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new ConnectedAdAccountEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new OAuthTokenVaultEntityTypeConfiguration());
+        modelBuilder.Entity<BuildingBlocks.Domain.Integrations.OAuthAuthorizationState>(builder =>
+        {
+            builder.ToTable("OAuthAuthorizationStates");
+            builder.HasKey(s => s.StateHash);
+            builder.Property(s => s.StateHash).HasMaxLength(64);
+            builder.HasIndex(s => s.ExpiresAtUtc);
+        });
+        modelBuilder.Entity<BuildingBlocks.Domain.Integrations.MetaApiOperation>(builder =>
+        {
+            builder.ToTable("MetaApiOperations");
+            builder.HasKey(o => o.Id);
+            builder.Property(o => o.Resource).HasMaxLength(50);
+            builder.Property(o => o.RequestHash).HasMaxLength(64);
+            builder.Property(o => o.State).HasMaxLength(20);
+            builder.Property(o => o.ExternalId).HasMaxLength(150);
+            builder.Property(o => o.ErrorCode).HasMaxLength(100);
+            builder.HasIndex(o => new { o.WorkspaceId, o.AccountId, o.CreatedAtUtc });
+        });
         modelBuilder.ApplyConfiguration(new TenantAuditLogEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new CampaignEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new AdSetEntityTypeConfiguration());

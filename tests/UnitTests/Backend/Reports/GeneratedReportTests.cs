@@ -21,8 +21,8 @@ public sealed class GeneratedReportTests
         var id = Guid.NewGuid();
         var start = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2026, 9, 15, 23, 59, 59, DateTimeKind.Utc);
-        var expiresAt = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc);
         var now = DateTime.UtcNow;
+        var expiresAt = now.AddDays(30);
 
         // Act
         var result = GeneratedReport.Create(

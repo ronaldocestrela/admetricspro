@@ -14,17 +14,20 @@ public sealed class AnalyticsDashboardClientService : IAnalyticsDashboardClientS
 {
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
+    private readonly ITenantSessionStateProvider? _session;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="AnalyticsDashboardClientService"/>.
     /// </summary>
     /// <param name="httpClient">Cliente HTTP configurado para o WebApi.</param>
+    /// <param name="session">Sessão autenticada do usuário.</param>
     /// <param name="tenantStateProvider">Provedor de estado de tenant do circuito Blazor.</param>
-    public AnalyticsDashboardClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider)
+    public AnalyticsDashboardClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _session = session;
     }
 
     /// <inheritdoc />

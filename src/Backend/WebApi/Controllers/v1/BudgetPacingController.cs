@@ -13,6 +13,7 @@ namespace WebApi.Controllers.v1;
 /// <summary>
 /// Controlador responsável pela gestão dinâmica de orçamentos, cálculo de pacing e previsão de fim de mês.
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/automations/pacing")]
 public sealed class BudgetPacingController : ControllerBase

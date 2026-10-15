@@ -13,6 +13,7 @@ namespace WebApi.Controllers.v1;
 /// Controlador responsável pelo Creative Hub e detecção preditiva de fadiga de anúncios criativos (Subfase 5.2).
 /// Permite monitorar saturação de audiência, quedas de CTR e comparar eficiência entre Meta Ads e TikTok Ads.
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/analytics/creatives")]
 public sealed class CreativeHubController : ControllerBase

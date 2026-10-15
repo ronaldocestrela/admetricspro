@@ -16,6 +16,46 @@ namespace UnitTests.Backend.Integrations.OAuth;
 /// </summary>
 public sealed class OAuthTokenVaultRepositoryTests : IDisposable
 {
+    /// <summary>A chave de escrita é durável e não pode ser consultada por outro workspace.</summary>
+    [Fact]
+    public async Task MetaOperationJournal_ClaimsOnceAndIsolatesWorkspace()
+    {
+        var workspaceId = Guid.NewGuid(); var accountId = Guid.NewGuid(); var id = Guid.NewGuid();
+        var journal = new global::Integrations.Infrastructure.Meta.MetaOperationRepository(_contextAccessor,
+            new global::Integrations.Infrastructure.Persistence.IntegrationsUnitOfWork(_contextAccessor));
+        var operation = MetaApiOperation.Create(id, workspaceId, accountId, Guid.NewGuid(), "campaigns", new string('A', 64)).Value;
+        (await journal.TryBeginAsync(operation, default)).Value.Should().BeTrue();
+        (await journal.TryBeginAsync(operation, default)).Value.Should().BeFalse();
+        (await journal.GetAsync(id, Guid.NewGuid(), accountId, default)).Should().BeNull();
+        (await journal.GetAsync(id, workspaceId, Guid.NewGuid(), default)).Should().BeNull();
+        (await journal.GetAsync(id, workspaceId, accountId, default))!.State.Should().Be("Pending");
+    }
+
+    /// <summary>A chave estrangeira composta impede trocar credenciais entre workspaces no banco.</summary>
+    [Fact]
+    public async Task AccountBinding_CannotReferenceVaultFromAnotherWorkspace()
+    {
+        var vault = OAuthTokenVault.Create(Guid.NewGuid(), Guid.NewGuid(), "MetaAds", "user", "João", "encrypted").Value;
+        var workspaceId = Guid.NewGuid();
+        var account = BuildingBlocks.Domain.Tenants.ConnectedAdAccount.Create(Guid.NewGuid(), workspaceId, "MetaAds", "act_11", "Cliente").Value;
+        account.BindAuthorization(vault.Id, workspaceId, "Cliente", "BRL", null, 1, "ANALYZE");
+        _dbContext.OAuthTokenVaults.Add(vault);
+        _dbContext.ConnectedAdAccounts.Add(account);
+        var save = () => _dbContext.SaveChangesAsync();
+        await save.Should().ThrowAsync<DbUpdateException>();
+    }
+    /// <summary>O consumo persiste entre instâncias do repositório e impede replay.</summary>
+    [Fact]
+    public async Task ConsumeStateAsync_IsAtomicAndRejectsExpiredOrReusedState()
+    {
+        await _repository.RegisterStateAsync("random-state", DateTime.UtcNow.AddMinutes(10), default);
+        await _repository.RegisterStateAsync("expired-state", DateTime.UtcNow.AddMinutes(-1), default);
+        await _dbContext.SaveChangesAsync();
+        (await _repository.ConsumeStateAsync("random-state", default)).Should().BeTrue();
+        (await new OAuthTokenVaultRepository(_contextAccessor).ConsumeStateAsync("random-state", default)).Should().BeFalse();
+        (await _repository.ConsumeStateAsync("expired-state", default)).Should().BeFalse();
+        (await _repository.ConsumeStateAsync("unknown-state", default)).Should().BeFalse();
+    }
     private readonly SqliteConnection _connection;
     private readonly TenantDbContext _dbContext;
     private readonly ITenantDbContextAccessor _contextAccessor;

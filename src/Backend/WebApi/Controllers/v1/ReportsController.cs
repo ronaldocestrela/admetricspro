@@ -14,6 +14,7 @@ namespace WebApi.Controllers.v1;
 /// <summary>
 /// Controlador para gerenciamento de agendamentos e geração de relatórios white-label (Subfase 5.4).
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/workspaces/{workspaceId:guid}/reports")]
 public sealed class ReportsController : ControllerBase

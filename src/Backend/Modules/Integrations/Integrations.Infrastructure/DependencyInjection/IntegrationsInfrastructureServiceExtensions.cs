@@ -31,12 +31,22 @@ public static class IntegrationsInfrastructureServiceExtensions
         services.Configure<OAuthNetworkOptions>(options =>
         {
             configuration.GetSection(OAuthNetworkOptions.SectionName).Bind(options);
+            ConfigureMeta(options.Meta, configuration);
         });
+
+        services.AddOptions<OAuthNetworkOptions>().Validate(o => string.IsNullOrWhiteSpace(o.Meta.AppId) ||
+            (o.StateSigningKey.Length >= 32 && !o.StateSigningKey.StartsWith("default", StringComparison.OrdinalIgnoreCase) && IsEncryptionKey(o.TokenEncryptionKey)),
+            "Configure StateSigningKey aleatória e TokenEncryptionKey AES-256 em Base64 para habilitar a Meta.").ValidateOnStart();
 
         services.Configure<MetaAdsOAuthOptions>(options =>
         {
-            configuration.GetSection($"{OAuthNetworkOptions.SectionName}:Meta").Bind(options);
+            ConfigureMeta(options, configuration);
         });
+        services.AddOptions<MetaAdsOAuthOptions>().Validate(o => string.IsNullOrWhiteSpace(o.AppId) ||
+            (!string.IsNullOrWhiteSpace(o.AppSecret) && Uri.TryCreate(o.RedirectUri, UriKind.Absolute, out var uri) &&
+             (uri.Scheme == "https" || (uri.IsLoopback && uri.Scheme == "http")) &&
+             o.AdditionalRedirectUris.All(IsCallbackUri) && System.Text.RegularExpressions.Regex.IsMatch(o.GraphApiVersion, @"^v\d+\.0$") && o.TimeoutSeconds is >= 5 and <= 300),
+            "Configuração Meta incompleta: AppSecret, RedirectUri, versão e timeout são obrigatórios.").ValidateOnStart();
 
         services.Configure<GoogleAdsOAuthOptions>(options =>
         {
@@ -55,11 +65,20 @@ public static class IntegrationsInfrastructureServiceExtensions
 
         // Serviço de estado anti-CSRF com fallback de chave se não configurada
         var signingKey = configuration[$"{OAuthNetworkOptions.SectionName}:StateSigningKey"]
-            ?? "default-admetricspro-oauth-state-signing-key-32chars!";
+            ?? Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        if (string.IsNullOrWhiteSpace(signingKey)) signingKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         services.AddSingleton<IOAuthStateService>(_ => new OAuthStateService(signingKey));
 
         // Adaptadores HTTP tipados
-        services.AddHttpClient<MetaAdsOAuthAdapter>();
+        services.AddHttpClient<MetaAdsOAuthAdapter>((sp, client) =>
+            client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaAdsOAuthOptions>>().Value.TimeoutSeconds))
+            .RemoveAllLoggers();
+        services.AddHttpClient<Integrations.Domain.Meta.IMetaAdAccountsApi, Integrations.Infrastructure.Meta.MetaAdAccountsApi>((sp, client) =>
+            client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaAdsOAuthOptions>>().Value.TimeoutSeconds))
+            .RemoveAllLoggers();
+        services.AddHttpClient<Integrations.Domain.Meta.IMetaInsightsApi, Integrations.Infrastructure.Meta.MetaInsightsApi>((sp, client) =>
+            client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaAdsOAuthOptions>>().Value.TimeoutSeconds))
+            .RemoveAllLoggers();
         services.AddHttpClient<GoogleAdsOAuthAdapter>();
         services.AddHttpClient<BingAdsOAuthAdapter>();
         services.AddHttpClient<TikTokAdsOAuthAdapter>();
@@ -79,6 +98,11 @@ public static class IntegrationsInfrastructureServiceExtensions
         // Repositório do Token Vault e Unit of Work operacional
         services.AddScoped<IOAuthTokenVaultRepository, OAuthTokenVaultRepository>();
         services.AddScoped<IIntegrationsUnitOfWork, IntegrationsUnitOfWork>();
+        services.AddScoped<Integrations.Domain.Meta.IMetaOperationRepository, Integrations.Infrastructure.Meta.MetaOperationRepository>();
+        services.AddHttpClient<Integrations.Domain.Meta.IMetaManagementApi, Integrations.Infrastructure.Meta.MetaManagementApi>((sp, client) =>
+            client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaAdsOAuthOptions>>().Value.TimeoutSeconds)).RemoveAllLoggers();
+        services.AddHttpClient<Integrations.Domain.Meta.IMetaMediaApi, Integrations.Infrastructure.Meta.MetaMediaApi>((sp, client) =>
+            client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaAdsOAuthOptions>>().Value.TimeoutSeconds)).RemoveAllLoggers();
 
         // Mappers de hierarquia estrutural universal
         services.AddSingleton<Integrations.Domain.Campaigns.Mappers.IMetaAdsHierarchyMapper, Integrations.Infrastructure.Campaigns.Mappers.MetaAdsHierarchyMapper>();
@@ -90,7 +114,8 @@ public static class IntegrationsInfrastructureServiceExtensions
         services.AddSingleton<Integrations.Domain.Campaigns.Resilience.IHierarchyRateLimitPolicy, Integrations.Infrastructure.Campaigns.Resilience.HierarchyRateLimitPolicy>();
 
         // Adaptadores de sincronização paginada
-        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.MetaAdsHierarchySyncAdapter>();
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.MetaAdsHierarchySyncAdapter>((sp, client) =>
+            client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaAdsOAuthOptions>>().Value.TimeoutSeconds)).RemoveAllLoggers();
         services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.GoogleAdsHierarchySyncAdapter>();
         services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.TikTokAdsHierarchySyncAdapter>();
         services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.BingAdsHierarchySyncAdapter>();
@@ -112,7 +137,8 @@ public static class IntegrationsInfrastructureServiceExtensions
         services.AddScoped<Integrations.Domain.Campaigns.ICampaignMetricsRepository, Integrations.Infrastructure.Campaigns.Persistence.CampaignMetricsRepository>();
 
         // Adaptadores de ingestão de métricas
-        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.MetaAdsMetricsSyncAdapter>();
+        services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.MetaAdsMetricsSyncAdapter>((sp, client) =>
+            client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetaAdsOAuthOptions>>().Value.TimeoutSeconds)).RemoveAllLoggers();
         services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.GoogleAdsMetricsSyncAdapter>();
         services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.TikTokAdsMetricsSyncAdapter>();
         services.AddHttpClient<Integrations.Infrastructure.Campaigns.Sync.BingAdsMetricsSyncAdapter>();
@@ -129,4 +155,22 @@ public static class IntegrationsInfrastructureServiceExtensions
 
         return services;
     }
+
+    private static void ConfigureMeta(MetaAdsOAuthOptions options, IConfiguration configuration)
+    {
+        configuration.GetSection($"{OAuthNetworkOptions.SectionName}:Meta").Bind(options);
+        options.AppId = configuration["META_APP_ID"] ?? options.AppId;
+        options.AppSecret = configuration["META_APP_SECRET"] ?? options.AppSecret;
+        options.GraphApiVersion = configuration["META_GRAPH_API_VERSION"] ?? options.GraphApiVersion;
+        options.RedirectUri = configuration["META_OAUTH_REDIRECT_URI"] ?? options.RedirectUri;
+    }
+
+    private static bool IsEncryptionKey(string key)
+    {
+        Span<byte> bytes = stackalloc byte[32];
+        return Convert.TryFromBase64String(key, bytes, out var written) && written == 32;
+    }
+
+    private static bool IsCallbackUri(string value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+        (uri.Scheme == "https" || (uri.IsLoopback && uri.Scheme == "http"));
 }

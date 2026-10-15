@@ -213,6 +213,8 @@ public sealed class OAuthTokenVaultTests
 
         // Assert
         vault.Status.Should().Be(OAuthConnectionStatus.Revoked);
+        vault.EncryptedAccessToken.Should().BeEmpty();
+        vault.EncryptedRefreshToken.Should().BeNull();
         vault.UpdatedAtUtc.Should().NotBeNull();
     }
 }

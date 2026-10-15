@@ -3,6 +3,7 @@ using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Infrastructure.Persistence;
 using Integrations.Domain.Campaigns;
 using Microsoft.EntityFrameworkCore;
+using Integrations.Application.Persistence;
 
 namespace Integrations.Infrastructure.Campaigns.Persistence;
 
@@ -13,14 +14,17 @@ namespace Integrations.Infrastructure.Campaigns.Persistence;
 public sealed class CampaignMetricsRepository : ICampaignMetricsRepository
 {
     private readonly ITenantDbContextAccessor _contextAccessor;
+    private readonly IIntegrationsUnitOfWork _unitOfWork;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="CampaignMetricsRepository"/>.
     /// </summary>
     /// <param name="contextAccessor">Acessor de contexto de banco do inquilino.</param>
-    public CampaignMetricsRepository(ITenantDbContextAccessor contextAccessor)
+    /// <param name="unitOfWork">Unidade de trabalho para consolidação idempotente.</param>
+    public CampaignMetricsRepository(ITenantDbContextAccessor contextAccessor, IIntegrationsUnitOfWork unitOfWork)
     {
         _contextAccessor = contextAccessor ?? throw new ArgumentNullException(nameof(contextAccessor));
+        _unitOfWork = unitOfWork;
     }
 
     /// <inheritdoc />
@@ -91,7 +95,7 @@ public sealed class CampaignMetricsRepository : ICampaignMetricsRepository
             processedCount++;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
 
         return Result<int>.Success(processedCount);
     }

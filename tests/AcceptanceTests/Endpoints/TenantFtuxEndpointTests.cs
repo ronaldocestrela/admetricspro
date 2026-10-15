@@ -6,6 +6,11 @@ using BuildingBlocks.Domain.Tenants;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Tenants.Application.Ftux.DTOs;
 using Tenants.Application.Integrations.Repositories;
 using Tenants.Application.Persistence;
@@ -90,15 +95,19 @@ public sealed class TenantFtuxEndpointTests : IClassFixture<WebApplicationFactor
 
         var client = _factory.WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            { ["TenantJwt:SecretKey"] = TestJwtKey }));
             builder.ConfigureServices(services =>
             {
                 services.AddScoped<IWorkspaceRepository>(_ => fakeWorkspaceRepo);
                 services.AddScoped<IConnectedAdAccountRepository>(_ => fakeAdAccountRepo);
                 services.AddScoped<ITenantUnitOfWork>(_ => fakeUow);
+                services.AddScoped<Tenants.Application.Rbac.Services.IPermissionEvaluator, TestPermissionEvaluator>();
             });
         }).CreateClient();
 
         client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        client.DefaultRequestHeaders.Authorization = new("Bearer", CreateTestJwt(TestTenantId));
 
         var request = new ConnectDemoAccountApiRequest(workspaceId, "MetaAds");
 
@@ -111,6 +120,71 @@ public sealed class TenantFtuxEndpointTests : IClassFixture<WebApplicationFactor
         envelope.Should().NotBeNull();
         envelope!.IsSuccess.Should().BeTrue();
         envelope.Value.Should().NotBeEmpty();
+    }
+
+    private const string TestJwtKey = "only-for-automated-tests-tenant-jwt-key-minimum-32-chars";
+
+    /// <summary>Autenticação deve ocorrer antes do model binding, e entradas inválidas retornam Result.</summary>
+    [Fact]
+    public async Task MetaSelection_AuthenticatesBeforeBindingAndReturnsResultForInvalidInput()
+    {
+        using var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                { ["TenantJwt:SecretKey"] = TestJwtKey }))).CreateClient();
+        client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        var anonymous = await client.PostAsync("/api/v1/integrations/meta/ad-accounts/select", new StringContent("invalid-json", Encoding.UTF8, "application/json"));
+        anonymous.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        client.DefaultRequestHeaders.Authorization = new("Bearer", CreateTestJwt(TestTenantId));
+        var invalid = await client.PostAsync("/api/v1/integrations/meta/ad-accounts/select", new StringContent("""{"workspaceId":"invalid-id","accountIds":[]}""", Encoding.UTF8, "application/json"));
+        invalid.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var envelope = await invalid.Content.ReadFromJsonAsync<Result>(JsonOptions);
+        envelope!.Error.Code.Should().Be("Request.Invalid");
+    }
+
+    /// <summary>Consumidores dos dados Meta sincronizados também devem exigir autenticação.</summary>
+    [Theory]
+    [InlineData("/api/v1/analytics/dashboard/executive")]
+    [InlineData("/api/v1/analytics/creatives/overview?workspaceId=11111111-1111-1111-1111-111111111111")]
+    [InlineData("/api/v1/workspaces")]
+    [InlineData("/api/v1/workspaces/11111111-1111-1111-1111-111111111111/reports/history")]
+    public async Task MetaDataConsumers_WithoutAuthentication_AreRejected(string path)
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        (await client.GetAsync(path)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>Credenciais inválidas e troca de tenant devem ser recusadas antes de consultar contas.</summary>
+    [Theory]
+    [InlineData("anonymous", HttpStatusCode.Unauthorized)]
+    [InlineData("forged", HttpStatusCode.Unauthorized)]
+    [InlineData("expired", HttpStatusCode.Unauthorized)]
+    [InlineData("tenant", HttpStatusCode.Forbidden)]
+    public async Task MetaAccounts_WithInvalidSession_IsRejected(string scenario, HttpStatusCode expected)
+    {
+        using var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                { ["TenantJwt:SecretKey"] = TestJwtKey }))).CreateClient();
+        client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        if (scenario != "anonymous") client.DefaultRequestHeaders.Authorization = new("Bearer", scenario == "forged" ? "forged-jwt" :
+            CreateTestJwt(scenario == "tenant" ? Guid.NewGuid() : TestTenantId, scenario == "expired"));
+        var response = await client.GetAsync($"/api/v1/integrations/meta/ad-accounts?workspaceId={Guid.NewGuid()}");
+        response.StatusCode.Should().Be(expected);
+    }
+
+    private static string CreateTestJwt(Guid tenantId, bool expired = false) => new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
+        issuer: "AdMetricsPro.Tenants", audience: "AdMetricsPro.ClientApp",
+        claims: [new Claim("sub", Guid.NewGuid().ToString()), new Claim("tenant_id", tenantId.ToString())],
+        notBefore: DateTime.UtcNow.AddHours(-1), expires: expired ? DateTime.UtcNow.AddMinutes(-5) : DateTime.UtcNow.AddMinutes(10),
+        signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwtKey)), SecurityAlgorithms.HmacSha256)));
+
+    private sealed class TestPermissionEvaluator : Tenants.Application.Rbac.Services.IPermissionEvaluator
+    {
+        public Task<Result<bool>> HasPermissionAsync(Guid userId, TenantPermission permission,
+            Tenants.Application.Rbac.Models.PermissionContext? context = null, CancellationToken cancellationToken = default) => Task.FromResult(Result<bool>.Success(true));
+        public IReadOnlySet<TenantPermission> GetPermissionsForRole(TenantRole role) => new HashSet<TenantPermission>();
+        public Task<Result<IReadOnlySet<TenantPermission>>> GetPermissionsForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<IReadOnlySet<TenantPermission>>.Success(new HashSet<TenantPermission>()));
     }
 
     /// <summary>

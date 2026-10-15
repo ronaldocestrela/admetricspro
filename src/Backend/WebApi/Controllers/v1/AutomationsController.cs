@@ -17,6 +17,7 @@ namespace WebApi.Controllers.v1;
 /// <summary>
 /// Controlador responsável pela gestão do construtor de regras cross-platform (DSL) e automações operacionais.
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/automations/rules")]
 public sealed class AutomationsController : ControllerBase

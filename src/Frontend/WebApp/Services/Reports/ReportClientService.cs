@@ -13,15 +13,17 @@ public sealed class ReportClientService : IReportClientService
 {
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
+    private readonly ITenantSessionStateProvider? _session;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="ReportClientService"/>.
     /// </summary>
-    public ReportClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider)
+    public ReportClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _session = session;
     }
 
     /// <inheritdoc />
@@ -192,6 +194,8 @@ public sealed class ReportClientService : IReportClientService
 
     private void AppendTenantHeader(HttpRequestMessage message)
     {
+        if (!string.IsNullOrWhiteSpace(_session?.CurrentSession?.AccessToken))
+            message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _session.CurrentSession.AccessToken);
         var tenantId = _tenantStateProvider.CurrentTenant?.TenantId;
         if (tenantId.HasValue && tenantId.Value != Guid.Empty)
         {

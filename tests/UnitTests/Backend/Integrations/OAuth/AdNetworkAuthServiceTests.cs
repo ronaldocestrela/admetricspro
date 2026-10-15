@@ -25,6 +25,8 @@ public sealed class AdNetworkAuthServiceTests
         _googleAdapter.Platform.Returns(OAuthPlatform.GoogleAds);
         _bingAdapter.Platform.Returns(OAuthPlatform.BingAds);
         _tiktokAdapter.Platform.Returns(OAuthPlatform.TikTokAds);
+        foreach (var adapter in new[] { _metaAdapter, _googleAdapter, _bingAdapter, _tiktokAdapter })
+            adapter.ValidateAuthorization(Arg.Any<string>()).Returns(BuildingBlocks.Domain.Primitives.Result.Success());
 
         _service = new AdNetworkAuthService([_metaAdapter, _googleAdapter, _bingAdapter, _tiktokAdapter]);
     }

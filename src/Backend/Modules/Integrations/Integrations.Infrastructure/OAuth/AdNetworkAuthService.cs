@@ -30,6 +30,8 @@ public sealed class AdNetworkAuthService : IAdNetworkAuthService
             return Result<string>.Failure(adapterResult.Error);
         }
 
+        var validation = adapterResult.Value.ValidateAuthorization(redirectUri);
+        if (validation.IsFailure) return Result<string>.Failure(validation.Error);
         var url = adapterResult.Value.GetAuthorizationUrl(state, redirectUri);
         return Result<string>.Success(url);
     }

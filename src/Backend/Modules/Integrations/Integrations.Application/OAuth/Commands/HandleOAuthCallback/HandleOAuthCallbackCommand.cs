@@ -9,7 +9,9 @@ namespace Integrations.Application.OAuth.Commands.HandleOAuthCallback;
 /// <param name="Code">Código de autorização retornado pelo provedor externo.</param>
 /// <param name="State">Estado anti-CSRF gerado no início do fluxo.</param>
 /// <param name="RedirectUri">URI de redirecionamento utilizada na autorização.</param>
+/// <param name="ProviderError">Negativa de autorização informada pelo provedor.</param>
 public sealed record HandleOAuthCallbackCommand(
     string Code,
     string State,
-    string RedirectUri) : ICommand<OAuthConnectionStatusDto>;
+    string RedirectUri,
+    string? ProviderError = null) : ICommand<OAuthConnectionStatusDto>;

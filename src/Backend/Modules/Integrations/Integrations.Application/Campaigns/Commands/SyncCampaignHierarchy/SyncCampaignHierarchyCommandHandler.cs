@@ -85,6 +85,8 @@ public sealed class SyncCampaignHierarchyCommandHandler : ICommandHandler<SyncCa
 
         foreach (var account in accounts)
         {
+            if (account.WorkspaceId != request.WorkspaceId || account.Status != "Connected")
+                return Result<SyncCampaignHierarchySummaryDto>.Failure(Error.Forbidden("Meta.InvalidBinding", "A conta não está vinculada ativamente a este workspace."));
             string? decryptedToken = null;
 
             if (!account.IsDemo)
@@ -94,7 +96,10 @@ public sealed class SyncCampaignHierarchyCommandHandler : ICommandHandler<SyncCa
                     account.Platform,
                     cancellationToken);
 
-                if (vault is null || string.IsNullOrWhiteSpace(vault.EncryptedAccessToken))
+                if (vault is null || string.IsNullOrWhiteSpace(vault.EncryptedAccessToken) ||
+                    vault.WorkspaceId != account.WorkspaceId || vault.Platform != account.Platform ||
+                    vault.Status != "Active" || vault.AccessTokenExpiresAtUtc <= DateTime.UtcNow ||
+                    (account.Platform == "MetaAds" && account.OAuthTokenVaultId != vault.Id))
                 {
                     if (request.ConnectedAdAccountId.HasValue)
                     {
@@ -108,14 +113,14 @@ public sealed class SyncCampaignHierarchyCommandHandler : ICommandHandler<SyncCa
 
                 try
                 {
-                    decryptedToken = _encryptionService.Decrypt(vault.EncryptedAccessToken);
+                    decryptedToken = _encryptionService.Decrypt(vault.EncryptedAccessToken, vault.Platform == "MetaAds" ? BuildingBlocks.Domain.Integrations.OAuthTokenVault.EncryptionPurpose(vault.WorkspaceId, vault.Id, vault.Platform) : null);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     if (request.ConnectedAdAccountId.HasValue)
                     {
                         return Result<SyncCampaignHierarchySummaryDto>.Failure(
-                            Error.Failure("SyncCampaignHierarchy.DecryptionFailed", $"Falha ao descriptografar token: {ex.Message}"));
+                            Error.Failure("SyncCampaignHierarchy.DecryptionFailed", "Credencial indisponível. Reconecte a integração."));
                     }
 
                     continue;
@@ -156,6 +161,7 @@ public sealed class SyncCampaignHierarchyCommandHandler : ICommandHandler<SyncCa
             }
 
             // Consolida a transação
+            account.MarkSynced(syncTimeUtc);
             await _unitOfWork.CommitAsync(cancellationToken);
 
             // Emite o evento in-memory CampaignHierarchySyncedEvent

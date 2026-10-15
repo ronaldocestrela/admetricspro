@@ -3,6 +3,8 @@ using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Application.Persistence;
 using Integrations.Domain.Campaigns;
+using Integrations.Application.Meta;
+using MediatR;
 
 namespace Integrations.Application.Campaigns.Commands.Mutations;
 
@@ -15,18 +17,21 @@ public sealed class BulkCampaignOperationCommandHandler : ICommandHandler<BulkCa
     private const int MaxBatchSize = 100;
     private readonly ICampaignHierarchyRepository _hierarchyRepository;
     private readonly IIntegrationsUnitOfWork _unitOfWork;
+    private readonly ISender _sender;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="BulkCampaignOperationCommandHandler"/>.
     /// </summary>
     /// <param name="hierarchyRepository">Repositório de persistência da hierarquia de campanhas.</param>
+    /// <param name="sender">Mediador para operações reais na Meta.</param>
     /// <param name="unitOfWork">Unidade de trabalho do módulo de integrações.</param>
     public BulkCampaignOperationCommandHandler(
         ICampaignHierarchyRepository hierarchyRepository,
-        IIntegrationsUnitOfWork unitOfWork)
+        IIntegrationsUnitOfWork unitOfWork, ISender sender)
     {
         _hierarchyRepository = hierarchyRepository ?? throw new ArgumentNullException(nameof(hierarchyRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _sender = sender;
     }
 
     /// <inheritdoc />
@@ -95,6 +100,12 @@ public sealed class BulkCampaignOperationCommandHandler : ICommandHandler<BulkCa
             {
                 case BulkCampaignActionType.Activate:
                 {
+                    var external = await MetaCampaignMutationForwarder.ForwardAsync(campaign, _hierarchyRepository, _sender, cancellationToken, status: "ACTIVE");
+                    if (external.IsFailure)
+                    {
+                        failedItems.Add(new BulkOperationFailureItemDto(op.CampaignId, op.Action, external.Error.Code, external.Error.Description));
+                        continue;
+                    }
                     var actRes = campaign.Activate();
                     if (actRes.IsFailure)
                     {
@@ -121,6 +132,12 @@ public sealed class BulkCampaignOperationCommandHandler : ICommandHandler<BulkCa
 
                 case BulkCampaignActionType.Pause:
                 {
+                    var external = await MetaCampaignMutationForwarder.ForwardAsync(campaign, _hierarchyRepository, _sender, cancellationToken, status: "PAUSED");
+                    if (external.IsFailure)
+                    {
+                        failedItems.Add(new BulkOperationFailureItemDto(op.CampaignId, op.Action, external.Error.Code, external.Error.Description));
+                        continue;
+                    }
                     var pauseRes = campaign.Pause();
                     if (pauseRes.IsFailure)
                     {
@@ -178,6 +195,12 @@ public sealed class BulkCampaignOperationCommandHandler : ICommandHandler<BulkCa
                         continue;
                     }
 
+                    var external = await MetaCampaignMutationForwarder.ForwardAsync(campaign, _hierarchyRepository, _sender, cancellationToken, budget: newBudget);
+                    if (external.IsFailure)
+                    {
+                        failedItems.Add(new BulkOperationFailureItemDto(op.CampaignId, op.Action, external.Error.Code, external.Error.Description));
+                        continue;
+                    }
                     var budgetRes = campaign.UpdateDailyBudget(newBudget);
                     if (budgetRes.IsFailure)
                     {

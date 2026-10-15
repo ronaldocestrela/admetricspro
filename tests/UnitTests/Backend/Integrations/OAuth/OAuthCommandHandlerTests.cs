@@ -11,6 +11,8 @@ using Integrations.Application.OAuth.Queries.GetOAuthConnectionsStatus;
 using Integrations.Application.Persistence;
 using Integrations.Domain.OAuth;
 using NSubstitute;
+using MediatR;
+using BuildingBlocks.Application.Integrations;
 
 namespace UnitTests.Backend.Integrations.OAuth;
 
@@ -19,12 +21,51 @@ namespace UnitTests.Backend.Integrations.OAuth;
 /// </summary>
 public sealed class OAuthCommandHandlerTests
 {
+    /// <summary>Reconexão Meta atualiza o autorizador e exige nova seleção de contas.</summary>
+    [Fact]
+    public async Task HandleOAuthCallback_MetaReconnection_RequiresAccountReselection()
+    {
+        var payload = new OAuthStatePayload(_tenantId, _workspaceId, OAuthPlatform.MetaAds, "https://cb", DateTime.UtcNow, _userId, "nonce");
+        _stateService.ValidateAndUnpackState("state").Returns(Result<OAuthStatePayload>.Success(payload));
+        var vault = OAuthTokenVault.Create(Guid.NewGuid(), _workspaceId, OAuthPlatform.MetaAds, "old-user", "Anterior", "Encrypted_old").Value;
+        _vaultRepository.GetByWorkspaceAndPlatformAsync(_workspaceId, OAuthPlatform.MetaAds, Arg.Any<CancellationToken>()).Returns(vault);
+        _authService.ExchangeCodeAsync(OAuthPlatform.MetaAds, "code", "https://cb", Arg.Any<CancellationToken>())
+            .Returns(Result<OAuthTokenResult>.Success(new("new-token", null, DateTime.UtcNow.AddDays(60), null, "ads_read,ads_management", "new-user", "João")));
+        _encryptionService.Encrypt(Arg.Any<string>(), Arg.Any<string?>()).Returns(call => "Encrypted_" + call.ArgAt<string>(0));
+        var handler = new HandleOAuthCallbackCommandHandler(_stateService, _authService, _vaultRepository,
+            _encryptionService, _unitOfWork, _tenantContextAccessor, _user, _sender);
+        var result = await handler.Handle(new("code", "state", "https://cb"), default);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be("AwaitingAccountSelection");
+        result.Value.ExternalAccountId.Should().Be("new-user");
+        _encryptionService.Received(1).Encrypt("new-token", OAuthTokenVault.EncryptionPurpose(_workspaceId, vault.Id, OAuthPlatform.MetaAds));
+        await _sender.Received(1).Send(new DisconnectMetaAccountsCommand(_workspaceId), Arg.Any<CancellationToken>());
+        await _vaultRepository.DidNotReceive().AddAsync(Arg.Any<OAuthTokenVault>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Consentimento negado consome o state sem trocar código ou gravar credenciais.</summary>
+    [Fact]
+    public async Task HandleOAuthCallback_DeniedConsent_DoesNotExchangeCode()
+    {
+        _stateService.ValidateAndUnpackState("denied").Returns(Result<OAuthStatePayload>.Success(new(
+            _tenantId, _workspaceId, OAuthPlatform.MetaAds, "https://cb", DateTime.UtcNow, _userId, "nonce")));
+        var handler = new HandleOAuthCallbackCommandHandler(_stateService, _authService, _vaultRepository,
+            _encryptionService, _unitOfWork, _tenantContextAccessor, _user, _sender);
+        var result = await handler.Handle(new("", "denied", "https://cb", "access_denied"), default);
+        result.Error.Code.Should().Be("OAuth.Denied");
+        await _vaultRepository.Received(1).ConsumeStateAsync("denied", Arg.Any<CancellationToken>());
+        await _authService.DidNotReceiveWithAnyArgs().ExchangeCodeAsync(default!, default!, default!, default);
+    }
     private readonly ITenantContextAccessor _tenantContextAccessor = Substitute.For<ITenantContextAccessor>();
     private readonly IOAuthStateService _stateService = Substitute.For<IOAuthStateService>();
     private readonly IAdNetworkAuthService _authService = Substitute.For<IAdNetworkAuthService>();
     private readonly IOAuthTokenVaultRepository _vaultRepository = Substitute.For<IOAuthTokenVaultRepository>();
     private readonly IOAuthEncryptionService _encryptionService = Substitute.For<IOAuthEncryptionService>();
     private readonly IIntegrationsUnitOfWork _unitOfWork = Substitute.For<IIntegrationsUnitOfWork>();
+
+    private readonly ICurrentUserContext _user = Substitute.For<ICurrentUserContext>();
+    private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly Guid _userId = Guid.NewGuid();
 
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _workspaceId = Guid.NewGuid();
@@ -34,12 +75,17 @@ public sealed class OAuthCommandHandlerTests
     /// </summary>
     public OAuthCommandHandlerTests()
     {
+        _user.UserId.Returns(_userId);
+        _user.IsAuthenticated.Returns(true);
+        _sender.Send(Arg.Any<ValidateIntegrationWorkspaceQuery>(), Arg.Any<CancellationToken>()).Returns(Result<bool>.Success(true));
+        _sender.Send(Arg.Any<DisconnectMetaAccountsCommand>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
+        _vaultRepository.ConsumeStateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
         var tenantContext = Substitute.For<ITenantContext>();
         tenantContext.TenantId.Returns(_tenantId);
         _tenantContextAccessor.TenantContext.Returns(tenantContext);
 
-        _encryptionService.Encrypt(Arg.Any<string>()).Returns(ci => $"Encrypted_{ci.Arg<string>()}");
-        _encryptionService.Decrypt(Arg.Any<string>()).Returns(ci => ci.Arg<string>().Replace("Encrypted_", ""));
+        _encryptionService.Encrypt(Arg.Any<string>()).Returns(ci => $"Encrypted_{ci.ArgAt<string>(0)}");
+        _encryptionService.Decrypt(Arg.Any<string>()).Returns(ci => ci.ArgAt<string>(0).Replace("Encrypted_", ""));
     }
 
     /// <summary>
@@ -49,12 +95,12 @@ public sealed class OAuthCommandHandlerTests
     public async Task InitiateOAuthFlow_ComParametrosValidos_DeveRetornarUrlEState()
     {
         // Arrange
-        _stateService.GenerateState(_tenantId, _workspaceId, OAuthPlatform.MetaAds, "https://cb")
+        _stateService.GenerateState(_tenantId, _workspaceId, OAuthPlatform.MetaAds, "https://cb", _userId)
             .Returns("state_mock_123");
         _authService.GetAuthorizationUrl(OAuthPlatform.MetaAds, "state_mock_123", "https://cb")
             .Returns(Result<string>.Success("https://facebook.com/auth"));
 
-        var handler = new InitiateOAuthFlowCommandHandler(_tenantContextAccessor, _stateService, _authService);
+        var handler = new InitiateOAuthFlowCommandHandler(_tenantContextAccessor, _stateService, _authService, _user, _sender, _vaultRepository, _unitOfWork);
         var command = new InitiateOAuthFlowCommand(_workspaceId, OAuthPlatform.MetaAds, "https://cb");
 
         // Act
@@ -73,7 +119,7 @@ public sealed class OAuthCommandHandlerTests
     public async Task HandleOAuthCallback_ComTokensValidos_DeveCriptografarEPersistirNoVault()
     {
         // Arrange
-        var statePayload = new OAuthStatePayload(_tenantId, _workspaceId, OAuthPlatform.GoogleAds, "https://cb", DateTime.UtcNow);
+        var statePayload = new OAuthStatePayload(_tenantId, _workspaceId, OAuthPlatform.GoogleAds, "https://cb", DateTime.UtcNow, _userId, "nonce");
         _stateService.ValidateAndUnpackState("valid_state")
             .Returns(Result<OAuthStatePayload>.Success(statePayload));
 
@@ -89,7 +135,7 @@ public sealed class OAuthCommandHandlerTests
             _authService,
             _vaultRepository,
             _encryptionService,
-            _unitOfWork);
+            _unitOfWork, _tenantContextAccessor, _user, _sender);
 
         var command = new HandleOAuthCallbackCommand("valid_code", "valid_state", "https://cb");
 
@@ -171,7 +217,7 @@ public sealed class OAuthCommandHandlerTests
             _vaultRepository,
             _authService,
             _encryptionService,
-            _unitOfWork);
+            _unitOfWork, _sender);
 
         var command = new RevokeOAuthConnectionCommand(_workspaceId, OAuthPlatform.MetaAds);
 

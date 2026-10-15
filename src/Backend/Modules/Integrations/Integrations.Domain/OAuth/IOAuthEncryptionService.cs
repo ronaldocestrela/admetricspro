@@ -9,13 +9,15 @@ public interface IOAuthEncryptionService
     /// Criptografa o token em texto claro retornando payload Base64 cifrado com AES-256 e IV aleatório.
     /// </summary>
     /// <param name="plainText">Token em texto claro.</param>
+    /// <param name="purpose">Contexto autenticado da conexão, sem segredos.</param>
     /// <returns>String cifrada em Base64.</returns>
-    string Encrypt(string plainText);
+    string Encrypt(string plainText, string? purpose = null);
 
     /// <summary>
     /// Descriptografa o payload Base64 cifrado retornando o token em texto claro original.
     /// </summary>
     /// <param name="cipherText">String cifrada em Base64.</param>
+    /// <param name="purpose">Mesmo contexto autenticado utilizado na cifragem.</param>
     /// <returns>Token em texto claro.</returns>
-    string Decrypt(string cipherText);
+    string Decrypt(string cipherText, string? purpose = null);
 }

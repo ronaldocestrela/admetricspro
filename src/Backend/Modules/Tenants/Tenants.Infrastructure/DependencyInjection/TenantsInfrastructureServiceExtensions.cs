@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Tenants.Application.Auth.Services;
 using Tenants.Infrastructure.Auth;
+using Microsoft.AspNetCore.Http;
 
 namespace Tenants.Infrastructure.DependencyInjection;
 
@@ -27,6 +28,41 @@ public static class TenantsInfrastructureServiceExtensions
         {
             configuration.GetSection(TenantJwtOptions.SectionName).Bind(options);
         });
+
+        services.AddAuthentication("Tenant")
+            .AddJwtBearer("Tenant", options =>
+            {
+                var jwt = new TenantJwtOptions();
+                configuration.GetSection(TenantJwtOptions.SectionName).Bind(jwt);
+                // Sem configuração não há token válido; não usar uma chave padrão conhecida.
+                var key = string.IsNullOrWhiteSpace(jwt.SecretKey)
+                    ? System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)
+                    : System.Text.Encoding.UTF8.GetBytes(jwt.SecretKey);
+                options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwt.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwt.Audience,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
+                    ValidateLifetime = true,
+                    RequireExpirationTime = true,
+                    ValidAlgorithms = [Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256],
+                    ClockSkew = TimeSpan.FromSeconds(30)
+                };
+                options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                {
+                    OnChallenge = async context =>
+                    {
+                        context.HandleResponse();
+                        context.Response.StatusCode = 401;
+                        await context.Response.WriteAsJsonAsync(BuildingBlocks.Domain.Primitives.Result.Failure(
+                            BuildingBlocks.Domain.Primitives.Error.Unauthorized("Auth.Unauthorized", "Autenticação válida necessária.")), context.HttpContext.RequestAborted);
+                    }
+                };
+            });
+        services.AddAuthorization();
 
         services.AddScoped<ITenantAuthService, TenantAuthService>();
         services.AddScoped<ITenantTokenService, TenantJwtTokenService>();

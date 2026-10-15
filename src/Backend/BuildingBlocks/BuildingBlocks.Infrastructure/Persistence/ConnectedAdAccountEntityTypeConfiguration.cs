@@ -26,6 +26,12 @@ public sealed class ConnectedAdAccountEntityTypeConfiguration : IEntityTypeConfi
             .IsRequired();
 
         builder.HasIndex(account => new { account.WorkspaceId, account.Platform });
+        builder.HasIndex(account => new { account.WorkspaceId, account.Platform, account.ExternalAccountId }).IsUnique();
+        builder.Property(account => account.TimeZone).HasMaxLength(150);
+        builder.Property(account => account.AuthorizedTasks).HasMaxLength(1000).HasDefaultValue("");
+        builder.HasOne<BuildingBlocks.Domain.Integrations.OAuthTokenVault>().WithMany()
+            .HasForeignKey(a => new { a.WorkspaceId, a.OAuthTokenVaultId })
+            .HasPrincipalKey(v => new { v.WorkspaceId, v.Id }).OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(account => account.ExternalAccountId)
             .HasMaxLength(150)

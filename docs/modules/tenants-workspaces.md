@@ -35,6 +35,8 @@ Cada Workspace possui:
 
 Todos os endpoints operam sob resolução de contexto multitenant (cabeçalho `X-Tenant-Id`, subdomínio CNAME ou token JWT) e retornam envelopes no padrão `Result<T>`.
 
+Os endpoints HTTP exigem JWT de tenant válido. A listagem retorna somente a carteira do usuário autenticado, reaproveitando `GetUserAccessibleWorkspacesQuery`; usuários não informam outro `UserId`. O contexto do JWT é comparado ao tenant resolvido antes de consultar dados. Cadastro/manutenção respeitam as permissões existentes; a administração de workspace pausado não libera suas integrações.
+
 ### 2.1 Cadastrar Novo Workspace
 - **Rota:** `POST /api/v1/workspaces`
 - **Sumário OpenAPI:** `Cadastra um novo cliente/workspace na agência com validação de cotas`

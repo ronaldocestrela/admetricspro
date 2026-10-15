@@ -14,6 +14,7 @@ namespace WebApi.Controllers.v1;
 /// Controlador responsável pela ingestão analítica e consulta de métricas diárias e horárias de campanhas
 /// das redes de tráfego pago (Meta Ads, Google Ads, TikTok Ads e Bing Ads).
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/integrations/campaigns/metrics")]
 public sealed class CampaignMetricsController : ControllerBase

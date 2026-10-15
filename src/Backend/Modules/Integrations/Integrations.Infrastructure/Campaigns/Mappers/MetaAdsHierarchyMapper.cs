@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using BuildingBlocks.Domain.Campaigns;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Domain.Campaigns.Mappers;
@@ -7,7 +8,7 @@ using Integrations.Domain.Campaigns.Models;
 namespace Integrations.Infrastructure.Campaigns.Mappers;
 
 /// <summary>
-/// Implementação concreta do conversor de hierarquia para a Meta Ads Graph API v21.0.
+/// Implementação concreta do conversor de hierarquia da Meta Ads Graph API.
 /// </summary>
 public sealed class MetaAdsHierarchyMapper : IMetaAdsHierarchyMapper
 {
@@ -24,12 +25,14 @@ public sealed class MetaAdsHierarchyMapper : IMetaAdsHierarchyMapper
         string defaultCurrency = "BRL")
     {
         var campaigns = ParseCampaigns(campaignsJson, defaultCurrency);
-        var adSets = ParseAdSets(adSetsJson);
+        var adSets = ParseAdSets(adSetsJson, defaultCurrency);
         var ads = ParseAds(adsJson);
 
         return Result<UnifiedCampaignHierarchy>.Success(
             new UnifiedCampaignHierarchy(campaigns, adSets, ads));
     }
+
+    private static bool SupportsBudgetConversion(string currency) => currency is "BRL" or "USD" or "EUR";
 
     private static List<UnifiedCampaignItem> ParseCampaigns(string? json, string currency)
     {
@@ -60,13 +63,13 @@ public sealed class MetaAdsHierarchyMapper : IMetaAdsHierarchyMapper
                 var objective = elem.TryGetProperty("objective", out var pObj) ? pObj.GetString() ?? string.Empty : string.Empty;
 
                 decimal? dailyBudget = null;
-                if (elem.TryGetProperty("daily_budget", out var pBudget) && decimal.TryParse(pBudget.GetString(), out var budgetCents))
+                if (SupportsBudgetConversion(currency) && elem.TryGetProperty("daily_budget", out var pBudget) && decimal.TryParse(pBudget.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var budgetCents))
                 {
                     dailyBudget = budgetCents / 100m;
                 }
 
                 decimal? lifetimeBudget = null;
-                if (elem.TryGetProperty("lifetime_budget", out var pLtBudget) && decimal.TryParse(pLtBudget.GetString(), out var ltBudgetCents))
+                if (SupportsBudgetConversion(currency) && elem.TryGetProperty("lifetime_budget", out var pLtBudget) && decimal.TryParse(pLtBudget.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var ltBudgetCents))
                 {
                     lifetimeBudget = ltBudgetCents / 100m;
                 }
@@ -103,7 +106,7 @@ public sealed class MetaAdsHierarchyMapper : IMetaAdsHierarchyMapper
         return list;
     }
 
-    private static List<UnifiedAdSetItem> ParseAdSets(string? json)
+    private static List<UnifiedAdSetItem> ParseAdSets(string? json, string currency)
     {
         var list = new List<UnifiedAdSetItem>();
         if (string.IsNullOrWhiteSpace(json))
@@ -134,13 +137,13 @@ public sealed class MetaAdsHierarchyMapper : IMetaAdsHierarchyMapper
                 var optGoal = elem.TryGetProperty("optimization_goal", out var pOpt) ? pOpt.GetString() : null;
 
                 decimal? dailyBudget = null;
-                if (elem.TryGetProperty("daily_budget", out var pBudget) && decimal.TryParse(pBudget.GetString(), out var budgetCents))
+                if (SupportsBudgetConversion(currency) && elem.TryGetProperty("daily_budget", out var pBudget) && decimal.TryParse(pBudget.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var budgetCents))
                 {
                     dailyBudget = budgetCents / 100m;
                 }
 
                 decimal? lifetimeBudget = null;
-                if (elem.TryGetProperty("lifetime_budget", out var pLtBudget) && decimal.TryParse(pLtBudget.GetString(), out var ltBudgetCents))
+                if (SupportsBudgetConversion(currency) && elem.TryGetProperty("lifetime_budget", out var pLtBudget) && decimal.TryParse(pLtBudget.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var ltBudgetCents))
                 {
                     lifetimeBudget = ltBudgetCents / 100m;
                 }

@@ -294,6 +294,7 @@ public sealed class AnalyticsController : ControllerBase
     /// <param name="currency">Moeda monetária padrão da visualização (padrão: BRL).</param>
     /// <param name="cancellationToken">Token de cancelamento.</param>
     /// <returns>Resumo executivo consolidado com comparação temporal.</returns>
+    [Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
     [HttpGet("dashboard/executive")]
     [EndpointSummary("Obtém resumo executivo unificado cross-network com comparação temporal e deltas")]
     [ProducesResponseType(typeof(Result<ExecutiveDashboardDto>), StatusCodes.Status200OK)]

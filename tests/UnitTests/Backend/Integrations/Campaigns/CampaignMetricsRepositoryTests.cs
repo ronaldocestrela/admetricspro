@@ -41,7 +41,7 @@ public sealed class CampaignMetricsRepositoryTests : IDisposable
         _contextAccessor.GetDbContextAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<TenantDbContext>.Success(_dbContext)));
 
-        _repository = new CampaignMetricsRepository(_contextAccessor);
+        _repository = new CampaignMetricsRepository(_contextAccessor, new global::Integrations.Infrastructure.Persistence.IntegrationsUnitOfWork(_contextAccessor));
     }
 
     private async Task<Campaign> SeedCampaignAsync(

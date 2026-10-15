@@ -7,6 +7,10 @@ namespace Integrations.Domain.OAuth;
 /// </summary>
 public interface IOAuthAdapter
 {
+    /// <summary>Valida configurações e callback antes de iniciar um fluxo.</summary>
+    /// <param name="redirectUri">Callback solicitado.</param>
+    /// <returns>Sucesso ou erro de configuração/validação.</returns>
+    Result ValidateAuthorization(string redirectUri) => Result.Success();
     /// <summary>
     /// Identificador da plataforma gerenciada pelo adaptador (<see cref="OAuthPlatform"/>).
     /// </summary>

@@ -15,19 +15,23 @@ namespace WebApi.Controllers.v1;
 /// <summary>
 /// Controlador responsável pela gestão de clientes da agência (Workspaces) no banco de dados dedicado do inquilino.
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/[controller]")]
 public sealed class WorkspacesController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly BuildingBlocks.Application.Security.ICurrentUserContext _user;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="WorkspacesController"/>.
     /// </summary>
+    /// <param name="user">Usuário autenticado para consultar sua carteira.</param>
     /// <param name="sender">Mediador in-memory de comandos e consultas.</param>
-    public WorkspacesController(ISender sender)
+    public WorkspacesController(ISender sender, BuildingBlocks.Application.Security.ICurrentUserContext user)
     {
         _sender = sender ?? throw new ArgumentNullException(nameof(sender));
+        _user = user;
     }
 
     /// <summary>
@@ -86,9 +90,10 @@ public sealed class WorkspacesController : ControllerBase
         [FromQuery] bool? activeOnly = null,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetWorkspacesQuery(activeOnly);
+        var query = new Tenants.Application.Squads.Queries.GetUserAccessibleWorkspaces.GetUserAccessibleWorkspacesQuery(_user.UserId ?? Guid.Empty);
         var result = await _sender.Send(query, cancellationToken);
-        return Ok(result);
+        if (result.IsFailure) return StatusCode(result.Error.Type == ErrorType.Unauthorized ? 401 : 403, result);
+        return Ok(Result<IReadOnlyList<WorkspaceDto>>.Success(result.Value.Where(w => !activeOnly.HasValue || w.IsActive == activeOnly.Value).ToArray()));
     }
 
     /// <summary>

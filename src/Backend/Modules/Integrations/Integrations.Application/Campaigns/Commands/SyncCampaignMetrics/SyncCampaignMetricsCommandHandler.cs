@@ -99,6 +99,8 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
 
         foreach (var account in accounts)
         {
+            if (account.WorkspaceId != request.WorkspaceId || account.Status != "Connected")
+                return Result<SyncCampaignMetricsSummaryDto>.Failure(Error.Forbidden("Meta.InvalidBinding", "A conta não está vinculada ativamente a este workspace."));
             string? decryptedToken = null;
 
             if (!account.IsDemo)
@@ -108,7 +110,10 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
                     account.Platform,
                     cancellationToken);
 
-                if (vault is null || string.IsNullOrWhiteSpace(vault.EncryptedAccessToken))
+                if (vault is null || string.IsNullOrWhiteSpace(vault.EncryptedAccessToken) ||
+                    vault.WorkspaceId != account.WorkspaceId || vault.Platform != account.Platform ||
+                    vault.Status != "Active" || vault.AccessTokenExpiresAtUtc <= DateTime.UtcNow ||
+                    (account.Platform == "MetaAds" && account.OAuthTokenVaultId != vault.Id))
                 {
                     if (request.ConnectedAdAccountId.HasValue)
                     {
@@ -122,14 +127,14 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
 
                 try
                 {
-                    decryptedToken = _encryptionService.Decrypt(vault.EncryptedAccessToken);
+                    decryptedToken = _encryptionService.Decrypt(vault.EncryptedAccessToken, vault.Platform == "MetaAds" ? BuildingBlocks.Domain.Integrations.OAuthTokenVault.EncryptionPurpose(vault.WorkspaceId, vault.Id, vault.Platform) : null);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     if (request.ConnectedAdAccountId.HasValue)
                     {
                         return Result<SyncCampaignMetricsSummaryDto>.Failure(
-                            Error.Failure("SyncCampaignMetrics.DecryptionError", $"Falha ao descriptografar token: {ex.Message}"));
+                            Error.Failure("SyncCampaignMetrics.DecryptionError", "Credencial indisponível. Reconecte a integração."));
                     }
 
                     continue;
@@ -240,6 +245,8 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
                 totalRecords += upsertResult.Value;
             }
 
+            account.MarkSynced(syncTimeUtc);
+            await _unitOfWork.CommitAsync(cancellationToken);
             totalAccounts++;
             syncedPlatforms.Add(account.Platform);
 

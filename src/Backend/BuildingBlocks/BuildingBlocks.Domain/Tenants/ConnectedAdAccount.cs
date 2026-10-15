@@ -99,6 +99,59 @@ public sealed class ConnectedAdAccount : Entity<Guid>
     /// </summary>
     public DateTime? UpdatedAtUtc { get; private set; }
 
+    /// <summary>Credencial OAuth de origem, pertencente ao mesmo workspace.</summary>
+    public Guid? OAuthTokenVaultId { get; private set; }
+
+    /// <summary>Fuso horário original informado pela plataforma.</summary>
+    public string? TimeZone { get; private set; }
+
+    /// <summary>Status externo da conta Meta, independente do vínculo local.</summary>
+    public int? ExternalAccountStatus { get; private set; }
+
+    /// <summary>Tarefas concedidas ao autorizador, separadas por vírgula.</summary>
+    public string AuthorizedTasks { get; private set; } = string.Empty;
+
+    /// <summary>Última sincronização bem-sucedida da conta.</summary>
+    public DateTime? LastSyncedAtUtc { get; private set; }
+
+    /// <summary>Associa a conta verificada à autorização do workspace.</summary>
+    /// <param name="connectionId">ID interno da credencial.</param>
+    /// <param name="workspaceId">Workspace proprietário da credencial.</param>
+    /// <param name="name">Nome obtido da plataforma.</param>
+    /// <param name="currency">Moeda obtida da plataforma.</param>
+    /// <param name="timeZone">Fuso original.</param>
+    /// <param name="accountStatus">Status externo.</param>
+    /// <param name="tasks">Tarefas concedidas.</param>
+    /// <returns>Sucesso ou erro de vínculo.</returns>
+    public Result BindAuthorization(Guid connectionId, Guid workspaceId, string name, string currency,
+        string? timeZone, int? accountStatus, string tasks)
+    {
+        if (connectionId == Guid.Empty || workspaceId != WorkspaceId || IsDemo)
+            return Result.Failure(Error.Validation("ConnectedAdAccount.InvalidAuthorization", "A credencial deve pertencer ao workspace da conta real."));
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 200 || currency.Length is < 3 or > 10 || timeZone?.Length > 150 || tasks.Length > 1000)
+            return Result.Failure(Error.Validation("ConnectedAdAccount.InvalidMetadata", "Metadados da conta inválidos."));
+        OAuthTokenVaultId = connectionId;
+        AccountName = name;
+        Currency = currency;
+        TimeZone = timeZone;
+        ExternalAccountStatus = accountStatus;
+        AuthorizedTasks = tasks;
+        Status = "Connected";
+        UpdatedAtUtc = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    /// <summary>Desativa o vínculo local preservando o histórico.</summary>
+    public void Disconnect()
+    {
+        Status = "Disconnected";
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Registra a conclusão de uma sincronização.</summary>
+    /// <param name="completedAtUtc">Instante UTC da conclusão.</param>
+    public void MarkSynced(DateTime completedAtUtc) => LastSyncedAtUtc = completedAtUtc;
+
     /// <summary>
     /// Cria uma nova instância de <see cref="ConnectedAdAccount"/> validando as invariantes de negócio.
     /// </summary>

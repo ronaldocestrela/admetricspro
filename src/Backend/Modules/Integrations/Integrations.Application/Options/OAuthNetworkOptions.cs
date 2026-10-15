@@ -13,7 +13,10 @@ public sealed class OAuthNetworkOptions
     /// <summary>
     /// Chave secreta para assinatura HMAC do state anti-CSRF.
     /// </summary>
-    public string StateSigningKey { get; set; } = "default-development-hmac-sha256-state-signing-key-32chars!";
+    public string StateSigningKey { get; set; } = string.Empty;
+
+    /// <summary>Chave AES-256 em Base64, externa ao código, para proteger tokens com AES-GCM.</summary>
+    public string TokenEncryptionKey { get; set; } = string.Empty;
 
     /// <summary>
     /// Opções do Meta Ads.
@@ -54,12 +57,21 @@ public sealed class MetaAdsOAuthOptions
     /// <summary>
     /// Escopos padrão solicitados na autorização.
     /// </summary>
-    public string DefaultScopes { get; set; } = "ads_read,ads_management,read_insights,business_management";
+    public string DefaultScopes { get; set; } = "ads_read,ads_management";
 
     /// <summary>
     /// Versão da Meta Graph API.
     /// </summary>
-    public string GraphApiVersion { get; set; } = "v21.0";
+    public string GraphApiVersion { get; set; } = "v26.0";
+
+    /// <summary>Callback HTTPS previamente registrado no aplicativo Meta.</summary>
+    public string RedirectUri { get; set; } = string.Empty;
+
+    /// <summary>Callbacks adicionais de white-label, cadastrados explicitamente também na Meta.</summary>
+    public string[] AdditionalRedirectUris { get; set; } = [];
+
+    /// <summary>Timeout das chamadas Graph em segundos.</summary>
+    public int TimeoutSeconds { get; set; } = 60;
 }
 
 /// <summary>

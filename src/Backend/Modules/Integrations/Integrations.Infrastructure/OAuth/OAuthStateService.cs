@@ -30,9 +30,9 @@ public sealed class OAuthStateService : IOAuthStateService
     }
 
     /// <inheritdoc />
-    public string GenerateState(Guid tenantId, Guid workspaceId, string platform, string redirectUri)
+    public string GenerateState(Guid tenantId, Guid workspaceId, string platform, string redirectUri, Guid userId = default)
     {
-        return GenerateStateWithTimestamp(tenantId, workspaceId, platform, redirectUri, DateTime.UtcNow);
+        return GenerateStateWithTimestamp(tenantId, workspaceId, platform, redirectUri, DateTime.UtcNow, userId);
     }
 
     /// <summary>
@@ -43,9 +43,11 @@ public sealed class OAuthStateService : IOAuthStateService
         Guid workspaceId,
         string platform,
         string redirectUri,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        Guid userId = default)
     {
-        var payload = new OAuthStatePayload(tenantId, workspaceId, platform, redirectUri, createdAtUtc);
+        var payload = new OAuthStatePayload(tenantId, workspaceId, platform, redirectUri, createdAtUtc,
+            userId, Convert.ToHexString(RandomNumberGenerator.GetBytes(32)));
         var json = JsonSerializer.Serialize(payload);
         var payloadBytes = Encoding.UTF8.GetBytes(json);
         var payloadBase64 = Convert.ToBase64String(payloadBytes);
@@ -107,7 +109,7 @@ public sealed class OAuthStateService : IOAuthStateService
                 Error.Validation("OAuthState.InvalidFormat", "O payload de estado é nulo."));
         }
 
-        if (DateTime.UtcNow - payload.CreatedAtUtc > StateLifetime)
+        if (DateTime.UtcNow - payload.CreatedAtUtc > StateLifetime || payload.CreatedAtUtc > DateTime.UtcNow.AddSeconds(30))
         {
             return Result<OAuthStatePayload>.Failure(
                 Error.Validation("OAuthState.Expired", "A requisição de autorização OAuth expirou por limite temporal (15 minutos)."));

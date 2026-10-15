@@ -14,6 +14,7 @@ namespace WebApi.Controllers.v1;
 /// Controlador responsável pelo Copiloto de Otimização via IA (Auditor de Tráfego - Subfase 5.3).
 /// Expõe diagnósticos de anomalias (overlap no Meta e canibalização Google vs Bing) e execução de recomendações em 1 clique.
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Tenant")]
 [ApiController]
 [Route("api/v1/analytics/copilot")]
 public sealed class CopilotController : ControllerBase
