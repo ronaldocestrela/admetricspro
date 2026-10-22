@@ -7,6 +7,13 @@ using Integrations.Infrastructure.Campaigns.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
+using Microsoft.Extensions.DependencyInjection;
+using MediatR;
+using BuildingBlocks.Application.Integrations;
+using Analytics.Domain.Dashboard;
+using Analytics.Infrastructure.Dashboard;
+using Analytics.Application.Dashboard.Queries.GetExecutiveDashboard;
+using Integrations.Application.Campaigns.Queries;
 
 namespace UnitTests.Backend.Integrations.Campaigns;
 
@@ -272,5 +279,40 @@ public sealed class CampaignMetricsRepositoryTests : IDisposable
     {
         _dbContext.Dispose();
         _connection.Dispose();
+    }
+
+    /// <summary>Integra repositório, contratos e calculador sem somar hourly ou outro workspace.</summary>
+    [Fact]
+    public async Task Dashboard_UsesPersistedDailyMetricsFromAuthorizedWorkspace()
+    {
+        var workspace = Guid.NewGuid(); var otherWorkspace = Guid.NewGuid(); var account = Guid.NewGuid();
+        var campaign = await SeedCampaignAsync(workspace, account, "11");
+        var otherCampaign = await SeedCampaignAsync(otherWorkspace, Guid.NewGuid(), "22");
+        var date = DateTime.UtcNow.Date;
+        await _repository.UpsertMetricsBatchAsync(workspace, [
+            CampaignMetric.Create(Guid.NewGuid(), workspace, account, campaign.Id, null, null, "MetaAds", "11", null, null, date, null, MetricGranularity.Daily, 123.45m, "BRL", 1000, 20, 2m, 321m).Value,
+            CampaignMetric.Create(Guid.NewGuid(), workspace, account, campaign.Id, null, null, "MetaAds", "11", null, null, date, 1, MetricGranularity.Hourly, 50m, "BRL", 100, 5, 0m, 0m).Value]);
+        await _repository.UpsertMetricsBatchAsync(otherWorkspace, [
+            CampaignMetric.Create(Guid.NewGuid(), otherWorkspace, otherCampaign.ConnectedAdAccountId, otherCampaign.Id, null, null, "MetaAds", "22", null, null, date, null, MetricGranularity.Daily, 999m, "BRL", 5000, 40, 0m, 0m).Value]);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMediatR(c => c.RegisterServicesFromAssemblies(typeof(GetDashboardMetricPointsQueryHandler).Assembly, typeof(GetExecutiveDashboardQueryHandler).Assembly));
+        services.AddSingleton<ICampaignMetricsRepository>(_repository);
+        services.AddSingleton<IExecutiveDashboardCalculator, ExecutiveDashboardCalculator>();
+        services.AddScoped<IExecutiveDashboardDataProvider, ExecutiveDashboardDataProvider>();
+        services.AddSingleton<IRequestHandler<GetAnalyticsWorkspaceIdsQuery, Result<IReadOnlyList<Guid>>>>(new AllowedWorkspaceHandler(workspace));
+        using var provider = services.BuildServiceProvider();
+        var result = await provider.GetRequiredService<ISender>().Send(new GetExecutiveDashboardQuery(workspace, date, date));
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Metrics.Single(m => m.MetricKey == "Spend").CurrentValue.Should().Be(123.45m);
+        result.Value.TimeSeries.Single().Clicks.Should().Be(20);
+        result.Value.PlatformBreakdown.Single().Platform.Should().Be("Meta");
+    }
+
+    private sealed class AllowedWorkspaceHandler(Guid workspace) : IRequestHandler<GetAnalyticsWorkspaceIdsQuery, Result<IReadOnlyList<Guid>>>
+    {
+        /// <inheritdoc />
+        public Task<Result<IReadOnlyList<Guid>>> Handle(GetAnalyticsWorkspaceIdsQuery request, CancellationToken cancellationToken) =>
+            Task.FromResult(Result<IReadOnlyList<Guid>>.Success([workspace]));
     }
 }

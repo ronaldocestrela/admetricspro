@@ -122,10 +122,46 @@ public sealed class BulkCampaignClientService : IBulkCampaignClientService
 
     private void AppendTenantHeader(HttpRequestMessage message)
     {
+        var accessToken = _session?.CurrentSession?.AccessToken;
+        if (!string.IsNullOrWhiteSpace(accessToken))
+            message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
         var tenantId = _tenantStateProvider.CurrentTenant?.TenantId ?? Guid.Empty;
         if (tenantId != Guid.Empty)
         {
             message.Headers.TryAddWithoutValidation("X-Tenant-Id", tenantId.ToString());
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<SyncCampaignHierarchySummaryDto>> SynchronizeAccountAsync(Guid workspaceId, Guid accountId,
+        string platform, DateOnly since, DateOnly until, CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty || accountId == Guid.Empty || since > until ||
+            platform is not ("MetaAds" or "GoogleAds" or "TikTokAds" or "BingAds"))
+            return Result<SyncCampaignHierarchySummaryDto>.Failure(Error.Validation("Sync.InvalidRequest", "Selecione conta, plataforma e período válidos."));
+        var hierarchy = await SendSyncAsync<SyncCampaignHierarchySummaryDto>("/api/v1/integrations/campaigns/sync",
+            new { workspaceId, connectedAdAccountId = accountId, platform }, cancellationToken);
+        if (hierarchy.IsFailure) return hierarchy;
+        var metrics = await SendSyncAsync<SyncCampaignMetricsSummaryDto>("/api/v1/integrations/campaigns/metrics/sync",
+            new { workspaceId, connectedAdAccountId = accountId, platform,
+                startDateUtc = since.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                endDateUtc = until.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), granularity = "Daily" }, cancellationToken);
+        return metrics.IsFailure ? Result<SyncCampaignHierarchySummaryDto>.Failure(metrics.Error) : hierarchy;
+    }
+
+    private async Task<Result<T>> SendSyncAsync<T>(string uri, object payload, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, uri) { Content = JsonContent.Create(payload) };
+            AppendTenantHeader(request);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<Result<T>>(JsonOptions, cancellationToken)
+                ?? Result<T>.Failure(Error.Failure("Http.EmptyResponse", "Resposta de sincronização vazia."));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
+        {
+            return Result<T>.Failure(Error.Failure("Sync.NetworkError", "Não foi possível comunicar com a API para sincronizar a conta."));
         }
     }
 }

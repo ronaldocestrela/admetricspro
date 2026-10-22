@@ -1,0 +1,18 @@
+.ad-management-page { max-width: 1200px; margin: 0 auto; padding: 32px; color: #e2e8f0; }
+header { margin-bottom: 28px; }
+header h1 { color: #f8fafc; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700; }
+header p, .platform-card p, .connections-link { color: #a6b4c8; line-height: 1.6; }
+.eyebrow { color: var(--tenant-primary, #818cf8); font-size: .75rem; font-weight: 700; letter-spacing: .12em; }
+.workspace-picker { display: grid; gap: 8px; max-width: 440px; margin-bottom: 28px; font-weight: 600; }
+.workspace-picker select { color: #f1f5f9; background: #172235; border-color: #334155; }
+.platform-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.platform-card { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 28px; border: 1px solid #334155; border-radius: 18px; color: #f8fafc; background: linear-gradient(135deg, #172235, #111a2b); text-decoration: none; transition: border-color .15s, transform .15s; }
+.platform-card:hover, .platform-card:focus-visible { border-color: var(--tenant-primary, #818cf8); transform: translateY(-2px); outline: 2px solid var(--tenant-primary, #818cf8); outline-offset: 3px; }
+.platform-card h2 { font-size: 1.2rem; margin: 0; color: #fff; }
+.platform-card p { margin: 0; flex: 1; }
+.platform-mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #243857; color: #93c5fd; font-size: 1.8rem; font-weight: 800; }
+.google .platform-mark { color: #facc15; }.tiktok .platform-mark { color: #5eead4; }.bing .platform-mark { color: #6ee7b7; }
+.open-label { color: #c7d2fe; font-weight: 600; font-size: .9rem; margin-top: 8px; }
+.connections-link { margin-top: 24px; }.connections-link a { color: #a5b4fc; }
+.empty-state { padding: 32px; border: 1px dashed #475569; border-radius: 16px; }
+@media (max-width: 680px) { .ad-management-page { padding: 20px 12px; }.platform-grid { grid-template-columns: 1fr; }.platform-card { padding: 22px; } }

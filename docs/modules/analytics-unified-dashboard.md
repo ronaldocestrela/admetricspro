@@ -32,7 +32,10 @@ O Dashboard Executivo Unificado fornece visão consolidada e em tempo real do de
 | `currency` | `string?` | Não | Moeda de consolidação (padrão: BRL). |
 
 #### Headers Requeridos:
+- `Authorization: Bearer <accessToken>`: JWT da sessão atual do usuário do tenant. O cliente consulta `ITenantSessionStateProvider` a cada requisição, acompanhando login, troca de sessão e logout sem manter tokens antigos no `HttpClient`.
 - `X-Tenant-Id`: Identificador do Tenant ativo (resolvido pelo middleware multitenant).
+
+Sem JWT válido, a API retorna HTTP 401 com `Result.Failure`, código `Auth.Unauthorized` e descrição `Autenticação válida necessária.`. O header de tenant e as credenciais Meta no `.env` não substituem a autenticação do usuário. Uma sessão expirada exige novo login.
 
 ---
 
@@ -228,3 +231,11 @@ O Dashboard Executivo Unificado fornece visão consolidada e em tempo real do de
   - `DashboardExportActionsTests.cs`: 5 testes cobrindo botões habilitados/desabilitados, estrutura do CSV e invocação dos métodos JSInterop.
   - `ExecutiveDashboardViewTests.cs`: 3 testes cobrindo renderização completa de componentes, reatividade ao alterar filtros e exibição de alertas de erro.
   - `TenantDashboardPageTests.cs`: 7 testes de integração do painel geral cobrindo cabeçalho personalizado, FTUX, canais conectados e a visão executiva integrada.
+
+## Dados reais e atualização do painel
+
+Conforme ADR 0041, o dashboard consulta métricas persistidas Daily via contratos MediatR com Integrations e Tenants. Não gera números a partir do ID do workspace. Sem registros importados no período, retorna vazio. No consolidado, consulta apenas workspaces ativos da carteira autorizada no tenant atual. Falhas são propagadas como Result, sem fallback demonstrativo.
+
+MetaAds/GoogleAds/TikTokAds/BingAds são normalizados para os filtros Meta/Google/TikTok/Bing. Hourly não é somado a Daily. Registros sem dispositivo são Unknown, sem divisão artificial entre Mobile/Desktop/Tablet. Moeda diferente do filtro produz Dashboard.CurrencyMismatch, evitando apresentar moeda incorreta ou conversão por cotação fixa.
+
+Os cards mostram o vínculo e nome reais da conta no workspace ativo e acompanham troca de workspace/sessão. Atualizar métricas consulta novamente a API. A importação inicial após vincular contas Meta cobre 60 dias, incluindo a comparação de 30 dias. Contas previamente vinculadas podem ser importadas em Gerenciamento de anúncios → Meta Ads → Sincronizar dados da Meta.

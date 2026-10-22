@@ -122,6 +122,15 @@ Os arquivos de configuração padrão já estão preparados para o ambiente de d
 
 ### 4. Executar o Backend (WebApi)
 
+Antes de executar a API localmente, confirme que o Docker Desktop/Engine está ativo e que o banco está saudável:
+
+```bash
+docker compose up -d --wait sqlserver
+docker compose ps sqlserver
+```
+
+No WSL 2, habilite a integração da distribuição nas configurações do Docker Desktop. Se as migrações falharem com `TCP Provider, error: 35` ao acessar `localhost,1433`, verifique primeiro se o Docker está iniciado e o contêiner `admetricspro-sqlserver` está saudável. O comando `dotnet build` valida a compilação; a conexão e as migrações precisam ser verificadas executando a API. Após o teste, encerre a API com `Ctrl+C` (ou `docker compose stop webapi`, caso esteja em contêiner).
+
 Abra um terminal e execute o projeto da API:
 
 ```bash

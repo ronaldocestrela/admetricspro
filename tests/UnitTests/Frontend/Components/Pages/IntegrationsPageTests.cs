@@ -11,6 +11,7 @@ using Tenants.Application.Workspaces.DTOs;
 using UnitTests.Frontend.Common;
 using WebApp.Components.Pages;
 using WebApp.Models;
+using WebApp.Services;
 using Xunit;
 
 namespace UnitTests.Frontend.Components.Pages;
@@ -37,10 +38,21 @@ public sealed class IntegrationsPageTests : BunitTestBase
                 new global::Integrations.Domain.Meta.MetaAdAccount("act_11", "Anúncios Cliente A", "BRL", "America/Sao_Paulo", 1, new[] { "ANALYZE" }) }));
         OAuthIntegrationsClientService.GetLinkedAdAccountsAsync(_workspaceId, Arg.Any<CancellationToken>())
             .Returns(Result<IReadOnlyList<Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto>>.Success(Array.Empty<Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto>()));
+        var accountId = Guid.NewGuid();
+        OAuthIntegrationsClientService.SelectMetaAdAccountsAsync(_workspaceId, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<Guid>>.Success([accountId]));
+        var meta = Substitute.For<IMetaAdsClientService>();
+        meta.SyncAsync(_workspaceId, accountId, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(Result<global::Integrations.Application.Campaigns.DTOs.SyncCampaignHierarchySummaryDto>.Success(new(1, 1, 0, 0, DateTime.UtcNow, ["MetaAds"])));
+        Services.AddSingleton(meta);
         var cut = Render<IntegrationsPage>();
         cut.Find("[data-testid='btn-meta-accounts']").Click();
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Anúncios Cliente A"));
         cut.Find("[data-testid='meta-account-act_11']").Should().NotBeNull();
+        cut.Find("[data-testid='meta-account-act_11']").Change(true);
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Vincular contas selecionadas")).Click();
+        cut.WaitForAssertion(() => meta.Received(1).SyncAsync(_workspaceId, accountId,
+            Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>()));
     }
     private readonly Guid _workspaceId = Guid.NewGuid();
     private readonly WorkspaceDto _workspace1;

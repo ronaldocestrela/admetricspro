@@ -46,23 +46,24 @@ public sealed class GetExecutiveDashboardQueryHandler : IQueryHandler<GetExecuti
         var previousEnd = currentStart.AddDays(-1);
         var previousStart = previousEnd.AddDays(-daysSpan);
 
+        var currency = !string.IsNullOrWhiteSpace(request.Currency) ? request.Currency : "BRL";
         var currentPoints = await _dataProvider.GetMetricsAsync(
             request.WorkspaceId,
             currentStart,
             currentEnd,
-            cancellationToken);
+            cancellationToken, currency);
+        if (currentPoints.IsFailure) return Result<ExecutiveDashboardDto>.Failure(currentPoints.Error);
 
         var previousPoints = await _dataProvider.GetMetricsAsync(
             request.WorkspaceId,
             previousStart,
             previousEnd,
-            cancellationToken);
-
-        var currency = !string.IsNullOrWhiteSpace(request.Currency) ? request.Currency : "BRL";
+            cancellationToken, currency);
+        if (previousPoints.IsFailure) return Result<ExecutiveDashboardDto>.Failure(previousPoints.Error);
 
         var calcResult = _calculator.Calculate(
-            currentPoints,
-            previousPoints,
+            currentPoints.Value,
+            previousPoints.Value,
             currentStart,
             currentEnd,
             previousStart,

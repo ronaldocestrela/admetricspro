@@ -18,4 +18,8 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Meta/meta-resource-schema.json" LogicalName="Integrations.Application.Meta.meta-resource-schema.json" />
+  </ItemGroup>
+
 </Project>

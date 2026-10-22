@@ -17,6 +17,16 @@ public sealed class MetaAdsClientService(HttpClient client, ITenantSessionStateP
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <inheritdoc />
+    public Task<Result<MetaResourceDefinition>> GetResourceOptionsAsync(Guid workspaceId, Guid accountId, string resource, CancellationToken cancellationToken = default) =>
+        SendAsync<MetaResourceDefinition>(HttpMethod.Get, $"/api/v1/integrations/meta/resource-options?workspaceId={workspaceId}&accountId={accountId}&resource={Uri.EscapeDataString(resource)}", null, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<Result<MetaResourceConfiguration>> GetResourceConfigurationAsync(Guid workspaceId, Guid accountId, string resource,
+        string externalId, IReadOnlyList<string>? fields = null, CancellationToken cancellationToken = default) =>
+        SendAsync<MetaResourceConfiguration>(HttpMethod.Get, $"/api/v1/integrations/meta/resources/{Uri.EscapeDataString(resource)}/{Uri.EscapeDataString(externalId)}/configuration?workspaceId={workspaceId}&accountId={accountId}" +
+            (fields is null ? "" : $"&fields={Uri.EscapeDataString(string.Join(',', fields))}"), null, cancellationToken);
+
+    /// <inheritdoc />
     public Task<Result<IReadOnlyList<JsonElement>>> SearchTargetingAsync(Guid workspaceId, Guid accountId, string type, string query, CancellationToken cancellationToken = default) =>
         SendAsync<IReadOnlyList<JsonElement>>(HttpMethod.Get, $"/api/v1/integrations/meta/targeting-search?workspaceId={workspaceId}&accountId={accountId}&type={Uri.EscapeDataString(type)}&query={Uri.EscapeDataString(query)}", null, cancellationToken);
 

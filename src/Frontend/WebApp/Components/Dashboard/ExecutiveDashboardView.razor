@@ -9,6 +9,7 @@
 @inject IWorkspaceClientService WorkspaceClientService
 @inject IBudgetPacingClientService PacingClientService
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@inject ITenantSessionStateProvider Session
 @namespace WebApp.Components.Dashboard
 
 <div id="executive-dashboard-container" class="executive-dashboard-container">
@@ -20,6 +21,7 @@
                              IsLoading="@IsLoading" />
 
         <DashboardExportActions Dashboard="@DashboardData" Filters="@Filters" />
+        <button type="button" class="btn btn-outline-primary" data-testid="refresh-dashboard" disabled="@IsLoading" @onclick="LoadDashboardAsync">Atualizar métricas</button>
     </div>
 
     @if (!string.IsNullOrEmpty(ErrorMessage))
@@ -102,6 +104,7 @@
     protected override async Task OnInitializedAsync()
     {
         WorkspaceContextStateProvider.OnWorkspaceChanged += HandleContextWorkspaceChanged;
+        Session.OnSessionChanged += HandleSessionChanged;
 
         if (WorkspaceContextStateProvider.CurrentWorkspaceId.HasValue)
         {
@@ -148,6 +151,8 @@
     {
         IsLoading = true;
         ErrorMessage = null;
+        DashboardData = null;
+        PacingData = null;
         try
         {
             var result = await DashboardClientService.GetExecutiveDashboardAsync(Filters);
@@ -191,5 +196,12 @@
     public void Dispose()
     {
         WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleContextWorkspaceChanged;
+        Session.OnSessionChanged -= HandleSessionChanged;
     }
+    private void HandleSessionChanged() => _ = InvokeAsync(async () =>
+    {
+        await LoadWorkspacesAsync();
+        await LoadDashboardAsync();
+        StateHasChanged();
+    });
 }

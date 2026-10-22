@@ -39,6 +39,8 @@ public sealed class MetaManagementPageTests : BunitTestBase
             .Returns(Result<IReadOnlyList<global::Integrations.Application.Campaigns.DTOs.CampaignHierarchyDto>>.Success(Array.Empty<global::Integrations.Application.Campaigns.DTOs.CampaignHierarchyDto>()));
         Services.AddSingleton(campaigns);
         var meta = Substitute.For<IMetaAdsClientService>();
+        meta.GetResourceOptionsAsync(workspace, accountId, "campaigns", Arg.Any<CancellationToken>())
+            .Returns(global::Integrations.Application.Meta.MetaResourceCatalog.Get("campaigns"));
         meta.WriteAsync(Arg.Any<global::Integrations.Application.Meta.WriteMetaResourceCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result<global::Integrations.Domain.Meta.MetaWriteResult>.Success(new("123", true)));
         Services.AddSingleton(meta);
@@ -49,5 +51,7 @@ public sealed class MetaManagementPageTests : BunitTestBase
         await meta.Received(1).WriteAsync(Arg.Is<global::Integrations.Application.Meta.WriteMetaResourceCommand>(r =>
             r.WorkspaceId == workspace && r.AccountId == accountId && !r.ConfirmActivation &&
             r.Data.GetProperty("status").GetString() == "PAUSED"), Arg.Any<CancellationToken>());
+        await meta.Received(1).WriteAsync(Arg.Is<global::Integrations.Application.Meta.WriteMetaResourceCommand>(r =>
+            r.Data.GetProperty("is_adset_budget_sharing_enabled").ValueKind == System.Text.Json.JsonValueKind.False), Arg.Any<CancellationToken>());
     }
 }

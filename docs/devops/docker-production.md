@@ -73,6 +73,23 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 
 ## 5. Comandos Úteis de Operação e Monitoramento
 
+### Falha de restore com NU1902/NU1903 no pacote PKCS
+
+O driver `Microsoft.Data.SqlClient` usado pelo EF Core trazia a dependência
+transitiva `System.Security.Cryptography.Pkcs` 9.0.11. Os avisos
+[GHSA-2fmv-rv2c-59x7](https://github.com/advisories/GHSA-2fmv-rv2c-59x7) e
+[GHSA-846f-f764-76mx](https://github.com/advisories/GHSA-846f-f764-76mx)
+identificam essa versão como vulnerável e indicam 10.0.13 como versão corrigida
+na linha .NET 10.
+
+`BuildingBlocks.Infrastructure` referencia explicitamente a versão 10.0.13,
+que se propaga aos hosts WebApi, WebApp e BackofficeApp. A auditoria NuGet e
+`TreatWarningsAsErrors` continuam habilitados. O teste
+`PkcsSecurityDependencyTests` verifica a versão efetiva carregada pela aplicação.
+
+Após atualizar os fontes, reconstrua as imagens com `docker compose up -d --build`.
+Não é necessário remover volumes nem recriar os bancos.
+
 ### Verificar o Status dos Containers
 ```bash
 docker compose -f docker-compose.prod.yml ps

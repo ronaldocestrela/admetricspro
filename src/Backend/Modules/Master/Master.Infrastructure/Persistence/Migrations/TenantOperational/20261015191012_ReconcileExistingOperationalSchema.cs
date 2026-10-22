@@ -11,9 +11,8 @@ public partial class ReconcileExistingOperationalSchema : Migration
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-            migrationBuilder.DropIndex(
-                name: "IX_TenantUsers_IsActive",
-                table: "TenantUsers");
+            // O histórico de setembro não cria esse índice; alguns bancos legados o possuem.
+            migrationBuilder.Sql("DROP INDEX IF EXISTS [IX_TenantUsers_IsActive] ON [TenantUsers];");
 
             migrationBuilder.CreateTable(
                 name: "AutomationRules",
@@ -280,11 +279,6 @@ public partial class ReconcileExistingOperationalSchema : Migration
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Squads_Name",
-                table: "Squads",
-                column: "Name");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Ads_AdSetId_ExternalAdId",
                 table: "Ads",
                 columns: new[] { "AdSetId", "ExternalAdId" },
@@ -427,10 +421,6 @@ public partial class ReconcileExistingOperationalSchema : Migration
 
             migrationBuilder.DropTable(
                 name: "Campaigns");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Squads_Name",
-                table: "Squads");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TenantUsers_IsActive",

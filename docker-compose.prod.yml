@@ -51,6 +51,18 @@ services:
       - TenantJwt__Issuer=${TenantJwt__Issuer:-AdMetricsPro.Tenants}
       - TenantJwt__Audience=${TenantJwt__Audience:-AdMetricsPro.ClientApp}
       - TenantJwt__ExpirationMinutes=${TenantJwt__ExpirationMinutes:-480}
+      # Meta: credenciais e cofre somente no backend.
+      - META_APP_ID=${META_APP_ID:-}
+      - META_APP_SECRET=${META_APP_SECRET:-}
+      - META_GRAPH_API_VERSION=${META_GRAPH_API_VERSION:-v26.0}
+      - META_OAUTH_REDIRECT_URI=${META_OAUTH_REDIRECT_URI:-http://localhost:7000/integrations}
+      - Integrations__OAuth__StateSigningKey=${Integrations__OAuth__StateSigningKey:-}
+      - Integrations__OAuth__TokenEncryptionKey=${Integrations__OAuth__TokenEncryptionKey:-}
+      - Integrations__OAuth__Meta__DefaultScopes=${Integrations__OAuth__Meta__DefaultScopes:-ads_read,ads_management}
+      - Integrations__OAuth__Meta__TimeoutSeconds=${Integrations__OAuth__Meta__TimeoutSeconds:-60}
+      - Integrations__MetaSynchronization__Enabled=${Integrations__MetaSynchronization__Enabled:-false}
+      - Integrations__MetaSynchronization__IntervalMinutes=${Integrations__MetaSynchronization__IntervalMinutes:-60}
+      - Integrations__MetaSynchronization__LookbackDays=${Integrations__MetaSynchronization__LookbackDays:-7}
       - SuperAdmin__Email=${SuperAdmin__Email:-admin@admetricspro.internal}
       - SuperAdmin__Password=${SuperAdmin__Password}
       - SuperAdmin__FullName=${SuperAdmin__FullName:-Administrador AdMetricsPro}

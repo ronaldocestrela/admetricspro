@@ -10,6 +10,16 @@ namespace WebApp.Services;
 /// </summary>
 public interface IBulkCampaignClientService
 {
+    /// <summary>Importa hierarquia e métricas diárias da conta escolhida usando a API.</summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="accountId">Conta vinculada.</param>
+    /// <param name="platform">Plataforma canônica.</param>
+    /// <param name="since">Primeiro dia incluído.</param>
+    /// <param name="until">Último dia incluído.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Resumo da importação ou falha da API.</returns>
+    Task<Result<SyncCampaignHierarchySummaryDto>> SynchronizeAccountAsync(Guid workspaceId, Guid accountId,
+        string platform, DateOnly since, DateOnly until, CancellationToken cancellationToken = default);
     /// <summary>
     /// Obtém as campanhas disponíveis no workspace para exibição e seleção na matriz de edição em massa.
     /// </summary>

@@ -1,0 +1,106 @@
+@page "/ad-management/{WorkspaceId:guid}/{Platform}"
+@layout TenantMainLayout
+@using global::Integrations.Application.Campaigns.DTOs
+@using global::Tenants.Application.Integrations.DTOs
+@inject IOAuthIntegrationsClientService Connections
+@inject IBulkCampaignClientService Campaigns
+@inject ITenantSessionStateProvider Session
+
+<PageTitle>@PlatformName — Gerenciamento de anúncios</PageTitle>
+<section class="container-fluid py-4">
+    <a href="/ad-management">← Todas as plataformas</a>
+    <h1 class="h3 mt-3">@PlatformName</h1>
+    <p>Contas e campanhas deste cliente. As operações usam a autorização da plataforma selecionada.</p>
+    @if (_feedback is not null) { <div role="status" class="alert alert-info">@_feedback</div> }
+    @if (CanonicalPlatform is null) { <p>Plataforma não encontrada.</p> }
+    else if (_accounts.Count == 0)
+    {
+        <p>Conecte @PlatformName e vincule uma conta de anúncios deste workspace para começar.</p>
+        <a class="btn btn-primary" href="@($"/workspaces/{WorkspaceId}/integrations")">Conexão e contas</a>
+    }
+    else
+    {
+        <label class="form-label">Conta de anúncios
+            <select class="form-select" value="@_accountId" @onchange="ChangeAccountAsync" disabled="@_busy">
+                @foreach (var account in _accounts) { <option value="@account.Id">@account.AccountName · @account.Currency</option> }
+            </select>
+        </label>
+        <div class="d-flex flex-wrap gap-3 align-items-end my-3">
+            <label>De <input class="form-control" type="date" @bind="_since" /></label>
+            <label>Até <input class="form-control" type="date" @bind="_until" /></label>
+            <button class="btn btn-primary" disabled="@_busy" @onclick="SyncAsync">@(_busy ? "Sincronizando…" : "Sincronizar dados")</button>
+            <a class="btn btn-outline-secondary" href="@($"/workspaces/{WorkspaceId}/campaigns/bulk")">Operações em campanhas</a>
+        </div>
+        <h2 class="h5 mt-4">Campanhas da conta</h2>
+        @if (_campaigns.Count == 0) { <p>Nenhuma campanha importada para esta conta. Sincronize para consultar a plataforma.</p> }
+        else
+        {
+            <div class="table-responsive"><table class="table"><thead><tr><th>Campanha</th><th>Status</th><th>Conjuntos</th></tr></thead><tbody>
+                @foreach (var campaign in _campaigns) { <tr><td>@campaign.Name</td><td>@campaign.Status</td><td>@campaign.AdSets.Count</td></tr> }
+            </tbody></table></div>
+        }
+    }
+</section>
+
+@code {
+    /// <summary>Workspace proprietário das contas exibidas.</summary>
+    [Parameter] public Guid WorkspaceId { get; set; }
+    /// <summary>Identificador da plataforma na rota.</summary>
+    [Parameter] public string Platform { get; set; } = "";
+    private string? CanonicalPlatform => Platform switch { "google" => "GoogleAds", "tiktok" => "TikTokAds", "bing" => "BingAds", _ => null };
+    private string PlatformName => Platform switch { "google" => "Google Ads", "tiktok" => "TikTok Ads", "bing" => "Microsoft Ads", _ => "Plataforma" };
+    private IReadOnlyList<ConnectedAdAccountDto> _accounts = [];
+    private IReadOnlyList<CampaignHierarchyDto> _campaigns = [];
+    private Guid _accountId;
+    private bool _busy;
+    private string? _feedback;
+    private DateOnly _since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-6));
+    private DateOnly _until = DateOnly.FromDateTime(DateTime.UtcNow);
+    private int _generation;
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync() => await LoadAccountsAsync();
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !Session.IsAuthenticated && await Session.RestoreSessionAsync())
+        { await LoadAccountsAsync(); StateHasChanged(); }
+    }
+    private async Task LoadAccountsAsync()
+    {
+        var generation = ++_generation;
+        _accounts = []; _campaigns = []; _accountId = Guid.Empty; _feedback = null;
+        if (CanonicalPlatform is null) return;
+        var result = await Connections.GetLinkedAdAccountsAsync(WorkspaceId);
+        if (generation != _generation) return;
+        if (result.IsFailure) { _feedback = result.Error.Description; return; }
+        _accounts = result.Value.Where(a => a.WorkspaceId == WorkspaceId && a.Platform == CanonicalPlatform && !a.IsDemo && a.Status == "Connected").ToArray();
+        _accountId = _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
+        if (_accountId != Guid.Empty) await LoadCampaignsAsync();
+    }
+    private async Task ChangeAccountAsync(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var id) || !_accounts.Any(a => a.Id == id)) return;
+        ++_generation; _accountId = id; _campaigns = []; await LoadCampaignsAsync();
+    }
+    private async Task LoadCampaignsAsync()
+    {
+        var generation = _generation; var account = _accountId;
+        var result = await Campaigns.GetCampaignsForBulkAsync(WorkspaceId, CanonicalPlatform);
+        if (generation != _generation) return;
+        if (result.IsFailure) _feedback = result.Error.Description;
+        else _campaigns = result.Value.Where(c => c.WorkspaceId == WorkspaceId && c.ConnectedAdAccountId == account && c.Platform == CanonicalPlatform).ToArray();
+    }
+    private async Task SyncAsync()
+    {
+        if (_busy || _accountId == Guid.Empty || CanonicalPlatform is null) return;
+        _busy = true; var generation = _generation;
+        try
+        {
+            var result = await Campaigns.SynchronizeAccountAsync(WorkspaceId, _accountId, CanonicalPlatform, _since, _until);
+            if (generation != _generation) return;
+            _feedback = result.IsSuccess ? "Sincronização concluída. Consulte o período no dashboard." : result.Error.Description;
+            if (result.IsSuccess) await LoadCampaignsAsync();
+        }
+        finally { _busy = false; }
+    }
+}

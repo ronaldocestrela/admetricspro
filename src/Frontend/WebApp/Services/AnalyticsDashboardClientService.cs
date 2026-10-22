@@ -79,6 +79,12 @@ public sealed class AnalyticsDashboardClientService : IAnalyticsDashboardClientS
 
     private void AppendTenantHeader(HttpRequestMessage message)
     {
+        var accessToken = _session?.CurrentSession?.AccessToken;
+        if (!string.IsNullOrWhiteSpace(accessToken))
+        {
+            message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        }
+
         var tenantId = _tenantStateProvider.CurrentTenant?.TenantId ?? Guid.Empty;
         if (tenantId != Guid.Empty)
         {

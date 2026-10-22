@@ -15,6 +15,16 @@ namespace UnitTests.Frontend.Components.Dashboard;
 /// </summary>
 public sealed class ExecutiveDashboardViewTests : BunitTestBase
 {
+    /// <summary>Permite recarregar métricas importadas sem trocar de filtro ou recarregar a sessão.</summary>
+    [Fact]
+    public void ExecutiveDashboardView_RefreshButton_ReloadsMetrics()
+    {
+        var cut = Render<ExecutiveDashboardView>();
+        AnalyticsDashboardClientService.ClearReceivedCalls();
+        cut.Find("[data-testid='refresh-dashboard']").Click();
+        cut.WaitForAssertion(() => AnalyticsDashboardClientService.Received(1)
+            .GetExecutiveDashboardAsync(Arg.Any<DashboardFiltersState>(), Arg.Any<CancellationToken>()));
+    }
     /// <summary>
     /// Valida que a inicialização renderiza controles de filtros, cartões de métricas, layout de gráficos e ações de exportação.
     /// </summary>

@@ -5,11 +5,11 @@
 @if (IsOpen)
 {
     <div class="modal-backdrop fade show" style="background: rgba(15, 23, 42, 0.7); position: fixed; inset: 0; z-index: 1050;"></div>
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" style="z-index: 1055;">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="report-schedule-title" style="z-index: 1055;">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-            <div class="modal-content shadow-lg border-0" style="border-radius: 12px; background: #ffffff;">
-                <div class="modal-header border-bottom px-4 py-3" style="background: #f8fafc; border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                    <h5 class="modal-title fw-bold text-dark mb-0">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header px-4 py-3">
+                    <h5 id="report-schedule-title" class="modal-title fw-bold mb-0">
                         <i class="bi bi-calendar2-week text-primary me-2"></i>
                         @(EditingScheduleId.HasValue ? "Editar Agendamento de Relatório" : "Novo Agendamento de Relatório White-Label")
                     </h5>
@@ -17,6 +17,7 @@
                 </div>
 
                 <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto;">
+                    <p class="schedule-intro">Defina quando enviar, o período analisado e quem receberá o relatório. Os horários abaixo são em UTC.</p>
                     @if (!string.IsNullOrWhiteSpace(ErrorMessage))
                     {
                         <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">

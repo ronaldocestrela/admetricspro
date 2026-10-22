@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Application.Options;
+using Integrations.Application.Meta;
 using Integrations.Domain.Meta;
 using Microsoft.Extensions.Options;
 
@@ -34,6 +35,61 @@ public sealed class MetaManagementApi(HttpClient client, IOptions<MetaAdsOAuthOp
     };
 
     /// <inheritdoc />
+    public async Task<Result<MetaResourceConfiguration>> ReadConfigurationAsync(string accountId, string resource, string externalId,
+        IReadOnlyList<string> fields, string token, CancellationToken cancellationToken)
+    {
+        var definition = MetaResourceCatalog.Get(resource);
+        if (definition.IsFailure || fields.Count > 150 || fields.Any(name => !definition.Value.Fields.Any(f => f.Name == name && f.Readable && f.Restriction is null)))
+            return Result<MetaResourceConfiguration>.Failure(Error.Validation("Meta.InvalidConfigurationFields", "Campos de configuração não permitidos."));
+        var current = await GetAsync(accountId, resource, externalId, token, cancellationToken);
+        if (current.IsFailure) return Result<MetaResourceConfiguration>.Failure(current.Error);
+        var values = current.Value.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone());
+        var unavailable = new Dictionary<string, string>();
+        var missing = fields.Distinct(StringComparer.Ordinal).Where(f => !values.ContainsKey(f)).ToArray();
+        if (missing.Length > 0)
+        {
+            var combined = await _graph.GetAsync($"{externalId}?fields=account_id,{string.Join(',', missing)}", token, cancellationToken);
+            if (combined.IsSuccess)
+            {
+                if (!Owns(combined.Value, accountId)) return ConfigurationOwnerMismatch();
+                foreach (var property in combined.Value.EnumerateObject()) values[property.Name] = property.Value.Clone();
+                foreach (var field in missing.Where(f => !values.ContainsKey(f))) unavailable[field] = "A Meta não retornou este campo para o objeto.";
+            }
+            else
+            {
+                if (combined.Error.Type == ErrorType.Unauthorized) return Result<MetaResourceConfiguration>.Failure(combined.Error);
+                using var limit = new SemaphoreSlim(4);
+                var responses = await Task.WhenAll(missing.Select(async field =>
+                {
+                    await limit.WaitAsync(cancellationToken);
+                    try { return (Field: field, Result: await _graph.GetAsync($"{externalId}?fields=account_id,{field}", token, cancellationToken)); }
+                    finally { limit.Release(); }
+                }));
+                foreach (var response in responses)
+                {
+                    if (response.Result.IsFailure)
+                    {
+                        if (response.Result.Error.Type == ErrorType.Unauthorized) return Result<MetaResourceConfiguration>.Failure(response.Result.Error);
+                        unavailable[response.Field] = response.Result.Error.Description;
+                    }
+                    else
+                    {
+                        if (!Owns(response.Result.Value, accountId)) return ConfigurationOwnerMismatch();
+                        if (response.Result.Value.TryGetProperty(response.Field, out var value)) values[response.Field] = value.Clone();
+                        else unavailable[response.Field] = "A Meta não retornou este campo para o objeto.";
+                    }
+                }
+            }
+        }
+        return Result<MetaResourceConfiguration>.Success(new(JsonSerializer.SerializeToElement(values), unavailable));
+    }
+
+    private static bool Owns(JsonElement value, string accountId) => value.ValueKind == JsonValueKind.Object &&
+        value.TryGetProperty("account_id", out var owner) && owner.ValueKind == JsonValueKind.String && owner.GetString() == accountId[4..];
+    private static Result<MetaResourceConfiguration> ConfigurationOwnerMismatch() => Result<MetaResourceConfiguration>.Failure(
+        Error.Forbidden("Meta.ResourceAccountMismatch", "O recurso não pertence à conta vinculada a este workspace."));
+
+    /// <inheritdoc />
     public async Task<Result<JsonElement>> GetAsync(string accountId, string resource, string externalId, string token, CancellationToken cancellationToken)
     {
         if (!Account(accountId) || !Numeric(externalId) || !Fields.TryGetValue(resource, out var fields))
@@ -50,12 +106,20 @@ public sealed class MetaManagementApi(HttpClient client, IOptions<MetaAdsOAuthOp
     {
         if (!Account(accountId) || !Fields.ContainsKey(resource) || (externalId is not null && !Numeric(externalId)) || data.ValueKind != JsonValueKind.Object)
             return Result<MetaWriteResult>.Failure(Error.Validation("Meta.InvalidResource", "Recurso ou dados Meta inválidos."));
+        foreach (var (sourceField, sourceResource) in new[] { ("source_campaign_id", "campaigns"), ("source_adset_id", "adsets"), ("source_ad_id", "ads") })
+        {
+            if (!data.TryGetProperty(sourceField, out var sourceId)) continue;
+            if (sourceId.ValueKind != JsonValueKind.String || !Numeric(sourceId.GetString()!))
+                return Result<MetaWriteResult>.Failure(Error.Validation("Meta.InvalidResource", "Identificador do recurso de origem inválido."));
+            var source = await GetAsync(accountId, sourceResource, sourceId.GetString()!, token, cancellationToken);
+            if (source.IsFailure) return Result<MetaWriteResult>.Failure(source.Error);
+        }
         if (externalId is not null)
         {
             var owned = await GetAsync(accountId, resource, externalId, token, cancellationToken);
             if (owned.IsFailure) return Result<MetaWriteResult>.Failure(owned.Error);
         }
-        if (externalId is null && resource is "adsets" or "ads")
+        if (resource is "adsets" or "ads" && (externalId is null || data.TryGetProperty(resource == "adsets" ? "campaign_id" : "adset_id", out _)))
         {
             var parentField = resource == "adsets" ? "campaign_id" : "adset_id";
             var parentResource = resource == "adsets" ? "campaigns" : "adsets";

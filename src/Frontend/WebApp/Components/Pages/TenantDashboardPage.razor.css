@@ -465,6 +465,9 @@
     align-self: flex-start;
 }
 
+.platform-status-badge.connected { color: #86efac; background: #16653433; border-color: #22c55e66; }
+.platform-status-badge.connected .status-dot { background: #4ade80; }
+
 .platform-status-badge.disconnected {
     background: rgba(148, 163, 184, 0.1);
     color: var(--tenant-muted, #8c909f);

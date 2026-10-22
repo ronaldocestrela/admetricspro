@@ -1,6 +1,7 @@
 using AngleSharp.Dom;
 using Bunit;
 using FluentAssertions;
+using NSubstitute;
 using Tenants.Application.Auth.DTOs;
 using UnitTests.Frontend.Common;
 using WebApp.Components.Pages;
@@ -16,6 +17,20 @@ namespace UnitTests.Frontend.Components.Pages;
 /// </summary>
 public sealed class TenantDashboardPageTests : BunitTestBase
 {
+    /// <summary>Mostra o vínculo real e acompanha a troca de workspace sem manter status antigo.</summary>
+    [Fact]
+    public async Task TenantDashboardPage_WithLinkedAccount_ShowsConnectedPlatform()
+    {
+        var workspace = Guid.NewGuid();
+        await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(workspace, "Cliente");
+        OAuthIntegrationsClientService.GetLinkedAdAccountsAsync(workspace, NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(BuildingBlocks.Domain.Primitives.Result<IReadOnlyList<Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto>>.Success([
+                new(Guid.NewGuid(), workspace, "MetaAds", "act_11", "CA Cliente", "BRL", "Connected", false, DateTime.UtcNow)]));
+        var cut = Render<TenantDashboardPage>();
+        cut.WaitForAssertion(() => cut.Find("[data-platform='MetaAds']").TextContent.Should().Contain("Conectado").And.Contain("CA Cliente"));
+        await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(Guid.NewGuid(), "Outro");
+        cut.WaitForAssertion(() => cut.Find("[data-platform='MetaAds']").TextContent.Should().Contain("Desconectado").And.NotContain("CA Cliente"));
+    }
     /// <summary>
     /// Valida que ao haver uma sessão autenticada ativa, o header renderiza a saudação personalizada com o nome do gestor.
     /// </summary>

@@ -1,0 +1,74 @@
+@page "/ad-management"
+@layout TenantMainLayout
+@implements IDisposable
+@inject IWorkspaceClientService Workspaces
+@inject IWorkspaceContextStateProvider Context
+@inject ITenantSessionStateProvider Session
+
+<PageTitle>Gerenciamento de anúncios — AdMetricsPro</PageTitle>
+<section class="ad-management-page">
+    <header><p class="eyebrow">CENTRAL DE MÍDIA</p><h1>Gerenciamento de anúncios</h1><p>Selecione um cliente e abra a plataforma para gerenciar suas contas e campanhas.</p></header>
+    @if (_error is not null) { <div class="alert alert-danger" role="alert">@_error</div> }
+    @if (_workspaces.Count == 0)
+    {
+        <div class="empty-state"><h2>Cadastre um workspace</h2><p>Organize as contas de anúncios por cliente antes de começar.</p><a class="btn btn-primary" href="/workspaces">Abrir workspaces</a></div>
+    }
+    else
+    {
+        <label class="workspace-picker">Cliente / Workspace
+            <select class="form-select" value="@_workspaceId" @onchange="ChangeWorkspaceAsync">
+                @foreach (var workspace in _workspaces) { <option value="@workspace.Id">@workspace.Name</option> }
+            </select>
+        </label>
+        <div class="platform-grid">
+            @foreach (var platform in Platforms)
+            {
+                <a class="platform-card @platform.Slug" href="@($"/ad-management/{_workspaceId}/{platform.Slug}")">
+                    <span class="platform-mark" aria-hidden="true">@platform.Mark</span><h2>@platform.Name</h2>
+                    <p>@platform.Description</p><span class="open-label">Gerenciar contas e anúncios <span aria-hidden="true">→</span></span>
+                </a>
+            }
+        </div>
+        <p class="connections-link">Precisa conectar uma conta? <a href="@($"/workspaces/{_workspaceId}/integrations")">Abrir integrações</a></p>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<global::Tenants.Application.Workspaces.DTOs.WorkspaceDto> _workspaces = [];
+    private Guid _workspaceId;
+    private string? _error;
+    private static readonly (string Slug, string Name, string Mark, string Description)[] Platforms =
+    [
+        ("meta", "Meta Ads", "f", "Facebook e Instagram: contas, campanhas, conjuntos, anúncios e criativos."),
+        ("google", "Google Ads", "G", "Acompanhe campanhas e contas de pesquisa, vídeo e display."),
+        ("tiktok", "TikTok Ads", "♪", "Consulte as campanhas e contas de anúncios do TikTok."),
+        ("bing", "Microsoft Ads", "b", "Acesse as contas e campanhas do Microsoft Advertising / Bing.")
+    ];
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        Session.OnSessionChanged += SessionChanged;
+        Context.OnWorkspaceChanged += WorkspaceChanged;
+        await LoadAsync();
+    }
+    private async Task LoadAsync()
+    {
+        var result = await Workspaces.GetWorkspacesAsync(true);
+        if (result.IsFailure) { _error = result.Error.Description; return; }
+        _error = null;
+        _workspaces = result.Value;
+        _workspaceId = _workspaces.Any(w => w.Id == Context.CurrentWorkspaceId)
+            ? Context.CurrentWorkspaceId!.Value : _workspaces.FirstOrDefault()?.Id ?? Guid.Empty;
+    }
+    private async Task ChangeWorkspaceAsync(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var id) || !_workspaces.Any(w => w.Id == id)) return;
+        _workspaceId = id;
+        await Context.SetActiveWorkspaceAsync(id, _workspaces.First(w => w.Id == id).Name);
+    }
+    private void SessionChanged() => _ = InvokeAsync(async () => { await LoadAsync(); StateHasChanged(); });
+    private void WorkspaceChanged() => _ = InvokeAsync(async () => { await LoadAsync(); StateHasChanged(); });
+    /// <inheritdoc />
+    public void Dispose() { Session.OnSessionChanged -= SessionChanged; Context.OnWorkspaceChanged -= WorkspaceChanged; }
+}

@@ -16,6 +16,36 @@ namespace WebApi.Controllers.v1;
 [Route("api/v1/integrations/meta")]
 public sealed class MetaResourcesController(ISender sender, IMetaOperationRepository operations) : ControllerBase
 {
+    /// <summary>Obtém o catálogo versionado de configurações para a conta selecionada.</summary>
+    /// <param name="workspaceId">Workspace autorizado.</param>
+    /// <param name="accountId">Conta interna vinculada.</param>
+    /// <param name="resource">Recurso oficial.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Tipos, opções, disponibilidade por operação e restrições documentadas.</returns>
+    [HttpGet("resource-options")]
+    [EndpointSummary("Lista configurações oficiais de campanhas, conjuntos, anúncios e criativos Meta")]
+    [ProducesResponseType(typeof(Result<MetaResourceDefinition>), 200)]
+    [ProducesResponseType(400)] [ProducesResponseType(401)] [ProducesResponseType(403)] [ProducesResponseType(404)] [ProducesResponseType(422)]
+    public async Task<IActionResult> Options([FromQuery] Guid workspaceId, [FromQuery] Guid accountId, [FromQuery] string resource, CancellationToken cancellationToken) =>
+        Respond(await sender.Send(new GetMetaResourceOptionsQuery(workspaceId, accountId, resource), cancellationToken));
+
+    /// <summary>Lê os valores atuais das configurações sem preencher padrões em campos indisponíveis.</summary>
+    /// <param name="resource">Recurso oficial.</param>
+    /// <param name="externalId">Objeto remoto.</param>
+    /// <param name="workspaceId">Workspace autorizado.</param>
+    /// <param name="accountId">Conta interna vinculada.</param>
+    /// <param name="fields">Lista opcional separada por vírgulas para recarregar campos específicos.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Valores reais e falhas de leitura individuais.</returns>
+    [HttpGet("resources/{resource}/{externalId}/configuration")]
+    [EndpointSummary("Carrega configurações editáveis e somente de criação de um objeto Meta autorizado")]
+    [ProducesResponseType(typeof(Result<MetaResourceConfiguration>), 200)]
+    [ProducesResponseType(400)] [ProducesResponseType(401)] [ProducesResponseType(403)] [ProducesResponseType(404)] [ProducesResponseType(422)]
+    public async Task<IActionResult> Configuration(string resource, string externalId, [FromQuery] Guid workspaceId, [FromQuery] Guid accountId,
+        [FromQuery] string? fields, CancellationToken cancellationToken) =>
+        Respond(await sender.Send(new GetMetaResourceConfigurationQuery(workspaceId, accountId, resource, externalId,
+            fields is null ? null : fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)), cancellationToken));
+
     /// <summary>Pesquisa opções oficiais de targeting para a conta autorizada.</summary>
     /// <param name="workspaceId">Workspace.</param>
     /// <param name="accountId">Conta interna.</param>

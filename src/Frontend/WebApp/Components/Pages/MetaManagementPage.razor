@@ -1,4 +1,5 @@
 @page "/workspaces/{WorkspaceId:guid}/meta"
+@page "/ad-management/{WorkspaceId:guid}/meta"
 @layout TenantMainLayout
 @implements IDisposable
 @using System.Text.Json
@@ -8,6 +9,7 @@
 @using global::Integrations.Application.Campaigns.DTOs
 @using global::Integrations.Domain.Meta
 @using global::Tenants.Application.Integrations.DTOs
+@using WebApp.Components.Shared.Components
 @inject IOAuthIntegrationsClientService Connections
 @inject IMetaAdsClientService Meta
 @inject IBulkCampaignClientService Campaigns
@@ -17,6 +19,7 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3">Meta Ads</h1>
+        <a class="btn btn-outline-secondary" href="/ad-management">Todas as plataformas</a>
         <a class="btn btn-outline-secondary" href="@($"/workspaces/{WorkspaceId}/integrations")">Conexão e contas</a>
     </div>
     @if (!string.IsNullOrWhiteSpace(_feedback)) { <div class="alert alert-info" role="status">@_feedback</div> }
@@ -37,6 +40,7 @@
                 <button class="btn btn-outline-primary" disabled="@_busy" @onclick="SynchronizeAsync">@(_busy ? "Processando…" : "Sincronizar dados da Meta")</button>
                 <button class="btn btn-primary" data-testid="meta-create-campaign" disabled="@_busy" @onclick='() => OpenForm("campaigns")'>Criar campanha</button>
                 <button class="btn btn-outline-primary" disabled="@_busy" @onclick='() => OpenForm("adcreatives")'>Criar criativo</button>
+                <button class="btn btn-outline-primary" disabled="@_busy" @onclick='() => OpenFullEditor("adcreatives")'>Configuração completa de criativo</button>
             </div>
         </div>
         <div class="card p-3 mb-3">
@@ -107,6 +111,11 @@
             <div><button class="btn btn-success me-2" disabled="@_busy" @onclick="ConfirmActivationAsync">Confirmar ativação</button><button class="btn btn-outline-secondary" @onclick="() => _activation = null">Cancelar</button></div>
         </div>
     }
+    @if (_editorResource is not null)
+    {
+        <MetaResourceEditor WorkspaceId="@WorkspaceId" AccountId="@_accountId" Resource="@_editorResource" ExternalId="@_editorExternalId"
+            ParentId="@_editorParent" CampaignObjective="@_editorObjective" Currency="@Currency" OnSaved="HandleEditorSaved" OnClose="CloseEditor" />
+    }
     @if (_form is { } form)
     {
         <div class="card p-3 mb-3" role="dialog" aria-label="Configurar recurso Meta">
@@ -120,6 +129,11 @@
             @if (_formResource is "campaigns" or "adsets")
             {
                 <label class="form-label">Orçamento diário em @Currency (opcional) <input class="form-control" type="number" min="0.01" step="0.01" @bind="form.DailyBudget" /></label>
+            }
+            @if (_formResource == "campaigns" && _editingId is null && form.DailyBudget is null)
+            {
+                <label class="form-check-label my-2"><input class="form-check-input me-2" type="checkbox" @bind="form.ShareAdSetBudget" />Permitir compartilhamento de orçamento entre conjuntos</label>
+                <p class="small text-secondary">Desativado por padrão. O orçamento será definido nos conjuntos de anúncios.</p>
             }
             @if (_formResource == "adsets" && _editingId is null)
             {
@@ -162,7 +176,8 @@
             }
             @if (_formResource == "adcreatives")
             {
-                <button class="btn btn-sm btn-outline-secondary my-2" disabled="@_busy" @onclick="LoadPagesAsync">Carregar páginas autorizadas</button>
+                <button class="btn btn-sm btn-outline-secondary my-2" disabled="@_busy" @onclick="LoadPagesAsync">Carregar páginas disponíveis na Meta</button>
+                <p class="small">As páginas vêm das permissões da sua conta Meta. Para adicionar ou solicitar acesso, abra <a href="https://business.facebook.com/settings/" target="_blank" rel="noopener noreferrer">Configurações do negócio → Contas → Páginas</a> no portfólio proprietário. Ter acesso à conta de anúncios não garante acesso a todas as páginas.</p>
                 <label class="form-label">Página <select class="form-select" @bind="form.PageId"><option value="">Selecione uma página</option>@foreach (var page in _pages) { <option value="@Text(page, "id")">@Text(page, "name")</option> }</select></label>
                 <button class="btn btn-sm btn-outline-secondary my-2" disabled="@_busy" @onclick='() => LoadAssetsAsync("instagram_accounts")'>Carregar identidades Instagram</button>
                 <label class="form-label">Instagram (opcional) <select class="form-select" @bind="form.InstagramUserId"><option value="">Identidade padrão da página</option>@foreach (var identity in _instagramAccounts) { <option value="@Text(identity, "id")">@Text(identity, "username")</option> }</select></label>
@@ -195,6 +210,19 @@
 </div>
 
 @code {
+    private string? _editorResource, _editorExternalId;
+    private string _editorParent = "", _editorObjective = "OUTCOME_TRAFFIC";
+    private void OpenFullEditor(string resource, string? externalId = null, string? parent = null, string? objective = null)
+    {
+        _form = null; _editorResource = resource; _editorExternalId = externalId; _editorParent = parent ?? ""; _editorObjective = objective ?? "OUTCOME_TRAFFIC";
+    }
+    private void CloseEditor() { _editorResource = null; }
+    private void HandleEditorSaved(MetaWriteResult result)
+    {
+        if (_editorResource == "adcreatives") _lastCreativeId = result.ExternalId;
+        _feedback = $"Salvo na Meta: {result.ExternalId}. Sincronize para atualizar campanhas e métricas.";
+        _editorResource = null;
+    }
     /// <summary>Workspace cujo gerenciamento foi solicitado pela rota.</summary>
     [Parameter] public Guid WorkspaceId { get; set; }
     private Guid _loadedWorkspace;
@@ -223,7 +251,7 @@
         if (_loadedWorkspace == WorkspaceId) return;
         _contextCancellation.Cancel(); _contextCancellation.Dispose(); _contextCancellation = new();
         _accounts.Clear(); _campaigns.Clear(); _insights.Clear(); _pages.Clear(); _audiences.Clear(); _instagramAccounts.Clear(); _targetingResults.Clear();
-        _form = null; _activation = null; _accountId = Guid.Empty; _lastCreativeId = ""; _feedback = null; _videoOperationId = null; _videoState = null;
+        _form = null; _editorResource = null; _activation = null; _accountId = Guid.Empty; _lastCreativeId = ""; _feedback = null; _videoOperationId = null; _videoState = null;
         _loadedWorkspace = WorkspaceId;
         await LoadAccountsAsync();
     }
@@ -247,7 +275,7 @@
     {
         if (!Guid.TryParse(args.Value?.ToString(), out var account)) return;
         _contextCancellation.Cancel(); _contextCancellation.Dispose(); _contextCancellation = new();
-        _accountId = account; _form = null; _activation = null; _insights.Clear(); _pages.Clear(); _audiences.Clear(); _instagramAccounts.Clear(); _targetingResults.Clear(); _videoOperationId = null; _videoState = null;
+        _accountId = account; _form = null; _editorResource = null; _activation = null; _insights.Clear(); _pages.Clear(); _audiences.Clear(); _instagramAccounts.Clear(); _targetingResults.Clear(); _videoOperationId = null; _videoState = null;
         await LoadCampaignsAsync();
     }
     private async Task LoadCampaignsAsync()
@@ -283,6 +311,8 @@
     });
     private void OpenForm(string resource, string? externalId = null, string? name = null, string? parent = null, string? objective = null)
     {
+        if (resource != "adcreatives") { OpenFullEditor(resource, externalId, parent, objective); return; }
+        _editorResource = null;
         _formResource = resource; _editingId = externalId; _parent = parent ?? ""; _operationId = Guid.NewGuid(); _writeUncertain = false;
         _form = new() { Name = name ?? "", Objective = objective ?? "OUTCOME_TRAFFIC", CreativeId = externalId is null ? _lastCreativeId : "" };
         _form.OptimizationGoal = OptimizationGoals(_form.Objective).First();
@@ -347,7 +377,12 @@
             if (_formResource == "ads" && form.CreativeId.Length > 0) data["creative"] = new JsonObject { ["creative_id"] = form.CreativeId };
             return JsonSerializer.SerializeToElement(data);
         }
-        if (_formResource == "campaigns") { data["objective"] = form.Objective; data["special_ad_categories"] = form.SpecialCategory.Length == 0 ? new JsonArray() : new JsonArray(form.SpecialCategory); }
+        if (_formResource == "campaigns")
+        {
+            data["objective"] = form.Objective;
+            data["special_ad_categories"] = form.SpecialCategory.Length == 0 ? new JsonArray() : new JsonArray(form.SpecialCategory);
+            if (_editingId is null && form.DailyBudget is null) data["is_adset_budget_sharing_enabled"] = form.ShareAdSetBudget;
+        }
         if (_formResource == "adsets")
         {
             data["campaign_id"] = _parent; data["billing_event"] = "IMPRESSIONS"; data["optimization_goal"] = form.OptimizationGoal;
@@ -488,6 +523,8 @@
         
         /// <summary>Orçamento diário na moeda da conta.</summary>
         public decimal? DailyBudget { get; set; } 
+        /// <summary>Escolha explícita de compartilhamento quando o orçamento pertence aos conjuntos.</summary>
+        public bool ShareAdSetBudget { get; set; }
         /// <summary>Objetivo de otimização.</summary>
         public string OptimizationGoal { get; set; } = "LINK_CLICKS"; 
         /// <summary>Países da segmentação.</summary>

@@ -1,0 +1,214 @@
+@namespace WebApp.Components.Shared.Components
+@using System.Globalization
+@using System.Text.Json.Nodes
+@using global::Integrations.Domain.Meta
+
+@if (Field.Type == "bool")
+{
+    <select id="@InputId" data-field="@Path" class="meta-input" value="@ScalarText" disabled="@Disabled" @onchange="ChangeScalarAsync">
+        <option value="">Não definido</option><option value="true">Sim</option><option value="false">Não</option>
+    </select>
+}
+else if (Field.EnumValues.Count > 0 && !IsList)
+{
+    <select id="@InputId" data-field="@Path" class="meta-input" value="@ScalarText" disabled="@Disabled" @onchange="ChangeScalarAsync">
+        <option value="">Selecione uma opção</option>
+        @foreach (var option in Field.EnumValues) { <option value="@option">@EnumLabel(option)</option> }
+    </select>
+}
+else if (IsPrimitiveList)
+{
+    @if (Field.EnumValues.Count > 0)
+    {
+        <select id="@InputId" data-field="@Path" class="meta-input" multiple size="5" disabled="@Disabled" @onchange="ChangeEnumListAsync">
+            @foreach (var option in Field.EnumValues) { <option value="@option" selected="@ListValues.Contains(option)">@EnumLabel(option)</option> }
+        </select>
+        <small>Seleção múltipla. No computador, use Ctrl ou ⌘ para selecionar mais de uma opção.</small>
+    }
+    else
+    {
+        <textarea id="@InputId" data-field="@Path" class="meta-input" rows="3" value="@ListText" disabled="@Disabled" @onchange="ChangeListAsync"></textarea>
+        <small>Um valor por linha ou separado por vírgulas.</small>
+    }
+}
+else if (IsComplex)
+{
+    <div class="meta-structured">
+        @if (Field.Children.Count > 0)
+        {
+            <button type="button" class="meta-secondary" disabled="@Disabled" @onclick="() => _expanded = !_expanded">@(_expanded ? "Recolher campos" : "Configurar campos")</button>
+        }
+        <button type="button" class="meta-secondary" disabled="@Disabled" @onclick="ToggleJson">@(_json ? "Ocultar especificação" : "Especificação avançada")</button>
+        @if (_expanded && Field.Children.Count > 0)
+        {
+            @if (IsList)
+            {
+                @for (var i = 0; i < (Value as JsonArray)?.Count; i++)
+                {
+                    var index = i;
+                    <div class="meta-array-item" @key="index">
+                        <strong>Item @(index + 1)</strong>
+                        <MetaValueEditor Field="@(Field with { Type = Field.Type[5..^1] })" Value="@((Value as JsonArray)![index])"
+                            ValueChanged="@(node => ChangeItemAsync(index, node))" Path="@($"{Path}.{index}")" Currency="@Currency"
+                            Disabled="@Disabled" ValidationChanged="@ValidationChanged" AssetSuggestions="@AssetSuggestions" />
+                        <button type="button" class="meta-secondary" disabled="@Disabled" @onclick="() => RemoveItemAsync(index)">Remover item</button>
+                    </div>
+                }
+                <button type="button" class="meta-secondary" disabled="@Disabled" @onclick="AddItemAsync">Adicionar item</button>
+            }
+            else
+            {
+                @foreach (var child in Field.Children)
+                {
+                    var present = (Value as JsonObject)?.ContainsKey(child.Name) == true;
+                    <div class="meta-child" @key="child.Name">
+                        <label class="meta-child-label"><input type="checkbox" checked="@present" disabled="@(Disabled || child.Restriction is not null)"
+                            @onchange="@(e => ToggleChildAsync(child, e.Value is true))" /> @child.Label</label>
+                        @if (child.Restriction is not null) { <small>@child.Restriction</small> }
+                        else if (present)
+                        {
+                            <MetaValueEditor Field="@child" Value="@((Value as JsonObject)?[child.Name])" ValueChanged="@(node => ChangeChildAsync(child.Name, node))"
+                                Path="@($"{Path}.{child.Name}")" Currency="@Currency" Disabled="@Disabled" ValidationChanged="@ValidationChanged" AssetSuggestions="@AssetSuggestions" />
+                        }
+                    </div>
+                }
+            }
+        }
+        @if (_json || Field.Children.Count == 0)
+        {
+            <textarea id="@InputId" data-json-field="@Path" class="meta-input meta-json" rows="6" value="@JsonText" disabled="@Disabled" @onchange="ChangeJsonAsync"></textarea>
+            <small>Estrutura JSON oficial para configurações especializadas. Campos desconhecidos deste esquema continuam sujeitos à validação da Meta.</small>
+        }
+    </div>
+}
+else
+{
+    <input id="@InputId" data-field="@Path" class="meta-input" type="@InputType" value="@DisplayScalar"
+        maxlength="@(Field.Name == "name" ? 200 : (int?)null)" step="@Step" disabled="@Disabled" list="@(Suggestions.Count > 0 ? InputId + "-options" : null)" @onchange="ChangeScalarAsync" />
+    @if (Suggestions.Count > 0)
+    {
+        <datalist id="@(InputId + "-options")">
+            @foreach (var option in Suggestions) { <option value="@Read(option, "id")">@Read(option, "name")</option> }
+        </datalist>
+    }
+    @if (IsMoney) { <small>@(UsesCents ? $"Valor em {Currency}; a conversão para unidades mínimas é automática." : $"Valor em unidades mínimas exigidas pela Meta para {Currency}.")</small> }
+    @if (Field.Type == "datetime") { <small>Data e horário em UTC.</small> }
+}
+
+@code {
+    /// <summary>Definição oficial do campo editado.</summary>
+    [Parameter, EditorRequired] public MetaResourceField Field { get; set; } = default!;
+    /// <summary>Valor atual, sem converter ausência em falso ou zero.</summary>
+    [Parameter] public JsonNode? Value { get; set; }
+    /// <summary>Notifica uma alteração explícita do usuário.</summary>
+    [Parameter] public EventCallback<JsonNode?> ValueChanged { get; set; }
+    /// <summary>Caminho único do campo na estrutura.</summary>
+    [Parameter] public string Path { get; set; } = "";
+    /// <summary>Moeda original da conta.</summary>
+    [Parameter] public string Currency { get; set; } = "BRL";
+    /// <summary>Impede alteração de campos não selecionados.</summary>
+    [Parameter] public bool Disabled { get; set; }
+    /// <summary>Erros de entrada bloqueiam o envio de uma especificação anterior por engano.</summary>
+    [Parameter] public EventCallback<KeyValuePair<string, string?>> ValidationChanged { get; set; }
+    /// <summary>Ativos obtidos da API para sugestões de IDs.</summary>
+    [Parameter] public IReadOnlyDictionary<string, IReadOnlyList<System.Text.Json.JsonElement>> AssetSuggestions { get; set; } = new Dictionary<string, IReadOnlyList<System.Text.Json.JsonElement>>();
+    private bool _expanded;
+    private bool _json;
+    private string? _jsonDraft;
+    private string InputId => "meta-field-" + Path.Replace('.', '-');
+    private bool IsList => Field.Type.StartsWith("list<", StringComparison.Ordinal);
+    private string ElementType => IsList ? Field.Type[5..^1] : Field.Type;
+    private bool IsPrimitiveList => IsList && (ElementType is "string" or "int" or "unsigned int" or "float" || Field.EnumValues.Count > 0);
+    private bool IsComplex => !IsPrimitiveList && (IsList || Field.Children.Count > 0 || Field.Type is not ("string" or "bool" or "int" or "unsigned int" or "float" or "datetime") && Field.EnumValues.Count == 0);
+    private bool IsMoney => Field.Name is "daily_budget" or "lifetime_budget" or "spend_cap" or "bid_amount" or "daily_min_spend_target" or "daily_spend_cap" or "lifetime_min_spend_target" or "lifetime_spend_cap";
+    private bool UsesCents => IsMoney && Currency is "BRL" or "USD" or "EUR" or "GBP";
+    private string ScalarText => Value is null ? "" : Value.ToString();
+    private string InputType => Field.Type == "datetime" ? "datetime-local" : Field.Type is "int" or "unsigned int" or "float" ? "number" : "text";
+    private string? Step => InputType != "number" ? null : UsesCents ? "0.01" : Field.Type == "float" ? "any" : "1";
+    private string DisplayScalar => UsesCents && decimal.TryParse(ScalarText, CultureInfo.InvariantCulture, out var amount) ? (amount / 100m).ToString("0.00", CultureInfo.InvariantCulture)
+        : Field.Type == "datetime" && DateTimeOffset.TryParse(ScalarText, out var date) ? date.UtcDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) : ScalarText;
+    private string[] ListValues => Value is JsonArray array ? array.Select(n => n?.ToString() ?? "").ToArray() : [];
+    private string ListText => string.Join(Environment.NewLine, ListValues);
+    private string JsonText => _jsonDraft ?? Value?.ToJsonString(new() { WriteIndented = true }) ?? (IsList ? "[]" : "{}");
+    private IReadOnlyList<System.Text.Json.JsonElement> Suggestions => AssetSuggestions.TryGetValue(Field.Name, out var values) ? values : [];
+    private static string Read(System.Text.Json.JsonElement element, string field) => element.TryGetProperty(field, out var value) ? value.ToString() : "";
+    private static string EnumLabel(string value) => value switch
+    {
+        "OUTCOME_SALES" => "Vendas", "OUTCOME_TRAFFIC" => "Tráfego", "OUTCOME_AWARENESS" => "Reconhecimento", "OUTCOME_ENGAGEMENT" => "Engajamento", "OUTCOME_LEADS" => "Leads", "OUTCOME_APP_PROMOTION" => "Promoção de aplicativo",
+        "AUCTION" => "Leilão", "RESERVED" => "Reserva", "ACTIVE" => "Ativo", "PAUSED" => "Pausado", "ARCHIVED" => "Arquivado", "DELETED" => "Excluído",
+        "LOWEST_COST_WITHOUT_CAP" => "Maior volume sem limite de lance", "COST_CAP" => "Meta de custo por resultado", "BID_CAP" => "Limite de lance", "LOWEST_COST_WITH_MIN_ROAS" => "Meta mínima de ROAS", _ => value
+    };
+    private Task ReportAsync(string? error) => ValidationChanged.InvokeAsync(new(Path, error));
+    private async Task SetAsync(JsonNode? value) { _jsonDraft = null; await ReportAsync(null); await ValueChanged.InvokeAsync(value); }
+    private async Task ChangeScalarAsync(ChangeEventArgs args)
+    {
+        var text = args.Value?.ToString() ?? "";
+        try
+        {
+            JsonNode? node;
+            if (Field.Type == "bool") node = text.Length == 0 ? null : JsonValue.Create(bool.Parse(text));
+            else if (Field.Type == "datetime") node = text.Length == 0 ? null : JsonValue.Create(DateTime.SpecifyKind(DateTime.Parse(text, CultureInfo.InvariantCulture), DateTimeKind.Utc).ToString("O"));
+            else if (Field.Type is "int" or "unsigned int" or "float")
+            {
+                if (text.Length == 0) node = null;
+                else
+                {
+                    var number = decimal.Parse(text, CultureInfo.InvariantCulture) * (UsesCents ? 100m : 1m);
+                    if (Field.Type != "float" && number != decimal.Truncate(number)) { await ReportAsync("Informe um valor com a precisão permitida."); return; }
+                    node = JsonNode.Parse(number.ToString(Field.Type == "float" ? "G" : "0", CultureInfo.InvariantCulture));
+                }
+            }
+            else node = JsonValue.Create(text);
+            await SetAsync(node);
+        }
+        catch (Exception ex) when (ex is FormatException or OverflowException or System.Text.Json.JsonException) { await ReportAsync("Valor inválido para este campo."); }
+    }
+    private async Task ChangeListAsync(ChangeEventArgs args)
+    {
+        var parts = (args.Value?.ToString() ?? "").Split(['\n', '\r', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        try
+        {
+            var result = new JsonArray();
+            foreach (var part in parts) result.Add(ElementType == "string" ? JsonValue.Create(part) : JsonNode.Parse(part));
+            await SetAsync(result);
+        }
+        catch (System.Text.Json.JsonException) { await ReportAsync("Informe apenas valores válidos para esta lista."); }
+    }
+    private Task ChangeEnumListAsync(ChangeEventArgs args) => SetAsync(new JsonArray((args.Value is string[] values ? values : []).Select(v => (JsonNode?)JsonValue.Create(v)).ToArray()));
+    private async Task ChangeJsonAsync(ChangeEventArgs args)
+    {
+        _jsonDraft = args.Value?.ToString() ?? "";
+        try
+        {
+            var parsed = JsonNode.Parse(_jsonDraft);
+            if (IsList ? parsed is not JsonArray : parsed is not JsonObject) { await ReportAsync(IsList ? "Informe uma lista JSON." : "Informe um objeto JSON."); return; }
+            await ReportAsync(null); await ValueChanged.InvokeAsync(parsed);
+        }
+        catch (System.Text.Json.JsonException) { await ReportAsync("A especificação JSON contém um erro de sintaxe."); }
+    }
+    private void ToggleJson() { _json = !_json; if (!_json) _jsonDraft = null; }
+    private Task ChangeChildAsync(string name, JsonNode? node)
+    {
+        var obj = Value?.DeepClone() as JsonObject ?? new JsonObject(); obj[name] = node?.DeepClone(); return SetAsync(obj);
+    }
+    private Task ToggleChildAsync(MetaResourceField child, bool enabled)
+    {
+        var obj = Value?.DeepClone() as JsonObject ?? new JsonObject();
+        if (enabled) obj[child.Name] = DefaultValue(child.Type); else obj.Remove(child.Name);
+        return SetAsync(obj);
+    }
+    private Task ChangeItemAsync(int index, JsonNode? node)
+    {
+        var array = Value?.DeepClone() as JsonArray ?? new JsonArray(); if (index < array.Count) array[index] = node?.DeepClone(); return SetAsync(array);
+    }
+    private Task AddItemAsync()
+    {
+        var array = Value?.DeepClone() as JsonArray ?? new JsonArray(); array.Add(DefaultValue(ElementType)); return SetAsync(array);
+    }
+    private Task RemoveItemAsync(int index)
+    {
+        var array = Value?.DeepClone() as JsonArray ?? new JsonArray(); if (index < array.Count) array.RemoveAt(index); return SetAsync(array);
+    }
+    private static JsonNode DefaultValue(string type) => type.StartsWith("list<", StringComparison.Ordinal) ? new JsonArray() : type switch
+    { "string" or "datetime" => JsonValue.Create("")!, "bool" => JsonValue.Create(false)!, "int" or "unsigned int" or "float" => JsonValue.Create(0)!, _ => new JsonObject() };
+}

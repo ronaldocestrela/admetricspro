@@ -9,6 +9,23 @@ namespace WebApp.Services;
 /// <summary>Cliente tipado da operação Meta; nunca recebe tokens da plataforma.</summary>
 public interface IMetaAdsClientService
 {
+    /// <summary>Consulta os campos e opções oficiais do recurso para a conta autorizada.</summary>
+    /// <param name="workspaceId">Workspace.</param>
+    /// <param name="accountId">Conta interna.</param>
+    /// <param name="resource">Recurso oficial.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Catálogo versionado ou falha da API.</returns>
+    Task<Result<MetaResourceDefinition>> GetResourceOptionsAsync(Guid workspaceId, Guid accountId, string resource, CancellationToken cancellationToken = default);
+    /// <summary>Lê valores atuais e identifica campos não disponíveis na conta.</summary>
+    /// <param name="workspaceId">Workspace.</param>
+    /// <param name="accountId">Conta interna.</param>
+    /// <param name="resource">Recurso oficial.</param>
+    /// <param name="externalId">Objeto remoto.</param>
+    /// <param name="fields">Campos específicos ou nulo para todos os campos consultáveis.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Configurações reais e avisos individuais.</returns>
+    Task<Result<MetaResourceConfiguration>> GetResourceConfigurationAsync(Guid workspaceId, Guid accountId, string resource,
+        string externalId, IReadOnlyList<string>? fields = null, CancellationToken cancellationToken = default);
     /// <summary>Pesquisa opções oficiais de segmentação da conta autorizada.</summary>
     /// <param name="workspaceId">Workspace.</param>
     /// <param name="accountId">Conta interna.</param>

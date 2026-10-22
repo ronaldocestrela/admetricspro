@@ -241,6 +241,7 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<WebApp.Services.IAnalyticsDashboardClientService>(AnalyticsDashboardClientService);
         Services.AddSingleton<WebApp.Services.IBudgetPacingClientService>(BudgetPacingClientService);
         Services.AddSingleton<WebApp.Services.IOAuthIntegrationsClientService>(OAuthIntegrationsClientService);
+        Services.AddSingleton(NSubstitute.Substitute.For<WebApp.Services.IMetaAdsClientService>());
         Services.AddSingleton<WebApp.Services.Copilot.ITrafficCopilotClientService>(TrafficCopilotClientService);
     }
 

@@ -49,6 +49,9 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 
 | [0039](0039-meta-workspace-authorization-and-account-links.md) | Autorização Meta por workspace e vínculo explícito de contas | Implementado localmente | 2026-10-15 |
 | [0040](0040-meta-mutations-journal-and-read-synchronization.md) | Diário idempotente de escritas Meta e sincronização periódica de leitura | Implementado localmente | 2026-10-15 |
+| [0041](0041-dashboard-from-persisted-campaign-metrics.md) | Dashboard com métricas persistidas de campanhas | Implementado | 2026-10-22 |
+
+| [0042](0042-meta-versioned-resource-configuration.md) | Catálogo versionado e edição parcial de recursos Meta | Implementado | 2026-10-22 |
 
 ---
 

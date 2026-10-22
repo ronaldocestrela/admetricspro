@@ -11,6 +11,16 @@ public sealed record MetaWriteResult(string ExternalId, bool Success);
 /// <summary>Operações oficiais de gerenciamento, sempre contextualizadas pela conta vinculada.</summary>
 public interface IMetaManagementApi
 {
+    /// <summary>Lê campos de configuração permitidos, preservando falhas individuais sem inventar valores.</summary>
+    /// <param name="accountId">Conta proprietária autorizada.</param>
+    /// <param name="resource">Recurso oficial.</param>
+    /// <param name="externalId">Objeto externo.</param>
+    /// <param name="fields">Campos consultáveis do catálogo versionado.</param>
+    /// <param name="token">Credencial restrita ao backend.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Valores atuais e campos indisponíveis ou falha de autorização.</returns>
+    Task<Result<MetaResourceConfiguration>> ReadConfigurationAsync(string accountId, string resource, string externalId,
+        IReadOnlyList<string> fields, string token, CancellationToken cancellationToken);
     /// <summary>Consulta opções dinâmicas pelos tipos oficiais de targeting.</summary>
     /// <param name="type">adinterest, adlocale ou adgeolocation.</param>
     /// <param name="query">Termo de pesquisa.</param>

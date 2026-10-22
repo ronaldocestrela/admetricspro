@@ -1,0 +1,9 @@
+.meta-input { display: block; width: 100%; min-width: 0; box-sizing: border-box; padding: 11px 12px; border-radius: 9px; border: 1px solid #52647f; background: #0b1424; color: #f1f5f9; font: inherit; font-size: .9rem; }
+.meta-input:focus { outline: 2px solid #a5b4fc; outline-offset: 2px; }.meta-input:disabled { color: #b0bfd2; background: #131e30; border-color: #334155; }.meta-input option { background: #0b1424; color: #f1f5f9; }
+textarea.meta-input { resize: vertical; min-height: 90px; }.meta-json { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .8rem; line-height: 1.6; }
+small { display: block; color: #b0bfd2; font-size: .78rem; margin-top: 8px; line-height: 1.6; }
+.meta-secondary { border: 1px solid #52647f; border-radius: 8px; background: transparent; color: #e2e8f0; padding: 8px 12px; margin: 4px 8px 8px 0; font: inherit; font-size: .8rem; cursor: pointer; }.meta-secondary:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }.meta-secondary:disabled { opacity: .55; cursor: default; }
+.meta-child { padding: 12px 0 12px 16px; margin-left: 4px; border-left: 2px solid #334155; min-width: 0; }.meta-child-label { display: block; color: #e2e8f0; font-size: .9rem; margin-bottom: 8px; }.meta-child-label input { accent-color: var(--tenant-primary, #2563eb); margin-right: 8px; }
+.meta-array-item { border: 1px solid #334155; padding: 12px; border-radius: 10px; margin: 12px 0; min-width: 0; }.meta-array-item strong { color: #c7d2fe; font-size: .85rem; }
+.meta-structured { min-width: 0; }
+@media (max-width: 640px) { .meta-child { padding-left: 10px; }.meta-array-item { padding: 8px; } }

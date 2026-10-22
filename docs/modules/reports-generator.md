@@ -217,3 +217,9 @@ Endpoint seguro e anônimo (`[AllowAnonymous]`) consumido pela rota de apresenta
 Cada disparo gera um registro em `ReportDispatchLog`:
 - Se o canal for WhatsApp e o destinatário não contiver telefone válido internacional (`+DDI DDD NUMERO`), o sistema registra falha `WhatsApp.InvalidDestination` sem interromper o envio de e-mails para os demais destinatários.
 - Se o token de compartilhamento tiver atingido sua data limite de validade, a API retorna sucesso com a flag `isExpired: true`, instruindo a UI pública a renderizar a tela de expiração com dados de contato da agência parceira.
+
+## Formulários de agendamento e geração no portal
+
+Em `/reports`, Novo Agendamento abre um diálogo identificado por título e aria-modal. Agendamento e geração sob demanda adotam superfície escura, texto e rótulos claros, campos com bordas visíveis, foco destacado e seletor com texto legível. O layout do modal é definido pelo próprio componente, pois o portal não carrega Bootstrap: grid no desktop, uma coluna no celular, rolagem interna e ações no rodapé. Cores e disposição não dependem de classes Bootstrap sem implementação. A ajuda do formulário explicita que horários são UTC.
+
+A mudança visual preserva os payloads, validações e retornos Result dos endpoints versionados de relatórios documentados neste módulo.

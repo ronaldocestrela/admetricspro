@@ -5,6 +5,8 @@
 @inject ITenantSessionStateProvider TenantSessionStateProvider
 @inject ITenantStateProvider TenantStateProvider
 @inject NavigationManager NavigationManager
+@inject IOAuthIntegrationsClientService Connections
+@inject IWorkspaceContextStateProvider WorkspaceContext
 
 <PageTitle>Visão Geral — @AgencyName</PageTitle>
 
@@ -51,7 +53,7 @@
 
         <div class="platforms-grid">
             <!-- Meta Ads -->
-            <div class="ad-platform-card">
+            <div class="ad-platform-card" data-platform="MetaAds">
                 <div class="platform-brand">
                     <div class="platform-logo meta-bg">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -63,17 +65,17 @@
                         <span class="platform-sub">Facebook &amp; Instagram</span>
                     </div>
                 </div>
-                <div class="platform-status-badge disconnected">
+                <div class="platform-status-badge @(IsConnected("MetaAds") ? "connected" : "disconnected")">
                     <span class="status-dot"></span>
-                    <span>Desconectado</span>
+                    <span>@(IsConnected("MetaAds") ? "Conectado" : "Desconectado")</span><span class="small ms-2">@AccountNames("MetaAds")</span>
                 </div>
                 <div class="platform-action">
-                    <a href="integrations" class="btn-connect" title="Conectar Meta Ads">Conectar</a>
+                    <a href="@ManagementLink("MetaAds")" class="btn-connect" title="Abrir Meta Ads">@(IsConnected("MetaAds") ? "Gerenciar" : "Conectar")</a>
                 </div>
             </div>
 
             <!-- Google Ads -->
-            <div class="ad-platform-card">
+            <div class="ad-platform-card" data-platform="GoogleAds">
                 <div class="platform-brand">
                     <div class="platform-logo google-bg">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -85,17 +87,17 @@
                         <span class="platform-sub">Search, YouTube &amp; Display</span>
                     </div>
                 </div>
-                <div class="platform-status-badge disconnected">
+                <div class="platform-status-badge @(IsConnected("GoogleAds") ? "connected" : "disconnected")">
                     <span class="status-dot"></span>
-                    <span>Desconectado</span>
+                    <span>@(IsConnected("GoogleAds") ? "Conectado" : "Desconectado")</span><span class="small ms-2">@AccountNames("GoogleAds")</span>
                 </div>
                 <div class="platform-action">
-                    <a href="integrations" class="btn-connect" title="Conectar Google Ads">Conectar</a>
+                    <a href="@ManagementLink("GoogleAds")" class="btn-connect" title="Abrir Google Ads">@(IsConnected("GoogleAds") ? "Gerenciar" : "Conectar")</a>
                 </div>
             </div>
 
             <!-- TikTok Ads -->
-            <div class="ad-platform-card">
+            <div class="ad-platform-card" data-platform="TikTokAds">
                 <div class="platform-brand">
                     <div class="platform-logo tiktok-bg">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -107,17 +109,17 @@
                         <span class="platform-sub">TikTok For Business</span>
                     </div>
                 </div>
-                <div class="platform-status-badge disconnected">
+                <div class="platform-status-badge @(IsConnected("TikTokAds") ? "connected" : "disconnected")">
                     <span class="status-dot"></span>
-                    <span>Desconectado</span>
+                    <span>@(IsConnected("TikTokAds") ? "Conectado" : "Desconectado")</span><span class="small ms-2">@AccountNames("TikTokAds")</span>
                 </div>
                 <div class="platform-action">
-                    <a href="integrations" class="btn-connect" title="Conectar TikTok Ads">Conectar</a>
+                    <a href="@ManagementLink("TikTokAds")" class="btn-connect" title="Abrir TikTok Ads">@(IsConnected("TikTokAds") ? "Gerenciar" : "Conectar")</a>
                 </div>
             </div>
 
             <!-- Bing Ads -->
-            <div class="ad-platform-card">
+            <div class="ad-platform-card" data-platform="BingAds">
                 <div class="platform-brand">
                     <div class="platform-logo bing-bg">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -129,12 +131,12 @@
                         <span class="platform-sub">Microsoft Advertising</span>
                     </div>
                 </div>
-                <div class="platform-status-badge disconnected">
+                <div class="platform-status-badge @(IsConnected("BingAds") ? "connected" : "disconnected")">
                     <span class="status-dot"></span>
-                    <span>Desconectado</span>
+                    <span>@(IsConnected("BingAds") ? "Conectado" : "Desconectado")</span><span class="small ms-2">@AccountNames("BingAds")</span>
                 </div>
                 <div class="platform-action">
-                    <a href="integrations" class="btn-connect" title="Conectar Bing Ads">Conectar</a>
+                    <a href="@ManagementLink("BingAds")" class="btn-connect" title="Abrir Bing Ads">@(IsConnected("BingAds") ? "Gerenciar" : "Conectar")</a>
                 </div>
             </div>
         </div>
@@ -142,6 +144,20 @@
 </div>
 
 @code {
+    private IReadOnlyList<global::Tenants.Application.Integrations.DTOs.ConnectedAdAccountDto> _accounts = [];
+    private bool IsConnected(string platform) => _accounts.Any(a => a.Platform == platform && a.Status == "Connected");
+    private string AccountNames(string platform) => string.Join(", ", _accounts.Where(a => a.Platform == platform && a.Status == "Connected").Select(a => a.AccountName));
+    private string ManagementLink(string platform) => WorkspaceContext.CurrentWorkspaceId is { } workspace
+        ? $"/ad-management/{workspace}/{platform switch { "MetaAds" => "meta", "GoogleAds" => "google", "TikTokAds" => "tiktok", _ => "bing" }}" : "/ad-management";
+    private async Task LoadConnectionsAsync()
+    {
+        _accounts = [];
+        if (WorkspaceContext.CurrentWorkspaceId is not { } workspace) return;
+        var result = await Connections.GetLinkedAdAccountsAsync(workspace);
+        if (WorkspaceContext.CurrentWorkspaceId != workspace) return;
+        if (result is { IsSuccess: true }) _accounts = result.Value.Where(a => a.WorkspaceId == workspace && !a.IsDemo).ToArray();
+    }
+
     /// <summary>
     /// Obtém o nome do gestor de tráfego autenticado ou retorna 'Gestor' por padrão.
     /// </summary>
@@ -167,15 +183,17 @@
     }
 
     /// <inheritdoc />
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         TenantSessionStateProvider.OnSessionChanged += HandleStateChanged;
         TenantStateProvider.OnTenantChanged += HandleStateChanged;
+        WorkspaceContext.OnWorkspaceChanged += HandleStateChanged;
+        await LoadConnectionsAsync();
     }
 
     private void HandleStateChanged()
     {
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(async () => { await LoadConnectionsAsync(); StateHasChanged(); });
     }
 
     /// <inheritdoc />
@@ -183,5 +201,6 @@
     {
         TenantSessionStateProvider.OnSessionChanged -= HandleStateChanged;
         TenantStateProvider.OnTenantChanged -= HandleStateChanged;
+        WorkspaceContext.OnWorkspaceChanged -= HandleStateChanged;
     }
 }

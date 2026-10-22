@@ -17,6 +17,7 @@
 @inject ITenantSessionStateProvider TenantSessionStateProvider
 @inject ITenantFtuxClientService TenantFtuxClientService
 @inject NavigationManager Navigation
+@inject IMetaAdsClientService MetaClient
 
 <PageTitle>Integrações de Anúncios — @AgencyName</PageTitle>
 
@@ -770,9 +771,26 @@
         {
             var result = await OAuthClient.SelectMetaAdAccountsAsync(workspaceId, _selectedMetaAccountIds.ToArray());
             if (_selectedWorkspaceId != workspaceId) return;
-            _feedbackMessage = result.IsSuccess ? "Contas vinculadas a este cliente." : result.Error.Description;
+            _feedbackMessage = result.IsSuccess ? "Contas vinculadas. Importando campanhas e métricas…" : result.Error.Description;
             _isSuccessFeedback = result.IsSuccess;
-            if (result.IsSuccess) { await LoadConnectionsAsync(); await LoadMetaAccountsAsync(); }
+            if (result.IsSuccess)
+            {
+                await InvokeAsync(StateHasChanged);
+                var until = DateOnly.FromDateTime(DateTime.UtcNow);
+                foreach (var accountId in result.Value)
+                {
+                    var sync = await MetaClient.SyncAsync(workspaceId, accountId, until.AddDays(-59), until);
+                    if (_selectedWorkspaceId != workspaceId) return;
+                    if (sync.IsFailure)
+                    {
+                        _feedbackMessage = $"Contas vinculadas, mas a importação não foi concluída: {sync.Error.Description}. Tente novamente em Gerenciamento de anúncios → Meta Ads.";
+                        _isSuccessFeedback = false;
+                        break;
+                    }
+                }
+                if (_isSuccessFeedback) _feedbackMessage = "Contas vinculadas e métricas importadas. Abra o dashboard deste cliente para consultar o período.";
+                await LoadConnectionsAsync(); await LoadMetaAccountsAsync();
+            }
         }
         finally { _isMetaBusy = false; }
     }

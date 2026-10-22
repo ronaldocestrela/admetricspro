@@ -22,6 +22,8 @@ public sealed class GetExecutiveDashboardQueryTests
     /// </summary>
     public GetExecutiveDashboardQueryTests()
     {
+        _dataProviderMock.GetMetricsAsync(Arg.Any<Guid?>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>(), Arg.Any<string>())
+            .Returns(Result<IReadOnlyList<RawMetricPoint>>.Success([]));
         _handler = new GetExecutiveDashboardQueryHandler(_calculatorMock, _dataProviderMock);
     }
 

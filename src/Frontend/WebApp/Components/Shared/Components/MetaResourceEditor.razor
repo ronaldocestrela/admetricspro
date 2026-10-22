@@ -1,0 +1,291 @@
+@namespace WebApp.Components.Shared.Components
+@implements IDisposable
+@using System.Text.Json
+@using System.Text.Json.Nodes
+@using global::Integrations.Application.Meta
+@using global::Integrations.Domain.Meta
+@inject IMetaAdsClientService Meta
+
+<section class="meta-editor" role="dialog" aria-labelledby="meta-editor-title" data-testid="meta-resource-editor">
+    <header class="meta-editor-header"><div><span class="meta-eyebrow">CONFIGURAÇÕES DA META</span><h2 id="meta-editor-title">@(Editing ? "Editar" : "Criar") @ResourceLabel</h2>
+        <p>@(Editing ? "Valores carregados da Meta. Marque apenas os campos que deseja alterar." : "Configure o recurso. Novas campanhas, conjuntos e anúncios são criados pausados.")</p></div>
+        <button type="button" class="meta-secondary" disabled="@_saving" @onclick="() => OnClose.InvokeAsync()">Fechar</button></header>
+    @if (_loading) { <p role="status">Carregando campos e configurações atuais da conta…</p> }
+    @if (_error is not null) { <div class="meta-error" role="alert">@_error</div> }
+    @if (_definition is not null && _readCompleted)
+    {
+        <div class="meta-editor-tools">
+            <label>Pesquisar configuração<input class="meta-input" placeholder="Orçamento, atribuição, catálogo, público…" @bind="_search" @bind:event="oninput" /></label>
+            <span>@_definition.Fields.Count parâmetros documentados · API @_definition.ApiVersion</span>
+        </div>
+        <p class="meta-help">A disponibilidade de cada opção depende do objetivo, da conta, dos ativos e das permissões concedidas. A Meta confirma a combinação ao salvar.</p>
+        <details class="meta-assets-panel"><summary>Consultar páginas, pixels, públicos e identidades disponíveis</summary>
+            <div class="meta-actions">
+                @foreach (var asset in AssetTypes)
+                { <button type="button" class="meta-secondary" disabled="@(_saving || _assetsBusy)" @onclick="() => LoadAssetsAsync(asset.Key, asset.Field)">@asset.Label</button> }
+            </div>
+            @if (_assetFeedback is not null) { <p role="status">@_assetFeedback</p> }
+            @foreach (var list in _assets)
+            { <ul>@foreach (var item in list.Value) { <li>@AssetText(item, "name") @AssetText(item, "username") <code>@AssetText(item, "id")</code></li> }</ul> }
+            <p class="meta-help">Os ativos pertencem à autorização da conta. Páginas e permissões são administradas em <a href="https://business.facebook.com/settings/" target="_blank" rel="noopener noreferrer">Configurações do negócio da Meta</a>.</p>
+        </details>
+        @if (Resource == "adsets")
+        {
+            <details class="meta-assets-panel"><summary>Pesquisar interesses, idiomas e países</summary>
+                <div class="meta-actions"><select class="meta-input" @bind="_targetType"><option value="adinterest">Interesses</option><option value="adlocale">Idiomas</option><option value="adgeolocation">Países</option></select>
+                    <input class="meta-input" aria-label="Termo da pesquisa de público" @bind="_targetTerm" /><button type="button" class="meta-secondary" disabled="@_saving" @onclick="SearchTargetingAsync">Pesquisar na Meta</button></div>
+                @foreach (var result in _targetResults) { <button type="button" class="meta-secondary" @onclick="() => AddTargeting(result)">Adicionar @AssetText(result, "name")</button> }
+            </details>
+        }
+        @foreach (var group in VisibleFields.GroupBy(f => f.Group))
+        {
+            <details class="meta-field-group" open="@(group.Key is "Detalhes e vínculo" or "Orçamento e lances")" @key="group.Key">
+                <summary>@group.Key <span>@group.Count() opções</span></summary>
+                <div class="meta-group-content">
+                    @foreach (var field in group)
+                    {
+                        var supported = Editing ? field.Update : field.Create;
+                        var selected = _included.Contains(field.Name);
+                        var locked = !Editing && field.Name == "status" || field.Name == (Resource == "adsets" ? "campaign_id" : "adset_id") && ParentId.Length > 0;
+                        <div class="meta-field-row" data-field-state="@field.Name" @key="field.Name">
+                            <div class="meta-field-heading">
+                                @if (supported && field.Restriction is null)
+                                { <label><input type="checkbox" data-include="@field.Name" checked="@selected" disabled="@(_saving || _uncertain || locked || !Editing && Required(field.Name))" @onchange="@(e => Include(field, e.Value is true))" /> @field.Label</label> }
+                                else { <strong>@field.Label</strong> }
+                                <span class="meta-field-mode">@(field.Restriction is not null ? "Reservado" : !supported ? Editing ? "Somente na criação" : "Somente na edição" : selected ? Editing ? "Será alterado" : "Incluído" : Editing ? "Preservar valor atual" : "Opcional")</span>
+                            </div>
+                            <p class="meta-help">@(field.Restriction ?? field.Description)</p>
+                            @if (_unavailable.TryGetValue(field.Name, out var reason))
+                            { <p class="meta-unavailable">Valor atual não disponível: @reason Não será substituído por um padrão.</p> }
+                            @if (supported && field.Restriction is null)
+                            {
+                                <MetaValueEditor Field="@field" Value="@_values[field.Name]" ValueChanged="@(node => ChangeValue(field.Name, node))"
+                                    Path="@field.Name" Currency="@Currency" Disabled="@(_saving || _uncertain || !selected || locked)" ValidationChanged="ValidateInput" AssetSuggestions="@_assets" />
+                            }
+                            else if (_values[field.Name] is { } existing) { <pre class="meta-current-value">@existing.ToJsonString(new() { WriteIndented = true })</pre> }
+                            <details class="meta-reference"><summary>Referência da opção</summary><code>@field.Name</code> · @field.Type
+                                @if (Editing && field.Readable && !selected && field.Restriction is null)
+                                { <button type="button" class="meta-secondary" disabled="@_saving" @onclick="() => ReloadFieldAsync(field.Name)">Recarregar valor da Meta</button> }
+                            </details>
+                        </div>
+                    }
+                </div>
+            </details>
+        }
+        @if (_inputErrors.Count > 0)
+        { <div class="meta-error" role="alert"><strong>Revise os campos antes de salvar.</strong><ul>@foreach (var error in _inputErrors) { <li>@error.Key: @error.Value</li> }</ul></div> }
+        @if (WantsActivation)
+        { <label class="meta-confirmation"><input type="checkbox" @bind="_confirmActivation" /> Confirmo a ativação deste recurso existente e os gastos conforme seu orçamento.</label> }
+        <footer class="meta-editor-footer"><p>@(Editing ? $"{_included.Count} campos selecionados. Os demais serão preservados." : "A configuração será validada pela Meta antes da confirmação de criação.")</p>
+            <button type="button" class="meta-primary" data-testid="meta-save-resource" disabled="@(_saving || _uncertain || _inputErrors.Count > 0 || WantsActivation && !_confirmActivation)" @onclick="SaveAsync">@(_saving ? "Enviando para a Meta…" : "Salvar na Meta")</button>
+        </footer>
+    }
+</section>
+
+@code {
+    /// <summary>Workspace proprietário da conta.</summary>
+    [Parameter] public Guid WorkspaceId { get; set; }
+    /// <summary>Conta interna vinculada e autorizada.</summary>
+    [Parameter] public Guid AccountId { get; set; }
+    /// <summary>Recurso a criar ou editar.</summary>
+    [Parameter] public string Resource { get; set; } = "campaigns";
+    /// <summary>Objeto existente; nulo indica criação.</summary>
+    [Parameter] public string? ExternalId { get; set; }
+    /// <summary>Campanha ou conjunto pai na criação.</summary>
+    [Parameter] public string ParentId { get; set; } = "";
+    /// <summary>Objetivo da campanha para sugerir a otimização do novo conjunto.</summary>
+    [Parameter] public string CampaignObjective { get; set; } = "OUTCOME_TRAFFIC";
+    /// <summary>Moeda original da conta selecionada.</summary>
+    [Parameter] public string Currency { get; set; } = "BRL";
+    /// <summary>Notifica uma gravação confirmada pela Meta.</summary>
+    [Parameter] public EventCallback<MetaWriteResult> OnSaved { get; set; }
+    /// <summary>Fecha o editor sem enviar alterações.</summary>
+    [Parameter] public EventCallback OnClose { get; set; }
+    private MetaResourceDefinition? _definition;
+    private JsonObject _values = new();
+    private readonly HashSet<string> _included = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _inputErrors = new(StringComparer.Ordinal);
+    private Dictionary<string, string> _unavailable = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IReadOnlyList<JsonElement>> _assets = new(StringComparer.Ordinal);
+    private IReadOnlyList<JsonElement> _targetResults = [];
+    private string _targetType = "adinterest", _targetTerm = "";
+    private string? _assetFeedback, _error, _key;
+    private string _search = "";
+    private bool _loading, _saving, _readCompleted, _uncertain, _confirmActivation, _assetsBusy;
+    private Guid _operationId = Guid.NewGuid();
+    private CancellationTokenSource _context = new();
+    private bool Editing => ExternalId is not null;
+    private bool WantsActivation => Editing && _included.Contains("status") && _values["status"]?.ToString() == "ACTIVE";
+    private string ResourceLabel => Resource switch { "campaigns" => "campanha", "adsets" => "conjunto de anúncios", "ads" => "anúncio", _ => "criativo" };
+    private IEnumerable<MetaResourceField> VisibleFields => (_definition?.Fields ?? []).Where(f => string.IsNullOrWhiteSpace(_search) ||
+        f.Label.Contains(_search, StringComparison.OrdinalIgnoreCase) || f.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) || f.Group.Contains(_search, StringComparison.OrdinalIgnoreCase));
+    private static readonly (string Key, string Field, string Label)[] AssetTypes =
+        [("promote_pages", "page_id", "Páginas"), ("instagram_accounts", "instagram_user_id", "Instagram"), ("adspixels", "pixel_id", "Pixels"), ("customaudiences", "audience_id", "Públicos")];
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
+    {
+        var key = $"{WorkspaceId}:{AccountId}:{Resource}:{ExternalId}:{ParentId}";
+        if (_key == key) return;
+        _key = key; _context.Cancel(); _context.Dispose(); _context = new();
+        var token = _context.Token;
+        _loading = true; _readCompleted = false; _error = null; _definition = null; _values = new();
+        _included.Clear(); _unavailable.Clear(); _inputErrors.Clear(); _assets.Clear(); _targetResults = [];
+        _operationId = Guid.NewGuid(); _uncertain = false; _confirmActivation = false;
+        try
+        {
+            var definition = await Meta.GetResourceOptionsAsync(WorkspaceId, AccountId, Resource, token);
+            if (token.IsCancellationRequested) return;
+            if (definition is null || definition.IsFailure) { _error = definition?.Error.Description ?? "Não foi possível carregar as opções da API."; return; }
+            _definition = definition.Value;
+            if (Editing)
+            {
+                var current = await Meta.GetResourceConfigurationAsync(WorkspaceId, AccountId, Resource, ExternalId!, null, token);
+                if (token.IsCancellationRequested) return;
+                if (current is null || current.IsFailure) { _error = current?.Error.Description ?? "Não foi possível ler as configurações atuais."; return; }
+                _values = JsonNode.Parse(current.Value.Values.GetRawText()) as JsonObject ?? new();
+                _unavailable = current.Value.UnavailableFields.ToDictionary(p => p.Key, p => p.Value);
+                if (Resource == "ads" && _values["creative"] is JsonObject creative && creative["id"] is { } id)
+                    _values["creative"] = new JsonObject { ["creative_id"] = id.ToString() };
+            }
+            else InitializeCreation();
+            _readCompleted = true;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        finally { if (!token.IsCancellationRequested) _loading = false; }
+    }
+    private void InitializeCreation()
+    {
+        _values["name"] = ""; _included.Add("name");
+        if (Resource != "adcreatives") { _values["status"] = "PAUSED"; _included.Add("status"); }
+        if (Resource == "campaigns")
+        {
+            _values["objective"] = "OUTCOME_TRAFFIC"; _included.Add("objective");
+            _values["special_ad_categories"] = new JsonArray(); _included.Add("special_ad_categories");
+            _values["is_adset_budget_sharing_enabled"] = false; _included.Add("is_adset_budget_sharing_enabled");
+        }
+        if (Resource == "adsets")
+        {
+            _values["campaign_id"] = ParentId; _included.Add("campaign_id");
+            _values["billing_event"] = "IMPRESSIONS"; _included.Add("billing_event");
+            _values["optimization_goal"] = CampaignObjective switch { "OUTCOME_SALES" => "OFFSITE_CONVERSIONS", "OUTCOME_LEADS" => "LEAD_GENERATION", "OUTCOME_APP_PROMOTION" => "APP_INSTALLS", "OUTCOME_AWARENESS" => "REACH", _ => "LINK_CLICKS" }; _included.Add("optimization_goal");
+            _values["targeting"] = JsonNode.Parse("{\"geo_locations\":{\"countries\":[\"BR\"]}}"); _included.Add("targeting");
+        }
+        if (Resource == "ads")
+        {
+            _values["adset_id"] = ParentId; _included.Add("adset_id");
+            _values["creative"] = new JsonObject { ["creative_id"] = "" }; _included.Add("creative");
+        }
+    }
+    private bool Required(string name) => name == "name" || (Resource switch
+    { "campaigns" => name is "objective" or "special_ad_categories", "adsets" => name is "campaign_id" or "billing_event" or "optimization_goal" or "targeting", "ads" => name is "adset_id" or "creative", _ => false });
+    private void Include(MetaResourceField field, bool selected)
+    {
+        if (selected)
+        {
+            _included.Add(field.Name);
+            if (!_values.ContainsKey(field.Name)) _values[field.Name] = field.Type == "bool" ? JsonValue.Create(false)
+                : field.Type.StartsWith("list<", StringComparison.Ordinal) ? new JsonArray() : field.Children.Count > 0 || field.Type is "Object" or "map" ? new JsonObject() : null;
+        }
+        else { _included.Remove(field.Name); foreach (var key in _inputErrors.Keys.Where(k => k == field.Name || k.StartsWith(field.Name + ".", StringComparison.Ordinal)).ToArray()) _inputErrors.Remove(key); }
+        _error = null;
+    }
+    private void ChangeValue(string name, JsonNode? value) { _values[name] = value?.DeepClone(); _error = null; if (name == "status") _confirmActivation = false; }
+    private void ValidateInput(KeyValuePair<string, string?> entry) { if (entry.Value is null) _inputErrors.Remove(entry.Key); else _inputErrors[entry.Key] = entry.Value; }
+    private async Task SaveAsync()
+    {
+        if (_saving || _uncertain || _definition is null || !_readCompleted || _inputErrors.Count > 0) return;
+        _error = null;
+        var payload = new JsonObject();
+        foreach (var field in _definition.Fields.Where(f => _included.Contains(f.Name)))
+        {
+            if (_values[field.Name] is not { } value) { _error = $"Informe um valor em {field.Label} ou desmarque a alteração."; return; }
+            payload[field.Name] = Clean(value, field.Children);
+        }
+        if (payload.Count == 0) { _error = "Selecione ao menos uma configuração para alterar."; return; }
+        if (WantsActivation && !_confirmActivation) { _error = "Confirme a ativação antes de salvar."; return; }
+        var data = MetaWriteValidation.Validate(Resource, ExternalId, JsonSerializer.SerializeToElement(payload), _confirmActivation);
+        if (data.IsFailure) { _error = data.Error.Description; return; }
+        _saving = true; var token = _context.Token;
+        try
+        {
+            var result = await Meta.WriteAsync(new(_operationId, WorkspaceId, AccountId, Resource, ExternalId, data.Value, _confirmActivation), token);
+            if (token.IsCancellationRequested) return;
+            if (result.IsSuccess) await OnSaved.InvokeAsync(result.Value);
+            else
+            {
+                _error = result.Error.Description;
+                _uncertain = result.Error.Code is "Meta.WriteOutcomeUnknown" or "Meta.NetworkError" or "Meta.RequestTimeout" or "Meta.OperationAlreadySubmitted";
+                if (!_uncertain) _operationId = Guid.NewGuid();
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        finally { if (!token.IsCancellationRequested) _saving = false; }
+    }
+    private static JsonNode Clean(JsonNode value, IReadOnlyList<MetaResourceField> fields)
+    {
+        if (value is JsonArray array) return new JsonArray(array.Select(v => v is null ? null : Clean(v, fields)).ToArray());
+        if (value is not JsonObject obj) return value.DeepClone();
+        var result = new JsonObject();
+        foreach (var property in obj)
+        {
+            var child = fields.FirstOrDefault(f => f.Name == property.Key);
+            if (child?.Restriction is not null) continue;
+            result[property.Key] = property.Value is null ? null : Clean(property.Value, child?.Children ?? []);
+        }
+        return result;
+    }
+    private async Task ReloadFieldAsync(string field)
+    {
+        var token = _context.Token;
+        var result = await Meta.GetResourceConfigurationAsync(WorkspaceId, AccountId, Resource, ExternalId!, [field], token);
+        if (token.IsCancellationRequested || _included.Contains(field)) return;
+        if (result.IsFailure) { _error = result.Error.Description; return; }
+        if (result.Value.Values.TryGetProperty(field, out var value)) { _values[field] = JsonNode.Parse(value.GetRawText()); _unavailable.Remove(field); }
+        else _unavailable[field] = result.Value.UnavailableFields.GetValueOrDefault(field, "Não retornado pela Meta.");
+    }
+    private async Task LoadAssetsAsync(string asset, string field)
+    {
+        _assetsBusy = true; var token = _context.Token;
+        try
+        {
+            var result = await Meta.GetAssetsAsync(WorkspaceId, AccountId, asset, token);
+            if (token.IsCancellationRequested) return;
+            if (result.IsFailure) { _assetFeedback = result.Error.Description; return; }
+            _assets[field] = result.Value; _assetFeedback = result.Value.Count == 0 ? "Nenhum ativo disponível para esta autorização." : "IDs disponíveis nas sugestões dos campos correspondentes.";
+        }
+        finally { if (!token.IsCancellationRequested) _assetsBusy = false; }
+    }
+    private async Task SearchTargetingAsync()
+    {
+        var token = _context.Token;
+        var result = await Meta.SearchTargetingAsync(WorkspaceId, AccountId, _targetType, _targetTerm, token);
+        if (token.IsCancellationRequested) return;
+        if (result.IsFailure) _error = result.Error.Description; else _targetResults = result.Value;
+    }
+    private void AddTargeting(JsonElement result)
+    {
+        var targeting = _values["targeting"]?.DeepClone() as JsonObject ?? new();
+        if (_targetType == "adgeolocation")
+        {
+            if (AssetText(result, "type") != "country") return;
+            targeting["geo_locations"] ??= new JsonObject();
+            ((JsonObject)targeting["geo_locations"]!)["countries"] ??= new JsonArray();
+            ((JsonArray)targeting["geo_locations"]!["countries"]!).Add(AssetText(result, "key"));
+        }
+        else if (_targetType == "adlocale" && long.TryParse(AssetText(result, "key"), out var locale))
+        { targeting["locales"] ??= new JsonArray(); ((JsonArray)targeting["locales"]!).Add(locale); }
+        else
+        {
+            targeting["flexible_spec"] ??= new JsonArray(new JsonObject());
+            var flexible = (JsonArray)targeting["flexible_spec"]!;
+            if (flexible.Count == 0) flexible.Add(new JsonObject());
+            flexible[0]!["interests"] ??= new JsonArray();
+            ((JsonArray)flexible[0]!["interests"]!).Add(new JsonObject { ["id"] = AssetText(result, "id"), ["name"] = AssetText(result, "name") });
+        }
+        _values["targeting"] = targeting; _included.Add("targeting");
+    }
+    private static string AssetText(JsonElement element, string field) => element.TryGetProperty(field, out var value) ? value.ToString() : "";
+    /// <inheritdoc />
+    public void Dispose() { _context.Cancel(); _context.Dispose(); }
+}
