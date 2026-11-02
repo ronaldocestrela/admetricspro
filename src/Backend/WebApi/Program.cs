@@ -13,6 +13,7 @@ using Analytics.Application.DependencyInjection;
 using Analytics.Infrastructure.DependencyInjection;
 using Automations.Application.DependencyInjection;
 using Automations.Infrastructure.DependencyInjection;
+using SocialPublishing.Infrastructure.DependencyInjection;
 using WebApi.Extensions;
 
 // Carrega variáveis do arquivo .env no ambiente de processo e no pipeline de configuração
@@ -56,6 +57,7 @@ builder.Services.AddAnalyticsApplication();
 builder.Services.AddAnalyticsInfrastructure(builder.Configuration);
 builder.Services.AddAutomationsApplication();
 builder.Services.AddAutomationsInfrastructure(builder.Configuration);
+builder.Services.AddSocialPublishingModule(builder.Configuration);
 builder.Services.AddEmailInfrastructure(builder.Configuration);
 builder.Services.AddOptions<WebApi.Background.MetaSynchronizationOptions>()
     .BindConfiguration("Integrations:MetaSynchronization")

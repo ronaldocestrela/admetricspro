@@ -38,10 +38,14 @@ public sealed class XmlDocumentationComplianceTests
     [InlineData("Tenants.Application")]
     [InlineData("Tenants.Infrastructure")]
     [InlineData("WebApi")]
+    [InlineData("SocialPublishing.Domain")]
+    [InlineData("SocialPublishing.Contracts")]
+    [InlineData("SocialPublishing.Application")]
+    [InlineData("SocialPublishing.Infrastructure")]
     public void Assembly_PublicTypesAndMembers_MustHaveXmlDocumentationSummary(string assemblyName)
     {
         // Arrange
-        var assembly = BackendAssemblies.FirstOrDefault(a => a.GetName().Name == assemblyName);
+        var assembly = ResolveAssembly(assemblyName);
         assembly.Should().NotBeNull($"O assembly {assemblyName} deve estar presente na lista de assemblies a auditar.");
 
         var xmlDoc = LoadXmlDocumentation(assembly!);
@@ -100,6 +104,16 @@ public sealed class XmlDocumentationComplianceTests
 
         missingSummaries.Should().BeEmpty(
             $"O assembly {assemblyName} contém {missingSummaries.Count} elementos públicos sem a documentação XML exigida pelo AGENTS.md:{Environment.NewLine}{string.Join(Environment.NewLine, missingSummaries.Take(25))}");
+    }
+
+    private static Assembly? ResolveAssembly(string assemblyName)
+    {
+        if (assemblyName.StartsWith("SocialPublishing.", StringComparison.Ordinal))
+        {
+            return SocialPublishingComplianceAssemblyLoader.TryLoad(assemblyName);
+        }
+
+        return BackendAssemblies.FirstOrDefault(a => a.GetName().Name == assemblyName);
     }
 
     private static XDocument? LoadXmlDocumentation(Assembly assembly)

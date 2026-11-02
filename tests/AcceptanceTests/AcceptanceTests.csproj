@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Backend\WebApi\WebApi.csproj" />
+    <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Application\SocialPublishing.Application.csproj" />
+    <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Infrastructure\SocialPublishing.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

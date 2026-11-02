@@ -52,6 +52,7 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0041](0041-dashboard-from-persisted-campaign-metrics.md) | Dashboard com métricas persistidas de campanhas | Implementado | 2026-10-22 |
 
 | [0042](0042-meta-versioned-resource-configuration.md) | Catálogo versionado e edição parcial de recursos Meta | Implementado | 2026-10-22 |
+| [0043](0043-social-publishing-bounded-context-and-tenant-database.md) | Bounded context SocialPublishing e banco dedicado por tenant | Aceito | 2026-11-02 |
 
 ---
 
