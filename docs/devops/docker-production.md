@@ -58,7 +58,6 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 | **`webapi`** | `src/Backend/WebApi/Dockerfile` | `8080` | `127.0.0.1:7001` | Backend Monólito Modular ASP.NET Core .NET 10. |
 | **`webapp`** | `src/Frontend/WebApp/Dockerfile` | `8080` | `127.0.0.1:7000` | Painel do Cliente / Inquilinos (Blazor Server). |
 | **`backoffice`** | `src/Frontend/BackofficeApp/Dockerfile` | `8080` | `127.0.0.1:7002` | Painel do Administrador Global (Blazor Server). |
-| **`proxy`** | `nginx:alpine` | `80`, `443` | `80`, `443` | Reverse Proxy, SSL e Upgrade de WebSockets. |
 
 ---
 
@@ -67,7 +66,6 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 1. **SQL Server Inicia Primeiro:** O container do banco de dados inicializa e executa checagens periódicas via `/opt/mssql-tools18/bin/sqlcmd`.
 2. **WebApi Aguarda o SQL Server:** O container `webapi` possui `depends_on: sqlserver` com condição `service_healthy`. Ao iniciar, ele executa as migrações automáticas do banco `MasterCatalog` (`DatabaseMigrations__ApplyMasterMigrationsOnStartup=true`).
 3. **WebApps Aguardam a WebApi:** Os portais Blazor Server (`webapp` e `backoffice`) iniciam somente após a `webapi` reportar status saudável em seu endpoint `/health`.
-4. **Nginx Expõe o Tráfego:** O proxy reverso Nginx distribui o tráfego externo para os serviços correspondentes.
 
 ---
 
@@ -128,11 +126,13 @@ docker exec -it admetricspro-prod-sqlserver /opt/mssql-tools18/bin/sqlcmd \
 
 ---
 
-## 6. Configuração de Domínios e DNS
+## 6. Acesso aos Serviços
 
-Para roteamento automático via Nginx com subdomínios, aponte os seguintes registros tipo `A` ou `CNAME` no seu provedor de DNS para o IP do seu servidor:
+A stack de produção não inclui proxy reverso. Cada serviço publica a porta apenas em `127.0.0.1` no host:
 
-- `app.seudominio.com` ➔ Painel do Cliente (WebApp)
-- `admin.seudominio.com` ou `backoffice.seudominio.com` ➔ Painel SuperAdmin (BackofficeApp)
-- `api.seudominio.com` ➔ Endpoints REST / OpenAPI da Web API
-- `*.seudominio.com` (Wildcard) ➔ Permite a resolução dinâmica de domínios personalizados e White-Label de agências.
+- Painel do Cliente (WebApp): `127.0.0.1:7000` (`WEBAPP_PORT`)
+- Web API: `127.0.0.1:7001` (`WEBAPI_PORT`)
+- Painel SuperAdmin (BackofficeApp): `127.0.0.1:7002` (`BACKOFFICE_PORT`)
+- SQL Server: `127.0.0.1:1433` (`MSSQL_PORT`)
+
+Publicação em domínio, TLS e roteamento de subdomínios ficam fora deste Compose.

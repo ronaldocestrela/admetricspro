@@ -1,4 +1,4 @@
-# 0038. Orquestração de Produção com Docker Compose, Multi-Stage .NET 10 e Reverse Proxy Nginx
+# 0038. Orquestração de Produção com Docker Compose e Multi-Stage .NET 10
 
 ## Status
 Aceito
@@ -9,13 +9,11 @@ O **AdMetricsPro** é composto por múltiplos serviços interdependentes:
 2. Backend em Monólito Modular ASP.NET Core (.NET 10) responsável pela lógica de negócio, governança, segurança, automações e APIs de mídia.
 3. Portal do Cliente / Inquilinos (`WebApp`) executado em **Blazor Server Interactive** (.NET 10).
 4. Portal Administrativo Global (`BackofficeApp`) executado em **Blazor Server Interactive** (.NET 10).
-5. Gateway de entrada / terminação com suporte a WebSockets/SignalR e roteamento seguro de domínios e subdomínios.
 
 Os desafios identificados para ambiente produtivo incluíam:
 - **Builds Reproduzíveis e Seguros:** Necessidade de compilação em múltiplos estágios (multi-stage) utilizando imagens oficiais do .NET 10, com usuário sem privilégios de root (`USER app`) para mitigação de vulnerabilidades de container breakout.
-- **Circuitos Blazor Server & WebSockets:** Aplicações Blazor Server dependem de conexões persistentes SignalR. Timeouts padrão de proxies reversos derrubam os circuitos de tela dos usuários, causando desconexões frequentes e perda de estado de navegação.
 - **Ordem Estrita de Inicialização & Migrações:** O backend `WebApi` só pode iniciar sua execução após o SQL Server estar efetivamente pronto para receber conexões transacionais (`service_healthy`). Além disso, as migrações automáticas do `MasterCatalog` devem ser aplicadas no boot antes de receber requisições de usuários.
-- **Isolamento de Rede:** Serviços transacionais internos (SQL Server e endpoints internos da WebApi) não devem ficar expostos indiscriminadamente à internet pública.
+- **Isolamento de Rede:** SQL Server, Web API e portais Blazor não devem ficar expostos na internet pública por este Compose. Publicação externa, TLS e roteamento de domínio ficam fora da stack.
 
 ## Decisão
 Decidimos estruturar a orquestração de produção através de **Docker Compose** e **Dockerfiles Multi-Stage** dedicados para o ecossistema .NET 10:
@@ -30,10 +28,9 @@ Decidimos estruturar a orquestração de produção através de **Docker Compose
    - O serviço `webapi` depende formalmente de `sqlserver: service_healthy`.
    - As aplicações Blazor Server (`webapp` e `backoffice`) dependem de `webapi: service_healthy`.
 
-3. **Reverse Proxy Nginx Especializado em WebSockets Blazor Server:**
-   - Configuração de `map $http_upgrade $connection_upgrade` com headers `Upgrade` e `Connection`.
-   - Timeouts estendidos (`proxy_read_timeout 86400s; proxy_send_timeout 86400s;`) e buffering desabilitado (`proxy_buffering off;`) para os circuitos Blazor Server.
-   - Roteamento por Host: `app.*` para o portal de clientes, `admin.*` / `backoffice.*` para o portal administrativo e `api.*` para endpoints diretos da WebApi.
+3. **Sem Proxy Reverso na Stack:**
+   - O Compose de produção não inclui Nginx nem outro proxy.
+   - `webapp`, `backoffice`, `webapi` e `sqlserver` publicam portas somente em `127.0.0.1`.
 
 4. **Isolamento e Segurança de Variáveis de Ambiente:**
    - Disponibilização do template `.env.prod.example` contendo todas as variáveis essenciais (chaves HMAC-SHA256 para tokens JWT de impersonação e inquilinos, senhas do SA, flags de migração automática e credenciais do SuperAdmin inicial).
@@ -43,8 +40,7 @@ Decidimos estruturar a orquestração de produção através de **Docker Compose
 
 ### Positivas
 - **Deploy Simplificado com Um Único Comando:** Execução completa de toda a infraestrutura com `docker compose -f docker-compose.prod.yml up -d --build`.
-- **Estabilidade de Conexão Blazor:** Eliminação de desconexões de tela e circuitos inválidos graças à configuração dedicada de WebSockets e timeouts no proxy reverso.
-- **Segurança Reforçada:** Aplicação de princípio de menor privilégio (usuário `app`), portas de banco não expostas na internet pública e isolamento em redes virtuais Docker.
+- **Segurança Reforçada:** Aplicação de princípio de menor privilégio (usuário `app`), portas publicadas apenas em `127.0.0.1` e isolamento em redes virtuais Docker.
 - **Zero-Downtime em Inicializações:** Garantia de que a API só atende requisições após o banco estar pronto e migrado.
 
 ### Negativas / Mitigações

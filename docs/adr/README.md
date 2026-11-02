@@ -45,7 +45,7 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0035](file:///home/rony/LPR/AdMetricsPro/docs/adr/0034-bulk-cross-platform-campaign-operations.md) | Operações e Edição em Massa Multiplataforma | Aceito | 2026-09-16 |
 | [0036](file:///home/rony/LPR/AdMetricsPro/docs/adr/0036-ai-copilot-traffic-auditor-and-anomaly-detection.md) | Copiloto de Otimização via IA (Auditor de Tráfego) e Detecção de Anomalias | Aceito | 2026-09-16 |
 | [0037](file:///home/rony/LPR/AdMetricsPro/docs/adr/0037-white-label-automated-reports-generator.md) | Gerador de Relatórios Automatizados em White-Label e Disparador Multi-Canal | Aceito | 2026-09-16 |
-| [0038](file:///home/rony/LPR/AdMetricsPro/docs/adr/0038-production-docker-orchestration.md) | Orquestração de Produção com Docker Compose, Multi-Stage .NET 10 e Reverse Proxy Nginx | Aceito | 2026-09-16 |
+| [0038](file:///home/rony/LPR/AdMetricsPro/docs/adr/0038-production-docker-orchestration.md) | Orquestração de Produção com Docker Compose e Multi-Stage .NET 10 | Aceito | 2026-09-16 |
 
 | [0039](0039-meta-workspace-authorization-and-account-links.md) | Autorização Meta por workspace e vínculo explícito de contas | Implementado localmente | 2026-10-15 |
 | [0040](0040-meta-mutations-journal-and-read-synchronization.md) | Diário idempotente de escritas Meta e sincronização periódica de leitura | Implementado localmente | 2026-10-15 |
