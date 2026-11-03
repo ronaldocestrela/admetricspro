@@ -35,7 +35,8 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.ViewFinancialMargins,
             TenantPermission.ExportReports,
             TenantPermission.SocialRead,
-            TenantPermission.SocialConnectionsManage
+            TenantPermission.SocialConnectionsManage,
+            TenantPermission.SocialMediaManage
         ],
         [TenantRole.Admin] =
         [
@@ -50,7 +51,8 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.ViewFinancialMargins,
             TenantPermission.ExportReports,
             TenantPermission.SocialRead,
-            TenantPermission.SocialConnectionsManage
+            TenantPermission.SocialConnectionsManage,
+            TenantPermission.SocialMediaManage
         ],
         [TenantRole.SquadLeader] =
         [
@@ -63,7 +65,8 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.ViewFinancialMargins,
             TenantPermission.ExportReports,
             TenantPermission.SocialRead,
-            TenantPermission.SocialConnectionsManage
+            TenantPermission.SocialConnectionsManage,
+            TenantPermission.SocialMediaManage
         ],
         [TenantRole.MediaManager] =
         [
@@ -72,7 +75,8 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.ManageAutomations,
             TenantPermission.ExportReports,
             TenantPermission.SocialRead,
-            TenantPermission.SocialConnectionsManage
+            TenantPermission.SocialConnectionsManage,
+            TenantPermission.SocialMediaManage
         ],
         [TenantRole.Analyst] =
         [

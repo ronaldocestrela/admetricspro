@@ -24,6 +24,8 @@ O monólito modular já adota database-per-tenant (ADR 0002), resolução dinâm
 
    Tabelas iniciais no schema `social`: `OrganicConnections`, `OrganicPosts`, `OrganicMediaAssets`, `BrandVoiceProfiles`. Listas `MandatoryLinks` e `ForbiddenTerms` do Brand Voice persistem como JSON (`MandatoryLinksJson`, `ForbiddenTermsJson`); pesos de pilares como colunas owned. Tokens orgânicos permanecem somente como ciphertext nas colunas `EncryptedAccessToken` / `EncryptedRefreshToken`.
 
+   **Subfase 2.4 (mídia orgânica):** `OrganicMediaAssets` passa a armazenar metadados de upload standalone (`WorkspaceId`, `Format`, `ObjectKey`, `MimeType`, `DurationMilliseconds`, `AspectLabel`) com `OrganicPostId` **anulável** (mídia registrada antes do post). O binário **nunca** é persistido em coluna SQL; fica na porta `IOrganicMediaStore` (disco local ou S3-compatível).
+
    Composição na **WebApi** (Master não referencia Social): decorator `SocialPublishingTenantProvisioningDecorator` sobre `ITenantProvisioningService` aplica `ISocialPublishingSchemaMigrator` após provisionamento operacional; `SocialPublishingTenantMigrationHostedService` itera tenants via `GetTenantsQuery` quando `DatabaseMigrations:ApplyMasterMigrationsOnStartup` está habilitado (exceto ambiente `Testing`).
 
 4. **Cofre orgânico:** tokens de conexão orgânica cifrados com `IEncryptionService` (AES-256-CBC do kernel), envelope de propósito `organic:{platform}:{workspaceId}:{connectionId}` — separado do vault de mídia paga (ADR 0026).

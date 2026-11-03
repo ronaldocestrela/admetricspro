@@ -54,11 +54,19 @@ public sealed class AspectRatio : ValueObject
     /// Indica se a proporção está dentro da tolerância de 9:16 (vertical).
     /// </summary>
     /// <returns><c>true</c> quando a proporção é vertical 9:16 dentro de 1% relativo.</returns>
-    public bool IsVertical916()
-    {
-        var delta = Math.Abs(Ratio - Vertical916Target);
-        return delta <= RelativeTolerance * Vertical916Target;
-    }
+    public bool IsVertical916() => AspectRatioRules.IsWithinTolerance(Ratio, Vertical916Target);
+
+    /// <summary>
+    /// Indica se a proporção está dentro da tolerância de 1:1.
+    /// </summary>
+    /// <returns><c>true</c> quando quadrada dentro de 1% relativo.</returns>
+    public bool IsSquare11() => AspectRatioRules.IsWithinTolerance(Ratio, 1.0);
+
+    /// <summary>
+    /// Indica se a proporção está dentro da tolerância de 4:5.
+    /// </summary>
+    /// <returns><c>true</c> quando retrato 4:5 dentro de 1% relativo.</returns>
+    public bool IsPortrait45() => AspectRatioRules.IsWithinTolerance(Ratio, 4.0 / 5.0);
 
     /// <inheritdoc />
     protected override IEnumerable<object?> GetEqualityComponents()

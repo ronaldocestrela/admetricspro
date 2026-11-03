@@ -342,6 +342,41 @@ public sealed class TenantPermissionEvaluatorTests
     }
 
     /// <summary>
+    /// Valida que SocialMediaManage existe no catálogo canônico.
+    /// </summary>
+    [Fact]
+    public void SocialMediaManage_DeveExistirNoEnumTenantPermission()
+    {
+        Enum.IsDefined(typeof(TenantPermission), TenantPermission.SocialMediaManage).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Valida que papéis operacionais de gestão incluem SocialMediaManage.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Owner)]
+    [InlineData(TenantRole.Admin)]
+    [InlineData(TenantRole.SquadLeader)]
+    [InlineData(TenantRole.MediaManager)]
+    public void GetPermissionsForRole_DeveIncluirSocialMediaManage(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().Contain(TenantPermission.SocialMediaManage);
+    }
+
+    /// <summary>
+    /// Valida que Analyst e Guest não possuem SocialMediaManage.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Analyst)]
+    [InlineData(TenantRole.Guest)]
+    public void GetPermissionsForRole_NaoDeveIncluirSocialMediaManageParaLeitura(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().NotContain(TenantPermission.SocialMediaManage);
+    }
+
+    /// <summary>
     /// Valida que papéis operacionais de gestão incluem SocialConnectionsManage.
     /// </summary>
     [Theory]

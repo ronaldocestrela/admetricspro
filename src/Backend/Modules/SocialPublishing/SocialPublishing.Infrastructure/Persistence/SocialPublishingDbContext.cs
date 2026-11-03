@@ -31,6 +31,11 @@ public sealed class SocialPublishingDbContext : DbContext
     public DbSet<OrganicPost> OrganicPosts => Set<OrganicPost>();
 
     /// <summary>
+    /// Obtém o conjunto de ativos de mídia orgânica (standalone ou filhos de post).
+    /// </summary>
+    public DbSet<OrganicMediaAsset> OrganicMediaAssets => Set<OrganicMediaAsset>();
+
+    /// <summary>
     /// Obtém o conjunto de perfis de voz de marca.
     /// </summary>
     public DbSet<BrandVoiceProfile> BrandVoiceProfiles => Set<BrandVoiceProfile>();

@@ -69,5 +69,10 @@ public enum TenantPermission
     /// <summary>
     /// Conectar, reconectar e gerenciar credenciais OAuth orgânicas (alias: social.connections.manage).
     /// </summary>
-    SocialConnectionsManage = 13
+    SocialConnectionsManage = 13,
+
+    /// <summary>
+    /// Registrar e gerenciar mídia orgânica (upload de binário e metadados) (alias: social.media.manage).
+    /// </summary>
+    SocialMediaManage = 14
 }

@@ -309,13 +309,26 @@ public sealed class OrganicPost : AggregateRoot<Guid>
 
         switch (format)
         {
+            case OrganicPostFormat.FeedImage:
+                if (count == 0)
+                {
+                    return Result.Success();
+                }
+
+                if (count != 1)
+                {
+                    return Result.Failure(SocialErrors.MediaAspectInvalid);
+                }
+
+                return ValidateFeedAspect(mediaItems![0].Width, mediaItems[0].Height);
+
             case OrganicPostFormat.FeedCarousel:
                 if (count < CarouselMinItems || count > CarouselMaxItems)
                 {
                     return Result.Failure(SocialErrors.CarouselItemCountInvalid);
                 }
 
-                return Result.Success();
+                return ValidateCarouselAspects(mediaItems!);
 
             case OrganicPostFormat.Reel:
             case OrganicPostFormat.TikTokVideo:
@@ -338,6 +351,47 @@ public sealed class OrganicPost : AggregateRoot<Guid>
             default:
                 return Result.Success();
         }
+    }
+
+    private static Result ValidateFeedAspect(int width, int height)
+    {
+        var classify = AspectRatioRules.Classify(width, height);
+        if (classify.IsFailure)
+        {
+            return Result.Failure(classify.Error);
+        }
+
+        return AspectRatioRules.ValidateForFormat(OrganicPostFormat.FeedImage, classify.Value);
+    }
+
+    private static Result ValidateCarouselAspects(IReadOnlyList<(int Width, int Height, int SortOrder)> mediaItems)
+    {
+        string? anchor = null;
+        foreach (var item in mediaItems.OrderBy(m => m.SortOrder))
+        {
+            var classify = AspectRatioRules.Classify(item.Width, item.Height);
+            if (classify.IsFailure)
+            {
+                return Result.Failure(classify.Error);
+            }
+
+            var label = classify.Value;
+            var formatCheck = AspectRatioRules.ValidateForFormat(OrganicPostFormat.FeedCarousel, label);
+            if (formatCheck.IsFailure)
+            {
+                return Result.Failure(formatCheck.Error);
+            }
+
+            var carouselCheck = AspectRatioRules.ValidateCarouselItem(anchor, label);
+            if (carouselCheck.IsFailure)
+            {
+                return Result.Failure(carouselCheck.Error);
+            }
+
+            anchor ??= label;
+        }
+
+        return Result.Success();
     }
 
     private static Result<DateTime> ConvertLocalToUtc(DateTime localScheduledAt, string workspaceTimeZoneId)

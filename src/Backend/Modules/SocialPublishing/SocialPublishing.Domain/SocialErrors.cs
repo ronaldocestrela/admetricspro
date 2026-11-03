@@ -32,6 +32,18 @@ public static class SocialErrors
         Error.Validation("Social.MediaAspectInvalid", "A mídia não atende à proporção exigida para este formato.");
 
     /// <summary>
+    /// Erro quando o tipo MIME não é permitido ou não combina com o formato.
+    /// </summary>
+    public static Error MediaMimeInvalid { get; } =
+        Error.Validation("Social.MediaMimeInvalid", "O tipo MIME não é permitido ou não é compatível com o formato informado.");
+
+    /// <summary>
+    /// Erro quando o cabeçalho do arquivo não permite ler dimensões ou duração.
+    /// </summary>
+    public static Error MediaUnreadable { get; } =
+        Error.Validation("Social.MediaUnreadable", "Não foi possível ler metadados da mídia enviada.");
+
+    /// <summary>
     /// Erro quando a legenda excede o teto da rede.
     /// </summary>
     public static Error CaptionTooLong { get; } =

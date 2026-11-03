@@ -6,6 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Options;
+using Amazon.Runtime;
+using Amazon.S3;
+using SocialPublishing.Infrastructure.Media;
 using SocialPublishing.Infrastructure.OAuth;
 using SocialPublishing.Infrastructure.Persistence;
 using SocialPublishing.Infrastructure.Persistence.Repositories;
@@ -37,13 +40,51 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddScoped<SocialPublishingDbContextAccessor>();
         services.AddScoped<IOrganicConnectionRepository, OrganicConnectionRepository>();
         services.AddScoped<IOrganicPostRepository, OrganicPostRepository>();
+        services.AddScoped<IOrganicMediaAssetRepository, OrganicMediaAssetRepository>();
         services.AddScoped<IBrandVoiceRepository, BrandVoiceRepository>();
         services.AddScoped<ISocialPublishingUnitOfWork, SocialPublishingUnitOfWork>();
         services.AddScoped<ISocialPublishingSchemaMigrator, SocialPublishingSchemaMigrator>();
 
         ConfigureOrganicOAuth(services, configuration);
+        ConfigureOrganicMedia(services, configuration);
 
         return services;
+    }
+
+    private static void ConfigureOrganicMedia(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<OrganicMediaOptions>(configuration.GetSection(OrganicMediaOptions.SectionName));
+
+        services.AddSingleton<IOrganicMediaMetadataReader, OrganicMediaHeaderInspector>();
+
+        var provider = configuration[$"{OrganicMediaOptions.SectionName}:Provider"] ?? "Local";
+        if (string.Equals(provider, "S3", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IAmazonS3>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OrganicMediaOptions>>().Value;
+                var config = new AmazonS3Config();
+                if (!string.IsNullOrWhiteSpace(options.ServiceUrl))
+                {
+                    config.ServiceURL = options.ServiceUrl;
+                    config.ForcePathStyle = true;
+                }
+
+                var accessKey = configuration["AWS_ACCESS_KEY_ID"];
+                var secretKey = configuration["AWS_SECRET_ACCESS_KEY"];
+                if (!string.IsNullOrWhiteSpace(accessKey) && !string.IsNullOrWhiteSpace(secretKey))
+                {
+                    return new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), config);
+                }
+
+                return new AmazonS3Client(config);
+            });
+            services.AddSingleton<IOrganicMediaStore, S3OrganicMediaStore>();
+        }
+        else
+        {
+            services.AddSingleton<IOrganicMediaStore, LocalOrganicMediaStore>();
+        }
     }
 
     private static void ConfigureOrganicOAuth(IServiceCollection services, IConfiguration configuration)

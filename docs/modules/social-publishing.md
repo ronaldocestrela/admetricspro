@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 2.2** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`) e **`SocialConnectionsManage`** (`social.connections.manage`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`** (envelope JSON + AES-256-CBC do kernel), **`CompleteOrganicAuthorizationCommand`** e rotas **`POST /api/v1/social/connections/authorize`** e **`callback`**. Refresh/revoke, listagem HTTP, mídia, IA, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
+Até a **Subfase 2.4** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`) e **`SocialMediaManage`** (`social.media.manage`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível) e **`POST /api/v1/social/media`**. Refresh/revoke, listagem HTTP de conexões, IA, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -52,6 +52,9 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.OrganicAccountAmbiguous` | Mais de uma conta elegível (seleção automática não permitida). |
 | `Social.PlatformUnsupported` | Rede fora de `Instagram`, `FacebookPage`, `TikTok`. |
 | `Social.MediaAspectInvalid` | Mídia fora da proporção exigida pelo formato. |
+| `Social.MediaMimeInvalid` | MIME fora de `image/jpeg`, `image/png`, `video/mp4` ou incompatível com o formato. |
+| `Social.MediaUnreadable` | Cabeçalho do arquivo não permite ler dimensões/duração. |
+| `Social.MediaTooLarge` | Arquivo acima do teto configurado (`SocialPublishing:Media:MaxUploadBytes`). |
 | `Social.CarouselItemCountInvalid` | Carrossel com menos de 2 ou mais de 10 itens. |
 | `Social.CaptionTooLong` | Legenda acima do teto da rede. |
 | `Social.HashtagPolicyViolated` | Hashtag duplicada, com espaço ou acima do teto configurado. |
@@ -84,7 +87,7 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 
 | Tipo | Invariantes |
 | :--- | :--- |
-| `AspectRatio` | Proporção 9:16 para Reels/TikTok com tolerância relativa de 1% (`\|w/h − 9/16\| ≤ 0,01 × 9/16`). |
+| `AspectRatio` / `AspectRatioRules` | Proporções nomeadas com tolerância relativa de **1%**: `1:1`, `4:5` (feed/carrossel), `9:16` (Reel/TikTok). Constantes: `AspectRatioRules.Label11`, `Label45`, `Label916`. |
 | `HashtagGroup` | Sem duplicata (case insensitive, `#` opcional), sem espaço interno; quantidade ≤ `min(tetoDoPerfil, tetoDaRede)` (Instagram/Page: 30, TikTok: 8). |
 | `PillarWeights` | Quatro inteiros ≥ 0 somando exatamente 100. |
 | `CaptionLimits` | Instagram, Facebook Page e TikTok: **2200** caracteres (constantes nomeadas, revisáveis). |
@@ -139,7 +142,7 @@ Contexto: `SocialPublishingDbContext` (não herda `TenantDbContext`). Histórico
 | :--- | :--- | :--- |
 | `OrganicConnections` | `Id`, `WorkspaceId`, `Platform`, `ExternalAccountId`, `DisplayName`, `EncryptedAccessToken`, `EncryptedRefreshToken`, `AccessTokenExpiresAtUtc`, `Scopes`, `Status`, `CreatedAtUtc` | Único `(WorkspaceId, Platform, ExternalAccountId)` |
 | `OrganicPosts` | `Id`, `WorkspaceId`, `ConnectionId`, `Platform`, `Format`, `Pillar`, `Caption`, `ScheduledAtUtc`, `Status`, `CreatedAtUtc` | `(WorkspaceId, ScheduledAtUtc)` |
-| `OrganicMediaAssets` | `Id`, `OrganicPostId`, `Width`, `Height`, `SortOrder` | FK → `OrganicPosts` (cascade) |
+| `OrganicMediaAssets` | `Id`, `OrganicPostId` (nullable), `WorkspaceId`, `Format`, `ObjectKey`, `MimeType`, `DurationMilliseconds`, `AspectLabel`, `Width`, `Height`, `SortOrder` | FK opcional → `OrganicPosts` (cascade); índice `WorkspaceId`. **Sem coluna de binário.** |
 | `BrandVoiceProfiles` | `Id`, `WorkspaceId`, `Tone`, `Persona`, `EmojiPolicy`, `HashtagLimit`, pilares (`PillarAuthority`…), `LanguageCode`, `MandatoryLinksJson`, `ForbiddenTermsJson`, `CreatedAtUtc` | Único `WorkspaceId` |
 
 Exemplo de valor persistido para token (nunca plaintext):
@@ -300,11 +303,79 @@ Comando MediatR **`CompleteOrganicAuthorizationCommand`**, rota **`POST /api/v1/
 
 ---
 
-## 7. Fora de escopo (após Subfase 2.2)
+## 7. Mídia orgânica — metadados e object store (Subfase 2.4)
+
+### Decisão
+
+O SQL Server do tenant guarda **somente metadados** (`ObjectKey`, MIME, dimensões, duração, rótulo de proporção). O binário fica na porta **`IOrganicMediaStore`** (`SaveAsync`, `OpenReadAsync`, `DeleteAsync`). Upload inválido não deixa objeto órfão: gravação em **staging**, validação de domínio, `DeleteAsync` em falha; promoção para **durable** só após sucesso.
+
+### Proporções (fixadas nos testes `OrganicMediaAssetTests`)
+
+| Formato | Proporções aceitas |
+| :--- | :--- |
+| `FeedImage`, `FeedCarousel` | `1:1`, `4:5` |
+| `Reel`, `TikTokVideo` | `9:16` |
+| `FeedCarousel` (itens após o primeiro) | Mesmo rótulo da mídia âncora (`carouselAnchorAssetId`) |
+
+### MIME permitidos
+
+- Imagens: `image/jpeg`, `image/png` (feed/carrossel).
+- Vídeo: `video/mp4` (Reel/TikTok).
+
+### Porta `IOrganicMediaStore`
+
+| Método | Contrato |
+| :--- | :--- |
+| `SaveAsync` | Recebe `OrganicMediaStorageTier` (`Staging` ou `Durable`). Chave durável: `{KeyPrefix}/durable/{tenantId}/{workspaceId}/{assetId}`. |
+| `OpenReadAsync` | Retorna `Stream` legível para inspeção de cabeçalho ou publicação futura. |
+| `DeleteAsync` | Remove objeto por chave (limpeza de staging ou rollback). |
+
+Implementações: **`LocalOrganicMediaStore`** (`SocialPublishing:Media:Provider=Local`, `LocalRoot`) e **`S3OrganicMediaStore`** (`Provider=S3`, `Bucket`, `ServiceUrl`, credenciais via ambiente ADR 0018).
+
+### `POST /api/v1/social/media`
+
+- **Autenticação:** esquema `Tenant` + tenant resolvido.
+- **Autorização:** `social.media.manage` (`TenantPermission.SocialMediaManage`).
+- **Content-Type:** `multipart/form-data`
+- **Campos:** `workspaceId` (GUID), `format` (`FeedImage`…), `file`, `carouselAnchorAssetId` (opcional).
+- **Limite:** `SocialPublishing:Media:MaxUploadBytes` (padrão 110 MB); acima → **413**.
+
+**Resposta 201:**
+
+```json
+{
+  "isSuccess": true,
+  "value": {
+    "assetId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "workspaceId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "format": "FeedImage",
+    "mimeType": "image/jpeg",
+    "width": 1080,
+    "height": 1080,
+    "durationMilliseconds": null,
+    "aspectLabel": "1:1",
+    "objectKey": "organic-media/durable/{tenantId}/{workspaceId}/{assetId}"
+  }
+}
+```
+
+| Código | HTTP | Quando |
+| :--- | :---: | :--- |
+| `Social.MediaAspectInvalid` | 422 | Proporção ou carrossel inconsistente |
+| `Social.MediaMimeInvalid` | 422 | MIME não permitido ou incompatível |
+| `Social.MediaUnreadable` | 422 | Cabeçalho ilegível |
+| `Social.MediaTooLarge` | 413 | Arquivo acima do teto |
+| `Auth.Forbidden` | 403 | Sem `social.media.manage` |
+
+Comando MediatR: **`RegisterOrganicMediaCommand`** (stream não é persistido; apenas metadados e chave).
+
+---
+
+## 8. Fora de escopo (após Subfase 2.4)
 
 | Área | Entrega futura |
 | :--- | :--- |
-| OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3), mídia (2.4) |
+| OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
 | IA / copiloto | Brand Voice, planner editorial, legendas (Fase 3) |
 | Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
@@ -312,7 +383,7 @@ Comando MediatR **`CompleteOrganicAuthorizationCommand`**, rota **`POST /api/v1/
 
 ---
 
-## 8. Composição na Web API
+## 9. Composição na Web API
 
 Registro em `Program.cs`:
 

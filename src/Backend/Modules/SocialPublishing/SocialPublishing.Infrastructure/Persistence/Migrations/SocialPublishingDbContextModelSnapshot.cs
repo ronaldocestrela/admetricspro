@@ -141,10 +141,29 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AspectLabel")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int?>("DurationMilliseconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Format")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
                     b.Property<int>("Height")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("OrganicPostId")
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ObjectKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<Guid?>("OrganicPostId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("SortOrder")
@@ -153,9 +172,14 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                     b.Property<int>("Width")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("WorkspaceId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OrganicPostId");
+
+                    b.HasIndex("WorkspaceId");
 
                     b.ToTable("OrganicMediaAssets", "social");
                 });
@@ -252,8 +276,7 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                     b.HasOne("SocialPublishing.Domain.Posts.OrganicPost", null)
                         .WithMany("_media")
                         .HasForeignKey("OrganicPostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("SocialPublishing.Domain.Posts.OrganicPost", b =>

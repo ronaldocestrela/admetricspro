@@ -3,12 +3,17 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
+using SocialPublishing.Application.Media.Commands.RegisterOrganicMedia;
+using SocialPublishing.Application.Media.DTOs;
+using SocialPublishing.Application.Options;
 using SocialPublishing.Application.Status.DTOs;
 using SocialPublishing.Application.Status.Queries.GetSocialModuleStatus;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
+using SocialPublishing.Domain.Posts;
 using Tenants.Application.Workspaces.Queries.GetWorkspaceById;
 
 namespace WebApi.Controllers.v1;
@@ -22,14 +27,17 @@ namespace WebApi.Controllers.v1;
 public sealed class SocialController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly OrganicMediaOptions _mediaOptions;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="SocialController"/>.
     /// </summary>
     /// <param name="sender">Mediador in-memory MediatR.</param>
-    public SocialController(ISender sender)
+    /// <param name="mediaOptions">Limites de upload de mídia orgânica.</param>
+    public SocialController(ISender sender, IOptions<OrganicMediaOptions> mediaOptions)
     {
         _sender = sender ?? throw new ArgumentNullException(nameof(sender));
+        _mediaOptions = mediaOptions?.Value ?? throw new ArgumentNullException(nameof(mediaOptions));
     }
 
     /// <summary>
@@ -162,6 +170,76 @@ public sealed class SocialController : ControllerBase
         return MapSocialConnectionResult(result);
     }
 
+    /// <summary>
+    /// Registra mídia orgânica (metadados no tenant DB, binário no object store).
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="format">Formato de publicação alvo.</param>
+    /// <param name="file">Arquivo JPEG, PNG ou MP4.</param>
+    /// <param name="carouselAnchorAssetId">Mídia âncora do carrossel, se aplicável.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Metadados do ativo registrado (sem binário).</returns>
+    [HttpPost("media")]
+    [RequestSizeLimit(110_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 110_000_000)]
+    [EndpointSummary("Registra mídia orgânica com validação de proporção e MIME")]
+    [ProducesResponseType(typeof(Result<OrganicMediaAssetDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(Result<OrganicMediaAssetDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicMediaAssetDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicMediaAssetDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicMediaAssetDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<OrganicMediaAssetDto>), StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(typeof(Result<OrganicMediaAssetDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<OrganicMediaAssetDto>>> RegisterMedia(
+        [FromForm] Guid workspaceId,
+        [FromForm] OrganicPostFormat format,
+        IFormFile file,
+        [FromForm] Guid? carouselAnchorAssetId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<OrganicMediaAssetDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        if (file is null || file.Length < 1)
+        {
+            return BadRequest(Result<OrganicMediaAssetDto>.Failure(
+                Error.Validation("Social.MediaFileRequired", "O arquivo de mídia é obrigatório.")));
+        }
+
+        if (file.Length > _mediaOptions.MaxUploadBytes)
+        {
+            return StatusCode(
+                StatusCodes.Status413PayloadTooLarge,
+                Result<OrganicMediaAssetDto>.Failure(
+                    Error.Validation("Social.MediaTooLarge", "O arquivo excede o tamanho máximo permitido.")));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<OrganicMediaAssetDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<OrganicMediaAssetDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<OrganicMediaAssetDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        await using var stream = file.OpenReadStream();
+        var result = await _sender.Send(
+            new RegisterOrganicMediaCommand(
+                workspaceId,
+                format,
+                file.ContentType,
+                stream,
+                carouselAnchorAssetId),
+            cancellationToken);
+
+        return MapSocialMediaResult(result);
+    }
+
     private ActionResult<Result<T>> MapSocialConnectionResult<T>(Result<T> result)
     {
         if (result.IsFailure)
@@ -177,6 +255,23 @@ public sealed class SocialController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    private ActionResult<Result<T>> MapSocialMediaResult<T>(Result<T> result)
+    {
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.Unauthorized => Unauthorized(result),
+                ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, result),
+                ErrorType.NotFound => NotFound(result),
+                ErrorType.Validation => UnprocessableEntity(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return StatusCode(StatusCodes.Status201Created, result);
     }
 }
 

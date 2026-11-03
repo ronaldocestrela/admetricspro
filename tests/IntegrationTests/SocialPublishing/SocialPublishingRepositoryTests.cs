@@ -202,6 +202,46 @@ public sealed class SocialPublishingRepositoryTests(SqlServerFixture fixture)
     }
 
     /// <summary>
+    /// Valida round-trip de mídia standalone com object key e ausência de coluna binária.
+    /// </summary>
+    [Fact]
+    public async Task OrganicMediaAssetRepository_Should_PersistMetadataWithoutBinary()
+    {
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var connectionString = await PrepareMigratedDatabaseAsync();
+        var resolver = new FakeTenantConnectionResolver(new Dictionary<Guid, string> { [tenantId] = connectionString });
+        resolver.SetCurrentTenant(tenantId);
+
+        var accessor = new SocialPublishingDbContextAccessor(new SocialPublishingDbContextFactory(resolver));
+        var mediaRepository = new OrganicMediaAssetRepository(accessor);
+        var unitOfWork = new SocialPublishingUnitOfWork(accessor);
+
+        const string objectKey = "organic-media/durable/test/key";
+        var asset = OrganicMediaAsset.Register(
+            workspaceId,
+            OrganicPostFormat.FeedImage,
+            OrganicMediaMimeTypes.Jpeg,
+            null,
+            1080,
+            1080,
+            objectKey).Value;
+
+        await mediaRepository.AddAsync(asset, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var reloaded = await mediaRepository.GetByIdAsync(asset.Id, CancellationToken.None);
+        reloaded.Should().NotBeNull();
+        reloaded!.ObjectKey.Should().Be(objectKey);
+        reloaded.AspectLabel.Should().Be(AspectRatioRules.Label11);
+
+        await using var context = new SocialPublishingDbContext(SocialPublishingDbContext.CreateOptions(connectionString));
+        var columns = context.Model.FindEntityType(typeof(OrganicMediaAsset))!.GetProperties().Select(p => p.Name).ToList();
+        columns.Should().NotContain(name => name.Contains("Binary", StringComparison.OrdinalIgnoreCase));
+        columns.Should().NotContain(name => name.Contains("Content", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     /// Valida publicação de evento de domínio após commit bem-sucedido.
     /// </summary>
     [Fact]
