@@ -397,6 +397,63 @@ public sealed class SocialPublishingRepositoryTests(SqlServerFixture fixture)
     }
 
     /// <summary>
+    /// Valida persistência de revisões de reagendamento no schema social.
+    /// </summary>
+    [Fact]
+    public async Task OrganicPost_Reschedule_Should_PersistScheduleRevisions()
+    {
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var connectionString = await PrepareMigratedDatabaseAsync();
+        var resolver = new FakeTenantConnectionResolver(new Dictionary<Guid, string> { [tenantId] = connectionString });
+        resolver.SetCurrentTenant(tenantId);
+
+        var accessor = new SocialPublishingDbContextAccessor(new SocialPublishingDbContextFactory(resolver));
+        var postRepository = new OrganicPostRepository(accessor);
+        var unitOfWork = new SocialPublishingUnitOfWork(accessor);
+
+        var connection = OrganicConnection.Create(
+            workspaceId,
+            OrganicPlatform.Instagram,
+            "ig-rev",
+            "Conta",
+            "scope",
+            "cipher").Value;
+        await new OrganicConnectionRepository(accessor).AddAsync(connection, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var post = OrganicPost.CreateEditorialDraft(
+            workspaceId,
+            connection.Id,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Authority,
+            "Post",
+            new DateTime(2026, 6, 2, 10, 0, 0),
+            "America/Sao_Paulo").Value;
+
+        await postRepository.AddAsync(post, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var previous = post.ScheduledAtUtc;
+        var newUtc = new DateTime(2026, 7, 1, 14, 0, 0, DateTimeKind.Utc);
+        var revisedAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        post.Reschedule(newUtc, actorId, revisedAt).IsSuccess.Should().BeTrue();
+
+        await postRepository.UpdateAsync(post, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var reloaded = await postRepository.GetByIdAsync(post.Id, CancellationToken.None);
+        reloaded.Should().NotBeNull();
+        reloaded!.ScheduledAtUtc.Should().Be(newUtc);
+        reloaded.ScheduleRevisions.Should().ContainSingle();
+        reloaded.ScheduleRevisions[0].PreviousScheduledAtUtc.Should().Be(previous);
+        reloaded.ScheduleRevisions[0].NewScheduledAtUtc.Should().Be(newUtc);
+        reloaded.ScheduleRevisions[0].RevisedByUserId.Should().Be(actorId);
+    }
+
+    /// <summary>
     /// Valida publicação de evento de domínio após commit bem-sucedido.
     /// </summary>
     [Fact]

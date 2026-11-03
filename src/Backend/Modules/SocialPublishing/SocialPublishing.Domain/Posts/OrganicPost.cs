@@ -14,6 +14,7 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     private const int CarouselMaxItems = 10;
 
     private readonly List<OrganicMediaAsset> _media = new();
+    private readonly List<ScheduleRevision> _scheduleRevisions = new();
 
     private OrganicPost(
         Guid id,
@@ -95,6 +96,11 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     /// Obtém a coleção de mídias associadas ao post.
     /// </summary>
     public IReadOnlyList<OrganicMediaAsset> Media => _media.AsReadOnly();
+
+    /// <summary>
+    /// Obtém o histórico de revisões de agendamento.
+    /// </summary>
+    public IReadOnlyList<ScheduleRevision> ScheduleRevisions => _scheduleRevisions.AsReadOnly();
 
     /// <summary>
     /// Cria um post orgânico em status <see cref="OrganicPostStatus.Draft"/>.
@@ -310,12 +316,13 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     }
 
     /// <summary>
-    /// Reagenda o post convertendo horário local do workspace para UTC.
+    /// Reagenda o post para um novo instante UTC e registra revisão auditável.
     /// </summary>
-    /// <param name="localScheduledAt">Nova data/hora local.</param>
-    /// <param name="workspaceTimeZoneId">Fuso IANA do workspace.</param>
+    /// <param name="scheduledAtUtc">Novo horário em UTC.</param>
+    /// <param name="revisedByUserId">Usuário que realizou a alteração.</param>
+    /// <param name="revisedAtUtc">Instante da alteração em UTC.</param>
     /// <returns>Resultado da operação.</returns>
-    public Result Reschedule(DateTime localScheduledAt, string workspaceTimeZoneId)
+    public Result Reschedule(DateTime scheduledAtUtc, Guid revisedByUserId, DateTime revisedAtUtc)
     {
         if (Status is OrganicPostStatus.Publishing or OrganicPostStatus.Published or OrganicPostStatus.Cancelled)
         {
@@ -327,13 +334,29 @@ public sealed class OrganicPost : AggregateRoot<Guid>
             return Result.Failure(SocialErrors.InvalidTransition);
         }
 
-        var utcResult = ConvertLocalToUtc(localScheduledAt, workspaceTimeZoneId);
-        if (utcResult.IsFailure)
+        if (scheduledAtUtc.Kind != DateTimeKind.Utc ||
+            revisedAtUtc.Kind != DateTimeKind.Utc)
         {
-            return utcResult;
+            return Result.Failure(SocialErrors.ScheduleInstantNotUtc);
         }
 
-        ScheduledAtUtc = utcResult.Value;
+        if (Status == OrganicPostStatus.Scheduled && scheduledAtUtc < revisedAtUtc)
+        {
+            return Result.Failure(SocialErrors.ScheduleInThePast);
+        }
+
+        var revisionResult = ScheduleRevision.Create(
+            ScheduledAtUtc,
+            scheduledAtUtc,
+            revisedByUserId,
+            revisedAtUtc);
+        if (revisionResult.IsFailure)
+        {
+            return Result.Failure(revisionResult.Error);
+        }
+
+        _scheduleRevisions.Add(revisionResult.Value);
+        ScheduledAtUtc = scheduledAtUtc;
         return Result.Success();
     }
 

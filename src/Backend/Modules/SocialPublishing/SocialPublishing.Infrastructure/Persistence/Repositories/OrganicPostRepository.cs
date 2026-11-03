@@ -33,6 +33,7 @@ public sealed class OrganicPostRepository : IOrganicPostRepository
         return await contextResult.Value.OrganicPosts
             .AsNoTracking()
             .Include("_media")
+            .Include("_scheduleRevisions")
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 

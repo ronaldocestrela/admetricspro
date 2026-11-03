@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 3.3** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`), o **planner editorial determinístico** (`EditorialCalendarPlanner` em domínio, sem HTTP) e a **geração de legendas/hashtags por slot** via comando MediatR **`GenerateSlotCopyCommand`** + porta **`ISocialCreativeGenerator`** (adaptador HTTP `SocialAi`, sem rota HTTP dedicada nesta subfase). Refresh/revoke, listagem HTTP de conexões, plano materializado em posts, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADRs 0044 e 0045).
+Até a **Subfase 4.1** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`), o **planner editorial determinístico** (`EditorialCalendarPlanner` em domínio, sem HTTP) e a **geração de legendas/hashtags por slot** via comando MediatR **`GenerateSlotCopyCommand`** + porta **`ISocialCreativeGenerator`** (adaptador HTTP `SocialAi`, sem rota HTTP dedicada nesta subfase). **Aprovação interna e reagendamento** (`POST .../posts/{id}:submit|:approve|:reject|:reschedule`, histórico `ScheduleRevision`). Outbox, worker, portal público de aprovação, Blazor e sinergia paga permanecem fora desta entrega (ver ADRs 0044 e 0045; worker na Fase 4.2+).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -68,6 +68,10 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.TimeZoneInvalid` | Fuso IANA ausente ou desconhecido no planner. |
 | `Social.SlotNotReschedulable` | Post em `Publishing`, `Published` ou `Cancelled`. |
 | `Social.InvalidTransition` | Transição de status não permitida pela máquina de estados. |
+| `Social.PostNotFound` | Post inexistente ou de outro workspace. |
+| `Social.ScheduleInThePast` | Post em `Scheduled` recebeu `scheduledAtUtc` anterior ao instante atual. |
+| `Social.ScheduleInstantNotUtc` | Instant de reagendamento ou revisão sem `DateTimeKind.Utc`. |
+| `Social.UserRequired` | Operação exige usuário autenticado no tenant. |
 | `Social.ApprovalTokenInvalid` | Token ausente, expirado, revogado ou de outro workspace. |
 | `Social.PublishRateLimited` | Rede respondeu 429 ou quota esgotada. |
 | `Social.PublishFailed` | Falha definitiva após o teto de tentativas. |
@@ -86,7 +90,7 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 | Tipo | Responsabilidade |
 | :--- | :--- |
 | `OrganicConnection` | Conexão OAuth orgânica por workspace; tokens apenas como `EncryptedAccessToken` / `EncryptedRefreshToken`; `Revoke` idempotente emite `OrganicConnectionRevoked`. |
-| `OrganicPost` | Post agendado com máquina de estados, legenda, mídia (dimensões) e `ScheduledAtUtc`. |
+| `OrganicPost` | Post agendado com máquina de estados, legenda, mídia (dimensões), `ScheduledAtUtc` e histórico `ScheduleRevision`. |
 | `BrandVoiceProfile` | DNA de marca: tom, persona, links absolutos, termos proibidos, `EmojiPolicy`, teto de hashtags e pesos dos pilares. |
 
 ### Value objects e constantes
@@ -102,16 +106,16 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 
 ### Transições de `OrganicPost`
 
-| De | Para (permitido) |
-| :--- | :--- |
-| `Draft` | `PendingApproval`, `Cancelled` |
-| `PendingApproval` | `Approved`, `Rejected`, `ChangesRequested`, `Cancelled` |
-| `Approved` | `Scheduled`, `Cancelled` |
-| `Scheduled` | `Publishing`, `Cancelled` |
-| `Publishing` | `Published`, `Failed` |
-| `Failed` | `Cancelled` |
+| De | Para (permitido) | Rota HTTP autenticada (Subfase 4.1) |
+| :--- | :--- | :--- |
+| `Draft` | `PendingApproval`, `Cancelled` | `POST /api/v1/social/posts/{id}:submit?workspaceId=` |
+| `PendingApproval` | `Approved`, `Rejected`, `ChangesRequested`, `Cancelled` | `:approve`, `:reject` |
+| `Approved` | `Scheduled`, `Cancelled` | — (`Scheduled` entra na Subfase 4.2) |
+| `Scheduled` | `Publishing`, `Cancelled` | — |
+| `Publishing` | `Published`, `Failed` | — |
+| `Failed` | `Cancelled` | — |
 
-Reagendamento (`Reschedule`): permitido em `Draft`, `PendingApproval`, `Approved`, `Scheduled`. Entrada: data/hora **local** + fuso IANA do workspace; persistência só em UTC. Bloqueado em `Publishing`, `Published`, `Cancelled` → `Social.SlotNotReschedulable`.
+Reagendamento (`Reschedule`): permitido em `Draft`, `PendingApproval`, `Approved`, `Scheduled`. Entrada HTTP: **`scheduledAtUtc`** (UTC). Cada alteração grava `ScheduleRevision` (de/para, `revisedByUserId`, `revisedAtUtc`). Post em `Scheduled` não aceita instante anterior ao relógio da aplicação → `Social.ScheduleInThePast`. Bloqueado em `Publishing`, `Published`, `Cancelled` → `Social.SlotNotReschedulable`. Permissão: `social.copilot.generate` (`SocialCopilotGenerate`).
 
 Carrossel (`FeedCarousel`): entre **2** e **10** itens de mídia.
 
@@ -150,6 +154,7 @@ Contexto: `SocialPublishingDbContext` (não herda `TenantDbContext`). Histórico
 | :--- | :--- | :--- |
 | `OrganicConnections` | `Id`, `WorkspaceId`, `Platform`, `ExternalAccountId`, `DisplayName`, `EncryptedAccessToken`, `EncryptedRefreshToken`, `AccessTokenExpiresAtUtc`, `Scopes`, `Status`, `CreatedAtUtc` | Único `(WorkspaceId, Platform, ExternalAccountId)` |
 | `OrganicPosts` | `Id`, `WorkspaceId`, `ConnectionId`, `Platform`, `Format`, `Pillar`, `Caption`, `ScheduledAtUtc`, `Status`, `CreatedAtUtc` | `(WorkspaceId, ScheduledAtUtc)` |
+| `ScheduleRevisions` | `Id`, `OrganicPostId`, `PreviousScheduledAtUtc`, `NewScheduledAtUtc`, `RevisedByUserId`, `RevisedAtUtc` | FK → `OrganicPosts` (cascade) |
 | `OrganicMediaAssets` | `Id`, `OrganicPostId` (nullable), `WorkspaceId`, `Format`, `ObjectKey`, `MimeType`, `DurationMilliseconds`, `AspectLabel`, `Width`, `Height`, `SortOrder` | FK opcional → `OrganicPosts` (cascade); índice `WorkspaceId`. **Sem coluna de binário.** |
 | `BrandVoiceProfiles` | `Id`, `WorkspaceId`, `Tone`, `Persona`, `EmojiPolicy`, `HashtagLimit`, pilares (`PillarAuthority`…), `LanguageCode`, `MandatoryLinksJson`, `ForbiddenTermsJson`, `CreatedAtUtc` | Único `WorkspaceId` |
 
@@ -674,18 +679,73 @@ Chave lógica: **`workspaceId` + `rangeStart` + `rangeEnd` + `seed`**. Persistid
 
 ---
 
-## 8. Fora de escopo (após Subfase 3.4)
+## 8. HTTP — aprovação interna e reagendamento (Subfase 4.1)
+
+Todas as rotas exigem JWT tenant, header `X-Tenant-Id`, permissão **`social.copilot.generate`** e query **`workspaceId`**. Corpo vazio em submit, approve e reject.
+
+### `POST /api/v1/social/posts/{id}:submit`
+
+Transição `Draft` → `PendingApproval`.
+
+### `POST /api/v1/social/posts/{id}:approve`
+
+Transição `PendingApproval` → `Approved` (não chama `Schedule()` nesta subfase).
+
+### `POST /api/v1/social/posts/{id}:reject`
+
+Transição `PendingApproval` → `Rejected`.
+
+### `POST /api/v1/social/posts/{id}:reschedule`
+
+Corpo:
+
+```json
+{
+  "scheduledAtUtc": "2026-07-01T14:00:00Z"
+}
+```
+
+Resposta de sucesso (`Result<OrganicPostDto>`):
+
+```json
+{
+  "isSuccess": true,
+  "value": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "workspaceId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "connectionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "platform": "Instagram",
+    "format": "FeedImage",
+    "pillar": "Authority",
+    "caption": "Legenda",
+    "scheduledAtUtc": "2026-07-01T14:00:00Z",
+    "status": "Draft"
+  }
+}
+```
+
+| Cenário | HTTP | Código |
+| :--- | :---: | :--- |
+| Post de outro workspace ou inexistente | **404** | `Social.PostNotFound` |
+| Transição ilegal (ex.: approve em `Draft`) | **409** | `Social.InvalidTransition` |
+| Reagendar em `Publishing` / `Published` / `Cancelled` | **409** | `Social.SlotNotReschedulable` |
+| `Scheduled` com horário no passado | **422** | `Social.ScheduleInThePast` |
+| `scheduledAtUtc` sem kind UTC | **422** | `Social.ScheduleInstantNotUtc` |
+
+---
+
+## 9. Fora de escopo (após Subfase 4.1)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
-| Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
+| Worker | Outbox, `PublicationJob`, `SocialPublishingDispatchWorker`, kill switch (Subfases 4.2–4.4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
 
 ---
 
-## 9. Composição na Web API
+## 10. Composição na Web API
 
 Registro em `Program.cs`:
 

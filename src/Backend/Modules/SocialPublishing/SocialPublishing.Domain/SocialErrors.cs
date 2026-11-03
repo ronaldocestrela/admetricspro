@@ -192,4 +192,28 @@ public static class SocialErrors
     /// </summary>
     public static Error PostsRangeInvalid { get; } =
         Error.Validation("Social.PostsRangeInvalid", "O parâmetro 'to' deve ser igual ou posterior a 'from'.");
+
+    /// <summary>
+    /// Erro quando o post orgânico não existe no workspace informado.
+    /// </summary>
+    public static Error PostNotFound { get; } =
+        Error.NotFound("Social.PostNotFound", "Post orgânico não encontrado para este workspace.");
+
+    /// <summary>
+    /// Erro quando um post agendado recebe horário anterior ao instante atual.
+    /// </summary>
+    public static Error ScheduleInThePast { get; } =
+        Error.Validation("Social.ScheduleInThePast", "Posts agendados não podem ser movidos para um horário no passado.");
+
+    /// <summary>
+    /// Erro quando o instante informado não está em UTC.
+    /// </summary>
+    public static Error ScheduleInstantNotUtc { get; } =
+        Error.Validation("Social.ScheduleInstantNotUtc", "O horário agendado deve ser informado em UTC.");
+
+    /// <summary>
+    /// Erro quando a operação exige usuário autenticado e nenhum está no contexto.
+    /// </summary>
+    public static Error UserRequired { get; } =
+        Error.Unauthorized("Social.UserRequired", "Usuário autenticado é obrigatório para esta operação.");
 }

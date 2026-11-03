@@ -228,7 +228,7 @@ public sealed class OrganicPostTests
         post.MarkPublishing().IsSuccess.Should().BeTrue();
         post.MarkPublished().IsSuccess.Should().BeTrue();
 
-        var reschedule = post.Reschedule(new DateTime(2026, 7, 1, 15, 0, 0), SaoPauloTimeZone);
+        var reschedule = RescheduleUtc(post, new DateTime(2026, 7, 1, 18, 0, 0, DateTimeKind.Utc));
 
         reschedule.IsFailure.Should().BeTrue();
         reschedule.Error.Code.Should().Be(SocialErrors.SlotNotReschedulable.Code);
@@ -246,14 +246,88 @@ public sealed class OrganicPostTests
         publishing.Schedule().IsSuccess.Should().BeTrue();
         publishing.MarkPublishing().IsSuccess.Should().BeTrue();
 
-        publishing.Reschedule(new DateTime(2026, 7, 1, 15, 0, 0), SaoPauloTimeZone)
+        RescheduleUtc(publishing, new DateTime(2026, 7, 1, 18, 0, 0, DateTimeKind.Utc))
             .Error.Code.Should().Be(SocialErrors.SlotNotReschedulable.Code);
 
         var cancelled = CreateDraftPost().Value;
         cancelled.Cancel().IsSuccess.Should().BeTrue();
-        cancelled.Reschedule(new DateTime(2026, 7, 1, 15, 0, 0), SaoPauloTimeZone)
+        RescheduleUtc(cancelled, new DateTime(2026, 7, 1, 18, 0, 0, DateTimeKind.Utc))
             .Error.Code.Should().Be(SocialErrors.SlotNotReschedulable.Code);
     }
+
+    /// <summary>
+    /// Valida registro de revisão ao reagendar.
+    /// </summary>
+    [Fact]
+    public void Reschedule_ComUtcValido_DeveRegistrarScheduleRevision()
+    {
+        var post = CreateDraftPost().Value;
+        var previous = post.ScheduledAtUtc;
+        var actorId = Guid.NewGuid();
+        var revisedAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        var newUtc = new DateTime(2026, 6, 10, 15, 0, 0, DateTimeKind.Utc);
+
+        post.Reschedule(newUtc, actorId, revisedAt).IsSuccess.Should().BeTrue();
+
+        post.ScheduledAtUtc.Should().Be(newUtc);
+        post.ScheduleRevisions.Should().ContainSingle();
+        var revision = post.ScheduleRevisions[0];
+        revision.PreviousScheduledAtUtc.Should().Be(previous);
+        revision.NewScheduledAtUtc.Should().Be(newUtc);
+        revision.RevisedByUserId.Should().Be(actorId);
+        revision.RevisedAtUtc.Should().Be(revisedAt);
+    }
+
+    /// <summary>
+    /// Valida post Scheduled não aceita horário no passado.
+    /// </summary>
+    [Fact]
+    public void Reschedule_EmScheduledComHorarioNoPassado_DeveRetornarScheduleInThePast()
+    {
+        var post = CreateDraftPost().Value;
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.Approve().IsSuccess.Should().BeTrue();
+        post.Schedule().IsSuccess.Should().BeTrue();
+
+        var revisedAt = new DateTime(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
+        var pastSlot = new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc);
+
+        var result = post.Reschedule(pastSlot, Guid.NewGuid(), revisedAt);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(SocialErrors.ScheduleInThePast.Code);
+        post.ScheduleRevisions.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Valida Draft pode receber horário no passado.
+    /// </summary>
+    [Fact]
+    public void Reschedule_EmDraftComHorarioNoPassado_DeveTerSucesso()
+    {
+        var post = CreateDraftPost().Value;
+        var past = new DateTime(2020, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        var revisedAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+
+        post.Reschedule(past, Guid.NewGuid(), revisedAt).IsSuccess.Should().BeTrue();
+        post.ScheduledAtUtc.Should().Be(past);
+    }
+
+    /// <summary>
+    /// Valida instantes não UTC são rejeitados.
+    /// </summary>
+    [Fact]
+    public void Reschedule_ComKindDiferenteDeUtc_DeveRetornarScheduleInstantNotUtc()
+    {
+        var post = CreateDraftPost().Value;
+        var local = new DateTime(2026, 7, 1, 15, 0, 0, DateTimeKind.Local);
+
+        post.Reschedule(local, Guid.NewGuid(), new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc))
+            .Error.Code.Should().Be(SocialErrors.ScheduleInstantNotUtc.Code);
+    }
+
+    private static Result RescheduleUtc(OrganicPost post, DateTime newUtc) =>
+        post.Reschedule(newUtc, Guid.NewGuid(), new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc));
 
     /// <summary>
     /// Valida conversão de horário local para UTC no fuso America/Sao_Paulo.

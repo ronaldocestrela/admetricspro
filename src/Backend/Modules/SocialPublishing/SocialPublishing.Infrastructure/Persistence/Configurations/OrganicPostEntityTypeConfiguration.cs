@@ -42,6 +42,7 @@ public sealed class OrganicPostEntityTypeConfiguration : IEntityTypeConfiguratio
         builder.HasIndex(p => p.WorkspaceId);
 
         builder.Ignore(p => p.Media);
+        builder.Ignore(p => p.ScheduleRevisions);
 
         builder.HasMany<OrganicMediaAsset>("_media")
             .WithOne()
@@ -49,6 +50,22 @@ public sealed class OrganicPostEntityTypeConfiguration : IEntityTypeConfiguratio
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation("_media")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.OwnsMany<ScheduleRevision>("_scheduleRevisions", revisions =>
+        {
+            revisions.ToTable("ScheduleRevisions");
+            revisions.WithOwner().HasForeignKey("OrganicPostId");
+            revisions.Property<Guid>("OrganicPostId");
+            revisions.HasKey(r => r.Id);
+            revisions.Property(r => r.PreviousScheduledAtUtc).IsRequired();
+            revisions.Property(r => r.NewScheduledAtUtc).IsRequired();
+            revisions.Property(r => r.RevisedByUserId).IsRequired();
+            revisions.Property(r => r.RevisedAtUtc).IsRequired();
+            revisions.HasIndex("OrganicPostId");
+        });
+
+        builder.Navigation("_scheduleRevisions")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

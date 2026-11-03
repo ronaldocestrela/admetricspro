@@ -14,6 +14,10 @@ using SocialPublishing.Application.Media.DTOs;
 using SocialPublishing.Application.Options;
 using SocialPublishing.Application.Planning.Commands.GenerateEditorialPlan;
 using SocialPublishing.Application.Planning.DTOs;
+using SocialPublishing.Application.Posts.Commands.ApprovePost;
+using SocialPublishing.Application.Posts.Commands.RejectPost;
+using SocialPublishing.Application.Posts.Commands.ReschedulePost;
+using SocialPublishing.Application.Posts.Commands.SubmitPostForApproval;
 using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Application.Posts.Queries.ListOrganicPosts;
 using SocialPublishing.Application.Status.DTOs;
@@ -430,6 +434,162 @@ public sealed class SocialController : ControllerBase
         return MapSocialConnectionResult(result);
     }
 
+    /// <summary>
+    /// Envia um post orgânico para aprovação interna.
+    /// </summary>
+    /// <param name="id">Identificador do post.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado ou falha de negócio.</returns>
+    [HttpPost("posts/{id:guid}:submit")]
+    [EndpointSummary("Envia post orgânico para aprovação interna")]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<OrganicPostDto>>> SubmitPostForApproval(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecutePostLifecycleCommandAsync(
+            workspaceId,
+            id,
+            wsId => new SubmitPostForApprovalCommand(wsId, id),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Aprova um post orgânico em revisão interna.
+    /// </summary>
+    /// <param name="id">Identificador do post.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado ou falha de negócio.</returns>
+    [HttpPost("posts/{id:guid}:approve")]
+    [EndpointSummary("Aprova post orgânico em revisão interna")]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<OrganicPostDto>>> ApprovePost(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecutePostLifecycleCommandAsync(
+            workspaceId,
+            id,
+            wsId => new ApprovePostCommand(wsId, id),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Rejeita um post orgânico em revisão interna.
+    /// </summary>
+    /// <param name="id">Identificador do post.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado ou falha de negócio.</returns>
+    [HttpPost("posts/{id:guid}:reject")]
+    [EndpointSummary("Rejeita post orgânico em revisão interna")]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<OrganicPostDto>>> RejectPost(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecutePostLifecycleCommandAsync(
+            workspaceId,
+            id,
+            wsId => new RejectPostCommand(wsId, id),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Reagenda um post orgânico para um novo instante UTC.
+    /// </summary>
+    /// <param name="id">Identificador do post.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="request">Novo horário em UTC.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado ou falha de negócio.</returns>
+    [HttpPost("posts/{id:guid}:reschedule")]
+    [EndpointSummary("Reagenda post orgânico para novo horário UTC")]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<OrganicPostDto>>> ReschedulePost(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        [FromBody] ReschedulePostRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<OrganicPostDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<OrganicPostDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<OrganicPostDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<OrganicPostDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(
+            new ReschedulePostCommand(workspaceId, id, request.ScheduledAtUtc),
+            cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
+    private async Task<ActionResult<Result<OrganicPostDto>>> ExecutePostLifecycleCommandAsync<TCommand>(
+        Guid workspaceId,
+        Guid postId,
+        Func<Guid, TCommand> commandFactory,
+        CancellationToken cancellationToken)
+        where TCommand : IRequest<Result<OrganicPostDto>>
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<OrganicPostDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<OrganicPostDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<OrganicPostDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<OrganicPostDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(commandFactory(workspaceId), cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
     private ActionResult<Result<T>> MapSocialConnectionResult<T>(Result<T> result)
     {
         if (result.IsFailure)
@@ -518,6 +678,12 @@ public sealed record UpsertBrandVoiceRequest(
     int ConnectionWeight,
     int SocialProofWeight,
     string LanguageCode = "pt-BR");
+
+/// <summary>
+/// Corpo da requisição de reagendamento de post orgânico.
+/// </summary>
+/// <param name="ScheduledAtUtc">Novo horário agendado em UTC.</param>
+public sealed record ReschedulePostRequest(DateTime ScheduledAtUtc);
 
 /// <summary>
 /// Corpo da requisição para materializar um plano editorial.

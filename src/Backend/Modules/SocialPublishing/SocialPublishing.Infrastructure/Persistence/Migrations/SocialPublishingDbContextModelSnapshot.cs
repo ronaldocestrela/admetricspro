@@ -325,6 +325,42 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("SocialPublishing.Domain.Posts.OrganicPost", b =>
                 {
+                    b.OwnsMany("SocialPublishing.Domain.Posts.ScheduleRevision", "_scheduleRevisions", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<DateTime>("NewScheduledAtUtc")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<Guid>("OrganicPostId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<DateTime>("PreviousScheduledAtUtc")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<DateTime>("RevisedAtUtc")
+                                .HasColumnType("datetime2");
+
+                            b1.Property<Guid>("RevisedByUserId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("OrganicPostId");
+
+                            b1.ToTable("ScheduleRevisions", "social");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrganicPostId");
+                        });
+
+                    b.Navigation("_scheduleRevisions");
+                });
+
+            modelBuilder.Entity("SocialPublishing.Domain.Posts.OrganicPost", b =>
+                {
                     b.Navigation("_media");
                 });
 #pragma warning restore 612, 618

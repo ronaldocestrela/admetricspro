@@ -3,6 +3,7 @@ using BuildingBlocks.Application.DependencyInjection;
 using BuildingBlocks.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Options;
@@ -34,6 +35,8 @@ public static class SocialPublishingModuleServiceExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddMessaging(Assembly.Load(new AssemblyName("SocialPublishing.Application")));
+
+        services.TryAddSingleton(TimeProvider.System);
 
         services.AddScoped<SocialPublishingDbContextFactory>();
         services.AddScoped<ITenantDbContextFactory<SocialPublishingDbContext>>(sp =>
