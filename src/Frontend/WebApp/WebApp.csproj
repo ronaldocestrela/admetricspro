@@ -17,6 +17,7 @@
     <ProjectReference Include="..\..\Backend\Modules\Integrations\Integrations.Application\Integrations.Application.csproj" />
     <ProjectReference Include="..\..\Backend\Modules\Analytics\Analytics.Application\Analytics.Application.csproj" />
     <ProjectReference Include="..\..\Backend\Modules\Automations\Automations.Application\Automations.Application.csproj" />
+    <ProjectReference Include="..\..\Backend\Modules\SocialPublishing\SocialPublishing.Application\SocialPublishing.Application.csproj" />
   </ItemGroup>
 
 </Project>

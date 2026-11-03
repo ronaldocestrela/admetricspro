@@ -4,11 +4,11 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 4.4** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão). Portal público de aprovação, Blazor e sinergia paga permanecem na Fase 5–6 (ADRs 0047–0048).
+Até a **Subfase 5.1** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`) e **UI Blazor** `/social/connections` com `ISocialPublishingClient`. Portal público de aprovação, calendário e sinergia paga permanecem nas Subfases 5.2–6 (ADRs 0047–0048).
 
 Stack e limites (detalhados no ADR 0043):
 
-- .NET 10: `SocialPublishing.Domain`, `SocialPublishing.Contracts`, `SocialPublishing.Application`, `SocialPublishing.Infrastructure`, controllers em `WebApi` e consumo futuro via `HttpClient` no `WebApp`.
+- .NET 10: `SocialPublishing.Domain`, `SocialPublishing.Contracts`, `SocialPublishing.Application`, `SocialPublishing.Infrastructure`, controllers em `WebApi` e consumo via `HttpClient` tipado no `WebApp` (referência apenas a `SocialPublishing.Application`).
 - Dados do módulo no SQL Server dedicado do tenant, com `SocialPublishingDbContext` e histórico `social.__EFMigrationsHistory` (implementação na Subfase 1.3).
 - Cofre orgânico separado do cofre de mídia paga (ADR 0026); o módulo não referencia `Integrations.*`, `Analytics.*` nem `Tenants.Infrastructure`.
 - Comunicação entre módulos via MediatR e tipos em `SocialPublishing.Contracts`.
@@ -314,7 +314,43 @@ Comando MediatR **`CompleteOrganicAuthorizationCommand`**, rota **`POST /api/v1/
 | `Auth.Forbidden` | 403 | Sem `social.connections.manage` ou fora da carteira |
 | `Workspace.NotFound` | 404 | Workspace inexistente no inquilino |
 
-**Fora da Subfase 2.2:** nonce/state de uso único persistido em banco (state continua stateless; o code é single-use no provedor), refresh preventivo, revoke e listagem HTTP (Subfase 2.3).
+**Fora da Subfase 2.2:** nonce/state de uso único persistido em banco (state continua stateless; o code é single-use no provedor). **Refresh preventivo** e **revogação remota na rede** permanecem na Subfase 2.3 (pendente).
+
+---
+
+## 6.3 OAuth orgânico — listagem e revogação local (Subfase 2.3 parcial / 5.1)
+
+Consulta **`ListOrganicConnectionsQuery`** (`social.read`) e comando **`RevokeOrganicConnectionCommand`** (`social.connections.manage`). A revogação local zera o refresh token e substitui o ciphertext por marcador fixo (`OrganicConnection.RevokedCredentialMarker`); **não** chama a API da Meta/TikTok.
+
+| Rota | Permissão | Descrição |
+| :--- | :--- | :--- |
+| `GET /api/v1/social/connections?workspaceId=` | `social.read` | Lista metadados sem segredos |
+| `DELETE /api/v1/social/connections/{connectionId}?workspaceId=` | `social.connections.manage` | Revoga localmente (idempotente) |
+
+### Exemplo de listagem (`200 OK`)
+
+```json
+{
+  "isSuccess": true,
+  "value": [
+    {
+      "connectionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "workspaceId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "platform": "Instagram",
+      "displayName": "marca",
+      "externalAccountId": "17841400000000000",
+      "status": "Active",
+      "accessTokenExpiresAtUtc": "2026-12-02T12:00:00Z"
+    }
+  ]
+}
+```
+
+| Código | HTTP | Quando |
+| :--- | :---: | :--- |
+| `Social.ConnectionNotFound` | 404 | `connectionId` inexistente ou de outro workspace |
+| `Social.TenantRequired` | 401 | Tenant não resolvido no pipeline |
+| `Social.WorkspaceRequired` | 400 | `workspaceId` vazio |
 
 ---
 
@@ -861,18 +897,47 @@ Backoff puro no domínio: `OrganicPublishRateLimitPolicy.CalculateDelayMs(attemp
 
 ---
 
-## 11. Fora de escopo (após Subfase 4.4)
+## 11. Frontend Blazor — conexões orgânicas (Subfase 5.1)
+
+O **`WebApp`** consome **somente** a Web API via **`ISocialPublishingClient`** / **`SocialPublishingClient`** (`AddHttpClient` em `Program.cs`). É **proibido** injetar `DbContext`, repositórios, MediatR ou referenciar `SocialPublishing.Infrastructure`.
+
+### Rotas e componentes
+
+| Rota Blazor | Layout | Componente |
+| :--- | :--- | :--- |
+| `/social/connections` | `TenantMainLayout` (white-label via `TenantStateProvider`) | `SocialConnectionsPage` + `SocialConnectionsPanel` |
+
+Peças atômicas: **`OrganicConnectionStatusBadge`** em `Components/Shared/Components/`. Navegação lateral: item **Redes orgânicas** (`TenantSidebar`).
+
+### Cliente HTTP
+
+Toda requisição autenticada envia **`Authorization: Bearer`** (sessão do tenant) e **`X-Tenant-Id`** (estado do inquilino), alinhado aos demais clientes do `WebApp`.
+
+| Método | API |
+| :--- | :--- |
+| `ListConnectionsAsync` | `GET /api/v1/social/connections?workspaceId=` |
+| `StartAuthorizationAsync` | `POST /api/v1/social/connections/authorize` |
+| `CompleteAuthorizationAsync` | `POST /api/v1/social/connections/callback` |
+| `RevokeConnectionAsync` | `DELETE /api/v1/social/connections/{id}?workspaceId=` |
+
+Falhas de rede retornam `Result.Failure` com código `Social.NetworkError` (sem exceção de fluxo na UI). O `RedirectUri` do OAuth é a própria URL canônica de `/social/connections` (mesmo padrão de `/integrations` para mídia paga).
+
+Testes: **`SocialPublishingClientTests`**, **`SocialConnectionsPanelTests`** (bUnit) em `tests/UnitTests/Frontend/`.
+
+---
+
+## 12. Fora de escopo (após Subfase 5.1)
 
 | Área | Entrega futura |
 | :--- | :--- |
-| OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
+| OAuth orgânico (continuação) | Refresh preventivo e revogação remota na rede (Subfase 2.3) |
 | Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
-| Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
+| Blazor (continuação) | Calendário `/social/calendar`, portal `/approve/{token}` (Fase 5.2–5.4) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
 
 ---
 
-## 12. Composição na Web API
+## 13. Composição na Web API
 
 Registro em `Program.cs`:
 

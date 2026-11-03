@@ -1,0 +1,26 @@
+@namespace WebApp.Components.Shared.Components
+@using SocialPublishing.Domain.Connections
+
+<span class="organic-connection-badge @CssClass" data-testid="organic-connection-status-badge">@Label</span>
+
+@code {
+    /// <summary>
+    /// Status operacional da conexão orgânica exibido no selo.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public OrganicConnectionStatus Status { get; set; }
+
+    private string Label => Status switch
+    {
+        OrganicConnectionStatus.Active => "Conectado",
+        OrganicConnectionStatus.Revoked => "Revogado",
+        _ => Status.ToString()
+    };
+
+    private string CssClass => Status switch
+    {
+        OrganicConnectionStatus.Active => "badge-active",
+        OrganicConnectionStatus.Revoked => "badge-revoked",
+        _ => "badge-default"
+    };
+}

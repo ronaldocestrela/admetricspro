@@ -377,6 +377,9 @@ public sealed class SocialPostLifecycleEndpointTests : IClassFixture<WebApplicat
 
         public Task<PublicationJob?> TryClaimAsync(Guid jobId, CancellationToken cancellationToken = default) =>
             Task.FromResult<PublicationJob?>(null);
+
+        public Task<IReadOnlyList<PublicationJob>> ListDueAsync(DateTime utcNow, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<PublicationJob>>(Array.Empty<PublicationJob>());
     }
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider

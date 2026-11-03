@@ -188,6 +188,12 @@ public static class SocialErrors
         Error.Validation("Social.ConnectionRequired", "A conexão orgânica é obrigatória.");
 
     /// <summary>
+    /// Erro quando a conexão orgânica não existe para o workspace informado.
+    /// </summary>
+    public static Error ConnectionNotFound { get; } =
+        Error.NotFound("Social.ConnectionNotFound", "Conexão orgânica não encontrada para este workspace.");
+
+    /// <summary>
     /// Erro quando a geração do plano editorial já está em andamento para a mesma chave de idempotência.
     /// </summary>
     public static Error PlanGenerationInProgress { get; } =

@@ -10,6 +10,11 @@ namespace SocialPublishing.Domain.Connections;
 /// </summary>
 public sealed class OrganicConnection : AggregateRoot<Guid>
 {
+    /// <summary>
+    /// Marcador persistido no lugar do ciphertext após revogação local (não é segredo utilizável).
+    /// </summary>
+    public const string RevokedCredentialMarker = "revoked:local";
+
     /// <summary>Identifica o contexto criptográfico da credencial orgânica.</summary>
     /// <param name="platform">Plataforma orgânica.</param>
     /// <param name="workspaceId">Workspace proprietário.</param>
@@ -231,6 +236,8 @@ public sealed class OrganicConnection : AggregateRoot<Guid>
             return Result.Success();
         }
 
+        EncryptedAccessToken = RevokedCredentialMarker;
+        EncryptedRefreshToken = null;
         Status = OrganicConnectionStatus.Revoked;
         RaiseDomainEvent(new OrganicConnectionRevoked(Id, WorkspaceId));
         return Result.Success();

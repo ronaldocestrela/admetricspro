@@ -8,6 +8,9 @@ using SocialPublishing.Application.Brand.Commands.UpsertBrandVoice;
 using SocialPublishing.Application.Brand.DTOs;
 using SocialPublishing.Application.Brand.Queries.GetBrandVoice;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
+using SocialPublishing.Application.Connections.Commands.RevokeOrganicConnection;
+using SocialPublishing.Application.Connections.DTOs;
+using SocialPublishing.Application.Connections.Queries.ListOrganicConnections;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
 using SocialPublishing.Application.Media.Commands.RegisterOrganicMedia;
 using SocialPublishing.Application.Media.DTOs;
@@ -181,6 +184,83 @@ public sealed class SocialController : ControllerBase
             cancellationToken);
 
         return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
+    /// Lista conexões orgânicas de um workspace sem expor tokens.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Metadados das conexões ou falha de negócio/autorização.</returns>
+    [HttpGet("connections")]
+    [EndpointSummary("Lista conexões orgânicas de um workspace (sem segredos)")]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicConnectionSummaryDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicConnectionSummaryDto>>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicConnectionSummaryDto>>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicConnectionSummaryDto>>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicConnectionSummaryDto>>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result<IReadOnlyList<OrganicConnectionSummaryDto>>>> ListOrganicConnections(
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<IReadOnlyList<OrganicConnectionSummaryDto>>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<IReadOnlyList<OrganicConnectionSummaryDto>>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<IReadOnlyList<OrganicConnectionSummaryDto>>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<IReadOnlyList<OrganicConnectionSummaryDto>>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(new ListOrganicConnectionsQuery(workspaceId), cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
+    /// Revoga localmente uma conexão orgânica e invalida o ciphertext persistido.
+    /// </summary>
+    /// <param name="connectionId">Identificador da conexão.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado da operação.</returns>
+    [HttpDelete("connections/{connectionId:guid}")]
+    [EndpointSummary("Revoga conexão orgânica localmente (sem expor segredos)")]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result>> RevokeOrganicConnection(
+        Guid connectionId,
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(new RevokeOrganicConnectionCommand(workspaceId, connectionId), cancellationToken);
+        return MapSocialVoidResult(result);
     }
 
     /// <summary>
@@ -620,6 +700,24 @@ public sealed class SocialController : ControllerBase
     }
 
     private ActionResult<Result<T>> MapSocialConnectionResult<T>(Result<T> result)
+    {
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.Unauthorized => Unauthorized(result),
+                ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, result),
+                ErrorType.NotFound => NotFound(result),
+                ErrorType.Validation => UnprocessableEntity(result),
+                ErrorType.Conflict => Conflict(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return Ok(result);
+    }
+
+    private ActionResult<Result> MapSocialVoidResult(Result result)
     {
         if (result.IsFailure)
         {

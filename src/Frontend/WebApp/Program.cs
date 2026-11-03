@@ -76,6 +76,8 @@ builder.Services.AddHttpClient<WebApp.Services.Reports.IReportClientService, Web
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<WebApp.Services.Reports.IPublicReportClientService, WebApp.Services.Reports.PublicReportClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<WebApp.Services.Social.ISocialPublishingClient, WebApp.Services.Social.SocialPublishingClient>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 

@@ -105,12 +105,27 @@ public sealed class OrganicConnectionTests
         var connection = CreateValidConnection();
         connection.Revoke().IsSuccess.Should().BeTrue();
 
-        var before = connection.EncryptedAccessToken;
         var rotate = connection.MarkTokensRotated("new-cipher", null, DateTime.UtcNow.AddDays(1));
 
         rotate.IsFailure.Should().BeTrue();
         rotate.Error.Code.Should().Be(SocialErrors.TokenRevoked.Code);
-        connection.EncryptedAccessToken.Should().Be(before);
+        connection.EncryptedAccessToken.Should().Be(OrganicConnection.RevokedCredentialMarker);
+    }
+
+    /// <summary>
+    /// Revogação deve substituir ciphertext por marcador e eliminar refresh token.
+    /// </summary>
+    [Fact]
+    public void Revoke_DeveEliminarCiphertextUtilizavel()
+    {
+        var connection = CreateValidConnection();
+        connection.EncryptedAccessToken.Should().Be("cipher-access");
+
+        connection.Revoke().IsSuccess.Should().BeTrue();
+
+        connection.EncryptedAccessToken.Should().Be(OrganicConnection.RevokedCredentialMarker);
+        connection.EncryptedAccessToken.Should().NotBe("cipher-access");
+        connection.EncryptedRefreshToken.Should().BeNull();
     }
 
     /// <summary>

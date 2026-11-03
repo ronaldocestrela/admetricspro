@@ -1,0 +1,198 @@
+@namespace WebApp.Components.Social
+@using BuildingBlocks.Domain.Primitives
+@using SocialPublishing.Application.Connections.DTOs
+@using SocialPublishing.Domain.Connections
+@using WebApp.Components.Shared.Components
+@using WebApp.Services.Social
+@inject ISocialPublishingClient SocialClient
+@inject NavigationManager Navigation
+
+<div class="social-connections-panel" data-testid="social-connections-panel">
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="alert alert-danger" role="alert" data-testid="social-connections-error">@_errorMessage</div>
+    }
+
+    @if (_isLoading)
+    {
+        <p class="text-muted" data-testid="social-connections-loading">Carregando conexões orgânicas…</p>
+    }
+    else if (_connections.Count == 0)
+    {
+        <div class="social-connections-empty" data-testid="social-connections-empty">
+            <p>Nenhuma rede orgânica conectada para este cliente. Conecte Instagram, Facebook Page ou TikTok.</p>
+            <div class="social-connect-actions">
+                <button type="button" class="btn btn-primary" data-testid="connect-instagram" disabled="@_isConnecting" @onclick="() => ConnectAsync(OrganicPlatform.Instagram)">Conectar Instagram</button>
+                <button type="button" class="btn btn-primary" data-testid="connect-facebook-page" disabled="@_isConnecting" @onclick="() => ConnectAsync(OrganicPlatform.FacebookPage)">Conectar Facebook Page</button>
+                <button type="button" class="btn btn-primary" data-testid="connect-tiktok" disabled="@_isConnecting" @onclick="() => ConnectAsync(OrganicPlatform.TikTok)">Conectar TikTok</button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="social-connection-cards">
+            @foreach (var connection in _connections.Where(c => c.Status == OrganicConnectionStatus.Active))
+            {
+                <article class="social-connection-card" data-testid="@($"connection-card-{connection.Platform}")">
+                    <header>
+                        <h3>@connection.DisplayName</h3>
+                        <OrganicConnectionStatusBadge Status="connection.Status" />
+                    </header>
+                    <p class="text-muted small">@connection.Platform · @connection.ExternalAccountId</p>
+                    @if (connection.AccessTokenExpiresAtUtc.HasValue)
+                    {
+                        <p class="text-muted small">Expira em @connection.AccessTokenExpiresAtUtc.Value.ToString("u")</p>
+                    }
+                    <button type="button"
+                            class="btn btn-outline-danger btn-sm"
+                            data-testid="@($"revoke-{connection.Platform}")"
+                            disabled="@_isRevoking"
+                            @onclick="() => RevokeAsync(connection.ConnectionId)">
+                        Revogar conexão
+                    </button>
+                </article>
+            }
+        </div>
+
+        <div class="social-connect-actions mt-3">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-testid="connect-instagram" disabled="@_isConnecting" @onclick="() => ConnectAsync(OrganicPlatform.Instagram)">Conectar Instagram</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-testid="connect-facebook-page" disabled="@_isConnecting" @onclick="() => ConnectAsync(OrganicPlatform.FacebookPage)">Conectar Facebook Page</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-testid="connect-tiktok" disabled="@_isConnecting" @onclick="() => ConnectAsync(OrganicPlatform.TikTok)">Conectar TikTok</button>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Workspace proprietário das conexões orgânicas exibidas no painel.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Guid WorkspaceId { get; set; }
+
+    /// <summary>
+    /// Código OAuth retornado pelo provedor (callback na mesma rota).
+    /// </summary>
+    [Parameter]
+    public string? OAuthCode { get; set; }
+
+    /// <summary>
+    /// State anti-CSRF retornado pelo provedor (callback na mesma rota).
+    /// </summary>
+    [Parameter]
+    public string? OAuthState { get; set; }
+
+    /// <summary>
+    /// Erro retornado pelo provedor OAuth, se houver.
+    /// </summary>
+    [Parameter]
+    public string? OAuthProviderError { get; set; }
+
+    private readonly List<OrganicConnectionSummaryDto> _connections = [];
+    private bool _isLoading = true;
+    private bool _isConnecting;
+    private bool _isRevoking;
+    private bool _callbackProcessed;
+    private string? _errorMessage;
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
+    {
+        if (WorkspaceId == Guid.Empty)
+        {
+            _isLoading = false;
+            _connections.Clear();
+            return;
+        }
+
+        await LoadConnectionsAsync();
+
+        if (!_callbackProcessed &&
+            !string.IsNullOrWhiteSpace(OAuthState) &&
+            (!string.IsNullOrWhiteSpace(OAuthCode) || !string.IsNullOrWhiteSpace(OAuthProviderError)))
+        {
+            await CompleteOAuthCallbackAsync();
+        }
+    }
+
+    private async Task LoadConnectionsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        var result = await SocialClient.ListConnectionsAsync(WorkspaceId);
+        _isLoading = false;
+
+        _connections.Clear();
+        if (result.IsSuccess)
+        {
+            _connections.AddRange(result.Value);
+            return;
+        }
+
+        _errorMessage = result.Error.Description;
+    }
+
+    private async Task ConnectAsync(OrganicPlatform platform)
+    {
+        if (WorkspaceId == Guid.Empty)
+        {
+            _errorMessage = "Selecione um workspace antes de conectar.";
+            return;
+        }
+
+        _isConnecting = true;
+        _errorMessage = null;
+        var redirectUri = BuildRedirectUri();
+        var result = await SocialClient.StartAuthorizationAsync(WorkspaceId, platform, redirectUri);
+        _isConnecting = false;
+
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo(result.Value.AuthorizationUrl, forceLoad: true);
+            return;
+        }
+
+        _errorMessage = result.Error.Description;
+    }
+
+    private async Task CompleteOAuthCallbackAsync()
+    {
+        _callbackProcessed = true;
+        var redirectUri = BuildRedirectUri();
+        var result = await SocialClient.CompleteAuthorizationAsync(
+            WorkspaceId,
+            OAuthCode ?? string.Empty,
+            OAuthState ?? string.Empty,
+            redirectUri,
+            OAuthProviderError);
+
+        if (result.IsFailure)
+        {
+            _errorMessage = result.Error.Description;
+            return;
+        }
+
+        await LoadConnectionsAsync();
+    }
+
+    private async Task RevokeAsync(Guid connectionId)
+    {
+        _isRevoking = true;
+        _errorMessage = null;
+        var result = await SocialClient.RevokeConnectionAsync(WorkspaceId, connectionId);
+        _isRevoking = false;
+
+        if (result.IsFailure)
+        {
+            _errorMessage = result.Error.Description;
+            return;
+        }
+
+        await LoadConnectionsAsync();
+    }
+
+    private string BuildRedirectUri()
+    {
+        var baseUri = Navigation.Uri.Split('?')[0];
+        return baseUri;
+    }
+}
