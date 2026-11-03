@@ -4,6 +4,7 @@ using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Planning;
 using SocialPublishing.Domain.Posts;
+using SocialPublishing.Domain.Publications;
 
 namespace SocialPublishing.Infrastructure.Persistence;
 
@@ -45,6 +46,11 @@ public sealed class SocialPublishingDbContext : DbContext
     /// Obtém o conjunto de snapshots idempotentes de planos editoriais materializados.
     /// </summary>
     public DbSet<EditorialPlanGeneration> EditorialPlanGenerations => Set<EditorialPlanGeneration>();
+
+    /// <summary>
+    /// Obtém o conjunto de jobs de publicação orgânica (outbox).
+    /// </summary>
+    public DbSet<PublicationJob> PublicationJobs => Set<PublicationJob>();
 
     /// <summary>
     /// Cria opções SQL Server com schema padrão <c>social</c> e histórico de migrações isolado.

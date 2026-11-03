@@ -280,6 +280,58 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                     b.ToTable("OrganicPosts", "social");
                 });
 
+            modelBuilder.Entity("SocialPublishing.Domain.Publications.PublicationJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("NextAttemptAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("ScheduledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("PostId", "Status");
+
+                    b.HasIndex("WorkspaceId", "ScheduledAtUtc");
+
+                    b.ToTable("PublicationJobs", "social");
+                });
+
             modelBuilder.Entity("SocialPublishing.Domain.Brand.BrandVoiceProfile", b =>
                 {
                     b.OwnsOne("SocialPublishing.Domain.Brand.PillarWeights", "PillarWeights", b1 =>

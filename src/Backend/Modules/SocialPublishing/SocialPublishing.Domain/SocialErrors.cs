@@ -216,4 +216,34 @@ public static class SocialErrors
     /// </summary>
     public static Error UserRequired { get; } =
         Error.Unauthorized("Social.UserRequired", "Usuário autenticado é obrigatório para esta operação.");
+
+    /// <summary>
+    /// Erro quando já existe job de publicação para o mesmo slot (chave de idempotência).
+    /// </summary>
+    public static Error PublicationJobAlreadyExists { get; } =
+        Error.Conflict("Social.PublicationJobAlreadyExists", "Já existe um job de publicação para este horário do post.");
+
+    /// <summary>
+    /// Erro quando o job está em processamento e bloqueia reagendamento.
+    /// </summary>
+    public static Error PublicationJobInProgress { get; } =
+        Error.Conflict("Social.PublicationJobInProgress", "A publicação deste post está em andamento e não pode ser reagendada.");
+
+    /// <summary>
+    /// Erro quando o job não pode ser reivindicado no status atual.
+    /// </summary>
+    public static Error PublicationJobNotClaimable { get; } =
+        Error.Conflict("Social.PublicationJobNotClaimable", "O job de publicação não está disponível para reivindicação.");
+
+    /// <summary>
+    /// Erro quando o job não pode ser cancelado no status atual.
+    /// </summary>
+    public static Error PublicationJobNotCancellable { get; } =
+        Error.Conflict("Social.PublicationJobNotCancellable", "O job de publicação não pode ser cancelado no status atual.");
+
+    /// <summary>
+    /// Erro quando a transição de status do job não é permitida.
+    /// </summary>
+    public static Error PublicationJobInvalidTransition { get; } =
+        Error.Conflict("Social.PublicationJobInvalidTransition", "A transição de status do job de publicação não é permitida.");
 }

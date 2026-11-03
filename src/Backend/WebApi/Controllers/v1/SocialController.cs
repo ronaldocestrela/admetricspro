@@ -15,6 +15,7 @@ using SocialPublishing.Application.Options;
 using SocialPublishing.Application.Planning.Commands.GenerateEditorialPlan;
 using SocialPublishing.Application.Planning.DTOs;
 using SocialPublishing.Application.Posts.Commands.ApprovePost;
+using SocialPublishing.Application.Posts.Commands.SchedulePost;
 using SocialPublishing.Application.Posts.Commands.RejectPost;
 using SocialPublishing.Application.Posts.Commands.ReschedulePost;
 using SocialPublishing.Application.Posts.Commands.SubmitPostForApproval;
@@ -487,6 +488,34 @@ public sealed class SocialController : ControllerBase
             workspaceId,
             id,
             wsId => new ApprovePostCommand(wsId, id),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Agenda um post aprovado e registra job pendente na outbox de publicação.
+    /// </summary>
+    /// <param name="id">Identificador do post.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado ou falha de negócio.</returns>
+    [HttpPost("posts/{id:guid}:schedule")]
+    [EndpointSummary("Agenda post aprovado e abre job na outbox")]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<OrganicPostDto>>> SchedulePost(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecutePostLifecycleCommandAsync(
+            workspaceId,
+            id,
+            wsId => new SchedulePostCommand(wsId, id),
             cancellationToken);
     }
 

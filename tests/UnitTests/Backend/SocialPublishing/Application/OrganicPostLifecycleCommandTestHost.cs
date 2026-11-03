@@ -6,8 +6,10 @@ using BuildingBlocks.Domain.Tenants;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using NSubstitute;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Posts;
+using SocialPublishing.Domain.Publications;
 using Tenants.Application.Rbac.Attributes;
 
 namespace UnitTests.Backend.SocialPublishing.Application;
@@ -29,6 +31,7 @@ internal sealed class OrganicPostLifecycleCommandTestHost
         CurrentUserContext.IsAuthenticated.Returns(true);
         CurrentUserContext.UserId.Returns(UserId);
         PostRepository = new InMemoryOrganicPostRepository();
+        PublicationJobRepository = new InMemoryPublicationJobRepository();
         UnitOfWork = Substitute.For<ISocialPublishingUnitOfWork>();
         FixedTime = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
         TimeProvider = Substitute.For<TimeProvider>();
@@ -49,6 +52,11 @@ internal sealed class OrganicPostLifecycleCommandTestHost
     /// Obtém o repositório em memória.
     /// </summary>
     public InMemoryOrganicPostRepository PostRepository { get; }
+
+    /// <summary>
+    /// Obtém o repositório de jobs em memória.
+    /// </summary>
+    public InMemoryPublicationJobRepository PublicationJobRepository { get; }
 
     /// <summary>
     /// Obtém o unit of work substituído.
@@ -175,4 +183,59 @@ internal sealed class InMemoryOrganicPostRepository : IOrganicPostRepository
         OrganicPostStatus status,
         CancellationToken cancellationToken = default) =>
         Task.FromResult(AllPosts.Count(p => p.WorkspaceId == workspaceId && p.Status == status));
+}
+
+/// <summary>
+/// Repositório em memória para testes da outbox de publicação.
+/// </summary>
+internal sealed class InMemoryPublicationJobRepository : IPublicationJobRepository
+{
+    private readonly object _claimLock = new();
+
+    /// <summary>
+    /// Jobs armazenados.
+    /// </summary>
+    public List<PublicationJob> AllJobs { get; } = new();
+
+    /// <inheritdoc />
+    public Task<PublicationJob?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default) =>
+        Task.FromResult(AllJobs.FirstOrDefault(j => j.IdempotencyKey == idempotencyKey));
+
+    /// <inheritdoc />
+    public Task<PublicationJob?> GetActiveByPostIdAsync(Guid postId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(
+            AllJobs.FirstOrDefault(j =>
+                j.PostId == postId &&
+                j.Status is PublicationJobStatus.Pending or PublicationJobStatus.RetryScheduled or PublicationJobStatus.InProgress));
+
+    /// <inheritdoc />
+    public Task<Result> AddAsync(PublicationJob job, CancellationToken cancellationToken = default)
+    {
+        if (AllJobs.Any(j => j.IdempotencyKey == job.IdempotencyKey))
+        {
+            return Task.FromResult(Result.Failure(SocialErrors.PublicationJobAlreadyExists));
+        }
+
+        AllJobs.Add(job);
+        return Task.FromResult(Result.Success());
+    }
+
+    /// <inheritdoc />
+    public Task UpdateAsync(PublicationJob job, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    /// <inheritdoc />
+    public Task<PublicationJob?> TryClaimAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        lock (_claimLock)
+        {
+            var job = AllJobs.FirstOrDefault(j => j.Id == jobId);
+            if (job is null || !job.CanBeClaimed)
+            {
+                return Task.FromResult<PublicationJob?>(null);
+            }
+
+            job.MarkInProgress().IsSuccess.Should().BeTrue();
+            return Task.FromResult<PublicationJob?>(job);
+        }
+    }
 }

@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 4.1** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`), o **planner editorial determinístico** (`EditorialCalendarPlanner` em domínio, sem HTTP) e a **geração de legendas/hashtags por slot** via comando MediatR **`GenerateSlotCopyCommand`** + porta **`ISocialCreativeGenerator`** (adaptador HTTP `SocialAi`, sem rota HTTP dedicada nesta subfase). **Aprovação interna e reagendamento** (`POST .../posts/{id}:submit|:approve|:reject|:reschedule`, histórico `ScheduleRevision`). Outbox, worker, portal público de aprovação, Blazor e sinergia paga permanecem fora desta entrega (ver ADRs 0044 e 0045; worker na Fase 4.2+).
+Até a **Subfase 4.2** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`), o **planner editorial determinístico** (`EditorialCalendarPlanner` em domínio, sem HTTP) e a **geração de legendas/hashtags por slot** via comando MediatR **`GenerateSlotCopyCommand`** + porta **`ISocialCreativeGenerator`** (adaptador HTTP `SocialAi`, sem rota HTTP dedicada nesta subfase). **Aprovação interna, agendamento e reagendamento** (`POST .../posts/{id}:submit|:approve|:schedule|:reject|:reschedule`, histórico `ScheduleRevision`), **outbox `PublicationJob`** com claim otimista (`RowVersion`) e chave `{postId:D}:{scheduledAtUtc:O}`. Worker de disparo, adaptadores `PublishAsync`, kill switch, portal público de aprovação, Blazor e sinergia paga permanecem fora desta entrega (ver ADRs 0044–0046; worker na Subfase 4.4).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -91,6 +91,7 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 | :--- | :--- |
 | `OrganicConnection` | Conexão OAuth orgânica por workspace; tokens apenas como `EncryptedAccessToken` / `EncryptedRefreshToken`; `Revoke` idempotente emite `OrganicConnectionRevoked`. |
 | `OrganicPost` | Post agendado com máquina de estados, legenda, mídia (dimensões), `ScheduledAtUtc` e histórico `ScheduleRevision`. |
+| `PublicationJob` | Job outbox por slot agendado: status, chave de idempotência, tentativas e claim otimista via `RowVersion`. |
 | `BrandVoiceProfile` | DNA de marca: tom, persona, links absolutos, termos proibidos, `EmojiPolicy`, teto de hashtags e pesos dos pilares. |
 
 ### Value objects e constantes
@@ -110,7 +111,7 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 | :--- | :--- | :--- |
 | `Draft` | `PendingApproval`, `Cancelled` | `POST /api/v1/social/posts/{id}:submit?workspaceId=` |
 | `PendingApproval` | `Approved`, `Rejected`, `ChangesRequested`, `Cancelled` | `:approve`, `:reject` |
-| `Approved` | `Scheduled`, `Cancelled` | — (`Scheduled` entra na Subfase 4.2) |
+| `Approved` | `Scheduled`, `Cancelled` | `POST /api/v1/social/posts/{id}:schedule?workspaceId=` |
 | `Scheduled` | `Publishing`, `Cancelled` | — |
 | `Publishing` | `Published`, `Failed` | — |
 | `Failed` | `Cancelled` | — |
@@ -689,7 +690,11 @@ Transição `Draft` → `PendingApproval`.
 
 ### `POST /api/v1/social/posts/{id}:approve`
 
-Transição `PendingApproval` → `Approved` (não chama `Schedule()` nesta subfase).
+Transição `PendingApproval` → `Approved` (não abre job outbox; use `:schedule` em seguida).
+
+### `POST /api/v1/social/posts/{id}:schedule`
+
+Transição `Approved` → `Scheduled` e criação de `PublicationJob` em `Pending` com chave `{postId:D}:{scheduledAtUtc:O}` no mesmo `CommitAsync` do post.
 
 ### `POST /api/v1/social/posts/{id}:reject`
 
@@ -734,18 +739,64 @@ Resposta de sucesso (`Result<OrganicPostDto>`):
 
 ---
 
-## 9. Fora de escopo (após Subfase 4.1)
+## 9. Outbox de publicação (Subfase 4.2)
+
+### Ciclo de vida do `PublicationJob`
+
+| Status | Significado |
+| :--- | :--- |
+| `Pending` | Aguardando horário ou claim do worker. |
+| `InProgress` | Reivindicado por um worker (claim otimista). |
+| `RetryScheduled` | Retentativa após rate limit (Subfase 4.4). |
+| `Succeeded` | Publicação concluída. |
+| `DeadLetter` | Falha definitiva após teto de tentativas (Subfase 4.4). |
+| `Cancelled` | Slot substituído por reagendamento. |
+
+Chave de idempotência (índice único): `{postId:D}:{scheduledAtUtc:O}` em UTC, cultura invariante.
+
+Reagendamento de post `Scheduled`: cancela job ativo (`Pending` / `RetryScheduled`), persiste revisão do post e abre novo job com chave nova no mesmo `CommitAsync`. Job `InProgress` bloqueia reagendamento → `Social.PublicationJobInProgress`.
+
+Claim (`IPublicationJobRepository.TryClaimAsync`): aceita apenas `Pending` ou `RetryScheduled`; marca `InProgress` e persiste com `RowVersion`. Segundo claim concorrente recebe `null`.
+
+### Exemplo — job após `:schedule`
+
+```json
+{
+  "id": "8b1e2f3a-4c5d-6e7f-8091-a2b3c4d5e6f7",
+  "postId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "workspaceId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "scheduledAtUtc": "2026-07-01T14:00:00.0000000Z",
+  "idempotencyKey": "3fa85f64-5717-4562-b3fc-2c963f66afa6:2026-07-01T14:00:00.0000000Z",
+  "status": "Pending",
+  "attemptCount": 0,
+  "nextAttemptAtUtc": null,
+  "createdAtUtc": "2026-06-15T12:00:00.0000000Z"
+}
+```
+
+### Casos de borda (outbox)
+
+| Cenário | Comportamento |
+| :--- | :--- |
+| Segundo insert mesma chave | `Social.PublicationJobAlreadyExists`; uma linha no banco. |
+| Dois `TryClaimAsync` concorrentes | Um job `InProgress`; o outro `null`. |
+| Claim em `Succeeded` / `Cancelled` / `DeadLetter` | `null`, sem alteração. |
+| Reagendar com job `InProgress` | **409** `Social.PublicationJobInProgress`; sem `CommitAsync`. |
+
+---
+
+## 10. Fora de escopo (após Subfase 4.2)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
-| Worker | Outbox, `PublicationJob`, `SocialPublishingDispatchWorker`, kill switch (Subfases 4.2–4.4) |
+| Worker e publicação na rede | `PublishAsync`, `SocialPublishingDispatchWorker`, kill switch (Subfases 4.3–4.4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
 
 ---
 
-## 10. Composição na Web API
+## 11. Composição na Web API
 
 Registro em `Program.cs`:
 

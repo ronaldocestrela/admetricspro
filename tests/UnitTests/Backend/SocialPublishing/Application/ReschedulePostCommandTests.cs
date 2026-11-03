@@ -3,6 +3,7 @@ using NSubstitute;
 using SocialPublishing.Application.Posts.Commands.ReschedulePost;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Posts;
+using SocialPublishing.Domain.Publications;
 using Xunit;
 
 namespace UnitTests.Backend.SocialPublishing.Application;
@@ -147,9 +148,85 @@ public sealed class ReschedulePostCommandTests
         result.Value.ScheduledAtUtc.Should().Be(past);
     }
 
+    /// <summary>
+    /// Reagendar Scheduled cancela job anterior e abre outro com chave nova.
+    /// </summary>
+    [Fact]
+    public async Task Handle_Scheduled_DeveCancelarJobAnteriorEAbrirNovo()
+    {
+        var host = new OrganicPostLifecycleCommandTestHost();
+        var post = host.SeedDraftPost();
+        OrganicPostLifecycleCommandTestHost.AdvanceTo(post, OrganicPostStatus.Scheduled);
+        var oldKey = PublicationJobKey.Build(post.Id, post.ScheduledAtUtc);
+        var oldJob = PublicationJob.Open(
+            post.Id,
+            post.WorkspaceId,
+            post.ScheduledAtUtc,
+            host.FixedTime.UtcDateTime).Value;
+        await host.PublicationJobRepository.AddAsync(oldJob, CancellationToken.None);
+
+        var newUtc = host.FixedTime.UtcDateTime.AddDays(7);
+        var handler = CreateHandler(host);
+        var result = await handler.Handle(
+            new ReschedulePostCommand(host.WorkspaceId, post.Id, newUtc),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        oldJob.Status.Should().Be(PublicationJobStatus.Cancelled);
+        host.PublicationJobRepository.AllJobs.Should().Contain(j =>
+            j.Status == PublicationJobStatus.Pending &&
+            j.IdempotencyKey == PublicationJobKey.Build(post.Id, newUtc));
+        host.PublicationJobRepository.AllJobs.Count(j => j.IdempotencyKey == oldKey).Should().Be(1);
+    }
+
+    /// <summary>
+    /// Job InProgress bloqueia reagendamento.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ScheduledComJobInProgress_DeveRetornarPublicationJobInProgress()
+    {
+        var host = new OrganicPostLifecycleCommandTestHost();
+        var post = host.SeedDraftPost();
+        OrganicPostLifecycleCommandTestHost.AdvanceTo(post, OrganicPostStatus.Scheduled);
+        var job = PublicationJob.Open(
+            post.Id,
+            post.WorkspaceId,
+            post.ScheduledAtUtc,
+            host.FixedTime.UtcDateTime).Value;
+        job.MarkInProgress().IsSuccess.Should().BeTrue();
+        await host.PublicationJobRepository.AddAsync(job, CancellationToken.None);
+
+        var handler = CreateHandler(host);
+        var result = await handler.Handle(
+            new ReschedulePostCommand(host.WorkspaceId, post.Id, host.FixedTime.UtcDateTime.AddDays(1)),
+            CancellationToken.None);
+
+        result.Error.Code.Should().Be(SocialErrors.PublicationJobInProgress.Code);
+        await host.UnitOfWork.DidNotReceive().CommitAsync(Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Draft reagendado não altera outbox.
+    /// </summary>
+    [Fact]
+    public async Task Handle_Draft_NaoDeveCriarJob()
+    {
+        var host = new OrganicPostLifecycleCommandTestHost();
+        var post = host.SeedDraftPost();
+        var handler = CreateHandler(host);
+
+        var result = await handler.Handle(
+            new ReschedulePostCommand(host.WorkspaceId, post.Id, host.FixedTime.UtcDateTime.AddDays(3)),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        host.PublicationJobRepository.AllJobs.Should().BeEmpty();
+    }
+
     private static ReschedulePostCommandHandler CreateHandler(OrganicPostLifecycleCommandTestHost host) =>
         new(
             host.PostRepository,
+            host.PublicationJobRepository,
             host.UnitOfWork,
             host.TenantContextAccessor,
             host.CurrentUserContext,

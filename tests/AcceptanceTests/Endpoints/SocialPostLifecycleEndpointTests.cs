@@ -17,6 +17,7 @@ using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Posts;
+using SocialPublishing.Domain.Publications;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Tenants.Application.Workspaces.Repositories;
@@ -62,6 +63,47 @@ public sealed class SocialPostLifecycleEndpointTests : IClassFixture<WebApplicat
         var envelope = DeserializePost(await response.Content.ReadAsStringAsync());
         envelope!.IsSuccess.Should().BeTrue();
         envelope.Value!.Status.Should().Be(OrganicPostStatus.PendingApproval);
+    }
+
+    /// <summary>
+    /// Schedule a partir de Approved retorna 200 com Scheduled.
+    /// </summary>
+    [Fact]
+    public async Task SchedulePost_FromApproved_ShouldReturn200WithScheduled()
+    {
+        var workspaceId = Guid.NewGuid();
+        var post = CreateDraftPost(workspaceId);
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.Approve().IsSuccess.Should().BeTrue();
+        var client = CreateClient(workspaceId, post);
+
+        var response = await client.PostAsync(
+            $"/api/v1/social/posts/{post.Id}:schedule?workspaceId={workspaceId}",
+            null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var envelope = DeserializePost(await response.Content.ReadAsStringAsync());
+        envelope!.IsSuccess.Should().BeTrue();
+        envelope.Value!.Status.Should().Be(OrganicPostStatus.Scheduled);
+    }
+
+    /// <summary>
+    /// Schedule a partir de Draft retorna 409.
+    /// </summary>
+    [Fact]
+    public async Task SchedulePost_FromDraft_ShouldReturn409()
+    {
+        var workspaceId = Guid.NewGuid();
+        var post = CreateDraftPost(workspaceId);
+        var client = CreateClient(workspaceId, post);
+
+        var response = await client.PostAsync(
+            $"/api/v1/social/posts/{post.Id}:schedule?workspaceId={workspaceId}",
+            null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var envelope = DeserializePost(await response.Content.ReadAsStringAsync());
+        envelope!.Error!.Code.Should().Be(SocialErrors.InvalidTransition.Code);
     }
 
     /// <summary>
@@ -136,6 +178,7 @@ public sealed class SocialPostLifecycleEndpointTests : IClassFixture<WebApplicat
     {
         AssertOpenApi(typeof(SocialController), nameof(SocialController.SubmitPostForApproval));
         AssertOpenApi(typeof(SocialController), nameof(SocialController.ApprovePost));
+        AssertOpenApi(typeof(SocialController), nameof(SocialController.SchedulePost));
         AssertOpenApi(typeof(SocialController), nameof(SocialController.RejectPost));
         AssertOpenApi(typeof(SocialController), nameof(SocialController.ReschedulePost));
     }
@@ -193,6 +236,7 @@ public sealed class SocialPostLifecycleEndpointTests : IClassFixture<WebApplicat
                 services.AddScoped<Tenants.Application.Squads.Services.IUserPortfolioService, TestPortfolio>();
                 services.AddScoped<IWorkspaceRepository>(_ => workspaceRepo);
                 services.AddScoped<IOrganicPostRepository>(_ => postRepo);
+                services.AddScoped<IPublicationJobRepository, AcceptancePublicationJobRepository>();
                 services.AddScoped<ISocialPublishingUnitOfWork, StubUnitOfWork>();
                 if (fixedUtcNow.HasValue)
                 {
@@ -303,6 +347,36 @@ public sealed class SocialPostLifecycleEndpointTests : IClassFixture<WebApplicat
     private sealed class StubUnitOfWork : ISocialPublishingUnitOfWork
     {
         public Task<int> CommitAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
+    }
+
+    private sealed class AcceptancePublicationJobRepository : IPublicationJobRepository
+    {
+        private readonly List<PublicationJob> _jobs = new();
+
+        public Task<PublicationJob?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_jobs.FirstOrDefault(j => j.IdempotencyKey == idempotencyKey));
+
+        public Task<PublicationJob?> GetActiveByPostIdAsync(Guid postId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                _jobs.FirstOrDefault(j =>
+                    j.PostId == postId &&
+                    j.Status is PublicationJobStatus.Pending or PublicationJobStatus.RetryScheduled or PublicationJobStatus.InProgress));
+
+        public Task<Result> AddAsync(PublicationJob job, CancellationToken cancellationToken = default)
+        {
+            if (_jobs.Any(j => j.IdempotencyKey == job.IdempotencyKey))
+            {
+                return Task.FromResult(Result.Failure(SocialErrors.PublicationJobAlreadyExists));
+            }
+
+            _jobs.Add(job);
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task UpdateAsync(PublicationJob job, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<PublicationJob?> TryClaimAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<PublicationJob?>(null);
     }
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
