@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceito parcialmente em 2026-11-03. **Subfase 4.2 implementada** (`PublicationJob`, outbox no banco do tenant, claim otimista, `:schedule` e reagendamento coordenado). Worker, adaptadores `PublishAsync`, política 429 e kill switch fecham na **Subfase 4.4**.
+Aceito parcialmente em 2026-11-03. **Subfases 4.2 e 4.3 implementadas** (outbox, `PublishAsync` nos três adaptadores orgânicos, `OrganicPublishRateLimitPolicy` e mapeamento 429 → `Social.PublishRateLimited`). Worker, `DispatchDuePublicationsCommand` e kill switch fecham na **Subfase 4.4**.
 
 ## Contexto
 
@@ -31,11 +31,16 @@ Requisitos da outbox:
 
 6. **Sem MediatR cross-module** na outbox; repositório scoped no mesmo `SocialPublishingDbContext` do post.
 
-### Subfases 4.3–4.4 (pendentes)
+### Subfase 4.3 (implementada)
 
-- Adaptadores de publicação orgânica (`PublishAsync`) e política de backoff \(T = 2^{attempt} \times baseDelay + jitter\) local ao módulo.
+- `IOrganicPlatformAdapter.PublishAsync` com `OrganicPublishRequest` / `OrganicPublishReceipt`; token decifrado no handler, URLs de mídia resolvidas fora do adaptador.
+- Meta Page (feed imagem), Instagram (carrossel + Reel) e TikTok Content Posting (vídeo vertical); HTTP 429 → `PublishRateLimitedError` com `Retry-After` opcional; demais falhas de rede → `Social.PublishFailed`.
+- `OrganicPublishRateLimitPolicy` no domínio (sem referência a Integrations): \(T = \min(2^{attempt} \times baseDelay + jitter, maxDelay)\), opções `SocialPublishing:Publish`.
+
+### Subfase 4.4 (pendente)
+
 - `SocialPublishingDispatchWorker` (`BackgroundService`), `DispatchDuePublicationsCommand`, flag `killswitch.social-publishing.dispatch` (ADR 0015).
-- **Suposição operacional**: instância única do host ou claim `RowVersion` como proteção extra em multi-instância; documentação do ciclo 429/`RetryScheduled`/`DeadLetter` na spec.
+- **Suposição operacional**: instância única do host ou claim `RowVersion` como proteção extra em multi-instância; ciclo 429/`RetryScheduled`/`DeadLetter` na spec.
 
 ## Consequências
 

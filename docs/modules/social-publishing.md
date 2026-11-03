@@ -74,7 +74,8 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.UserRequired` | Operação exige usuário autenticado no tenant. |
 | `Social.ApprovalTokenInvalid` | Token ausente, expirado, revogado ou de outro workspace. |
 | `Social.PublishRateLimited` | Rede respondeu 429 ou quota esgotada. |
-| `Social.PublishFailed` | Falha definitiva após o teto de tentativas. |
+| `Social.PublishFailed` | Falha definitiva após o teto de tentativas ou erro funcional da rede. |
+| `Social.PublishFormatUnsupported` | Formato não suportado pelo adaptador da plataforma do post. |
 | `Social.BoostAlreadyRequested` | Já existe sugestão aberta para o mesmo post. |
 
 Todas as operações futuras devem retornar `Result` / `Result<T>` com esses códigos estáveis, sem `throw` para regra de negócio.
@@ -785,18 +786,72 @@ Claim (`IPublicationJobRepository.TryClaimAsync`): aceita apenas `Pending` ou `R
 
 ---
 
-## 10. Fora de escopo (após Subfase 4.2)
+## 10. Adaptadores de publicação (Subfase 4.3)
+
+Publicação orgânica na borda HTTP: `IOrganicPlatformAdapter.PublishAsync` recebe token **já decifrado** e URLs HTTPS de mídia (`OrganicPublishRequest`). O adaptador não abre cofre, não lê `IOrganicMediaStore` e não loga o token. Meta envia `access_token` no corpo `application/x-www-form-urlencoded`; TikTok usa `Authorization: Bearer`.
+
+### Formato → adaptador → operação de rede
+
+| Formato | Adaptador | Sequência (Graph `MetaOrganicOAuthOptions.GraphApiVersion` ou TikTok Content Posting) |
+| :--- | :--- | :--- |
+| `FeedImage` | `MetaFacebookPageOrganicAdapter` | `POST /{page-id}/photos` (`url`, `caption`, `published=true`) |
+| `FeedCarousel` | `MetaInstagramOrganicAdapter` | `POST /{ig-user-id}/media` por item (`is_carousel_item=true`) → container `media_type=CAROUSEL` + `children` → `POST .../media_publish` |
+| `Reel` | `MetaInstagramOrganicAdapter` | `POST /media` (`media_type=REELS`, `video_url`) → `GET /{container-id}?fields=status_code` (exige `FINISHED`) → `media_publish` |
+| `TikTokVideo` | `TikTokContentPostingAdapter` | `POST .../video/init/` (`PULL_FROM_URL`) → `POST .../status/fetch/` (`PUBLISH_COMPLETE`) |
+
+`OrganicPublishOptions` (`SocialPublishing:Publish`): `MaxAttempts` (3), `BaseDelayMs` (500), `MaxDelayMs` (10_000), `TikTokPrivacyLevel` (`PUBLIC_TO_EVERYONE`).
+
+Backoff puro no domínio: `OrganicPublishRateLimitPolicy.CalculateDelayMs(attempt, jitterMs)` = `min(2^attempt × BaseDelayMs + jitter, MaxDelayMs)`. O worker (4.4) aplica o atraso e combina com `PublishRateLimitedError.RetryAfter`.
+
+### Payload de entrada (escopo do handler 4.4)
+
+```json
+{
+  "accessToken": "<decifrado no handler, nunca persistido>",
+  "externalAccountId": "page-or-ig-or-open-id",
+  "format": "FeedCarousel",
+  "caption": "Legenda final",
+  "media": [
+    { "sourceUrl": "https://cdn.agencia/obj.jpg", "sortOrder": 0 }
+  ]
+}
+```
+
+### Resposta de sucesso (`Result<OrganicPublishReceipt>`)
+
+```json
+{
+  "isSuccess": true,
+  "value": {
+    "externalId": "17841400000000000"
+  }
+}
+```
+
+### Erros de borda (publicação)
+
+| Cenário | Código | Observação |
+| :--- | :--- | :--- |
+| HTTP 429 com `Retry-After` | `Social.PublishRateLimited` | `PublishRateLimitedError.RetryAfter` preenchido quando o header existir |
+| HTTP 429 sem header | `Social.PublishRateLimited` | `RetryAfter` nulo; worker usa política pura |
+| Erro funcional / 4xx–5xx Meta ou TikTok | `Social.PublishFailed` | Sem exceção propagada ao handler |
+| Reel com container não `FINISHED` na primeira leitura | `Social.PublishFailed` | Retentativa fica a cargo do worker |
+| Formato fora do adaptador (ex.: Reel na Page) | `Social.PublishFormatUnsupported` | Nenhuma chamada HTTP |
+
+---
+
+## 11. Fora de escopo (após Subfase 4.3)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
-| Worker e publicação na rede | `PublishAsync`, `SocialPublishingDispatchWorker`, kill switch (Subfases 4.3–4.4) |
+| Worker de disparo | `DispatchDuePublicationsCommand`, `SocialPublishingDispatchWorker`, kill switch `killswitch.social-publishing.dispatch` (Subfase 4.4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
 
 ---
 
-## 11. Composição na Web API
+## 12. Composição na Web API
 
 Registro em `Program.cs`:
 

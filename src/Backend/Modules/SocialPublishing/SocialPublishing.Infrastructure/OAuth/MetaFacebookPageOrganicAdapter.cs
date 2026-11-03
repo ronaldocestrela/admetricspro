@@ -3,8 +3,10 @@ using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Connections;
 using SocialPublishing.Application.Options;
+using SocialPublishing.Application.Publishing;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
+using SocialPublishing.Domain.Posts;
 
 namespace SocialPublishing.Infrastructure.OAuth;
 
@@ -58,4 +60,21 @@ public sealed class MetaFacebookPageOrganicAdapter : IOrganicPlatformAdapter
             redirectUri,
             _options.FacebookPageScopes,
             cancellationToken);
+
+    /// <inheritdoc />
+    public Task<Result<OrganicPublishReceipt>> PublishAsync(
+        OrganicPublishRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.Format != OrganicPostFormat.FeedImage)
+        {
+            return Task.FromResult(Result<OrganicPublishReceipt>.Failure(SocialErrors.PublishFormatUnsupported));
+        }
+
+        return MetaOrganicPublishHttp.PublishFacebookFeedImageAsync(
+            _httpClient,
+            _options.GraphApiVersion,
+            request,
+            cancellationToken);
+    }
 }

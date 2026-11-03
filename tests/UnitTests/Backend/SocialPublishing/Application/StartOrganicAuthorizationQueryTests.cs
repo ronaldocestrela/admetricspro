@@ -152,7 +152,10 @@ public sealed class StartOrganicAuthorizationQueryTests
         [
             new MetaInstagramOrganicAdapter(httpClient, Options.Create(_options)),
             new MetaFacebookPageOrganicAdapter(httpClient, Options.Create(_options)),
-            new TikTokContentPostingAdapter(httpClient, Options.Create(_options)),
+            new TikTokContentPostingAdapter(
+                httpClient,
+                Options.Create(_options),
+                Options.Create(new OrganicPublishOptions())),
         ];
 
         return new StartOrganicAuthorizationQueryHandler(tenantAccessor, stateService, adapters);

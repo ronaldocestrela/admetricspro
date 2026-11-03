@@ -52,10 +52,24 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddScoped<ISocialPublishingSchemaMigrator, SocialPublishingSchemaMigrator>();
 
         ConfigureOrganicOAuth(services, configuration);
+        ConfigureOrganicPublish(services, configuration);
         ConfigureOrganicMedia(services, configuration);
         ConfigureSocialAi(services, configuration);
 
         return services;
+    }
+
+    private static void ConfigureOrganicPublish(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<OrganicPublishOptions>(configuration.GetSection(OrganicPublishOptions.SectionName));
+        services.AddSingleton(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<OrganicPublishOptions>>().Value;
+            return new Domain.Publishing.OrganicPublishRateLimitPolicy(
+                options.BaseDelayMs,
+                options.MaxDelayMs,
+                options.MaxAttempts);
+        });
     }
 
     private static void ConfigureSocialAi(IServiceCollection services, IConfiguration configuration)

@@ -1,5 +1,6 @@
 using BuildingBlocks.Domain.Primitives;
 using SocialPublishing.Application.Connections;
+using SocialPublishing.Application.Publishing;
 using SocialPublishing.Domain.Connections;
 
 namespace SocialPublishing.Application.Abstractions;
@@ -32,5 +33,15 @@ public interface IOrganicPlatformAdapter
     Task<Result<OrganicAuthorizationGrant>> ExchangeCodeAsync(
         string code,
         string redirectUri,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Publica conteúdo orgânico na rede usando token já decifrado e URLs de mídia resolvidas.
+    /// </summary>
+    /// <param name="request">Dados de publicação validados pelo domínio.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Recibo com id externo ou falha estável (<c>Social.PublishRateLimited</c>, <c>Social.PublishFailed</c>).</returns>
+    Task<Result<OrganicPublishReceipt>> PublishAsync(
+        OrganicPublishRequest request,
         CancellationToken cancellationToken = default);
 }

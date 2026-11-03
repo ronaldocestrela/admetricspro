@@ -3,8 +3,10 @@ using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Connections;
 using SocialPublishing.Application.Options;
+using SocialPublishing.Application.Publishing;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
+using SocialPublishing.Domain.Posts;
 
 namespace SocialPublishing.Infrastructure.OAuth;
 
@@ -58,4 +60,16 @@ public sealed class MetaInstagramOrganicAdapter : IOrganicPlatformAdapter
             redirectUri,
             _options.InstagramScopes,
             cancellationToken);
+
+    /// <inheritdoc />
+    public Task<Result<OrganicPublishReceipt>> PublishAsync(
+        OrganicPublishRequest request,
+        CancellationToken cancellationToken = default) =>
+        request.Format is OrganicPostFormat.FeedCarousel or OrganicPostFormat.Reel
+            ? MetaOrganicPublishHttp.PublishInstagramAsync(
+                _httpClient,
+                _options.GraphApiVersion,
+                request,
+                cancellationToken)
+            : Task.FromResult(Result<OrganicPublishReceipt>.Failure(SocialErrors.PublishFormatUnsupported));
 }

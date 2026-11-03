@@ -246,4 +246,22 @@ public static class SocialErrors
     /// </summary>
     public static Error PublicationJobInvalidTransition { get; } =
         Error.Conflict("Social.PublicationJobInvalidTransition", "A transição de status do job de publicação não é permitida.");
+
+    /// <summary>
+    /// Erro quando a rede respondeu 429 ou quota esgotada.
+    /// </summary>
+    public static Error PublishRateLimited { get; } =
+        Error.Failure("Social.PublishRateLimited", "A rede limitou a taxa de publicação. O job será reagendado para retentativa.");
+
+    /// <summary>
+    /// Erro quando a publicação falhou de forma definitiva ou funcional na rede.
+    /// </summary>
+    public static Error PublishFailed { get; } =
+        Error.Failure("Social.PublishFailed", "Não foi possível publicar o conteúdo na rede.");
+
+    /// <summary>
+    /// Erro quando o formato não é suportado por este adaptador de plataforma.
+    /// </summary>
+    public static Error PublishFormatUnsupported { get; } =
+        Error.Validation("Social.PublishFormatUnsupported", "O formato de post não é suportado por este adaptador de publicação.");
 }

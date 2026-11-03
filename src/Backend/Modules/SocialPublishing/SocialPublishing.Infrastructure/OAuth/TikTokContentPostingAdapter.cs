@@ -6,8 +6,10 @@ using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Connections;
 using SocialPublishing.Application.Options;
+using SocialPublishing.Application.Publishing;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
+using SocialPublishing.Domain.Posts;
 
 namespace SocialPublishing.Infrastructure.OAuth;
 
@@ -19,16 +21,22 @@ public sealed class TikTokContentPostingAdapter : IOrganicPlatformAdapter
     private const string TokenEndpoint = "https://open.tiktokapis.com/v2/oauth/token/";
     private readonly HttpClient _httpClient;
     private readonly TikTokOrganicOAuthOptions _options;
+    private readonly OrganicPublishOptions _publishOptions;
 
     /// <summary>
     /// Inicializa o adaptador com cliente HTTP dedicado (sem loggers de URL).
     /// </summary>
     /// <param name="httpClient">Cliente HTTP nomeado do módulo.</param>
     /// <param name="options">Opções OAuth orgânicas do TikTok.</param>
-    public TikTokContentPostingAdapter(HttpClient httpClient, IOptions<OrganicOAuthOptions> options)
+    /// <param name="publishOptions">Opções de publicação orgânica (privacidade TikTok).</param>
+    public TikTokContentPostingAdapter(
+        HttpClient httpClient,
+        IOptions<OrganicOAuthOptions> options,
+        IOptions<OrganicPublishOptions> publishOptions)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value.TikTok ?? throw new ArgumentNullException(nameof(options));
+        _publishOptions = publishOptions?.Value ?? throw new ArgumentNullException(nameof(publishOptions));
     }
 
     /// <inheritdoc />
@@ -148,5 +156,22 @@ public sealed class TikTokContentPostingAdapter : IOrganicPlatformAdapter
         {
             return Result<OrganicAuthorizationGrant>.Failure(SocialErrors.OAuthExchangeFailed);
         }
+    }
+
+    /// <inheritdoc />
+    public Task<Result<OrganicPublishReceipt>> PublishAsync(
+        OrganicPublishRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.Format != OrganicPostFormat.TikTokVideo)
+        {
+            return Task.FromResult(Result<OrganicPublishReceipt>.Failure(SocialErrors.PublishFormatUnsupported));
+        }
+
+        return TikTokOrganicPublishHttp.PublishVideoAsync(
+            _httpClient,
+            request,
+            _publishOptions.TikTokPrivacyLevel,
+            cancellationToken);
     }
 }
