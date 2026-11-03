@@ -115,6 +115,7 @@ public sealed class OrganicConnection : AggregateRoot<Guid>
     /// <param name="encryptedAccessToken">Access token cifrado.</param>
     /// <param name="encryptedRefreshToken">Refresh token cifrado opcional.</param>
     /// <param name="accessTokenExpiresAtUtc">Expiração UTC do access token.</param>
+    /// <param name="id">Identificador opcional (usado para derivar o propósito de cifra antes da persistência).</param>
     /// <returns>Resultado com a conexão criada ou erro de validação.</returns>
     public static Result<OrganicConnection> Create(
         Guid workspaceId,
@@ -124,7 +125,8 @@ public sealed class OrganicConnection : AggregateRoot<Guid>
         string scopes,
         string encryptedAccessToken,
         string? encryptedRefreshToken = null,
-        DateTime? accessTokenExpiresAtUtc = null)
+        DateTime? accessTokenExpiresAtUtc = null,
+        Guid? id = null)
     {
         if (workspaceId == Guid.Empty)
         {
@@ -143,7 +145,7 @@ public sealed class OrganicConnection : AggregateRoot<Guid>
         }
 
         var connection = new OrganicConnection(
-            Guid.NewGuid(),
+            id ?? Guid.NewGuid(),
             workspaceId,
             platform,
             externalAccountId.Trim(),
@@ -184,6 +186,37 @@ public sealed class OrganicConnection : AggregateRoot<Guid>
         EncryptedAccessToken = encryptedAccessToken.Trim();
         EncryptedRefreshToken = string.IsNullOrWhiteSpace(encryptedRefreshToken) ? null : encryptedRefreshToken.Trim();
         AccessTokenExpiresAtUtc = accessTokenExpiresAtUtc;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Reaplica tokens e metadados após novo consentimento OAuth (reconexão da mesma conta externa).
+    /// </summary>
+    /// <param name="encryptedAccessToken">Novo access token cifrado.</param>
+    /// <param name="encryptedRefreshToken">Novo refresh token cifrado opcional.</param>
+    /// <param name="accessTokenExpiresAtUtc">Nova expiração UTC.</param>
+    /// <param name="displayName">Nome de exibição atualizado.</param>
+    /// <param name="scopes">Escopos concedidos.</param>
+    /// <returns>Resultado da operação.</returns>
+    public Result Reauthorize(
+        string encryptedAccessToken,
+        string? encryptedRefreshToken,
+        DateTime? accessTokenExpiresAtUtc,
+        string displayName,
+        string scopes)
+    {
+        if (string.IsNullOrWhiteSpace(encryptedAccessToken))
+        {
+            return Result.Failure(
+                Error.Validation("Social.ConnectionTokenRequired", "O access token cifrado é obrigatório."));
+        }
+
+        EncryptedAccessToken = encryptedAccessToken.Trim();
+        EncryptedRefreshToken = string.IsNullOrWhiteSpace(encryptedRefreshToken) ? null : encryptedRefreshToken.Trim();
+        AccessTokenExpiresAtUtc = accessTokenExpiresAtUtc;
+        DisplayName = displayName.Trim();
+        Scopes = scopes.Trim();
+        Status = OrganicConnectionStatus.Active;
         return Result.Success();
     }
 

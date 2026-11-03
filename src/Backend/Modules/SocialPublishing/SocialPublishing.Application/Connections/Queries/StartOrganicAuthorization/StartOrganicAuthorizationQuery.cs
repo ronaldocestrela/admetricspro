@@ -1,5 +1,7 @@
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Domain.Tenants;
 using SocialPublishing.Domain.Connections;
+using Tenants.Application.Rbac.Attributes;
 
 namespace SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
 
@@ -9,6 +11,7 @@ namespace SocialPublishing.Application.Connections.Queries.StartOrganicAuthoriza
 /// <param name="WorkspaceId">Workspace que receberá a conexão.</param>
 /// <param name="Platform">Rede orgânica alvo.</param>
 /// <param name="RedirectUri">URI de retorno registrada no aplicativo da rede.</param>
+[RequireTenantPermission(TenantPermission.SocialConnectionsManage, WorkspaceIdProperty = nameof(WorkspaceId))]
 public sealed record StartOrganicAuthorizationQuery(
     Guid WorkspaceId,
     OrganicPlatform Platform,

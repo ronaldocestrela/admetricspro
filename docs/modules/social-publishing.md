@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 2.1** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissão RBAC `SocialRead` (`social.read`), **state OAuth HMAC-SHA256** (`IOrganicOAuthStateService`), adaptadores orgânicos (`IOrganicPlatformAdapter`) e a consulta **`StartOrganicAuthorizationQuery`** (sem rota HTTP ainda). Callback, cofre AES-256 em `OrganicConnection`, refresh/revoke, mídia, IA, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
+Até a **Subfase 2.2** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`) e **`SocialConnectionsManage`** (`social.connections.manage`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`** (envelope JSON + AES-256-CBC do kernel), **`CompleteOrganicAuthorizationCommand`** e rotas **`POST /api/v1/social/connections/authorize`** e **`callback`**. Refresh/revoke, listagem HTTP, mídia, IA, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -46,6 +46,10 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.RedirectUriInvalid` | Redirect ausente, não absoluto ou HTTP fora de loopback. |
 | `Social.TenantRequired` | Tenant não resolvido ao iniciar OAuth orgânico. |
 | `Social.OAuthConfigurationMissing` | AppId / ClientKey da rede orgânica não configurado. |
+| `Social.OAuthExchangeFailed` | Troca de código rejeitada ou falha de transporte com o provedor. |
+| `Social.VaultPurposeMismatch` | Propósito criptográfico não corresponde ao envelope do token. |
+| `Social.OrganicAccountNotFound` | Nenhuma conta elegível para publicação após o consentimento. |
+| `Social.OrganicAccountAmbiguous` | Mais de uma conta elegível (seleção automática não permitida). |
 | `Social.PlatformUnsupported` | Rede fora de `Instagram`, `FacebookPage`, `TikTok`. |
 | `Social.MediaAspectInvalid` | Mídia fora da proporção exigida pelo formato. |
 | `Social.CarouselItemCountInvalid` | Carrossel com menos de 2 ou mais de 10 itens. |
@@ -180,9 +184,9 @@ Exemplo de valor persistido para token (nunca plaintext):
 
 ---
 
-## 6.1 OAuth orgânico — início do fluxo (Subfase 2.1)
+## 6.1 OAuth orgânico — início do fluxo (Subfase 2.1 / rota 2.2)
 
-Consulta MediatR **`StartOrganicAuthorizationQuery`** (Application). **Sem endpoint HTTP** nesta subfase; a rota `POST /api/v1/social/connections/authorize` entra na Subfase 2.2 com permissão `social.connections.manage`.
+Consulta MediatR **`StartOrganicAuthorizationQuery`** (Application), exposta via **`POST /api/v1/social/connections/authorize`** com permissão **`social.connections.manage`**.
 
 ### Entrada (query)
 
@@ -232,17 +236,75 @@ Consulta MediatR **`StartOrganicAuthorizationQuery`** (Application). **Sem endpo
 | `Social.TenantRequired` | Contexto de tenant ausente |
 | `Social.OAuthConfigurationMissing` | Credencial do app da rede não configurada |
 
-### Fora da Subfase 2.1
+---
 
-Callback (`CompleteOrganicAuthorizationCommand`), persistência de tokens com AES-256, refresh, revoke, listagem HTTP e registro de state de uso único em banco (Subfase 2.2).
+## 6.2 OAuth orgânico — callback e cofre (Subfase 2.2)
+
+Comando MediatR **`CompleteOrganicAuthorizationCommand`**, rota **`POST /api/v1/social/connections/callback`**, mesma permissão **`social.connections.manage`**.
+
+### Entrada (`CompleteOrganicAuthorizationRequest`)
+
+| Campo | Tipo | Regra |
+| :--- | :--- | :--- |
+| `workspaceId` | GUID | Obrigatório; deve coincidir com o payload do `state` |
+| `code` | string | Obrigatório salvo `providerError` |
+| `state` | string | State HMAC emitido no authorize |
+| `redirectUri` | string | Deve ser idêntica à usada na emissão do state |
+| `providerError` | string? | Se presente → `Social.OAuthExchangeFailed` (sem troca de código) |
+
+### Cofre (`OrganicTokenProtector`)
+
+- Envelope JSON `{ purpose, secret }` cifrado com **`IEncryptionService`** (AES-256-CBC do kernel).
+- Propósito: `organic:{platform}:{workspaceId}:{connectionId}` (`OrganicConnection.EncryptionPurpose`).
+- Decifrar com propósito divergente → **`Social.VaultPurposeMismatch`** (resposta não contém o segredo).
+- A API **nunca** retorna access token ou refresh token.
+
+### Resolução de conta (Meta)
+
+- **Instagram:** exatamente uma Page com `instagram_business_account`; persiste id/username do IG e **token da Page**.
+- **Facebook Page:** exatamente uma Page em `/me/accounts`.
+- **TikTok:** `open_id` + `display_name` via Content Posting API; refresh token cifrado quando fornecido.
+
+### Reconexão
+
+- Índice único `(WorkspaceId, Platform, ExternalAccountId)`: segunda conclusão **atualiza** a mesma linha (`Reauthorize`), preservando `ConnectionId`.
+- Conexão previamente `Revoked` volta a `Active` após novo consentimento.
+
+### Exemplo de sucesso (`200 OK`, sem segredos)
+
+```json
+{
+  "isSuccess": true,
+  "isFailure": false,
+  "error": { "code": "", "description": "", "type": 0 },
+  "value": {
+    "connectionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "platform": "Instagram",
+    "displayName": "brand",
+    "accessTokenExpiresAtUtc": "2026-12-02T12:00:00Z"
+  }
+}
+```
+
+| Código | HTTP | Quando |
+| :--- | :---: | :--- |
+| `Social.OAuthStateInvalid` | 422 | State inválido ou `redirectUri` divergente |
+| `Social.OAuthExchangeFailed` | 422 | Provedor rejeitou código ou negou consentimento |
+| `Social.OrganicAccountNotFound` | 422 | Nenhuma conta publicável encontrada |
+| `Social.OrganicAccountAmbiguous` | 422 | Múltiplas contas elegíveis |
+| `Social.VaultPurposeMismatch` | 422 | Falha interna de propósito ao decifrar (testes/consumo futuro) |
+| `Auth.Forbidden` | 403 | Sem `social.connections.manage` ou fora da carteira |
+| `Workspace.NotFound` | 404 | Workspace inexistente no inquilino |
+
+**Fora da Subfase 2.2:** nonce/state de uso único persistido em banco (state continua stateless; o code é single-use no provedor), refresh preventivo, revoke e listagem HTTP (Subfase 2.3).
 
 ---
 
-## 7. Fora de escopo (após Subfase 2.1)
+## 7. Fora de escopo (após Subfase 2.2)
 
 | Área | Entrega futura |
 | :--- | :--- |
-| OAuth orgânico (continuação) | Callback, cofre AES-256, rotas HTTP, refresh/revoke (Subfases 2.2–2.3) |
+| OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3), mídia (2.4) |
 | IA / copiloto | Brand Voice, planner editorial, legendas (Fase 3) |
 | Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |

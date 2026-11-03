@@ -1,6 +1,7 @@
 using BuildingBlocks.Domain.Primitives;
 using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Connections;
 using SocialPublishing.Application.Options;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
@@ -12,16 +13,17 @@ namespace SocialPublishing.Infrastructure.OAuth;
 /// </summary>
 public sealed class MetaFacebookPageOrganicAdapter : IOrganicPlatformAdapter
 {
+    private readonly HttpClient _httpClient;
     private readonly MetaOrganicOAuthOptions _options;
 
     /// <summary>
-    /// Inicializa o adaptador (HttpClient reservado para troca de código na Subfase 2.2).
+    /// Inicializa o adaptador com cliente HTTP dedicado (sem loggers de URL).
     /// </summary>
     /// <param name="httpClient">Cliente HTTP nomeado do módulo.</param>
     /// <param name="options">Opções OAuth orgânicas da Meta.</param>
     public MetaFacebookPageOrganicAdapter(HttpClient httpClient, IOptions<OrganicOAuthOptions> options)
     {
-        _ = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value.Meta ?? throw new ArgumentNullException(nameof(options));
     }
 
@@ -43,4 +45,17 @@ public sealed class MetaFacebookPageOrganicAdapter : IOrganicPlatformAdapter
 
         return Result<string>.Success(url);
     }
+
+    /// <inheritdoc />
+    public Task<Result<OrganicAuthorizationGrant>> ExchangeCodeAsync(
+        string code,
+        string redirectUri,
+        CancellationToken cancellationToken = default) =>
+        MetaOrganicOAuthExchange.ExchangeFacebookPageAsync(
+            _httpClient,
+            _options,
+            code,
+            redirectUri,
+            _options.FacebookPageScopes,
+            cancellationToken);
 }

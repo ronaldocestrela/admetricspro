@@ -331,4 +331,68 @@ public sealed class TenantPermissionEvaluatorTests
         result.IsSuccess.Should().BeTrue();
         result.Value.AllPermissions.Should().Contain("SocialRead");
     }
+
+    /// <summary>
+    /// Valida que SocialConnectionsManage existe no catálogo canônico.
+    /// </summary>
+    [Fact]
+    public void SocialConnectionsManage_DeveExistirNoEnumTenantPermission()
+    {
+        Enum.IsDefined(typeof(TenantPermission), TenantPermission.SocialConnectionsManage).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Valida que papéis operacionais de gestão incluem SocialConnectionsManage.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Owner)]
+    [InlineData(TenantRole.Admin)]
+    [InlineData(TenantRole.SquadLeader)]
+    [InlineData(TenantRole.MediaManager)]
+    public void GetPermissionsForRole_DeveIncluirSocialConnectionsManage(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().Contain(TenantPermission.SocialConnectionsManage);
+    }
+
+    /// <summary>
+    /// Valida que Analyst e Guest não possuem SocialConnectionsManage.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Analyst)]
+    [InlineData(TenantRole.Guest)]
+    public void GetPermissionsForRole_NaoDeveIncluirSocialConnectionsManageParaLeitura(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().NotContain(TenantPermission.SocialConnectionsManage);
+    }
+
+    /// <summary>
+    /// Valida isolamento de carteira para SocialConnectionsManage.
+    /// </summary>
+    [Fact]
+    public async Task HasPermission_SocialConnectionsManage_QuandoMediaManager_DeveRespeitarCarteira()
+    {
+        var userId = Guid.NewGuid();
+        var workspaceIn = Guid.NewGuid();
+        var workspaceOut = Guid.NewGuid();
+        var user = TenantUser.Create(userId, "Gestor", "m@test.com", null, "hash", TenantRole.MediaManager).Value;
+        _userRepository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _portfolioService.HasAccessToWorkspaceAsync(userId, workspaceIn, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(true));
+        _portfolioService.HasAccessToWorkspaceAsync(userId, workspaceOut, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(false));
+
+        var allowed = await _evaluator.HasPermissionAsync(
+            userId,
+            TenantPermission.SocialConnectionsManage,
+            new PermissionContext(WorkspaceId: workspaceIn));
+        var blocked = await _evaluator.HasPermissionAsync(
+            userId,
+            TenantPermission.SocialConnectionsManage,
+            new PermissionContext(WorkspaceId: workspaceOut));
+
+        allowed.Value.Should().BeTrue();
+        blocked.Value.Should().BeFalse();
+    }
 }

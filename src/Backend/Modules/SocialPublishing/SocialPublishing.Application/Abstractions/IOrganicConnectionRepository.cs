@@ -16,6 +16,20 @@ public interface IOrganicConnectionRepository
     Task<OrganicConnection?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Obtém uma conexão pelo trio workspace, plataforma e identificador externo da conta.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="platform">Plataforma orgânica.</param>
+    /// <param name="externalAccountId">Identificador externo da conta na rede.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>A conexão ou <c>null</c> se não existir.</returns>
+    Task<OrganicConnection?> GetByWorkspacePlatformAndExternalAccountAsync(
+        Guid workspaceId,
+        OrganicPlatform platform,
+        string externalAccountId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lista conexões orgânicas de um workspace.
     /// </summary>
     /// <param name="workspaceId">Identificador do workspace.</param>

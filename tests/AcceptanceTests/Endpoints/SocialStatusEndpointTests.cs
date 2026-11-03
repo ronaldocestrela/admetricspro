@@ -238,6 +238,13 @@ public sealed class SocialStatusEndpointTests : IClassFixture<WebApplicationFact
         public Task<SocialPublishing.Domain.Connections.OrganicConnection?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<SocialPublishing.Domain.Connections.OrganicConnection?>(null);
 
+        public Task<SocialPublishing.Domain.Connections.OrganicConnection?> GetByWorkspacePlatformAndExternalAccountAsync(
+            Guid workspaceId,
+            SocialPublishing.Domain.Connections.OrganicPlatform platform,
+            string externalAccountId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<SocialPublishing.Domain.Connections.OrganicConnection?>(null);
+
         public Task<IReadOnlyList<SocialPublishing.Domain.Connections.OrganicConnection>> ListByWorkspaceAsync(
             Guid workspaceId,
             CancellationToken cancellationToken = default) =>

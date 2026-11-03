@@ -34,6 +34,7 @@ O controle de acesso baseado em funções (**Role-Based Access Control - RBAC**)
 | `ViewFinancialMargins` | Sim | Sim | Sim | Não | Não | **BLOCKED ESTRITO** |
 | `ExportReports` | Sim | Sim | Na Carteira | Na Carteira | Na Carteira | Apenas Próprio |
 | `SocialRead` (`social.read`) | Sim | Sim | Na Carteira | Na Carteira | Na Carteira | Apenas Próprio |
+| `SocialConnectionsManage` (`social.connections.manage`) | Sim | Sim | Na Carteira | Na Carteira | Não | **BLOCKED** |
 
 ---
 
@@ -82,14 +83,14 @@ Todas as operações críticas de governança, incluindo alterações de papéis
   "error": { "code": "", "description": "", "type": 0 },
   "value": {
     "roles": {
-      "Owner": ["ManageBilling", "ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead"],
-      "Admin": ["ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead"],
-      "SquadLeader": ["ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead"],
-      "MediaManager": ["ViewCampaigns", "EditCampaigns", "ManageAutomations", "ExportReports", "SocialRead"],
+      "Owner": ["ManageBilling", "ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead", "SocialConnectionsManage"],
+      "Admin": ["ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead", "SocialConnectionsManage"],
+      "SquadLeader": ["ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead", "SocialConnectionsManage"],
+      "MediaManager": ["ViewCampaigns", "EditCampaigns", "ManageAutomations", "ExportReports", "SocialRead", "SocialConnectionsManage"],
       "Analyst": ["ViewCampaigns", "ExportReports", "SocialRead"],
       "Guest": ["ViewCampaigns", "ExportReports", "SocialRead"]
     },
-    "allPermissions": ["ManageBilling", "ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead"]
+    "allPermissions": ["ManageBilling", "ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead", "SocialConnectionsManage"]
   }
 }
 ```

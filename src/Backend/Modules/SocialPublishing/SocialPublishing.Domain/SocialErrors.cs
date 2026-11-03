@@ -96,4 +96,28 @@ public static class SocialErrors
     /// </summary>
     public static Error OAuthConfigurationMissing { get; } =
         Error.Validation("Social.OAuthConfigurationMissing", "A configuração OAuth orgânica da rede está incompleta.");
+
+    /// <summary>
+    /// Erro quando a troca do código de autorização pelo provedor OAuth falha.
+    /// </summary>
+    public static Error OAuthExchangeFailed { get; } =
+        Error.Validation("Social.OAuthExchangeFailed", "Não foi possível concluir a autorização orgânica com a rede. Inicie uma nova conexão.");
+
+    /// <summary>
+    /// Erro quando o propósito criptográfico não corresponde ao esperado para a conexão.
+    /// </summary>
+    public static Error VaultPurposeMismatch { get; } =
+        Error.Validation("Social.VaultPurposeMismatch", "O segredo não pertence ao contexto criptográfico informado.");
+
+    /// <summary>
+    /// Erro quando nenhuma conta publicável foi encontrada após o consentimento.
+    /// </summary>
+    public static Error OrganicAccountNotFound { get; } =
+        Error.Validation("Social.OrganicAccountNotFound", "Nenhuma conta elegível para publicação orgânica foi encontrada na rede.");
+
+    /// <summary>
+    /// Erro quando há mais de uma conta elegível e a seleção automática não é permitida.
+    /// </summary>
+    public static Error OrganicAccountAmbiguous { get; } =
+        Error.Validation("Social.OrganicAccountAmbiguous", "Múltiplas contas elegíveis foram encontradas. Selecione uma conta antes de conectar.");
 }

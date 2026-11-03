@@ -79,6 +79,24 @@ public sealed class OrganicConnectionTests
     }
 
     /// <summary>
+    /// Reauthorize deve reativar conexão revogada e substituir ciphertexts.
+    /// </summary>
+    [Fact]
+    public void Reauthorize_ComConexaoRevogada_DeveReativarESubstituirTokens()
+    {
+        var connection = CreateValidConnection();
+        connection.Revoke().IsSuccess.Should().BeTrue();
+
+        var result = connection.Reauthorize("cipher-new", "cipher-refresh-new", DateTime.UtcNow.AddDays(10), "Novo Nome", "scope2");
+
+        result.IsSuccess.Should().BeTrue();
+        connection.Status.Should().Be(OrganicConnectionStatus.Active);
+        connection.EncryptedAccessToken.Should().Be("cipher-new");
+        connection.EncryptedRefreshToken.Should().Be("cipher-refresh-new");
+        connection.DisplayName.Should().Be("Novo Nome");
+    }
+
+    /// <summary>
     /// Valida que rotação de tokens em conexão revogada falha.
     /// </summary>
     [Fact]

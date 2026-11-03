@@ -9,6 +9,7 @@ using SocialPublishing.Application.Options;
 using SocialPublishing.Infrastructure.OAuth;
 using SocialPublishing.Infrastructure.Persistence;
 using SocialPublishing.Infrastructure.Persistence.Repositories;
+using SocialPublishing.Infrastructure.Security;
 
 namespace SocialPublishing.Infrastructure.DependencyInjection;
 
@@ -73,8 +74,10 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddHttpClient<MetaFacebookPageOrganicAdapter>().RemoveAllLoggers();
         services.AddHttpClient<TikTokContentPostingAdapter>().RemoveAllLoggers();
 
-        services.AddTransient<IOrganicPlatformAdapter, MetaInstagramOrganicAdapter>();
-        services.AddTransient<IOrganicPlatformAdapter, MetaFacebookPageOrganicAdapter>();
-        services.AddTransient<IOrganicPlatformAdapter, TikTokContentPostingAdapter>();
+        services.AddTransient<IOrganicPlatformAdapter>(sp => sp.GetRequiredService<MetaInstagramOrganicAdapter>());
+        services.AddTransient<IOrganicPlatformAdapter>(sp => sp.GetRequiredService<MetaFacebookPageOrganicAdapter>());
+        services.AddTransient<IOrganicPlatformAdapter>(sp => sp.GetRequiredService<TikTokContentPostingAdapter>());
+
+        services.AddScoped<IOrganicTokenProtector, OrganicTokenProtector>();
     }
 }

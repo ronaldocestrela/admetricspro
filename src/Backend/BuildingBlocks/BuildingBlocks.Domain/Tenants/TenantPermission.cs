@@ -64,5 +64,10 @@ public enum TenantPermission
     /// <summary>
     /// Leitura do módulo de publicação orgânica e calendário social (alias de produto: social.read).
     /// </summary>
-    SocialRead = 12
+    SocialRead = 12,
+
+    /// <summary>
+    /// Conectar, reconectar e gerenciar credenciais OAuth orgânicas (alias: social.connections.manage).
+    /// </summary>
+    SocialConnectionsManage = 13
 }

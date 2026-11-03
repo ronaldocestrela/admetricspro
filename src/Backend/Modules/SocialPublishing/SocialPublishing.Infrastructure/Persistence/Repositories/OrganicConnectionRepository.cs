@@ -36,6 +36,28 @@ public sealed class OrganicConnectionRepository : IOrganicConnectionRepository
     }
 
     /// <inheritdoc />
+    public async Task<OrganicConnection?> GetByWorkspacePlatformAndExternalAccountAsync(
+        Guid workspaceId,
+        OrganicPlatform platform,
+        string externalAccountId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return null;
+        }
+
+        return await contextResult.Value.OrganicConnections
+            .FirstOrDefaultAsync(
+                c => c.WorkspaceId == workspaceId &&
+                     c.Platform == platform &&
+                     c.ExternalAccountId == externalAccountId,
+                cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<OrganicConnection>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
