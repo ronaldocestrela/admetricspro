@@ -54,6 +54,7 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0042](0042-meta-versioned-resource-configuration.md) | Catálogo versionado e edição parcial de recursos Meta | Implementado | 2026-10-22 |
 | [0043](0043-social-publishing-bounded-context-and-tenant-database.md) | Bounded context SocialPublishing e banco dedicado por tenant | Aceito | 2026-11-02 |
 | [0044](0044-organic-oauth-vault-and-aes-256.md) | OAuth orgânico, state anti-CSRF e cofre AES-256 separado do hub de anúncios | Aceito | 2026-11-02 |
+| [0045](0045-ai-social-copilot-brand-voice-and-editorial-plan.md) | Brand Voice, planner editorial determinístico e geração de cópia via SocialAi | Aceito | 2026-11-03 |
 
 ---
 

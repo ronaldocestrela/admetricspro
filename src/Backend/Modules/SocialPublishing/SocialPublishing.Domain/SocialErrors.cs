@@ -156,4 +156,22 @@ public static class SocialErrors
     /// </summary>
     public static Error OrganicAccountAmbiguous { get; } =
         Error.Validation("Social.OrganicAccountAmbiguous", "Múltiplas contas elegíveis foram encontradas. Selecione uma conta antes de conectar.");
+
+    /// <summary>
+    /// Erro quando a legenda gerada contém termo proibido do perfil de marca.
+    /// </summary>
+    public static Error CopyContainsForbiddenTerm { get; } =
+        Error.Validation("Social.CopyContainsForbiddenTerm", "A legenda gerada contém termo proibido pelo DNA de marca.");
+
+    /// <summary>
+    /// Erro quando o provedor de IA falha ou retorna resposta inválida.
+    /// </summary>
+    public static Error CopyGenerationFailed { get; } =
+        Error.Failure("Social.CopyGenerationFailed", "Não foi possível gerar a cópia com o provedor de IA. Tente novamente.");
+
+    /// <summary>
+    /// Erro quando a configuração do provedor de IA social está incompleta.
+    /// </summary>
+    public static Error AiConfigurationMissing { get; } =
+        Error.Validation("Social.AiConfigurationMissing", "A configuração SocialAi (BaseUrl, Model ou ApiKey) está incompleta.");
 }

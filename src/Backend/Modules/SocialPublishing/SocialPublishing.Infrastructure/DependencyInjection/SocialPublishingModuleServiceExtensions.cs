@@ -8,6 +8,7 @@ using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Options;
 using Amazon.Runtime;
 using Amazon.S3;
+using SocialPublishing.Infrastructure.Ai;
 using SocialPublishing.Infrastructure.Media;
 using SocialPublishing.Infrastructure.OAuth;
 using SocialPublishing.Infrastructure.Persistence;
@@ -47,8 +48,34 @@ public static class SocialPublishingModuleServiceExtensions
 
         ConfigureOrganicOAuth(services, configuration);
         ConfigureOrganicMedia(services, configuration);
+        ConfigureSocialAi(services, configuration);
 
         return services;
+    }
+
+    private static void ConfigureSocialAi(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<SocialAiOptions>(options =>
+        {
+            configuration.GetSection(SocialAiOptions.SectionName).Bind(options);
+            options.ApiKey = configuration["SOCIAL_AI_API_KEY"] ?? options.ApiKey;
+            options.BaseUrl = configuration["SOCIAL_AI_BASE_URL"] ?? options.BaseUrl;
+            options.Model = configuration["SOCIAL_AI_MODEL"] ?? options.Model;
+        });
+
+        services.AddHttpClient<ISocialCreativeGenerator, HttpSocialCreativeGenerator>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<SocialAiOptions>>().Value;
+            if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+            {
+                client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+            }
+
+            if (options.TimeoutSeconds > 0)
+            {
+                client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+            }
+        }).RemoveAllLoggers();
     }
 
     private static void ConfigureOrganicMedia(IServiceCollection services, IConfiguration configuration)

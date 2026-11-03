@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 3.2** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`) e o **planner editorial determinístico** (`EditorialCalendarPlanner` em domínio, sem HTTP). Refresh/revoke, listagem HTTP de conexões, legendas IA, plano materializado, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
+Até a **Subfase 3.3** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`), o **planner editorial determinístico** (`EditorialCalendarPlanner` em domínio, sem HTTP) e a **geração de legendas/hashtags por slot** via comando MediatR **`GenerateSlotCopyCommand`** + porta **`ISocialCreativeGenerator`** (adaptador HTTP `SocialAi`, sem rota HTTP dedicada nesta subfase). Refresh/revoke, listagem HTTP de conexões, plano materializado em posts, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADRs 0044 e 0045).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -57,6 +57,9 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.MediaTooLarge` | Arquivo acima do teto configurado (`SocialPublishing:Media:MaxUploadBytes`). |
 | `Social.CarouselItemCountInvalid` | Carrossel com menos de 2 ou mais de 10 itens. |
 | `Social.CaptionTooLong` | Legenda acima do teto da rede. |
+| `Social.CopyContainsForbiddenTerm` | Legenda gerada contém termo proibido do Brand Voice. |
+| `Social.CopyGenerationFailed` | Provedor de IA indisponível, timeout ou resposta inválida. |
+| `Social.AiConfigurationMissing` | `SocialAi:BaseUrl`, `Model` ou `ApiKey` ausentes. |
 | `Social.HashtagPolicyViolated` | Hashtag duplicada, com espaço ou acima do teto configurado. |
 | `Social.PillarWeightsInvalid` | Pesos dos pilares somam valor diferente de 100 ou algum peso é negativo. |
 | `Social.BrandVoiceNotFound` | Workspace sem DNA de marca persistido. |
@@ -515,12 +518,98 @@ Cada item contém `localDate`, `utcInstant`, `pillar`, `platform`, `format`. Sem
 
 ---
 
-## 8. Fora de escopo (após Subfase 3.2)
+## 7.3 Legendas, copys e hashtags por rede (Subfase 3.3)
+
+Comando MediatR **`GenerateSlotCopyCommand`** (permissão `social.copilot.generate`). **Não há rota HTTP** nesta subfase; a Web API expõe o fluxo na Subfase 3.4 (`plans:generate`).
+
+### Fluxo
+
+1. Carrega `BrandVoiceProfile` do workspace (`Social.BrandVoiceNotFound` se ausente).
+2. Monta **`CopyBrief`** determinístico (`CopyBriefBuilder` + `CopyFormatInstructions`) — persona, tom, termos proibidos, links, pilar, rede, formato e instrução específica (carrossel → sequência de cards; Reel/TikTok → gancho falado; feed Instagram vs Facebook Page distintos). **Nenhum token OAuth** entra no brief.
+3. Chama **`ISocialCreativeGenerator`** (`HttpSocialCreativeGenerator`: `POST {BaseUrl}/chat/completions`, API compatível com OpenAI).
+4. **`CopyAcceptanceGate`** valida legenda (`CaptionLimits`, termos proibidos) e hashtags unificadas (`HashtagGroup.Create` com teto `min(perfil, rede)`).
+5. Retorna **`GeneratedCopyDto`**; falhas não persistem post.
+
+### Configuração (`SocialAi` / ADR 0018)
+
+| Chave | Descrição |
+| :--- | :--- |
+| `SocialAi:BaseUrl` | URL base da API (ex.: `https://api.openai.com/v1`) |
+| `SocialAi:Model` | Identificador do modelo |
+| `SocialAi:ApiKey` | Chave Bearer (ou `SOCIAL_AI_API_KEY`) |
+| `SocialAi:Temperature` | Padrão `0.7` |
+| `SocialAi:MaxTokens` | Padrão `800` |
+| `SocialAi:TimeoutSeconds` | Padrão `60` |
+
+### Entrada do comando (exemplo)
+
+```json
+{
+  "workspaceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "localDate": "2026-11-02",
+  "utcInstant": "2026-11-02T13:00:00Z",
+  "pillar": "Authority",
+  "platform": "Instagram",
+  "format": "FeedImage"
+}
+```
+
+### Brief lógico (campos inspecionáveis em teste)
+
+O texto enviado ao modelo agrega: persona, tom, idioma, pilar, rede, formato, política de emoji, tetos de legenda/hashtag, termos proibidos, links obrigatórios e `formatInstruction`. O modelo deve responder JSON:
+
+```json
+{
+  "caption": "Texto da legenda…",
+  "hashtags": {
+    "brand": ["marca"],
+    "niche": ["nicho"],
+    "reach": ["alcance"]
+  }
+}
+```
+
+### Saída (`Result<GeneratedCopyDto>`)
+
+```json
+{
+  "isSuccess": true,
+  "value": {
+    "caption": "Texto validado…",
+    "hashtagGroups": {
+      "brand": ["marca"],
+      "niche": ["nicho"],
+      "reach": ["alcance"]
+    },
+    "network": "Instagram",
+    "pillar": "Authority",
+    "warnings": ["Link obrigatório ausente na legenda: https://example.com/…"]
+  }
+}
+```
+
+`warnings` não bloqueiam a cópia (link obrigatório ausente). Termo proibido, legenda longa ou hashtag inválida reprovam antes de expor o DTO.
+
+### Erros mapeados
+
+| Código | HTTP (quando exposto na 3.4) | Quando |
+| :--- | :---: | :--- |
+| `Social.WorkspaceRequired` | 400 | `workspaceId` vazio |
+| `Social.BrandVoiceNotFound` | 404 | Sem perfil de marca |
+| `Social.CopyContainsForbiddenTerm` | 422 | Termo proibido na legenda |
+| `Social.CaptionTooLong` | 422 | Acima de `CaptionLimits` |
+| `Social.HashtagPolicyViolated` | 422 | Duplicata, espaço ou teto |
+| `Social.CopyGenerationFailed` | 502 | Falha do provedor |
+| `Social.AiConfigurationMissing` | 422 | Config incompleta |
+
+---
+
+## 8. Fora de escopo (após Subfase 3.3)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
-| IA / copiloto (continuação) | Legendas por rede e plano materializado (Subfases 3.3–3.4) |
+| IA / copiloto (continuação) | Plano materializado em `OrganicPost` e rota `plans:generate` (Subfase 3.4) |
 | Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
