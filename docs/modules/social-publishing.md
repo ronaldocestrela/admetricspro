@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 4.2** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`), o **planner editorial determinístico** (`EditorialCalendarPlanner` em domínio, sem HTTP) e a **geração de legendas/hashtags por slot** via comando MediatR **`GenerateSlotCopyCommand`** + porta **`ISocialCreativeGenerator`** (adaptador HTTP `SocialAi`, sem rota HTTP dedicada nesta subfase). **Aprovação interna, agendamento e reagendamento** (`POST .../posts/{id}:submit|:approve|:schedule|:reject|:reschedule`, histórico `ScheduleRevision`), **outbox `PublicationJob`** com claim otimista (`RowVersion`) e chave `{postId:D}:{scheduledAtUtc:O}`. Worker de disparo, adaptadores `PublishAsync`, kill switch, portal público de aprovação, Blazor e sinergia paga permanecem fora desta entrega (ver ADRs 0044–0046; worker na Subfase 4.4).
+Até a **Subfase 4.4** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão). Portal público de aprovação, Blazor e sinergia paga permanecem na Fase 5–6 (ADRs 0047–0048).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -748,9 +748,9 @@ Resposta de sucesso (`Result<OrganicPostDto>`):
 | :--- | :--- |
 | `Pending` | Aguardando horário ou claim do worker. |
 | `InProgress` | Reivindicado por um worker (claim otimista). |
-| `RetryScheduled` | Retentativa após rate limit (Subfase 4.4). |
+| `RetryScheduled` | Retentativa após rate limit ou falha recuperável; aguarda `NextAttemptAtUtc`. |
 | `Succeeded` | Publicação concluída. |
-| `DeadLetter` | Falha definitiva após teto de tentativas (Subfase 4.4). |
+| `DeadLetter` | Falha definitiva após teto de tentativas (`OrganicPublishOptions.MaxAttempts`). |
 | `Cancelled` | Slot substituído por reagendamento. |
 
 Chave de idempotência (índice único): `{postId:D}:{scheduledAtUtc:O}` em UTC, cultura invariante.
@@ -783,6 +783,27 @@ Claim (`IPublicationJobRepository.TryClaimAsync`): aceita apenas `Pending` ou `R
 | Dois `TryClaimAsync` concorrentes | Um job `InProgress`; o outro `null`. |
 | Claim em `Succeeded` / `Cancelled` / `DeadLetter` | `null`, sem alteração. |
 | Reagendar com job `InProgress` | **409** `Social.PublicationJobInProgress`; sem `CommitAsync`. |
+
+### Worker de disparo (Subfase 4.4)
+
+Sem rota HTTP. O host registra `SocialPublishingDispatchWorker` com `SocialPublishing:Dispatch:Enabled` **false** por padrão e `IntervalSeconds` (mínimo 5).
+
+Fluxo por tenant (`Active` / `Trial`):
+
+1. Kill switch `killswitch.social-publishing.dispatch` armado → ciclo encerra sem despacho.
+2. `ListDueAsync(utcNow)` → `Pending` com `scheduledAtUtc <= now` ou `RetryScheduled` com `nextAttemptAtUtc <= now`.
+3. `TryClaimAsync` → `InProgress`; post deve estar `Scheduled`.
+4. `MarkPublishing` → adaptador `PublishAsync` (token decifrado, URLs via `IOrganicMediaPublicUrlResolver` + `SocialPublishing:Media:PublicBaseUrl`).
+5. Sucesso → `MarkPublished(externalId)`, job `Succeeded`, `CommitAsync`.
+6. `Social.PublishRateLimited` / `Social.PublishFailed` → se restam tentativas, `RetryScheduled` e post `Scheduled`; senão `DeadLetter` e post `Failed`.
+7. `NextAttemptAtUtc` = `utcNow + max(OrganicPublishRateLimitPolicy, PublishRateLimitedError.RetryAfter)`.
+
+| Código | Efeito no worker |
+| :--- | :--- |
+| `Social.PublishRateLimited` | Retentativa com backoff + `Retry-After` quando presente |
+| `Social.PublishFailed` | Mesma régua de retentativa, sem `Retry-After` |
+| Teto de tentativas | `DeadLetter` + post `Failed`; adaptador não é chamado |
+| Cancelamento do host durante publicação | Job pode permanecer `InProgress` (sem reclaim nesta subfase) |
 
 ---
 
@@ -840,12 +861,12 @@ Backoff puro no domínio: `OrganicPublishRateLimitPolicy.CalculateDelayMs(attemp
 
 ---
 
-## 11. Fora de escopo (após Subfase 4.3)
+## 11. Fora de escopo (após Subfase 4.4)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
-| Worker de disparo | `DispatchDuePublicationsCommand`, `SocialPublishingDispatchWorker`, kill switch `killswitch.social-publishing.dispatch` (Subfase 4.4) |
+| Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
 
@@ -861,3 +882,11 @@ builder.Services.AddSocialPublishingTenantPersistenceComposition();
 ```
 
 `AddSocialPublishingModule` registra MediatR, repositórios, fábrica de `SocialPublishingDbContext` e `ISocialPublishingSchemaMigrator`. `AddSocialPublishingTenantPersistenceComposition` decora `ITenantProvisioningService` e registra o hosted service de migração social para tenants existentes.
+
+Worker de disparo (mesmo `Program.cs`):
+
+```csharp
+builder.Services.AddOptions<SocialPublishingDispatchOptions>()
+    .BindConfiguration(SocialPublishingDispatchOptions.SectionName);
+builder.Services.AddHostedService<SocialPublishingDispatchWorker>();
+```

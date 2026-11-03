@@ -38,6 +38,12 @@ public static class SocialErrors
         Error.Validation("Social.MediaMimeInvalid", "O tipo MIME não é permitido ou não é compatível com o formato informado.");
 
     /// <summary>
+    /// Erro quando a URL base pública de mídia orgânica não está configurada.
+    /// </summary>
+    public static Error MediaPublicBaseUrlMissing { get; } =
+        Error.Validation("Social.MediaPublicBaseUrlMissing", "SocialPublishing:Media:PublicBaseUrl é obrigatório para publicação orgânica.");
+
+    /// <summary>
     /// Erro quando o cabeçalho do arquivo não permite ler dimensões ou duração.
     /// </summary>
     public static Error MediaUnreadable { get; } =
@@ -264,4 +270,10 @@ public static class SocialErrors
     /// </summary>
     public static Error PublishFormatUnsupported { get; } =
         Error.Validation("Social.PublishFormatUnsupported", "O formato de post não é suportado por este adaptador de publicação.");
+
+    /// <summary>
+    /// Erro quando o identificador externo da publicação é obrigatório e está ausente.
+    /// </summary>
+    public static Error PublishedExternalIdRequired { get; } =
+        Error.Validation("Social.PublishedExternalIdRequired", "O identificador externo da publicação é obrigatório.");
 }

@@ -260,6 +260,10 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<string>("PublishedExternalId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<DateTime>("ScheduledAtUtc")
                         .HasColumnType("datetime2");
 

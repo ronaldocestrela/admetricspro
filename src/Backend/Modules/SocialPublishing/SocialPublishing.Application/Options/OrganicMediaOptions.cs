@@ -39,4 +39,9 @@ public sealed class OrganicMediaOptions
     /// Tamanho máximo de upload em bytes.
     /// </summary>
     public long MaxUploadBytes { get; set; } = 110_000_000;
+
+    /// <summary>
+    /// URL base HTTPS pública para objetos de mídia (ex.: CDN ou proxy de leitura).
+    /// </summary>
+    public string PublicBaseUrl { get; set; } = string.Empty;
 }

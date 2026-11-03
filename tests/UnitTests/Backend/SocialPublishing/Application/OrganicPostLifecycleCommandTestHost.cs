@@ -132,7 +132,7 @@ internal sealed class OrganicPostLifecycleCommandTestHost
                 OrganicPostStatus.PendingApproval => post.Approve(),
                 OrganicPostStatus.Approved => post.Schedule(),
                 OrganicPostStatus.Scheduled => post.MarkPublishing(),
-                OrganicPostStatus.Publishing => post.MarkPublished(),
+                OrganicPostStatus.Publishing => post.MarkPublished("test-external-id"),
                 _ => throw new InvalidOperationException($"Cannot advance from {post.Status} to {status}.")
             };
 
@@ -237,5 +237,16 @@ internal sealed class InMemoryPublicationJobRepository : IPublicationJobReposito
             job.MarkInProgress().IsSuccess.Should().BeTrue();
             return Task.FromResult<PublicationJob?>(job);
         }
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<PublicationJob>> ListDueAsync(DateTime utcNow, CancellationToken cancellationToken = default)
+    {
+        var due = AllJobs.Where(j =>
+                (j.Status == PublicationJobStatus.Pending && j.ScheduledAtUtc <= utcNow) ||
+                (j.Status == PublicationJobStatus.RetryScheduled && j.NextAttemptAtUtc != null && j.NextAttemptAtUtc <= utcNow))
+            .OrderBy(j => j.ScheduledAtUtc)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<PublicationJob>>(due);
     }
 }

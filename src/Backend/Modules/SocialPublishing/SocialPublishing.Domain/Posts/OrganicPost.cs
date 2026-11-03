@@ -93,6 +93,11 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     public DateTime CreatedAtUtc { get; private set; }
 
     /// <summary>
+    /// Obtém o identificador externo atribuído pela rede após publicação bem-sucedida.
+    /// </summary>
+    public string? PublishedExternalId { get; private set; }
+
+    /// <summary>
     /// Obtém a coleção de mídias associadas ao post.
     /// </summary>
     public IReadOnlyList<OrganicMediaAsset> Media => _media.AsReadOnly();
@@ -285,11 +290,33 @@ public sealed class OrganicPost : AggregateRoot<Guid>
         Transition(OrganicPostStatus.Scheduled, OrganicPostStatus.Publishing);
 
     /// <summary>
-    /// Marca o post como publicado com sucesso.
+    /// Marca o post como publicado com sucesso e persiste o identificador externo da rede.
+    /// </summary>
+    /// <param name="externalId">Identificador retornado pelo adaptador de publicação.</param>
+    /// <returns>Resultado da transição.</returns>
+    public Result MarkPublished(string externalId)
+    {
+        if (string.IsNullOrWhiteSpace(externalId))
+        {
+            return Result.Failure(SocialErrors.PublishedExternalIdRequired);
+        }
+
+        var transition = Transition(OrganicPostStatus.Publishing, OrganicPostStatus.Published);
+        if (transition.IsFailure)
+        {
+            return transition;
+        }
+
+        PublishedExternalId = externalId.Trim();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Retorna o post de <see cref="OrganicPostStatus.Publishing"/> para <see cref="OrganicPostStatus.Scheduled"/> após rate limit.
     /// </summary>
     /// <returns>Resultado da transição.</returns>
-    public Result MarkPublished() =>
-        Transition(OrganicPostStatus.Publishing, OrganicPostStatus.Published);
+    public Result ReturnToScheduled() =>
+        Transition(OrganicPostStatus.Publishing, OrganicPostStatus.Scheduled);
 
     /// <summary>
     /// Marca falha definitiva após tentativas de publicação.
@@ -297,6 +324,20 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     /// <returns>Resultado da transição.</returns>
     public Result MarkFailed() =>
         Transition(OrganicPostStatus.Publishing, OrganicPostStatus.Failed);
+
+    /// <summary>
+    /// Marca falha definitiva quando o worker esgota tentativas (post ainda <see cref="OrganicPostStatus.Scheduled"/> ou em publicação).
+    /// </summary>
+    /// <returns>Resultado da transição.</returns>
+    public Result MarkDispatchExhausted()
+    {
+        return Status switch
+        {
+            OrganicPostStatus.Scheduled => Transition(OrganicPostStatus.Scheduled, OrganicPostStatus.Failed),
+            OrganicPostStatus.Publishing => MarkFailed(),
+            _ => Result.Failure(SocialErrors.InvalidTransition),
+        };
+    }
 
     /// <summary>
     /// Cancela o post nos status permitidos.

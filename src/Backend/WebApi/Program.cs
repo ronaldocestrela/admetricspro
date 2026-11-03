@@ -64,6 +64,10 @@ builder.Services.AddOptions<WebApi.Background.MetaSynchronizationOptions>()
     .BindConfiguration("Integrations:MetaSynchronization")
     .Validate(o => o.IntervalMinutes >= 5 && o.LookbackDays is >= 1 and <= 90, "Intervalo Meta deve ser >= 5 minutos e lookback entre 1 e 90 dias.");
 builder.Services.AddHostedService<WebApi.Background.MetaSynchronizationWorker>();
+builder.Services.AddOptions<WebApi.Background.SocialPublishingDispatchOptions>()
+    .BindConfiguration(WebApi.Background.SocialPublishingDispatchOptions.SectionName)
+    .Validate(o => o.IntervalSeconds >= 5, "Intervalo de disparo orgânico deve ser >= 5 segundos.");
+builder.Services.AddHostedService<WebApi.Background.SocialPublishingDispatchWorker>();
 builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
 {
     builder.Configuration.GetSection(Master.Infrastructure.Services.ImpersonationJwtOptions.SectionName).Bind(options);

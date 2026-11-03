@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceito parcialmente em 2026-11-03. **Subfases 4.2 e 4.3 implementadas** (outbox, `PublishAsync` nos três adaptadores orgânicos, `OrganicPublishRateLimitPolicy` e mapeamento 429 → `Social.PublishRateLimited`). Worker, `DispatchDuePublicationsCommand` e kill switch fecham na **Subfase 4.4**.
+Aceito em 2026-11-03. Subfases **4.2**, **4.3** e **4.4** implementadas (outbox, adaptadores `PublishAsync`, `DispatchDuePublicationsCommand`, `SocialPublishingDispatchWorker` e kill switch `killswitch.social-publishing.dispatch`).
 
 ## Contexto
 
@@ -37,10 +37,17 @@ Requisitos da outbox:
 - Meta Page (feed imagem), Instagram (carrossel + Reel) e TikTok Content Posting (vídeo vertical); HTTP 429 → `PublishRateLimitedError` com `Retry-After` opcional; demais falhas de rede → `Social.PublishFailed`.
 - `OrganicPublishRateLimitPolicy` no domínio (sem referência a Integrations): \(T = \min(2^{attempt} \times baseDelay + jitter, maxDelay)\), opções `SocialPublishing:Publish`.
 
-### Subfase 4.4 (pendente)
+### Subfase 4.4 (implementada)
 
-- `SocialPublishingDispatchWorker` (`BackgroundService`), `DispatchDuePublicationsCommand`, flag `killswitch.social-publishing.dispatch` (ADR 0015).
-- **Suposição operacional**: instância única do host ou claim `RowVersion` como proteção extra em multi-instância; ciclo 429/`RetryScheduled`/`DeadLetter` na spec.
+1. **`DispatchDuePublicationsCommand`** (MediatR, sem rota HTTP): lista jobs devidos (`ListDueAsync`), `TryClaimAsync`, publica via adaptador, `CommitAsync` **por job**. Sucesso: post `Published` + `PublishedExternalId`, job `Succeeded`. Rate limit / falha recuperável: job `RetryScheduled` com `NextAttemptAtUtc = now + max(política, Retry-After)`, post `ReturnToScheduled()`. Teto de tentativas: job `DeadLetter`, post `Failed` via `MarkDispatchExhausted()`.
+
+2. **`SocialPublishingDispatchWorker`** em `WebApi/Background`: opções `SocialPublishing:Dispatch` (`Enabled` padrão **false**, `IntervalSeconds` ≥ 5). Ciclo: avalia `IFeatureFlagService.IsFeatureEnabledAsync("killswitch.social-publishing.dispatch")` **antes** do laço; percorre `GetTenantsQuery` (`Active` / `Trial`); escopo por tenant com `ITenantContextAccessor` e `ISender`. Exceção inesperada em um tenant não impede o seguinte.
+
+3. **Kill switch** semeado no MasterDb (`MasterCatalogFeatureFlagKeys.SocialPublishingDispatch`), ADR 0015.
+
+4. **URLs de mídia**: `IOrganicMediaPublicUrlResolver` + `SocialPublishing:Media:PublicBaseUrl`.
+
+5. **Suposição operacional**: instância única do host **ou** claim `RowVersion` como proteção extra em multi-instância. Job que permanece `InProgress` após cancelamento abrupto do host **não** tem reclaim automático nesta subfase.
 
 ## Consequências
 
@@ -49,8 +56,10 @@ Requisitos da outbox:
 - Outbox testável com SQL Server real (claim concorrente) e handlers unitários com repositório em memória.
 - Idempotência de slot independente de fila externa ou Integrations.
 - Reagendamento auditável: job cancelado permanece na tabela (chave histórica não reutilizada).
+- Disparo desligável em produção sem redeploy (kill switch + `Enabled=false` por padrão).
 
 ### Negativas / Mitigações
 
-- `TryClaimAsync` faz `SaveChanges` fora do `UnitOfWork` do handler — aceitável no worker (4.4); handlers HTTP usam commit unificado para post+job.
-- Multi-instância sem fila exige disciplina de claim — mitigado por `RowVersion` e ADR completado na 4.4.
+- `TryClaimAsync` faz `SaveChanges` fora do `UnitOfWork` do handler HTTP — aceitável no worker; handlers HTTP usam commit unificado para post+job.
+- Multi-instância sem fila exige disciplina de claim — mitigado por `RowVersion`.
+- Jobs órfãos em `InProgress` após crash — mitigação futura: job de reclaim ou timeout operacional documentado na spec.

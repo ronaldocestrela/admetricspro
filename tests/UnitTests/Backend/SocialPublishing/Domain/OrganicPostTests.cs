@@ -196,7 +196,7 @@ public sealed class OrganicPostTests
         post.Approve().Error.Code.Should().Be(SocialErrors.InvalidTransition.Code);
         post.Schedule().Error.Code.Should().Be(SocialErrors.InvalidTransition.Code);
         post.MarkPublishing().Error.Code.Should().Be(SocialErrors.InvalidTransition.Code);
-        post.MarkPublished().Error.Code.Should().Be(SocialErrors.InvalidTransition.Code);
+        post.MarkPublished("ext-1").Error.Code.Should().Be(SocialErrors.InvalidTransition.Code);
     }
 
     /// <summary>
@@ -211,8 +211,24 @@ public sealed class OrganicPostTests
         post.Approve().IsSuccess.Should().BeTrue();
         post.Schedule().IsSuccess.Should().BeTrue();
         post.MarkPublishing().IsSuccess.Should().BeTrue();
-        post.MarkPublished().IsSuccess.Should().BeTrue();
+        post.MarkPublished("17841400000000000").IsSuccess.Should().BeTrue();
         post.Status.Should().Be(OrganicPostStatus.Published);
+        post.PublishedExternalId.Should().Be("17841400000000000");
+    }
+
+    /// <summary>
+    /// Valida retorno de Publishing para Scheduled após rate limit.
+    /// </summary>
+    [Fact]
+    public void ReturnToScheduled_DePublishing_DeveVoltarParaScheduled()
+    {
+        var post = CreateDraftPost().Value;
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.Approve().IsSuccess.Should().BeTrue();
+        post.Schedule().IsSuccess.Should().BeTrue();
+        post.MarkPublishing().IsSuccess.Should().BeTrue();
+        post.ReturnToScheduled().IsSuccess.Should().BeTrue();
+        post.Status.Should().Be(OrganicPostStatus.Scheduled);
     }
 
     /// <summary>
@@ -226,7 +242,7 @@ public sealed class OrganicPostTests
         post.Approve().IsSuccess.Should().BeTrue();
         post.Schedule().IsSuccess.Should().BeTrue();
         post.MarkPublishing().IsSuccess.Should().BeTrue();
-        post.MarkPublished().IsSuccess.Should().BeTrue();
+        post.MarkPublished("17841400000000000").IsSuccess.Should().BeTrue();
 
         var reschedule = RescheduleUtc(post, new DateTime(2026, 7, 1, 18, 0, 0, DateTimeKind.Utc));
 

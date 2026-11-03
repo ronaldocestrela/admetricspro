@@ -46,4 +46,12 @@ public interface IPublicationJobRepository
     /// <param name="cancellationToken">Token de cancelamento.</param>
     /// <returns>Job em <see cref="PublicationJobStatus.InProgress"/> ou null se perdido ou indisponível.</returns>
     Task<PublicationJob?> TryClaimAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista jobs elegíveis para claim no instante UTC informado.
+    /// </summary>
+    /// <param name="utcNow">Relógio de referência em UTC.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Jobs pendentes ou com retentativa devida.</returns>
+    Task<IReadOnlyList<PublicationJob>> ListDueAsync(DateTime utcNow, CancellationToken cancellationToken = default);
 }

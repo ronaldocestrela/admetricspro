@@ -11,6 +11,7 @@ using Amazon.Runtime;
 using Amazon.S3;
 using SocialPublishing.Infrastructure.Ai;
 using SocialPublishing.Infrastructure.Media;
+using SocialPublishing.Infrastructure.Publishing;
 using SocialPublishing.Infrastructure.OAuth;
 using SocialPublishing.Infrastructure.Persistence;
 using SocialPublishing.Infrastructure.Persistence.Repositories;
@@ -131,6 +132,9 @@ public static class SocialPublishingModuleServiceExtensions
         {
             services.AddSingleton<IOrganicMediaStore, LocalOrganicMediaStore>();
         }
+
+        services.AddSingleton<IOrganicMediaPublicUrlResolver, ConfigurableOrganicMediaPublicUrlResolver>();
+        services.AddSingleton<IOrganicPublishJitterProvider, RandomOrganicPublishJitterProvider>();
     }
 
     private static void ConfigureOrganicOAuth(IServiceCollection services, IConfiguration configuration)

@@ -127,4 +127,28 @@ public sealed class PublicationJobRepository : IPublicationJobRepository
             return null;
         }
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PublicationJob>> ListDueAsync(DateTime utcNow, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (utcNow.Kind != DateTimeKind.Utc)
+        {
+            return Array.Empty<PublicationJob>();
+        }
+
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return Array.Empty<PublicationJob>();
+        }
+
+        return await contextResult.Value.PublicationJobs
+            .AsNoTracking()
+            .Where(j =>
+                (j.Status == PublicationJobStatus.Pending && j.ScheduledAtUtc <= utcNow) ||
+                (j.Status == PublicationJobStatus.RetryScheduled && j.NextAttemptAtUtc != null && j.NextAttemptAtUtc <= utcNow))
+            .OrderBy(j => j.ScheduledAtUtc)
+            .ToListAsync(cancellationToken);
+    }
 }
