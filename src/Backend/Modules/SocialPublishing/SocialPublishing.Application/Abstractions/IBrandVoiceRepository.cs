@@ -16,6 +16,14 @@ public interface IBrandVoiceRepository
     Task<BrandVoiceProfile?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Obtém o perfil de voz de marca de um workspace, se existir.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>O perfil rastreado ou <c>null</c>.</returns>
+    Task<BrandVoiceProfile?> GetByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lista perfis de voz de marca de um workspace.
     /// </summary>
     /// <param name="workspaceId">Identificador do workspace.</param>

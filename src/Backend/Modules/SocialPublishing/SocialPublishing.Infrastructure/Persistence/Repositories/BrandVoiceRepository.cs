@@ -36,6 +36,20 @@ public sealed class BrandVoiceRepository : IBrandVoiceRepository
     }
 
     /// <inheritdoc />
+    public async Task<BrandVoiceProfile?> GetByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return null;
+        }
+
+        return await contextResult.Value.BrandVoiceProfiles
+            .FirstOrDefaultAsync(p => p.WorkspaceId == workspaceId, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<BrandVoiceProfile>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

@@ -430,4 +430,68 @@ public sealed class TenantPermissionEvaluatorTests
         allowed.Value.Should().BeTrue();
         blocked.Value.Should().BeFalse();
     }
+
+    /// <summary>
+    /// Valida que SocialCopilotGenerate existe no catálogo canônico.
+    /// </summary>
+    [Fact]
+    public void SocialCopilotGenerate_DeveExistirNoEnumTenantPermission()
+    {
+        Enum.IsDefined(typeof(TenantPermission), TenantPermission.SocialCopilotGenerate).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Valida que papéis operacionais de gestão incluem SocialCopilotGenerate.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Owner)]
+    [InlineData(TenantRole.Admin)]
+    [InlineData(TenantRole.SquadLeader)]
+    [InlineData(TenantRole.MediaManager)]
+    public void GetPermissionsForRole_DeveIncluirSocialCopilotGenerate(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().Contain(TenantPermission.SocialCopilotGenerate);
+    }
+
+    /// <summary>
+    /// Valida que Analyst e Guest não possuem SocialCopilotGenerate.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Analyst)]
+    [InlineData(TenantRole.Guest)]
+    public void GetPermissionsForRole_NaoDeveIncluirSocialCopilotGenerateParaLeitura(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().NotContain(TenantPermission.SocialCopilotGenerate);
+    }
+
+    /// <summary>
+    /// Valida isolamento de carteira para SocialCopilotGenerate.
+    /// </summary>
+    [Fact]
+    public async Task HasPermission_SocialCopilotGenerate_QuandoMediaManager_DeveRespeitarCarteira()
+    {
+        var userId = Guid.NewGuid();
+        var workspaceIn = Guid.NewGuid();
+        var workspaceOut = Guid.NewGuid();
+        var user = TenantUser.Create(userId, "Gestor", "m@test.com", null, "hash", TenantRole.MediaManager).Value;
+        _userRepository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _portfolioService.HasAccessToWorkspaceAsync(userId, workspaceIn, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(true));
+        _portfolioService.HasAccessToWorkspaceAsync(userId, workspaceOut, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(false));
+
+        var allowed = await _evaluator.HasPermissionAsync(
+            userId,
+            TenantPermission.SocialCopilotGenerate,
+            new PermissionContext(WorkspaceId: workspaceIn));
+        var blocked = await _evaluator.HasPermissionAsync(
+            userId,
+            TenantPermission.SocialCopilotGenerate,
+            new PermissionContext(WorkspaceId: workspaceOut));
+
+        allowed.Value.Should().BeTrue();
+        blocked.Value.Should().BeFalse();
+    }
 }

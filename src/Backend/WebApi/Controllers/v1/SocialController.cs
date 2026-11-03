@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using SocialPublishing.Application.Brand.Commands.UpsertBrandVoice;
+using SocialPublishing.Application.Brand.DTOs;
+using SocialPublishing.Application.Brand.Queries.GetBrandVoice;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
 using SocialPublishing.Application.Media.Commands.RegisterOrganicMedia;
@@ -12,6 +15,7 @@ using SocialPublishing.Application.Options;
 using SocialPublishing.Application.Status.DTOs;
 using SocialPublishing.Application.Status.Queries.GetSocialModuleStatus;
 using SocialPublishing.Domain;
+using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Posts;
 using Tenants.Application.Workspaces.Queries.GetWorkspaceById;
@@ -240,6 +244,99 @@ public sealed class SocialController : ControllerBase
         return MapSocialMediaResult(result);
     }
 
+    /// <summary>
+    /// Cria ou atualiza o DNA de marca (Brand Voice) do workspace.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace cliente.</param>
+    /// <param name="request">Tom, persona, links, termos, emoji e pesos de pilares.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Perfil persistido ou falha de validação.</returns>
+    [HttpPut("brand-voice/{workspaceId:guid}")]
+    [EndpointSummary("Cria ou atualiza o DNA de marca do workspace para o copiloto social")]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<BrandVoiceDto>>> UpsertBrandVoice(
+        Guid workspaceId,
+        [FromBody] UpsertBrandVoiceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<BrandVoiceDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<BrandVoiceDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<BrandVoiceDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<BrandVoiceDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(
+            new UpsertBrandVoiceCommand(
+                workspaceId,
+                request.Tone,
+                request.Persona,
+                request.MandatoryLinks,
+                request.ForbiddenTerms,
+                request.EmojiPolicy,
+                request.HashtagLimit,
+                request.AuthorityWeight,
+                request.SaleWeight,
+                request.ConnectionWeight,
+                request.SocialProofWeight,
+                request.LanguageCode),
+            cancellationToken);
+
+        return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
+    /// Obtém o DNA de marca persistido para o workspace.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace cliente.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Perfil de voz de marca ou ausência.</returns>
+    [HttpGet("brand-voice/{workspaceId:guid}")]
+    [EndpointSummary("Obtém o DNA de marca persistido do workspace")]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<BrandVoiceDto>>> GetBrandVoice(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<BrandVoiceDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<BrandVoiceDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<BrandVoiceDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<BrandVoiceDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(new GetBrandVoiceQuery(workspaceId), cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
     private ActionResult<Result<T>> MapSocialConnectionResult<T>(Result<T> result)
     {
         if (result.IsFailure)
@@ -300,3 +397,30 @@ public sealed record CompleteOrganicAuthorizationRequest(
     string State,
     string RedirectUri,
     string? ProviderError = null);
+
+/// <summary>
+/// Corpo da requisição para upsert de Brand Voice.
+/// </summary>
+/// <param name="Tone">Tom de voz.</param>
+/// <param name="Persona">Persona da marca.</param>
+/// <param name="MandatoryLinks">Links absolutos obrigatórios.</param>
+/// <param name="ForbiddenTerms">Termos proibidos.</param>
+/// <param name="EmojiPolicy">Política de emojis.</param>
+/// <param name="HashtagLimit">Teto de hashtags no perfil.</param>
+/// <param name="AuthorityWeight">Peso do pilar Authority.</param>
+/// <param name="SaleWeight">Peso do pilar Sale.</param>
+/// <param name="ConnectionWeight">Peso do pilar Connection.</param>
+/// <param name="SocialProofWeight">Peso do pilar SocialProof.</param>
+/// <param name="LanguageCode">Código de idioma.</param>
+public sealed record UpsertBrandVoiceRequest(
+    string Tone,
+    string Persona,
+    IReadOnlyList<string> MandatoryLinks,
+    IReadOnlyList<string> ForbiddenTerms,
+    EmojiPolicy EmojiPolicy,
+    int HashtagLimit,
+    int AuthorityWeight,
+    int SaleWeight,
+    int ConnectionWeight,
+    int SocialProofWeight,
+    string LanguageCode = "pt-BR");

@@ -62,6 +62,12 @@ public static class SocialErrors
         Error.Validation("Social.PillarWeightsInvalid", "Os pesos dos pilares devem somar 100 e nenhum pode ser negativo.");
 
     /// <summary>
+    /// Erro quando o workspace não possui DNA de marca persistido.
+    /// </summary>
+    public static Error BrandVoiceNotFound { get; } =
+        Error.NotFound("Social.BrandVoiceNotFound", "Nenhum perfil de voz de marca foi encontrado para este workspace.");
+
+    /// <summary>
     /// Erro quando o post não pode ser reagendado no status atual.
     /// </summary>
     public static Error SlotNotReschedulable { get; } =

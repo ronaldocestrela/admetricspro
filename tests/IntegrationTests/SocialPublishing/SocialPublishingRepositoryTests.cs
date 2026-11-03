@@ -242,6 +242,67 @@ public sealed class SocialPublishingRepositoryTests(SqlServerFixture fixture)
     }
 
     /// <summary>
+    /// Valida round-trip de Revise no brand voice com o mesmo identificador.
+    /// </summary>
+    [Fact]
+    public async Task BrandVoiceRepository_Revise_Should_PersistUpdatedFieldsWithSameId()
+    {
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var connectionString = await PrepareMigratedDatabaseAsync();
+        var resolver = new FakeTenantConnectionResolver(new Dictionary<Guid, string> { [tenantId] = connectionString });
+        resolver.SetCurrentTenant(tenantId);
+
+        var accessor = new SocialPublishingDbContextAccessor(new SocialPublishingDbContextFactory(resolver));
+        var brandVoiceRepository = new BrandVoiceRepository(accessor);
+        var unitOfWork = new SocialPublishingUnitOfWork(accessor);
+
+        var profile = BrandVoiceProfile.Create(
+            workspaceId,
+            "Tom inicial",
+            "Persona inicial",
+            ["https://example.com/start"],
+            ["inicial"],
+            EmojiPolicy.Allowed,
+            10,
+            40,
+            20,
+            25,
+            15).Value;
+
+        await brandVoiceRepository.AddAsync(profile, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var loaded = await brandVoiceRepository.GetByWorkspaceAsync(workspaceId, CancellationToken.None);
+        loaded.Should().NotBeNull();
+        var id = loaded!.Id;
+
+        loaded.Revise(
+            "Tom atualizado",
+            "Persona atualizada",
+            ["https://example.com/updated"],
+            ["atualizado"],
+            EmojiPolicy.Forbidden,
+            20,
+            50,
+            10,
+            20,
+            20,
+            "en-US").IsSuccess.Should().BeTrue();
+
+        await brandVoiceRepository.UpdateAsync(loaded, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var reloaded = await brandVoiceRepository.GetByWorkspaceAsync(workspaceId, CancellationToken.None);
+        reloaded.Should().NotBeNull();
+        reloaded!.Id.Should().Be(id);
+        reloaded.Tone.Should().Be("Tom atualizado");
+        reloaded.PillarWeights.Authority.Should().Be(50);
+        reloaded.MandatoryLinks.Should().ContainSingle().Which.Should().Be("https://example.com/updated");
+        reloaded.ForbiddenTerms.Should().Contain("atualizado");
+    }
+
+    /// <summary>
     /// Valida publicação de evento de domínio após commit bem-sucedido.
     /// </summary>
     [Fact]

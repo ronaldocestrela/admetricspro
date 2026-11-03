@@ -74,5 +74,10 @@ public enum TenantPermission
     /// <summary>
     /// Registrar e gerenciar mídia orgânica (upload de binário e metadados) (alias: social.media.manage).
     /// </summary>
-    SocialMediaManage = 14
+    SocialMediaManage = 14,
+
+    /// <summary>
+    /// Gravar DNA de marca e gerar cronograma/cópia com o copiloto social (alias: social.copilot.generate).
+    /// </summary>
+    SocialCopilotGenerate = 15
 }

@@ -134,15 +134,103 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
             return Result<BrandVoiceProfile>.Failure(weightsResult.Error);
         }
 
+        var normalized = NormalizeContent(tone, persona, mandatoryLinks, forbiddenTerms, hashtagLimit, languageCode);
+        if (normalized.IsFailure)
+        {
+            return Result<BrandVoiceProfile>.Failure(normalized.Error);
+        }
+
+        var content = normalized.Value;
+        var profile = new BrandVoiceProfile(
+            Guid.NewGuid(),
+            workspaceId,
+            content.Tone,
+            content.Persona,
+            emojiPolicy,
+            content.HashtagLimit,
+            weightsResult.Value,
+            content.LanguageCode,
+            DateTime.UtcNow);
+
+        profile._mandatoryLinks.AddRange(content.MandatoryLinks);
+        profile._forbiddenTerms.AddRange(content.ForbiddenTerms);
+
+        return Result<BrandVoiceProfile>.Success(profile);
+    }
+
+    /// <summary>
+    /// Atualiza o DNA de marca mantendo identidade e carimbo de criação.
+    /// </summary>
+    /// <param name="tone">Tom de voz.</param>
+    /// <param name="persona">Persona.</param>
+    /// <param name="mandatoryLinks">URLs absolutas obrigatórias.</param>
+    /// <param name="forbiddenTerms">Termos proibidos.</param>
+    /// <param name="emojiPolicy">Política de emoji.</param>
+    /// <param name="hashtagLimit">Teto de hashtags no perfil.</param>
+    /// <param name="authorityWeight">Peso Authority.</param>
+    /// <param name="saleWeight">Peso Sale.</param>
+    /// <param name="connectionWeight">Peso Connection.</param>
+    /// <param name="socialProofWeight">Peso SocialProof.</param>
+    /// <param name="languageCode">Código de idioma.</param>
+    /// <returns>Resultado de sucesso ou erro de validação.</returns>
+    public Result Revise(
+        string tone,
+        string persona,
+        IEnumerable<string> mandatoryLinks,
+        IEnumerable<string> forbiddenTerms,
+        EmojiPolicy emojiPolicy,
+        int hashtagLimit,
+        int authorityWeight,
+        int saleWeight,
+        int connectionWeight,
+        int socialProofWeight,
+        string languageCode = "pt-BR")
+    {
+        var weightsResult = PillarWeights.Create(authorityWeight, saleWeight, connectionWeight, socialProofWeight);
+        if (weightsResult.IsFailure)
+        {
+            return Result.Failure(weightsResult.Error);
+        }
+
+        var normalized = NormalizeContent(tone, persona, mandatoryLinks, forbiddenTerms, hashtagLimit, languageCode);
+        if (normalized.IsFailure)
+        {
+            return Result.Failure(normalized.Error);
+        }
+
+        var content = normalized.Value;
+        Tone = content.Tone;
+        Persona = content.Persona;
+        EmojiPolicy = emojiPolicy;
+        HashtagLimit = content.HashtagLimit;
+        PillarWeights = weightsResult.Value;
+        LanguageCode = content.LanguageCode;
+
+        _mandatoryLinks.Clear();
+        _mandatoryLinks.AddRange(content.MandatoryLinks);
+        _forbiddenTerms.Clear();
+        _forbiddenTerms.AddRange(content.ForbiddenTerms);
+
+        return Result.Success();
+    }
+
+    private static Result<(string Tone, string Persona, List<string> MandatoryLinks, List<string> ForbiddenTerms, int HashtagLimit, string LanguageCode)> NormalizeContent(
+        string tone,
+        string persona,
+        IEnumerable<string> mandatoryLinks,
+        IEnumerable<string> forbiddenTerms,
+        int hashtagLimit,
+        string languageCode)
+    {
         if (string.IsNullOrWhiteSpace(tone) || string.IsNullOrWhiteSpace(persona))
         {
-            return Result<BrandVoiceProfile>.Failure(
+            return Result<(string, string, List<string>, List<string>, int, string)>.Failure(
                 Error.Validation("Social.BrandVoiceRequired", "Tom e persona são obrigatórios."));
         }
 
         if (hashtagLimit <= 0)
         {
-            return Result<BrandVoiceProfile>.Failure(
+            return Result<(string, string, List<string>, List<string>, int, string)>.Failure(
                 Error.Validation("Social.HashtagLimitInvalid", "O teto de hashtags do perfil deve ser positivo."));
         }
 
@@ -151,13 +239,13 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
         {
             if (string.IsNullOrWhiteSpace(link))
             {
-                return Result<BrandVoiceProfile>.Failure(
+                return Result<(string, string, List<string>, List<string>, int, string)>.Failure(
                     Error.Validation("Social.MandatoryLinkRequired", "Links obrigatórios não podem ser vazios."));
             }
 
             if (!Uri.TryCreate(link.Trim(), UriKind.Absolute, out _))
             {
-                return Result<BrandVoiceProfile>.Failure(
+                return Result<(string, string, List<string>, List<string>, int, string)>.Failure(
                     Error.Validation("Social.MandatoryLinkInvalid", "Cada link obrigatório deve ser uma URL absoluta."));
             }
 
@@ -170,20 +258,12 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
             .Distinct()
             .ToList();
 
-        var profile = new BrandVoiceProfile(
-            Guid.NewGuid(),
-            workspaceId,
+        return Result<(string, string, List<string>, List<string>, int, string)>.Success((
             tone.Trim(),
             persona.Trim(),
-            emojiPolicy,
+            links,
+            terms,
             hashtagLimit,
-            weightsResult.Value,
-            string.IsNullOrWhiteSpace(languageCode) ? "pt-BR" : languageCode.Trim(),
-            DateTime.UtcNow);
-
-        profile._mandatoryLinks.AddRange(links);
-        profile._forbiddenTerms.AddRange(terms);
-
-        return Result<BrandVoiceProfile>.Success(profile);
+            string.IsNullOrWhiteSpace(languageCode) ? "pt-BR" : languageCode.Trim()));
     }
 }

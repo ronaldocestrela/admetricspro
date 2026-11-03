@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 2.4** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`) e **`SocialMediaManage`** (`social.media.manage`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível) e **`POST /api/v1/social/media`**. Refresh/revoke, listagem HTTP de conexões, IA, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
+Até a **Subfase 3.1** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`** e **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`). Refresh/revoke, listagem HTTP de conexões, planner editorial, legendas IA, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -371,12 +371,82 @@ Comando MediatR: **`RegisterOrganicMediaCommand`** (stream não é persistido; a
 
 ---
 
-## 8. Fora de escopo (após Subfase 2.4)
+## 7.1 Brand Voice — ingestão (Subfase 3.1)
+
+Um perfil por workspace (`social.BrandVoiceProfiles`, índice único em `WorkspaceId`). Segunda gravação **atualiza** o mesmo registro (`Id` e `CreatedAtUtc` preservados).
+
+Comandos MediatR: **`UpsertBrandVoiceCommand`**, consulta **`GetBrandVoiceQuery`**.
+
+| Rota | Permissão | Descrição |
+| :--- | :--- | :--- |
+| `PUT /api/v1/social/brand-voice/{workspaceId}` | `social.copilot.generate` | Cria ou atualiza o DNA de marca |
+| `GET /api/v1/social/brand-voice/{workspaceId}` | `social.read` | Lê o perfil persistido |
+
+### Entrada (`UpsertBrandVoiceRequest`)
+
+```json
+{
+  "tone": "Profissional e acolhedor",
+  "persona": "Especialista em performance digital",
+  "mandatoryLinks": ["https://cliente.com/sobre"],
+  "forbiddenTerms": ["grátis", "milagre"],
+  "emojiPolicy": "Sparingly",
+  "hashtagLimit": 20,
+  "authorityWeight": 40,
+  "saleWeight": 20,
+  "connectionWeight": 25,
+  "socialProofWeight": 15,
+  "languageCode": "pt-BR"
+}
+```
+
+`emojiPolicy`: `Allowed`, `Sparingly`, `Forbidden`.
+
+### Exemplo de sucesso (`200 OK`, `Result<BrandVoiceDto>`)
+
+```json
+{
+  "isSuccess": true,
+  "isFailure": false,
+  "error": { "code": "", "description": "", "type": 0 },
+  "value": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "workspaceId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "tone": "Profissional e acolhedor",
+    "persona": "Especialista em performance digital",
+    "mandatoryLinks": ["https://cliente.com/sobre"],
+    "forbiddenTerms": ["grátis", "milagre"],
+    "emojiPolicy": "Sparingly",
+    "hashtagLimit": 20,
+    "authorityWeight": 40,
+    "saleWeight": 20,
+    "connectionWeight": 25,
+    "socialProofWeight": 15,
+    "languageCode": "pt-BR",
+    "createdAtUtc": "2026-11-03T12:00:00Z"
+  }
+}
+```
+
+### Erros de borda
+
+| Código | HTTP | Quando |
+| :--- | :---: | :--- |
+| `Social.WorkspaceRequired` | 400 | `workspaceId` vazio na rota |
+| `Social.PillarWeightsInvalid` | 422 | Soma dos quatro pesos ≠ 100 ou peso negativo (repositório **não** é chamado) |
+| `Social.BrandVoiceRequired` | 422 | Tom ou persona vazios |
+| `Social.HashtagLimitInvalid` | 422 | Teto de hashtags ≤ 0 |
+| `Social.MandatoryLinkInvalid` | 422 | Link não absoluto |
+| `Social.BrandVoiceNotFound` | 404 | `GET` sem perfil para o workspace |
+
+---
+
+## 8. Fora de escopo (após Subfase 3.1)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
-| IA / copiloto | Brand Voice, planner editorial, legendas (Fase 3) |
+| IA / copiloto (continuação) | Planner editorial, legendas e plano materializado (Subfases 3.2–3.4) |
 | Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
