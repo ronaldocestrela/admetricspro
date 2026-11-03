@@ -66,4 +66,10 @@ public static class SocialErrors
     /// </summary>
     public static Error CarouselItemCountInvalid { get; } =
         Error.Validation("Social.CarouselItemCountInvalid", "O carrossel deve conter entre 2 e 10 itens de mídia.");
+
+    /// <summary>
+    /// Erro quando a aplicação de migrações do schema social falha tecnicamente.
+    /// </summary>
+    public static Error MigrationFailed { get; } =
+        Error.Failure("Social.MigrationFailed", "Falha ao aplicar migrações do schema social no banco do tenant.");
 }

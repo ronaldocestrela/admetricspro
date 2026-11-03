@@ -187,6 +187,21 @@ public sealed class AgentsArchitectureComplianceTests
     }
 
     /// <summary>
+    /// Roadmap SocialPublishing Subfase 1.3: Infrastructure expõe unit of work dedicado ao módulo.
+    /// </summary>
+    [Fact]
+    public void SocialPublishingInfrastructure_MustImplementSocialPublishingUnitOfWork()
+    {
+        var assembly = SocialPublishingComplianceAssemblyLoader.Load("SocialPublishing.Infrastructure");
+        var uowInterface = typeof(global::SocialPublishing.Application.Abstractions.ISocialPublishingUnitOfWork);
+        var implementations = assembly.GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface && uowInterface.IsAssignableFrom(t))
+            .ToList();
+
+        implementations.Should().NotBeEmpty("SocialPublishing.Infrastructure deve implementar ISocialPublishingUnitOfWork.");
+    }
+
+    /// <summary>
     /// Roadmap SocialPublishing Subfase 1.1: SocialPublishing.Domain permanece puro (somente BuildingBlocks.Domain).
     /// </summary>
     [Fact]

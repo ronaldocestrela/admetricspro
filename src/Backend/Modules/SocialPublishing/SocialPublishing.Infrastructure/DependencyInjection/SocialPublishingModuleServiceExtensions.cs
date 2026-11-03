@@ -1,7 +1,11 @@
 using System.Reflection;
 using BuildingBlocks.Application.DependencyInjection;
+using BuildingBlocks.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Infrastructure.Persistence;
+using SocialPublishing.Infrastructure.Persistence.Repositories;
 
 namespace SocialPublishing.Infrastructure.DependencyInjection;
 
@@ -22,6 +26,16 @@ public static class SocialPublishingModuleServiceExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddMessaging(Assembly.Load(new AssemblyName("SocialPublishing.Application")));
+
+        services.AddScoped<SocialPublishingDbContextFactory>();
+        services.AddScoped<ITenantDbContextFactory<SocialPublishingDbContext>>(sp =>
+            sp.GetRequiredService<SocialPublishingDbContextFactory>());
+        services.AddScoped<SocialPublishingDbContextAccessor>();
+        services.AddScoped<IOrganicConnectionRepository, OrganicConnectionRepository>();
+        services.AddScoped<IOrganicPostRepository, OrganicPostRepository>();
+        services.AddScoped<IBrandVoiceRepository, BrandVoiceRepository>();
+        services.AddScoped<ISocialPublishingUnitOfWork, SocialPublishingUnitOfWork>();
+        services.AddScoped<ISocialPublishingSchemaMigrator, SocialPublishingSchemaMigrator>();
 
         return services;
     }

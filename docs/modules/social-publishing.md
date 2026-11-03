@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 1.2** o módulo inclui o **modelo de domínio puro** (agregados, enums, value objects e testes unitários), além dos projetos, conformidade arquitetural, composição na Web API (`AddSocialPublishingModule`) e ADR 0043. Persistência, OAuth, rotas HTTP de negócio e UI Blazor permanecem fora desta entrega.
+Até a **Subfase 1.3** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`** (contexto dedicado, repositórios, unit of work, migração inicial e testes de integração), além dos projetos, conformidade arquitetural, composição na Web API (`AddSocialPublishingModule`, decorator de provisionamento e hosted service de migração) e ADR 0043. OAuth, rotas HTTP de negócio e UI Blazor permanecem fora desta entrega.
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -122,11 +122,34 @@ Carrossel (`FeedCarousel`): entre **2** e **10** itens de mídia.
 
 ---
 
-## 5. Fora de escopo (após Subfase 1.2)
+## 5. Persistência no banco do tenant (Subfase 1.3)
+
+Contexto: `SocialPublishingDbContext` (não herda `TenantDbContext`). Histórico EF: `social.__EFMigrationsHistory`. Repositórios: `IOrganicConnectionRepository`, `IOrganicPostRepository`, `IBrandVoiceRepository`; commit transacional: `ISocialPublishingUnitOfWork` (publica eventos de domínio via MediatR após `SaveChanges`).
+
+### Diagrama lógico (schema `social`)
+
+| Tabela | Colunas principais | Índices / FK |
+| :--- | :--- | :--- |
+| `OrganicConnections` | `Id`, `WorkspaceId`, `Platform`, `ExternalAccountId`, `DisplayName`, `EncryptedAccessToken`, `EncryptedRefreshToken`, `AccessTokenExpiresAtUtc`, `Scopes`, `Status`, `CreatedAtUtc` | Único `(WorkspaceId, Platform, ExternalAccountId)` |
+| `OrganicPosts` | `Id`, `WorkspaceId`, `ConnectionId`, `Platform`, `Format`, `Pillar`, `Caption`, `ScheduledAtUtc`, `Status`, `CreatedAtUtc` | `(WorkspaceId, ScheduledAtUtc)` |
+| `OrganicMediaAssets` | `Id`, `OrganicPostId`, `Width`, `Height`, `SortOrder` | FK → `OrganicPosts` (cascade) |
+| `BrandVoiceProfiles` | `Id`, `WorkspaceId`, `Tone`, `Persona`, `EmojiPolicy`, `HashtagLimit`, pilares (`PillarAuthority`…), `LanguageCode`, `MandatoryLinksJson`, `ForbiddenTermsJson`, `CreatedAtUtc` | Único `WorkspaceId` |
+
+Exemplo de valor persistido para token (nunca plaintext):
+
+```json
+{
+  "encryptedAccessToken": "AES256-CBC-BASE64-CIPHERTEXT-EXAMPLE",
+  "encryptedRefreshToken": null
+}
+```
+
+---
+
+## 6. Fora de escopo (após Subfase 1.3)
 
 | Área | Entrega futura |
 | :--- | :--- |
-| Persistência | `SocialPublishingDbContext`, schema `social`, repositórios, migrações (Subfase 1.3) |
 | HTTP | `GET /api/v1/social/status`, permissão `social.read` (Subfase 1.4) |
 | OAuth orgânico | Authorize/callback, cofre AES-256 (Fase 2) |
 | IA / copiloto | Brand Voice, planner editorial, legendas (Fase 3) |
@@ -136,12 +159,13 @@ Carrossel (`FeedCarousel`): entre **2** e **10** itens de mídia.
 
 ---
 
-## 6. Composição na Web API
+## 7. Composição na Web API
 
-Registro único em `Program.cs`:
+Registro em `Program.cs`:
 
 ```csharp
 builder.Services.AddSocialPublishingModule(builder.Configuration);
+builder.Services.AddSocialPublishingTenantPersistenceComposition();
 ```
 
-A extensão `AddSocialPublishingModule` (em `SocialPublishing.Infrastructure`) registra MediatR e o pipeline `ValidationBehavior` via `AddMessaging` sobre o assembly `SocialPublishing.Application`.
+`AddSocialPublishingModule` registra MediatR, repositórios, fábrica de `SocialPublishingDbContext` e `ISocialPublishingSchemaMigrator`. `AddSocialPublishingTenantPersistenceComposition` decora `ITenantProvisioningService` e registra o hosted service de migração social para tenants existentes.

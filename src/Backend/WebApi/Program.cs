@@ -58,6 +58,7 @@ builder.Services.AddAnalyticsInfrastructure(builder.Configuration);
 builder.Services.AddAutomationsApplication();
 builder.Services.AddAutomationsInfrastructure(builder.Configuration);
 builder.Services.AddSocialPublishingModule(builder.Configuration);
+builder.Services.AddSocialPublishingTenantPersistenceComposition();
 builder.Services.AddEmailInfrastructure(builder.Configuration);
 builder.Services.AddOptions<WebApi.Background.MetaSynchronizationOptions>()
     .BindConfiguration("Integrations:MetaSynchronization")
