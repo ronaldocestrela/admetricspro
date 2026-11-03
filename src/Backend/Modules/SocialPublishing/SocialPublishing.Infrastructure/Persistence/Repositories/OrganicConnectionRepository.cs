@@ -78,4 +78,19 @@ public sealed class OrganicConnectionRepository : IOrganicConnectionRepository
         contextResult.Value.OrganicConnections.Update(connection);
         await Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public async Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            throw new InvalidOperationException(contextResult.Error.Code);
+        }
+
+        return await contextResult.Value.OrganicConnections
+            .AsNoTracking()
+            .CountAsync(c => c.WorkspaceId == workspaceId, cancellationToken);
+    }
 }

@@ -126,6 +126,79 @@ public sealed class SocialPublishingRepositoryTests(SqlServerFixture fixture)
         await actList.Should().ThrowAsync<OperationCanceledException>();
         await actAdd.Should().ThrowAsync<OperationCanceledException>();
         await actUpdate.Should().ThrowAsync<OperationCanceledException>();
+
+        var postRepository = new OrganicPostRepository(accessor);
+        var actCountConnections = () => connectionRepository.CountByWorkspaceAsync(Guid.NewGuid(), cts.Token);
+        var actCountPosts = () => postRepository.CountByWorkspaceAndStatusAsync(
+            Guid.NewGuid(),
+            OrganicPostStatus.Scheduled,
+            cts.Token);
+
+        await actCountConnections.Should().ThrowAsync<OperationCanceledException>();
+        await actCountPosts.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    /// <summary>
+    /// Valida métodos de contagem por workspace e status agendado.
+    /// </summary>
+    [Fact]
+    public async Task CountMethods_Should_ReturnCorrectTotals()
+    {
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var connectionString = await PrepareMigratedDatabaseAsync();
+        var resolver = new FakeTenantConnectionResolver(new Dictionary<Guid, string> { [tenantId] = connectionString });
+        resolver.SetCurrentTenant(tenantId);
+
+        var accessor = new SocialPublishingDbContextAccessor(new SocialPublishingDbContextFactory(resolver));
+        var connectionRepository = new OrganicConnectionRepository(accessor);
+        var postRepository = new OrganicPostRepository(accessor);
+        var unitOfWork = new SocialPublishingUnitOfWork(accessor);
+
+        var connection = OrganicConnection.Create(
+            workspaceId,
+            OrganicPlatform.Instagram,
+            "ig-1",
+            "Conta",
+            "scope",
+            "cipher").Value;
+        await connectionRepository.AddAsync(connection, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var draftPost = OrganicPost.Create(
+            workspaceId,
+            connection.Id,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Authority,
+            "Draft post",
+            new DateTime(2026, 6, 2, 10, 0, 0),
+            "America/Sao_Paulo",
+            new List<(int Width, int Height, int SortOrder)> { (1080, 1350, 0) }).Value;
+
+        var scheduledPost = OrganicPost.Create(
+            workspaceId,
+            connection.Id,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Sale,
+            "Scheduled post",
+            new DateTime(2026, 6, 3, 10, 0, 0),
+            "America/Sao_Paulo",
+            new List<(int Width, int Height, int SortOrder)> { (1080, 1350, 0) }).Value;
+        scheduledPost.SubmitForApproval().IsSuccess.Should().BeTrue();
+        scheduledPost.Approve().IsSuccess.Should().BeTrue();
+        scheduledPost.Schedule().IsSuccess.Should().BeTrue();
+
+        await postRepository.AddAsync(draftPost, CancellationToken.None);
+        await postRepository.AddAsync(scheduledPost, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        (await connectionRepository.CountByWorkspaceAsync(workspaceId, CancellationToken.None)).Should().Be(1);
+        (await postRepository.CountByWorkspaceAndStatusAsync(workspaceId, OrganicPostStatus.Scheduled, CancellationToken.None))
+            .Should().Be(1);
+        (await postRepository.CountByWorkspaceAndStatusAsync(workspaceId, OrganicPostStatus.Draft, CancellationToken.None))
+            .Should().Be(1);
     }
 
     /// <summary>

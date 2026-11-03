@@ -80,4 +80,22 @@ public sealed class OrganicPostRepository : IOrganicPostRepository
         contextResult.Value.OrganicPosts.Update(post);
         await Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public async Task<int> CountByWorkspaceAndStatusAsync(
+        Guid workspaceId,
+        OrganicPostStatus status,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            throw new InvalidOperationException(contextResult.Error.Code);
+        }
+
+        return await contextResult.Value.OrganicPosts
+            .AsNoTracking()
+            .CountAsync(p => p.WorkspaceId == workspaceId && p.Status == status, cancellationToken);
+    }
 }

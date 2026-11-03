@@ -59,5 +59,10 @@ public enum TenantPermission
     /// <summary>
     /// Exportação de relatórios analíticos de performance.
     /// </summary>
-    ExportReports = 11
+    ExportReports = 11,
+
+    /// <summary>
+    /// Leitura do módulo de publicação orgânica e calendário social (alias de produto: social.read).
+    /// </summary>
+    SocialRead = 12
 }

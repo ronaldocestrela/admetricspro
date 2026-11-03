@@ -4,6 +4,7 @@
     <ProjectReference Include="..\SocialPublishing.Domain\SocialPublishing.Domain.csproj" />
     <ProjectReference Include="..\SocialPublishing.Contracts\SocialPublishing.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\Tenants\Tenants.Application\Tenants.Application.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

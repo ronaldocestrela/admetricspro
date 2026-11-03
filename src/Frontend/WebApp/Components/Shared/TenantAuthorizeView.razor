@@ -78,9 +78,9 @@ else if (NotAuthorized is not null)
             TenantRole.Owner => true,
             TenantRole.Admin => permission != TenantPermission.ManageBilling,
             TenantRole.SquadLeader => permission is not (TenantPermission.ManageBilling or TenantPermission.ManageSettings or TenantPermission.ViewAuditLogs),
-            TenantRole.MediaManager => permission is TenantPermission.ViewCampaigns or TenantPermission.EditCampaigns or TenantPermission.ManageAutomations or TenantPermission.ExportReports,
-            TenantRole.Analyst => permission is TenantPermission.ViewCampaigns or TenantPermission.ExportReports,
-            TenantRole.Guest => permission is TenantPermission.ViewCampaigns or TenantPermission.ExportReports,
+            TenantRole.MediaManager => permission is TenantPermission.ViewCampaigns or TenantPermission.EditCampaigns or TenantPermission.ManageAutomations or TenantPermission.ExportReports or TenantPermission.SocialRead,
+            TenantRole.Analyst => permission is TenantPermission.ViewCampaigns or TenantPermission.ExportReports or TenantPermission.SocialRead,
+            TenantRole.Guest => permission is TenantPermission.ViewCampaigns or TenantPermission.ExportReports or TenantPermission.SocialRead,
             _ => false
         };
     }

@@ -38,4 +38,16 @@ public interface IOrganicPostRepository
     /// <param name="cancellationToken">Token de cancelamento.</param>
     /// <returns>Tarefa de conclusão.</returns>
     Task UpdateAsync(OrganicPost post, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Conta posts orgânicos de um workspace com o status informado.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace.</param>
+    /// <param name="status">Status filtrado.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Quantidade de posts.</returns>
+    Task<int> CountByWorkspaceAndStatusAsync(
+        Guid workspaceId,
+        OrganicPostStatus status,
+        CancellationToken cancellationToken = default);
 }

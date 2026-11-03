@@ -33,7 +33,8 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.EditCampaigns,
             TenantPermission.ManageAutomations,
             TenantPermission.ViewFinancialMargins,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead
         ],
         [TenantRole.Admin] =
         [
@@ -46,7 +47,8 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.EditCampaigns,
             TenantPermission.ManageAutomations,
             TenantPermission.ViewFinancialMargins,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead
         ],
         [TenantRole.SquadLeader] =
         [
@@ -57,24 +59,28 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.EditCampaigns,
             TenantPermission.ManageAutomations,
             TenantPermission.ViewFinancialMargins,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead
         ],
         [TenantRole.MediaManager] =
         [
             TenantPermission.ViewCampaigns,
             TenantPermission.EditCampaigns,
             TenantPermission.ManageAutomations,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead
         ],
         [TenantRole.Analyst] =
         [
             TenantPermission.ViewCampaigns,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead
         ],
         [TenantRole.Guest] =
         [
             TenantPermission.ViewCampaigns,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead
         ]
     };
 

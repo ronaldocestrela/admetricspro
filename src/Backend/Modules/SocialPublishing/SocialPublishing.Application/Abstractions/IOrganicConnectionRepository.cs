@@ -38,4 +38,12 @@ public interface IOrganicConnectionRepository
     /// <param name="cancellationToken">Token de cancelamento.</param>
     /// <returns>Tarefa de conclusão.</returns>
     Task UpdateAsync(OrganicConnection connection, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Conta conexões orgânicas de um workspace.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Quantidade de conexões.</returns>
+    Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
 }

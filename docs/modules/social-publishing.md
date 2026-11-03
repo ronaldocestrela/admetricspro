@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 1.3** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`** (contexto dedicado, repositórios, unit of work, migração inicial e testes de integração), além dos projetos, conformidade arquitetural, composição na Web API (`AddSocialPublishingModule`, decorator de provisionamento e hosted service de migração) e ADR 0043. OAuth, rotas HTTP de negócio e UI Blazor permanecem fora desta entrega.
+Até a **Subfase 1.4** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, o primeiro contrato HTTP (`GET /api/v1/social/status`), permissão RBAC `SocialRead` (alias `social.read`), além dos projetos, conformidade arquitetural, composição na Web API e ADR 0043. OAuth, demais rotas de negócio e UI Blazor permanecem fora desta entrega.
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -146,11 +146,41 @@ Exemplo de valor persistido para token (nunca plaintext):
 
 ---
 
-## 6. Fora de escopo (após Subfase 1.3)
+## 6. HTTP — resumo do módulo (Subfase 1.4)
+
+### `GET /api/v1/social/status`
+
+- **Autenticação:** esquema `Tenant` (JWT) + tenant resolvido (`X-Tenant-Id` ou claim `tenant_id`).
+- **Autorização:** `TenantPermission.SocialRead` (`social.read`), com validação de carteira quando o papel exige.
+- **Query:** `workspaceId` (GUID obrigatório).
+
+#### Exemplo de resposta (`200 OK`)
+
+```json
+{
+  "isSuccess": true,
+  "isFailure": false,
+  "error": { "code": "", "description": "", "type": 0 },
+  "value": {
+    "connections": 0,
+    "scheduledPosts": 0
+  }
+}
+```
+
+| Código | HTTP | Quando |
+| :--- | :---: | :--- |
+| `Auth.Unauthorized` | 401 | JWT ausente ou inválido |
+| `Auth.Forbidden` | 403 | Usuário sem `SocialRead` ou fora da carteira |
+| `Social.WorkspaceRequired` | 400 | `workspaceId` vazio |
+| `Workspace.NotFound` | 404 | Workspace inexistente no inquilino (consulta Tenants na composição) |
+
+---
+
+## 7. Fora de escopo (após Subfase 1.4)
 
 | Área | Entrega futura |
 | :--- | :--- |
-| HTTP | `GET /api/v1/social/status`, permissão `social.read` (Subfase 1.4) |
 | OAuth orgânico | Authorize/callback, cofre AES-256 (Fase 2) |
 | IA / copiloto | Brand Voice, planner editorial, legendas (Fase 3) |
 | Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
@@ -159,7 +189,7 @@ Exemplo de valor persistido para token (nunca plaintext):
 
 ---
 
-## 7. Composição na Web API
+## 8. Composição na Web API
 
 Registro em `Program.cs`:
 
