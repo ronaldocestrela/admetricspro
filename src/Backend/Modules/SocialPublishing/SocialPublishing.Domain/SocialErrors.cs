@@ -68,6 +68,24 @@ public static class SocialErrors
         Error.NotFound("Social.BrandVoiceNotFound", "Nenhum perfil de voz de marca foi encontrado para este workspace.");
 
     /// <summary>
+    /// Erro quando a data final do plano é anterior à data inicial.
+    /// </summary>
+    public static Error PlanRangeInvalid { get; } =
+        Error.Validation("Social.PlanRangeInvalid", "A data final do cronograma deve ser igual ou posterior à data inicial.");
+
+    /// <summary>
+    /// Erro quando a quantidade de posts por semana está fora do intervalo permitido (1–7).
+    /// </summary>
+    public static Error PostsPerWeekInvalid { get; } =
+        Error.Validation("Social.PostsPerWeekInvalid", "A quantidade de posts por semana deve estar entre 1 e 7.");
+
+    /// <summary>
+    /// Erro quando o identificador IANA do fuso horário é inválido ou está vazio.
+    /// </summary>
+    public static Error TimeZoneInvalid { get; } =
+        Error.Validation("Social.TimeZoneInvalid", "O fuso horário informado não é um identificador IANA válido.");
+
+    /// <summary>
     /// Erro quando o post não pode ser reagendado no status atual.
     /// </summary>
     public static Error SlotNotReschedulable { get; } =

@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 3.1** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`** e **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`). Refresh/revoke, listagem HTTP de conexões, planner editorial, legendas IA, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
+Até a **Subfase 3.2** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice** (`PUT` / `GET` `/api/v1/social/brand-voice/{workspaceId}`) e o **planner editorial determinístico** (`EditorialCalendarPlanner` em domínio, sem HTTP). Refresh/revoke, listagem HTTP de conexões, legendas IA, plano materializado, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -60,6 +60,9 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.HashtagPolicyViolated` | Hashtag duplicada, com espaço ou acima do teto configurado. |
 | `Social.PillarWeightsInvalid` | Pesos dos pilares somam valor diferente de 100 ou algum peso é negativo. |
 | `Social.BrandVoiceNotFound` | Workspace sem DNA de marca persistido. |
+| `Social.PlanRangeInvalid` | Data final do cronograma anterior à data inicial. |
+| `Social.PostsPerWeekInvalid` | Posts por semana fora do intervalo 1–7. |
+| `Social.TimeZoneInvalid` | Fuso IANA ausente ou desconhecido no planner. |
 | `Social.SlotNotReschedulable` | Post em `Publishing`, `Published` ou `Cancelled`. |
 | `Social.InvalidTransition` | Transição de status não permitida pela máquina de estados. |
 | `Social.ApprovalTokenInvalid` | Token ausente, expirado, revogado ou de outro workspace. |
@@ -91,6 +94,8 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 | `HashtagGroup` | Sem duplicata (case insensitive, `#` opcional), sem espaço interno; quantidade ≤ `min(tetoDoPerfil, tetoDaRede)` (Instagram/Page: 30, TikTok: 8). |
 | `PillarWeights` | Quatro inteiros ≥ 0 somando exatamente 100. |
 | `CaptionLimits` | Instagram, Facebook Page e TikTok: **2200** caracteres (constantes nomeadas, revisáveis). |
+| `EditorialSlot` | Slot planejado: `LocalDate`, `UtcInstant`, pilar, rede e formato; sem legenda. |
+| `EditorialCalendarPlanner` | Serviço estático de domínio; entrada intervalo, fuso IANA, posts/semana e semente; usa pesos de `BrandVoiceProfile`. |
 
 ### Transições de `OrganicPost`
 
@@ -441,12 +446,81 @@ Comandos MediatR: **`UpsertBrandVoiceCommand`**, consulta **`GetBrandVoiceQuery`
 
 ---
 
-## 8. Fora de escopo (após Subfase 3.1)
+## 7.2 Cronograma editorial determinístico (Subfase 3.2)
+
+Serviço puro em `SocialPublishing.Domain.Planning`: **`EditorialCalendarPlanner.Plan`**. Não há rota HTTP, persistência nem provedor de IA nesta subfase. Os pesos vêm exclusivamente de `BrandVoiceProfile.PillarWeights`.
+
+### Entrada lógica
+
+| Parâmetro | Regra |
+| :--- | :--- |
+| `brandVoice` | Obrigatório; `null` → `Social.BrandVoiceNotFound` |
+| `rangeStart` / `rangeEnd` | `DateOnly` inclusivos; fim &lt; início → `Social.PlanRangeInvalid` |
+| `timeZoneId` | IANA (ex.: `America/Sao_Paulo`); vazio ou inválido → `Social.TimeZoneInvalid` |
+| `postsPerWeek` | Inteiro **1–7**; fora → `Social.PostsPerWeekInvalid` |
+| `seed` | Altera ordem de pilares e deslocamento do ciclo rede/formato; **não** altera contagens por pilar |
+
+Horário local fixo por slot: **10:00** no fuso informado. Conversão via `TimeZoneInfo.ConvertTimeToUtc` (inclui regras históricas de horário de verão).
+
+### Semanas e dias
+
+- Semana editorial começa na **segunda-feira** (calendário civil no fuso do workspace).
+- Por semana, dias candidatos na ordem seg → ter → qua → qui → sex → sáb → dom, limitados a `postsPerWeek` e ao intervalo `[rangeStart, rangeEnd]`.
+- Semana parcial usa a **contagem real** de slots daquela semana (`N`) para quotas, não `postsPerWeek` quando há menos dias no intervalo.
+
+### Quotas por pilar (maior resto / Hamilton)
+
+Para cada semana com `N` slots:
+
+1. `cota = N × peso / 100` (decimal).
+2. Atribui o piso inteiro de cada pilar.
+3. Distribui assentos restantes pelos maiores restos fracionários.
+4. Empate de resto: `Authority`, `Connection`, `SocialProof`, `Sale`.
+
+Exemplo **N = 5**, pesos **40 / 20 / 25 / 15**: contagens **2 / 1 / 1 / 1** (`Authority` recebe 2; `SocialProof` recebe o assento extra pelo resto 0,75).
+
+### Ordem dos pilares e espaçamento de `Sale`
+
+1. Monta lista na ordem fixa `Authority`, `Sale`, `Connection`, `SocialProof`, repetindo cada pilar conforme a contagem.
+2. Rotação à esquerda de `seed % N`.
+3. Se dois `Sale` ocupam **datas locais consecutivas** e existe um slot não-`Sale` separável, troca o segundo `Sale` com o não-`Sale` mais próximo à frente (depois para trás). Se não for possível, mantém adjacência.
+
+### Ciclo rede / formato
+
+Índice `(ordinalNaSemana + seed) % 5`, zero-based na semana:
+
+| Índice | Rede | Formato |
+| :---: | :--- | :--- |
+| 0 | Instagram | FeedImage |
+| 1 | FacebookPage | FeedImage |
+| 2 | Instagram | Reel |
+| 3 | TikTok | TikTokVideo |
+| 4 | Instagram | FeedCarousel |
+
+### Exemplo de semana (2026-11-02 a 2026-11-06, 5 posts, 40/20/25/15, seed 0, `America/Sao_Paulo`)
+
+| Dia local | UTC (10:00 local) | Pilar | Rede | Formato |
+| :--- | :--- | :--- | :--- | :--- |
+| 2026-11-02 (seg) | 2026-11-02T13:00:00Z | Authority | Instagram | FeedImage |
+| 2026-11-03 (ter) | 2026-11-03T13:00:00Z | Sale | FacebookPage | FeedImage |
+| 2026-11-04 (qua) | 2026-11-04T13:00:00Z | Connection | Instagram | Reel |
+| 2026-11-05 (qui) | 2026-11-05T13:00:00Z | SocialProof | TikTok | TikTokVideo |
+| 2026-11-06 (sex) | 2026-11-06T13:00:00Z | Authority | Instagram | FeedCarousel |
+
+Prova de fuso (DST histórico): segunda **2018-10-29** 10:00 → **13:00Z**; segunda **2018-11-05** 10:00 → **12:00Z** (UTC−2 na segunda semana).
+
+### Saída (`EditorialSlot`)
+
+Cada item contém `localDate`, `utcInstant`, `pillar`, `platform`, `format`. Sem caption, hashtags ou mídia. Materialização em `OrganicPost` fica na Subfase 3.4.
+
+---
+
+## 8. Fora de escopo (após Subfase 3.2)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
-| IA / copiloto (continuação) | Planner editorial, legendas e plano materializado (Subfases 3.2–3.4) |
+| IA / copiloto (continuação) | Legendas por rede e plano materializado (Subfases 3.3–3.4) |
 | Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
