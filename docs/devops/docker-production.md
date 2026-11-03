@@ -55,9 +55,9 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 | Serviço | Imagem / Build | Porta Interna | Porta Exposta no Host | Função |
 | :--- | :--- | :--- | :--- | :--- |
 | **`sqlserver`** | `mssql/server:2022-latest` | `1433` | `127.0.0.1:1433` | Banco de dados `MasterCatalog` e bancos isolados de inquilinos. |
-| **`webapi`** | `src/Backend/WebApi/Dockerfile` | `8080` | `127.0.0.1:7001` | Backend Monólito Modular ASP.NET Core .NET 10. |
-| **`webapp`** | `src/Frontend/WebApp/Dockerfile` | `8080` | `127.0.0.1:7000` | Painel do Cliente / Inquilinos (Blazor Server). |
-| **`backoffice`** | `src/Frontend/BackofficeApp/Dockerfile` | `8080` | `127.0.0.1:7002` | Painel do Administrador Global (Blazor Server). |
+| **`webapi`** | `src/Backend/WebApi/Dockerfile` | `8080` | `7001` | Backend Monólito Modular ASP.NET Core .NET 10. |
+| **`webapp`** | `src/Frontend/WebApp/Dockerfile` | `8080` | `7000` | Painel do Cliente / Inquilinos (Blazor Server). |
+| **`backoffice`** | `src/Frontend/BackofficeApp/Dockerfile` | `8080` | `7002` | Painel do Administrador Global (Blazor Server). |
 
 ---
 
@@ -128,11 +128,12 @@ docker exec -it admetricspro-prod-sqlserver /opt/mssql-tools18/bin/sqlcmd \
 
 ## 6. Acesso aos Serviços
 
-A stack de produção não inclui proxy reverso. Cada serviço publica a porta apenas em `127.0.0.1` no host:
+A stack de produção não inclui proxy reverso. WebApp, Web API e Backoffice escutam em todas as interfaces do host:
 
-- Painel do Cliente (WebApp): `127.0.0.1:7000` (`WEBAPP_PORT`)
-- Web API: `127.0.0.1:7001` (`WEBAPI_PORT`)
-- Painel SuperAdmin (BackofficeApp): `127.0.0.1:7002` (`BACKOFFICE_PORT`)
-- SQL Server: `127.0.0.1:1433` (`MSSQL_PORT`)
+- Painel do Cliente (WebApp): porta `7000` (`WEBAPP_PORT`)
+- Web API: porta `7001` (`WEBAPI_PORT`)
+- Painel SuperAdmin (BackofficeApp): porta `7002` (`BACKOFFICE_PORT`)
 
-Publicação em domínio, TLS e roteamento de subdomínios ficam fora deste Compose.
+O SQL Server permanece apenas em `127.0.0.1:1433` (`MSSQL_PORT`). Os containers da aplicação falam com ele pela rede interna `admetricspro-prod-net`.
+
+Um domínio funciona quando o DNS aponta para o IP do servidor e o cliente usa a porta publicada, por exemplo `http://app.seudominio.com:7000`. TLS e redirecionamento das portas 80/443 ficam fora deste Compose.

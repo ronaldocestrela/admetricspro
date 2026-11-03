@@ -71,7 +71,7 @@ services:
       - Dunning__GracePeriodDays=${Dunning__GracePeriodDays:-5}
       - Dunning__RetryIntervalHours=${Dunning__RetryIntervalHours:-24}
     ports:
-      - "127.0.0.1:${WEBAPI_PORT:-7001}:8080"
+      - "${WEBAPI_PORT:-7001}:8080"
     networks:
       - admetricspro-prod-net
     healthcheck:
@@ -99,7 +99,7 @@ services:
       - DOTNET_RUNNING_IN_CONTAINER=true
       - Api__BaseUrl=http://webapi:8080
     ports:
-      - "127.0.0.1:${WEBAPP_PORT:-7000}:8080"
+      - "${WEBAPP_PORT:-7000}:8080"
     networks:
       - admetricspro-prod-net
     healthcheck:
@@ -127,7 +127,7 @@ services:
       - DOTNET_RUNNING_IN_CONTAINER=true
       - Api__BaseUrl=http://webapi:8080
     ports:
-      - "127.0.0.1:${BACKOFFICE_PORT:-7002}:8080"
+      - "${BACKOFFICE_PORT:-7002}:8080"
     networks:
       - admetricspro-prod-net
     healthcheck:

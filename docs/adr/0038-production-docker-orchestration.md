@@ -13,7 +13,7 @@ O **AdMetricsPro** é composto por múltiplos serviços interdependentes:
 Os desafios identificados para ambiente produtivo incluíam:
 - **Builds Reproduzíveis e Seguros:** Necessidade de compilação em múltiplos estágios (multi-stage) utilizando imagens oficiais do .NET 10, com usuário sem privilégios de root (`USER app`) para mitigação de vulnerabilidades de container breakout.
 - **Ordem Estrita de Inicialização & Migrações:** O backend `WebApi` só pode iniciar sua execução após o SQL Server estar efetivamente pronto para receber conexões transacionais (`service_healthy`). Além disso, as migrações automáticas do `MasterCatalog` devem ser aplicadas no boot antes de receber requisições de usuários.
-- **Isolamento de Rede:** SQL Server, Web API e portais Blazor não devem ficar expostos na internet pública por este Compose. Publicação externa, TLS e roteamento de domínio ficam fora da stack.
+- **Isolamento de Rede:** O SQL Server não deve ficar exposto na internet pública. Web API e portais Blazor precisam ser alcançáveis pelo IP ou domínio do servidor. TLS nas portas 80/443 fica fora da stack.
 
 ## Decisão
 Decidimos estruturar a orquestração de produção através de **Docker Compose** e **Dockerfiles Multi-Stage** dedicados para o ecossistema .NET 10:
@@ -30,17 +30,18 @@ Decidimos estruturar a orquestração de produção através de **Docker Compose
 
 3. **Sem Proxy Reverso na Stack:**
    - O Compose de produção não inclui Nginx nem outro proxy.
-   - `webapp`, `backoffice`, `webapi` e `sqlserver` publicam portas somente em `127.0.0.1`.
+   - `webapp`, `backoffice` e `webapi` publicam as portas `7000`, `7002` e `7001` em todas as interfaces do host.
+   - `sqlserver` publica a porta somente em `127.0.0.1`.
 
 4. **Isolamento e Segurança de Variáveis de Ambiente:**
    - Disponibilização do template `.env.prod.example` contendo todas as variáveis essenciais (chaves HMAC-SHA256 para tokens JWT de impersonação e inquilinos, senhas do SA, flags de migração automática e credenciais do SuperAdmin inicial).
-   - Portas transacionais de banco e serviços internos limitadas a `127.0.0.1` ou à rede interna virtual `admetricspro-prod-net`.
+   - A porta do SQL Server fica limitada a `127.0.0.1`. A comunicação entre containers usa a rede virtual `admetricspro-prod-net`.
 
 ## Consequências
 
 ### Positivas
 - **Deploy Simplificado com Um Único Comando:** Execução completa de toda a infraestrutura com `docker compose -f docker-compose.prod.yml up -d --build`.
-- **Segurança Reforçada:** Aplicação de princípio de menor privilégio (usuário `app`), portas publicadas apenas em `127.0.0.1` e isolamento em redes virtuais Docker.
+- **Segurança Reforçada:** Aplicação de princípio de menor privilégio (usuário `app`), SQL Server publicado apenas em `127.0.0.1` e isolamento da rede interna em `admetricspro-prod-net`.
 - **Zero-Downtime em Inicializações:** Garantia de que a API só atende requisições após o banco estar pronto e migrado.
 
 ### Negativas / Mitigações
