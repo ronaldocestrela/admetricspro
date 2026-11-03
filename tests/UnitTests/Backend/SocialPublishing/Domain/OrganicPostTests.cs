@@ -109,6 +109,27 @@ public sealed class OrganicPostTests
     }
 
     /// <summary>
+    /// Rascunho editorial permite Reel sem mídia; Create completo continua exigindo vídeo 9:16.
+    /// </summary>
+    [Fact]
+    public void CreateEditorialDraft_ReelSemMidia_DeveIniciarEmDraftComMidiaVazia()
+    {
+        var result = OrganicPost.CreateEditorialDraft(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.Reel,
+            ContentPillar.Sale,
+            "Gancho curto",
+            new DateTime(2026, 6, 2, 10, 0, 0),
+            SaoPauloTimeZone);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(OrganicPostStatus.Draft);
+        result.Value.Media.Should().BeEmpty();
+    }
+
+    /// <summary>
     /// Valida proporção 9:16 para Reels e TikTok.
     /// </summary>
     [Theory]

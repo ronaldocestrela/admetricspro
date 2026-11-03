@@ -127,8 +127,7 @@ public sealed class OrganicPost : AggregateRoot<Guid>
 
         if (connectionId == Guid.Empty)
         {
-            return Result<OrganicPost>.Failure(
-                Error.Validation("Social.ConnectionRequired", "A conexão orgânica é obrigatória."));
+            return Result<OrganicPost>.Failure(SocialErrors.ConnectionRequired);
         }
 
         var captionValidation = ValidateCaption(platform, caption);
@@ -174,6 +173,65 @@ public sealed class OrganicPost : AggregateRoot<Guid>
                 post._media.Add(assetResult.Value);
             }
         }
+
+        return Result<OrganicPost>.Success(post);
+    }
+
+    /// <summary>
+    /// Cria um rascunho editorial sem exigir mídia (Reel, carrossel e TikTok podem nascer vazios até anexação na UI).
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace.</param>
+    /// <param name="connectionId">Conexão orgânica.</param>
+    /// <param name="platform">Plataforma de destino.</param>
+    /// <param name="format">Formato do post.</param>
+    /// <param name="pillar">Pilar editorial.</param>
+    /// <param name="caption">Legenda composta (texto e hashtags).</param>
+    /// <param name="localScheduledAt">Data/hora local desejada no fuso do workspace.</param>
+    /// <param name="workspaceTimeZoneId">Identificador IANA do fuso (ex.: America/Sao_Paulo).</param>
+    /// <returns>Resultado com o post em <see cref="OrganicPostStatus.Draft"/> ou erro de validação.</returns>
+    public static Result<OrganicPost> CreateEditorialDraft(
+        Guid workspaceId,
+        Guid connectionId,
+        OrganicPlatform platform,
+        OrganicPostFormat format,
+        ContentPillar pillar,
+        string caption,
+        DateTime localScheduledAt,
+        string workspaceTimeZoneId)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<OrganicPost>.Failure(SocialErrors.WorkspaceRequired);
+        }
+
+        if (connectionId == Guid.Empty)
+        {
+            return Result<OrganicPost>.Failure(SocialErrors.ConnectionRequired);
+        }
+
+        var captionValidation = ValidateCaption(platform, caption);
+        if (captionValidation.IsFailure)
+        {
+            return Result<OrganicPost>.Failure(captionValidation.Error);
+        }
+
+        var scheduledUtcResult = ConvertLocalToUtc(localScheduledAt, workspaceTimeZoneId);
+        if (scheduledUtcResult.IsFailure)
+        {
+            return Result<OrganicPost>.Failure(scheduledUtcResult.Error);
+        }
+
+        var post = new OrganicPost(
+            Guid.NewGuid(),
+            workspaceId,
+            connectionId,
+            platform,
+            format,
+            pillar,
+            caption,
+            scheduledUtcResult.Value,
+            OrganicPostStatus.Draft,
+            DateTime.UtcNow);
 
         return Result<OrganicPost>.Success(post);
     }

@@ -240,6 +240,13 @@ public sealed class SocialConnectionsEndpointTests : IClassFixture<WebApplicatio
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<SocialPublishing.Domain.Posts.OrganicPost>>(Array.Empty<SocialPublishing.Domain.Posts.OrganicPost>());
 
+        public Task<IReadOnlyList<SocialPublishing.Domain.Posts.OrganicPost>> ListByWorkspaceScheduledRangeAsync(
+            Guid workspaceId,
+            DateTime fromUtc,
+            DateTime toUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SocialPublishing.Domain.Posts.OrganicPost>>(Array.Empty<SocialPublishing.Domain.Posts.OrganicPost>());
+
         public Task AddAsync(SocialPublishing.Domain.Posts.OrganicPost post, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task UpdateAsync(SocialPublishing.Domain.Posts.OrganicPost post, CancellationToken cancellationToken = default) => Task.CompletedTask;

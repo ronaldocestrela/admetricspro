@@ -12,6 +12,10 @@ using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization
 using SocialPublishing.Application.Media.Commands.RegisterOrganicMedia;
 using SocialPublishing.Application.Media.DTOs;
 using SocialPublishing.Application.Options;
+using SocialPublishing.Application.Planning.Commands.GenerateEditorialPlan;
+using SocialPublishing.Application.Planning.DTOs;
+using SocialPublishing.Application.Posts.DTOs;
+using SocialPublishing.Application.Posts.Queries.ListOrganicPosts;
 using SocialPublishing.Application.Status.DTOs;
 using SocialPublishing.Application.Status.Queries.GetSocialModuleStatus;
 using SocialPublishing.Domain;
@@ -337,6 +341,95 @@ public sealed class SocialController : ControllerBase
         return MapSocialConnectionResult(result);
     }
 
+    /// <summary>
+    /// Materializa um plano editorial em posts orgânicos em Draft (copiloto).
+    /// </summary>
+    /// <param name="request">Intervalo, fuso, posts por semana e semente.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Posts criados e slots que falharam.</returns>
+    [HttpPost("plans:generate")]
+    [EndpointSummary("Materializa cronograma editorial em rascunhos de posts orgânicos")]
+    [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<GeneratedPlanDto>>> GenerateEditorialPlan(
+        [FromBody] GenerateEditorialPlanRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.WorkspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<GeneratedPlanDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(request.WorkspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<GeneratedPlanDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<GeneratedPlanDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<GeneratedPlanDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(
+            new GenerateEditorialPlanCommand(
+                request.WorkspaceId,
+                request.RangeStart,
+                request.RangeEnd,
+                request.TimeZoneId,
+                request.PostsPerWeek,
+                request.Seed),
+            cancellationToken);
+
+        return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
+    /// Lista posts orgânicos agendados em um intervalo UTC para alimentar o calendário.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="from">Limite inferior UTC inclusivo.</param>
+    /// <param name="to">Limite superior UTC inclusivo.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Posts no intervalo.</returns>
+    [HttpGet("posts")]
+    [EndpointSummary("Lista posts orgânicos do workspace em intervalo de agendamento UTC")]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicPostDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicPostDto>>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicPostDto>>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicPostDto>>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<OrganicPostDto>>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<IReadOnlyList<OrganicPostDto>>>> ListOrganicPosts(
+        [FromQuery] Guid workspaceId,
+        [FromQuery] DateTime from,
+        [FromQuery] DateTime to,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<IReadOnlyList<OrganicPostDto>>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<IReadOnlyList<OrganicPostDto>>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<IReadOnlyList<OrganicPostDto>>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<IReadOnlyList<OrganicPostDto>>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(new ListOrganicPostsQuery(workspaceId, from, to), cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
     private ActionResult<Result<T>> MapSocialConnectionResult<T>(Result<T> result)
     {
         if (result.IsFailure)
@@ -347,6 +440,7 @@ public sealed class SocialController : ControllerBase
                 ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, result),
                 ErrorType.NotFound => NotFound(result),
                 ErrorType.Validation => UnprocessableEntity(result),
+                ErrorType.Conflict => Conflict(result),
                 _ => BadRequest(result)
             };
         }
@@ -424,3 +518,20 @@ public sealed record UpsertBrandVoiceRequest(
     int ConnectionWeight,
     int SocialProofWeight,
     string LanguageCode = "pt-BR");
+
+/// <summary>
+/// Corpo da requisição para materializar um plano editorial.
+/// </summary>
+/// <param name="WorkspaceId">Workspace proprietário.</param>
+/// <param name="RangeStart">Data inicial inclusiva.</param>
+/// <param name="RangeEnd">Data final inclusiva.</param>
+/// <param name="TimeZoneId">Identificador IANA do fuso do workspace.</param>
+/// <param name="PostsPerWeek">Posts por semana (1–7).</param>
+/// <param name="Seed">Semente determinística do planner.</param>
+public sealed record GenerateEditorialPlanRequest(
+    Guid WorkspaceId,
+    DateOnly RangeStart,
+    DateOnly RangeEnd,
+    string TimeZoneId,
+    int PostsPerWeek,
+    int Seed);

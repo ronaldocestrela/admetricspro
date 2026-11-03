@@ -8,6 +8,7 @@ using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Connections.Events;
+using SocialPublishing.Domain.Planning;
 using SocialPublishing.Domain.Posts;
 using SocialPublishing.Infrastructure.Persistence;
 using SocialPublishing.Infrastructure.Persistence.Repositories;
@@ -300,6 +301,99 @@ public sealed class SocialPublishingRepositoryTests(SqlServerFixture fixture)
         reloaded.PillarWeights.Authority.Should().Be(50);
         reloaded.MandatoryLinks.Should().ContainSingle().Which.Should().Be("https://example.com/updated");
         reloaded.ForbiddenTerms.Should().Contain("atualizado");
+    }
+
+    /// <summary>
+    /// Valida chave única de plano editorial e listagem por intervalo UTC de posts.
+    /// </summary>
+    [Fact]
+    public async Task EditorialPlanGeneration_AndScheduledRange_Should_EnforceUniqueKeyAndFilterPosts()
+    {
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var connectionString = await PrepareMigratedDatabaseAsync();
+        var resolver = new FakeTenantConnectionResolver(new Dictionary<Guid, string> { [tenantId] = connectionString });
+        resolver.SetCurrentTenant(tenantId);
+
+        var accessor = new SocialPublishingDbContextAccessor(new SocialPublishingDbContextFactory(resolver));
+        var planRepository = new EditorialPlanGenerationRepository(accessor);
+        var postRepository = new OrganicPostRepository(accessor);
+        var unitOfWork = new SocialPublishingUnitOfWork(accessor);
+
+        var connection = OrganicConnection.Create(
+            workspaceId,
+            OrganicPlatform.Instagram,
+            "ig-plan",
+            "Conta",
+            "scope",
+            "cipher").Value;
+        await new OrganicConnectionRepository(accessor).AddAsync(connection, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var inside = OrganicPost.CreateEditorialDraft(
+            workspaceId,
+            connection.Id,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Authority,
+            "Dentro",
+            new DateTime(2026, 11, 3, 10, 0, 0),
+            "America/Sao_Paulo").Value;
+
+        var outside = OrganicPost.CreateEditorialDraft(
+            workspaceId,
+            connection.Id,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Sale,
+            "Fora",
+            new DateTime(2026, 12, 1, 10, 0, 0),
+            "America/Sao_Paulo").Value;
+
+        await postRepository.AddAsync(inside, CancellationToken.None);
+        await postRepository.AddAsync(outside, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var from = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 11, 30, 23, 59, 59, DateTimeKind.Utc);
+        var ranged = await postRepository.ListByWorkspaceScheduledRangeAsync(workspaceId, from, to, CancellationToken.None);
+        ranged.Should().ContainSingle();
+        ranged[0].Id.Should().Be(inside.Id);
+
+        var generation = EditorialPlanGeneration.Start(
+            workspaceId,
+            new DateOnly(2026, 11, 2),
+            new DateOnly(2026, 11, 6),
+            seed: 0).Value;
+        generation.RecordCreatedPost(inside.Id).IsSuccess.Should().BeTrue();
+        generation.Complete().IsSuccess.Should().BeTrue();
+
+        await planRepository.AddAsync(generation, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var duplicate = EditorialPlanGeneration.Start(
+            workspaceId,
+            new DateOnly(2026, 11, 2),
+            new DateOnly(2026, 11, 6),
+            seed: 0).Value;
+
+        var act = async () =>
+        {
+            await planRepository.AddAsync(duplicate, CancellationToken.None);
+            await unitOfWork.CommitAsync(CancellationToken.None);
+        };
+
+        await act.Should().ThrowAsync<Exception>();
+
+        var reloaded = await planRepository.GetByKeyAsync(
+            workspaceId,
+            new DateOnly(2026, 11, 2),
+            new DateOnly(2026, 11, 6),
+            0,
+            CancellationToken.None);
+        reloaded.Should().NotBeNull();
+        reloaded!.Status.Should().Be(EditorialPlanGenerationStatus.Completed);
+        reloaded.CreatedPostIds.Should().ContainSingle().Which.Should().Be(inside.Id);
     }
 
     /// <summary>

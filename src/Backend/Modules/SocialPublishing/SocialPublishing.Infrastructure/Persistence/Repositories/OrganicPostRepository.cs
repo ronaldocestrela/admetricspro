@@ -55,6 +55,30 @@ public sealed class OrganicPostRepository : IOrganicPostRepository
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<OrganicPost>> ListByWorkspaceScheduledRangeAsync(
+        Guid workspaceId,
+        DateTime fromUtc,
+        DateTime toUtc,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return Array.Empty<OrganicPost>();
+        }
+
+        return await contextResult.Value.OrganicPosts
+            .AsNoTracking()
+            .Include("_media")
+            .Where(p => p.WorkspaceId == workspaceId &&
+                        p.ScheduledAtUtc >= fromUtc &&
+                        p.ScheduledAtUtc <= toUtc)
+            .OrderBy(p => p.ScheduledAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task AddAsync(OrganicPost post, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

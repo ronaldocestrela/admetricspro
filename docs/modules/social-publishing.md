@@ -520,7 +520,7 @@ Cada item contém `localDate`, `utcInstant`, `pillar`, `platform`, `format`. Sem
 
 ## 7.3 Legendas, copys e hashtags por rede (Subfase 3.3)
 
-Comando MediatR **`GenerateSlotCopyCommand`** (permissão `social.copilot.generate`). **Não há rota HTTP** nesta subfase; a Web API expõe o fluxo na Subfase 3.4 (`plans:generate`).
+Comando MediatR **`GenerateSlotCopyCommand`** (permissão `social.copilot.generate`). Consumido internamente pelo **`POST /api/v1/social/plans:generate`** (Subfase 3.4).
 
 ### Fluxo
 
@@ -599,17 +599,86 @@ O texto enviado ao modelo agrega: persona, tom, idioma, pilar, rede, formato, po
 | `Social.CopyContainsForbiddenTerm` | 422 | Termo proibido na legenda |
 | `Social.CaptionTooLong` | 422 | Acima de `CaptionLimits` |
 | `Social.HashtagPolicyViolated` | 422 | Duplicata, espaço ou teto |
-| `Social.CopyGenerationFailed` | 502 | Falha do provedor |
+| `Social.CopyGenerationFailed` | 502 (comando isolado) / item em `failedSlots` (`plans:generate`) | Falha do provedor |
 | `Social.AiConfigurationMissing` | 422 | Config incompleta |
 
 ---
 
-## 8. Fora de escopo (após Subfase 3.3)
+## 7.4 Materializar plano em rascunhos (Subfase 3.4)
+
+Orquestra **`EditorialCalendarPlanner.Plan`**, **`GenerateSlotCopyCommand`** (via `ISender`) e persistência de um **`OrganicPost`** em **`Draft`** por slot cuja cópia foi aceita. Permissão **`social.copilot.generate`**. Leitura do calendário: **`GET /api/v1/social/posts`** com **`social.read`**.
+
+### Rotas
+
+| Método | Rota | Descrição |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/social/plans:generate` | Materializa o plano (corpo JSON abaixo). |
+| `GET` | `/api/v1/social/posts?workspaceId=&from=&to=` | Lista posts no intervalo UTC inclusivo de `ScheduledAtUtc`. |
+
+### Entrada (`GenerateEditorialPlanRequest`)
+
+```json
+{
+  "workspaceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "rangeStart": "2026-11-02",
+  "rangeEnd": "2026-11-06",
+  "timeZoneId": "America/Sao_Paulo",
+  "postsPerWeek": 5,
+  "seed": 0
+}
+```
+
+### Idempotência
+
+Chave lógica: **`workspaceId` + `rangeStart` + `rangeEnd` + `seed`**. Persistida em `social.EditorialPlanGenerations` (índice único). Reexecução com a mesma chave devolve o **`GeneratedPlanDto`** já gravado, sem novas chamadas de IA nem posts duplicados. `postsPerWeek` e `timeZoneId` **não** entram na chave.
+
+### Fluxo por slot
+
+1. Resolve conexão **`Active`** mais recente da plataforma do slot (`Social.ConnectionRequired` em `failedSlots` se ausente).
+2. Gera cópia via **`GenerateSlotCopyCommand`**.
+3. Compõe legenda persistida: texto aceito + linha em branco + hashtags `#tag` (validação final contra `CaptionLimits`).
+4. Cria post com **`OrganicPost.CreateEditorialDraft`** (Reel / carrossel / TikTok **sem mídia** nesta subfase).
+5. **`CommitAsync` próprio por slot** (sucesso ou falha registrada no snapshot).
+
+### Saída (`Result<GeneratedPlanDto>`) — sucesso parcial = HTTP 200
+
+```json
+{
+  "isSuccess": true,
+  "value": {
+    "createdPostIds": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"],
+    "failedSlots": [
+      {
+        "localDate": "2026-11-05",
+        "utcInstant": "2026-11-05T13:00:00Z",
+        "pillar": "SocialProof",
+        "platform": "TikTok",
+        "format": "TikTokVideo",
+        "errorCode": "Social.CopyGenerationFailed",
+        "errorDescription": "Não foi possível gerar a cópia com o provedor de IA. Tente novamente."
+      }
+    ]
+  }
+}
+```
+
+### Casos de borda
+
+| Cenário | HTTP | Comportamento |
+| :--- | :---: | :--- |
+| Brand Voice ausente | **404** | Nenhum post criado; nenhum `CommitAsync` de slot. |
+| Provedor indisponível no meio do plano | **200** | Slots anteriores permanecem; falha listada em `failedSlots`. |
+| Chave de idempotência repetida | **200** | Mesmo `createdPostIds` / `failedSlots` do snapshot; sem duplicar. |
+| Geração concorrente mesma chave (registro `InProgress`) | **409** | `Social.PlanGenerationInProgress`. |
+| `to` &lt; `from` no GET | **422** | `Social.PostsRangeInvalid`. |
+
+---
+
+## 8. Fora de escopo (após Subfase 3.4)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh, revoke, listagem HTTP (Subfase 2.3) |
-| IA / copiloto (continuação) | Plano materializado em `OrganicPost` e rota `plans:generate` (Subfase 3.4) |
 | Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |

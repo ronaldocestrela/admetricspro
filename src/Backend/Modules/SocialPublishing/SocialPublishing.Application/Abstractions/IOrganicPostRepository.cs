@@ -24,6 +24,20 @@ public interface IOrganicPostRepository
     Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lista posts orgânicos de um workspace cujo horário agendado está no intervalo UTC inclusivo.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace.</param>
+    /// <param name="fromUtc">Limite inferior UTC inclusivo.</param>
+    /// <param name="toUtc">Limite superior UTC inclusivo.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Posts ordenados por <see cref="OrganicPost.ScheduledAtUtc"/>.</returns>
+    Task<IReadOnlyList<OrganicPost>> ListByWorkspaceScheduledRangeAsync(
+        Guid workspaceId,
+        DateTime fromUtc,
+        DateTime toUtc,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adiciona um novo post orgânico ao contexto.
     /// </summary>
     /// <param name="post">Agregado a persistir.</param>

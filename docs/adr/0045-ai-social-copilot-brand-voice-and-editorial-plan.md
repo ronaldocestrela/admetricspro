@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceito em 2026-11-03. Subfases 3.1–3.3 implementadas (Brand Voice HTTP, `EditorialCalendarPlanner`, `GenerateSlotCopyCommand` + `HttpSocialCreativeGenerator`).
+Aceito em 2026-11-03. Subfases 3.1–3.4 implementadas (Brand Voice HTTP, `EditorialCalendarPlanner`, `GenerateSlotCopyCommand` + `HttpSocialCreativeGenerator`, materialização idempotente em `OrganicPost` Draft).
 
 ## Contexto
 
@@ -37,6 +37,18 @@ Requisitos:
 
 6. Erros estáveis: `Social.CopyContainsForbiddenTerm`, `Social.CopyGenerationFailed`, `Social.AiConfigurationMissing`.
 
+### Subfase 3.4 (implementada)
+
+1. **`GenerateEditorialPlanCommand`**: planner + cópia por slot via **`ISender`** (`GenerateSlotCopyCommand`); **`CommitAsync` por slot**; resultado parcial em **`GeneratedPlanDto`** (`createdPostIds`, `failedSlots`).
+
+2. **`OrganicPost.CreateEditorialDraft`**: rascunhos editoriais **sem exigir mídia** (Reel, carrossel e TikTok nascem vazios até anexação na UI). Publicação continua bloqueada na Fase 4 sem mídia válida.
+
+3. **Idempotência**: agregado **`EditorialPlanGeneration`** em `social.EditorialPlanGenerations`, chave **`workspaceId + rangeStart + rangeEnd + seed`**. Replay devolve snapshot **`Completed`**; corrida com registro **`InProgress`** → `Social.PlanGenerationInProgress` (409).
+
+4. **HTTP**: `POST /api/v1/social/plans:generate`, `GET /api/v1/social/posts?workspaceId&from&to` (UTC inclusivo).
+
+5. **Legenda persistida**: `EditorialCaptionComposer` concatena legenda aceita e hashtags; validação final contra `CaptionLimits`.
+
 ## Consequências
 
 ### Positivas
@@ -48,4 +60,4 @@ Requisitos:
 ### Negativas / Mitigações
 
 - Dependência de formato JSON do modelo — mitigado por prompt estrito e testes do adaptador com `TestHttpMessageHandler`.
-- Sem endpoint HTTP até 3.4 — consumo interno via MediatR na composição WebApi ao gerar planos.
+- Falhas de IA no meio do plano exigem disciplina de UX (lista `failedSlots`) — mitigado por sucesso parcial explícito e idempotência para retentativa manual de slots.

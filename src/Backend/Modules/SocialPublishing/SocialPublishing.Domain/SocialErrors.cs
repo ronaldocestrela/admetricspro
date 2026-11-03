@@ -174,4 +174,22 @@ public static class SocialErrors
     /// </summary>
     public static Error AiConfigurationMissing { get; } =
         Error.Validation("Social.AiConfigurationMissing", "A configuração SocialAi (BaseUrl, Model ou ApiKey) está incompleta.");
+
+    /// <summary>
+    /// Erro quando não há conexão orgânica ativa para a rede do slot.
+    /// </summary>
+    public static Error ConnectionRequired { get; } =
+        Error.Validation("Social.ConnectionRequired", "A conexão orgânica é obrigatória.");
+
+    /// <summary>
+    /// Erro quando a geração do plano editorial já está em andamento para a mesma chave de idempotência.
+    /// </summary>
+    public static Error PlanGenerationInProgress { get; } =
+        Error.Conflict("Social.PlanGenerationInProgress", "A geração do plano editorial já está em andamento para este intervalo e semente.");
+
+    /// <summary>
+    /// Erro quando o limite superior da consulta de posts é anterior ao inferior.
+    /// </summary>
+    public static Error PostsRangeInvalid { get; } =
+        Error.Validation("Social.PostsRangeInvalid", "O parâmetro 'to' deve ser igual ou posterior a 'from'.");
 }

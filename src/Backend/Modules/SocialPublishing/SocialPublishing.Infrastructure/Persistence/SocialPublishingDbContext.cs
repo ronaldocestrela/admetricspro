@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
+using SocialPublishing.Domain.Planning;
 using SocialPublishing.Domain.Posts;
 
 namespace SocialPublishing.Infrastructure.Persistence;
@@ -39,6 +40,11 @@ public sealed class SocialPublishingDbContext : DbContext
     /// Obtém o conjunto de perfis de voz de marca.
     /// </summary>
     public DbSet<BrandVoiceProfile> BrandVoiceProfiles => Set<BrandVoiceProfile>();
+
+    /// <summary>
+    /// Obtém o conjunto de snapshots idempotentes de planos editoriais materializados.
+    /// </summary>
+    public DbSet<EditorialPlanGeneration> EditorialPlanGenerations => Set<EditorialPlanGeneration>();
 
     /// <summary>
     /// Cria opções SQL Server com schema padrão <c>social</c> e histórico de migrações isolado.

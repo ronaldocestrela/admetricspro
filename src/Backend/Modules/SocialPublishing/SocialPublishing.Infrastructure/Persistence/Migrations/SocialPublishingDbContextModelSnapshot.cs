@@ -135,6 +135,50 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                     b.ToTable("OrganicConnections", "social");
                 });
 
+            modelBuilder.Entity("SocialPublishing.Domain.Planning.EditorialPlanGeneration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("RangeEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("RangeStart")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Seed")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("_createdPostIds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("CreatedPostIdsJson");
+
+                    b.Property<string>("_failedSlots")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("FailedSlotsJson");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId", "RangeStart", "RangeEnd", "Seed")
+                        .IsUnique();
+
+                    b.ToTable("EditorialPlanGenerations", "social");
+                });
+
             modelBuilder.Entity("SocialPublishing.Domain.Posts.OrganicMediaAsset", b =>
                 {
                     b.Property<Guid>("Id")
