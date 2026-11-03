@@ -3,7 +3,10 @@ using BuildingBlocks.Application.DependencyInjection;
 using BuildingBlocks.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Options;
+using SocialPublishing.Infrastructure.OAuth;
 using SocialPublishing.Infrastructure.Persistence;
 using SocialPublishing.Infrastructure.Persistence.Repositories;
 
@@ -37,6 +40,41 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddScoped<ISocialPublishingUnitOfWork, SocialPublishingUnitOfWork>();
         services.AddScoped<ISocialPublishingSchemaMigrator, SocialPublishingSchemaMigrator>();
 
+        ConfigureOrganicOAuth(services, configuration);
+
         return services;
+    }
+
+    private static void ConfigureOrganicOAuth(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<OrganicOAuthOptions>(options =>
+        {
+            configuration.GetSection(OrganicOAuthOptions.SectionName).Bind(options);
+            options.Meta.AppId = configuration["META_APP_ID"] ?? options.Meta.AppId;
+            options.Meta.AppSecret = configuration["META_APP_SECRET"] ?? options.Meta.AppSecret;
+            options.Meta.GraphApiVersion = configuration["META_GRAPH_API_VERSION"] ?? options.Meta.GraphApiVersion;
+        });
+
+        services.AddOptions<OrganicOAuthOptions>()
+            .Validate(
+                o => !string.IsNullOrWhiteSpace(o.StateSigningKey) &&
+                     o.StateSigningKey.Length >= 32 &&
+                     !o.StateSigningKey.StartsWith("default", StringComparison.OrdinalIgnoreCase),
+                "Configure SocialPublishing:OAuth:StateSigningKey com pelo menos 32 caracteres aleatórios.")
+            .ValidateOnStart();
+
+        services.AddSingleton<IOrganicOAuthStateService>(sp =>
+        {
+            var key = sp.GetRequiredService<IOptions<OrganicOAuthOptions>>().Value.StateSigningKey;
+            return new OrganicOAuthStateService(key);
+        });
+
+        services.AddHttpClient<MetaInstagramOrganicAdapter>().RemoveAllLoggers();
+        services.AddHttpClient<MetaFacebookPageOrganicAdapter>().RemoveAllLoggers();
+        services.AddHttpClient<TikTokContentPostingAdapter>().RemoveAllLoggers();
+
+        services.AddTransient<IOrganicPlatformAdapter, MetaInstagramOrganicAdapter>();
+        services.AddTransient<IOrganicPlatformAdapter, MetaFacebookPageOrganicAdapter>();
+        services.AddTransient<IOrganicPlatformAdapter, TikTokContentPostingAdapter>();
     }
 }

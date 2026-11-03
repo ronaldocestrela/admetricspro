@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 1.4** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, o primeiro contrato HTTP (`GET /api/v1/social/status`), permissão RBAC `SocialRead` (alias `social.read`), além dos projetos, conformidade arquitetural, composição na Web API e ADR 0043. OAuth, demais rotas de negócio e UI Blazor permanecem fora desta entrega.
+Até a **Subfase 2.1** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissão RBAC `SocialRead` (`social.read`), **state OAuth HMAC-SHA256** (`IOrganicOAuthStateService`), adaptadores orgânicos (`IOrganicPlatformAdapter`) e a consulta **`StartOrganicAuthorizationQuery`** (sem rota HTTP ainda). Callback, cofre AES-256 em `OrganicConnection`, refresh/revoke, mídia, IA, worker, Blazor e sinergia paga permanecem fora desta entrega (ver ADR 0044).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -43,6 +43,9 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.ConnectionNotFound` | Conexão orgânica inexistente no workspace. |
 | `Social.TokenRevoked` | Conexão revogada ou refresh rejeitado pela rede. |
 | `Social.OAuthStateInvalid` | State ausente, expirado, adulterado ou de outro tenant/workspace. |
+| `Social.RedirectUriInvalid` | Redirect ausente, não absoluto ou HTTP fora de loopback. |
+| `Social.TenantRequired` | Tenant não resolvido ao iniciar OAuth orgânico. |
+| `Social.OAuthConfigurationMissing` | AppId / ClientKey da rede orgânica não configurado. |
 | `Social.PlatformUnsupported` | Rede fora de `Instagram`, `FacebookPage`, `TikTok`. |
 | `Social.MediaAspectInvalid` | Mídia fora da proporção exigida pelo formato. |
 | `Social.CarouselItemCountInvalid` | Carrossel com menos de 2 ou mais de 10 itens. |
@@ -177,11 +180,69 @@ Exemplo de valor persistido para token (nunca plaintext):
 
 ---
 
-## 7. Fora de escopo (após Subfase 1.4)
+## 6.1 OAuth orgânico — início do fluxo (Subfase 2.1)
+
+Consulta MediatR **`StartOrganicAuthorizationQuery`** (Application). **Sem endpoint HTTP** nesta subfase; a rota `POST /api/v1/social/connections/authorize` entra na Subfase 2.2 com permissão `social.connections.manage`.
+
+### Entrada (query)
+
+| Campo | Tipo | Regra |
+| :--- | :--- | :--- |
+| `WorkspaceId` | GUID | Obrigatório |
+| `Platform` | `Instagram` \| `FacebookPage` \| `TikTok` | Enum suportado |
+| `RedirectUri` | string | Absoluta; HTTPS ou HTTP em loopback |
+
+### State anti-CSRF
+
+- Formato: `{base64url(json)}.{base64url(hmac-sha256)}`.
+- Payload: `TenantId`, `WorkspaceId`, `OrganicPlatform`, `RedirectUri`, `IssuedAtUtc`, `Nonce` (32 bytes hex).
+- TTL: **15 minutos**; mesma resposta `Social.OAuthStateInvalid` para adulteração, expiração ou tenant/workspace divergente.
+- Chave HMAC: `SocialPublishing:OAuth:StateSigningKey` (**distinta** de `Integrations:OAuth:StateSigningKey`).
+
+### Provedores e escopos default (`OrganicOAuthOptions`)
+
+| Plataforma | Host de autorização | Escopos default |
+| :--- | :--- | :--- |
+| Instagram | `https://www.facebook.com/{GraphApiVersion}/dialog/oauth` | `pages_show_list,pages_read_engagement,instagram_basic,instagram_content_publish` |
+| Facebook Page | idem Meta | `pages_show_list,pages_read_engagement,pages_manage_posts` |
+| TikTok | `https://www.tiktok.com/v2/auth/authorize/` | `user.info.basic,video.publish,video.upload` |
+
+`META_APP_ID`, `META_APP_SECRET` e `META_GRAPH_API_VERSION` podem alimentar a Meta orgânica; TikTok orgânico usa `SocialPublishing:OAuth:TikTok:ClientKey`.
+
+### Exemplo de retorno (`Result<StartOrganicAuthorizationResponse>`)
+
+```json
+{
+  "isSuccess": true,
+  "isFailure": false,
+  "error": { "code": "", "description": "", "type": 0 },
+  "value": {
+    "authorizationUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=...&state=...&scope=...&response_type=code",
+    "state": "eyJUZXNhbnRJZCI6...signature",
+    "expiresAtUtc": "2026-11-02T15:15:00Z"
+  }
+}
+```
+
+| Código | Quando |
+| :--- | :--- |
+| `Social.WorkspaceRequired` | `WorkspaceId` vazio |
+| `Social.PlatformUnsupported` | Plataforma inválida |
+| `Social.RedirectUriInvalid` | Redirect inválido |
+| `Social.TenantRequired` | Contexto de tenant ausente |
+| `Social.OAuthConfigurationMissing` | Credencial do app da rede não configurada |
+
+### Fora da Subfase 2.1
+
+Callback (`CompleteOrganicAuthorizationCommand`), persistência de tokens com AES-256, refresh, revoke, listagem HTTP e registro de state de uso único em banco (Subfase 2.2).
+
+---
+
+## 7. Fora de escopo (após Subfase 2.1)
 
 | Área | Entrega futura |
 | :--- | :--- |
-| OAuth orgânico | Authorize/callback, cofre AES-256 (Fase 2) |
+| OAuth orgânico (continuação) | Callback, cofre AES-256, rotas HTTP, refresh/revoke (Subfases 2.2–2.3) |
 | IA / copiloto | Brand Voice, planner editorial, legendas (Fase 3) |
 | Worker | Outbox, `SocialPublishingDispatchWorker`, kill switch (Fase 4) |
 | Blazor | Calendário, portal `/approve/{token}` (Fase 5) |

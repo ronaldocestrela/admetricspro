@@ -72,4 +72,28 @@ public static class SocialErrors
     /// </summary>
     public static Error MigrationFailed { get; } =
         Error.Failure("Social.MigrationFailed", "Falha ao aplicar migrações do schema social no banco do tenant.");
+
+    /// <summary>
+    /// Erro quando o state OAuth está ausente, expirado, adulterado ou não corresponde ao tenant/workspace.
+    /// </summary>
+    public static Error OAuthStateInvalid { get; } =
+        Error.Validation("Social.OAuthStateInvalid", "O state de autorização orgânica é inválido ou expirou.");
+
+    /// <summary>
+    /// Erro quando a URI de redirecionamento do fluxo OAuth é inválida.
+    /// </summary>
+    public static Error RedirectUriInvalid { get; } =
+        Error.Validation("Social.RedirectUriInvalid", "A URI de redirecionamento deve ser absoluta e usar HTTPS (ou HTTP em loopback).");
+
+    /// <summary>
+    /// Erro quando o tenant não está resolvido no contexto da requisição.
+    /// </summary>
+    public static Error TenantRequired { get; } =
+        Error.Unauthorized("Social.TenantRequired", "O inquilino deve estar resolvido para iniciar a autorização orgânica.");
+
+    /// <summary>
+    /// Erro quando credenciais ou identificadores do aplicativo OAuth orgânico não estão configurados.
+    /// </summary>
+    public static Error OAuthConfigurationMissing { get; } =
+        Error.Validation("Social.OAuthConfigurationMissing", "A configuração OAuth orgânica da rede está incompleta.");
 }
