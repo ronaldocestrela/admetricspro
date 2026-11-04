@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 5.1** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`) e **UI Blazor** `/social/connections` com `ISocialPublishingClient`. Portal público de aprovação, calendário e sinergia paga permanecem nas Subfases 5.2–6 (ADRs 0047–0048).
+Até a **Subfase 5.2** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections` e **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento via `ISocialPublishingClient`. Portal público de aprovação, copilot na UI e sinergia paga permanecem nas Subfases 5.3–6 (ADRs 0047–0048).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -926,13 +926,56 @@ Testes: **`SocialPublishingClientTests`**, **`SocialConnectionsPanelTests`** (bU
 
 ---
 
-## 12. Fora de escopo (após Subfase 5.1)
+## 11.1 Frontend Blazor — calendário orgânico (Subfase 5.2)
+
+Grade mensal e semanal com reagendamento por arrastar e soltar. Toda mutação passa por **`POST /api/v1/social/posts/{id}:reschedule`**; o JavaScript não contém regra de negócio.
+
+### Rotas e componentes
+
+| Rota Blazor | Layout | Componente |
+| :--- | :--- | :--- |
+| `/social/calendar` | `TenantMainLayout` | `SocialCalendarPage` + `SocialCalendarGrid` |
+
+Peças atômicas: **`OrganicPostStatusBadge`**, **`ContentPillarChip`**. Navegação lateral: **Calendário orgânico** (`TenantSidebar`).
+
+### Modos da grade
+
+| Modo | Comportamento |
+| :--- | :--- |
+| **Month** | Mês civil da data âncora; semana começa na **segunda-feira**; células de preenchimento do mês anterior e seguinte. |
+| **Week** | Sete colunas da semana que contém a data âncora (segunda a domingo). |
+
+Cada post é posicionado no dia civil obtido ao converter **`ScheduledAtUtc`** com o fuso IANA informado (padrão da página: **`America/Sao_Paulo`**). O **`WorkspaceDto`** ainda **não** expõe fuso; a UI usa constante até persistência no módulo Tenants.
+
+### Contrato do drop (reagendamento)
+
+1. Só posts em **`Draft`**, **`PendingApproval`**, **`Approved`** ou **`Scheduled`** exibem alça de arraste.
+2. **`Published`**, **`Publishing`** e **`Cancelled`** não são arrastáveis (`Social.SlotNotReschedulable` no backend se forçado).
+3. Soltar em **outro dia civil** (mesmo fuso): calcula novo **`scheduledAtUtc`** preservando **hora e minuto locais** do slot original; chama **`RescheduleAsync`**.
+4. Soltar no **mesmo dia**: nenhuma chamada HTTP.
+5. **`Result` de falha**: o card volta à célula de origem e a descrição do erro aparece na grade (`data-testid="social-calendar-error"`).
+6. Troca de workspace na barra lateral: a página limpa a lista e chama **`ListPostsAsync`** de novo (sem vazar posts de outro cliente).
+
+### Cliente HTTP (calendário)
+
+| Método | API |
+| :--- | :--- |
+| `ListPostsAsync` | `GET /api/v1/social/posts?workspaceId=&from=&to=` (UTC inclusivo) |
+| `RescheduleAsync` | `POST /api/v1/social/posts/{id}:reschedule?workspaceId=` corpo `{ "scheduledAtUtc": "..." }` |
+
+Permissões: leitura **`social.read`**; reagendamento **`social.copilot.generate`** (mesma rota da Subfase 4.1).
+
+Testes: **`SocialCalendarGridTests`**, extensões em **`SocialPublishingClientTests`**.
+
+---
+
+## 12. Fora de escopo (após Subfase 5.2)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh preventivo e revogação remota na rede (Subfase 2.3) |
 | Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
-| Blazor (continuação) | Calendário `/social/calendar`, portal `/approve/{token}` (Fase 5.2–5.4) |
+| Blazor (continuação) | Portal `/approve/{token}`, formulário Brand Voice e gerar cronograma na UI (Subfases 5.3–5.4) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
 
 ---

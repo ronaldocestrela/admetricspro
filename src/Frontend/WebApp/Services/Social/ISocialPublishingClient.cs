@@ -2,6 +2,7 @@ using BuildingBlocks.Domain.Primitives;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
+using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Domain.Connections;
 
 namespace WebApp.Services.Social;
@@ -63,5 +64,33 @@ public interface ISocialPublishingClient
     Task<Result> RevokeConnectionAsync(
         Guid workspaceId,
         Guid connectionId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista posts orgânicos agendados em um intervalo UTC para alimentar o calendário.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="fromUtc">Limite inferior UTC inclusivo.</param>
+    /// <param name="toUtc">Limite superior UTC inclusivo.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Posts no intervalo ou falha semântica.</returns>
+    Task<Result<IReadOnlyList<OrganicPostDto>>> ListPostsAsync(
+        Guid workspaceId,
+        DateTime fromUtc,
+        DateTime toUtc,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reagenda um post orgânico para um novo instante UTC.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="postId">Identificador do post.</param>
+    /// <param name="scheduledAtUtc">Novo horário em UTC.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado ou falha de negócio.</returns>
+    Task<Result<OrganicPostDto>> RescheduleAsync(
+        Guid workspaceId,
+        Guid postId,
+        DateTime scheduledAtUtc,
         CancellationToken cancellationToken = default);
 }

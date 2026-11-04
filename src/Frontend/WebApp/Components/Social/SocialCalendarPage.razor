@@ -1,0 +1,175 @@
+@page "/social/calendar"
+@layout WebApp.Components.Layout.TenantMainLayout
+@namespace WebApp.Components.Social
+@using WebApp.Services.Social
+@using SocialPublishing.Application.Posts.DTOs
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@inject ISocialPublishingClient SocialClient
+@implements IDisposable
+
+<PageTitle>Calendário orgânico</PageTitle>
+
+<div class="social-calendar-page" data-testid="social-calendar-page">
+    <header class="mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h1 class="h3">Calendário orgânico</h1>
+            <p class="text-muted mb-0">Visualize e reagende posts por arrastar entre dias (fuso @TimeZoneId).</p>
+        </div>
+        <div class="btn-group" role="group" aria-label="Modo de visualização">
+            <button type="button"
+                    class="btn @( _view == SocialCalendarView.Month ? "btn-primary" : "btn-outline-primary")"
+                    data-testid="calendar-view-month"
+                    @onclick="() => SetView(SocialCalendarView.Month)">
+                Mês
+            </button>
+            <button type="button"
+                    class="btn @( _view == SocialCalendarView.Week ? "btn-primary" : "btn-outline-primary")"
+                    data-testid="calendar-view-week"
+                    @onclick="() => SetView(SocialCalendarView.Week)">
+                Semana
+            </button>
+        </div>
+    </header>
+
+    @if (!WorkspaceContextStateProvider.HasWorkspaceSelected)
+    {
+        <div class="alert alert-info" data-testid="social-calendar-select-workspace">
+            Selecione um cliente ativo na barra lateral para ver o calendário orgânico.
+        </div>
+    }
+    else
+    {
+        <div class="social-calendar-toolbar mb-3 d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-testid="calendar-prev" @onclick="GoPrevious">Anterior</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-testid="calendar-today" @onclick="GoToday">Hoje</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-testid="calendar-next" @onclick="GoNext">Próximo</button>
+            <span class="fw-semibold ms-2" data-testid="calendar-period-label">@PeriodLabel</span>
+        </div>
+
+        @if (_isLoading)
+        {
+            <p class="text-muted" data-testid="social-calendar-loading">Carregando calendário…</p>
+        }
+        else if (!string.IsNullOrEmpty(_loadError))
+        {
+            <div class="alert alert-danger" data-testid="social-calendar-load-error">@_loadError</div>
+        }
+        else
+        {
+            <SocialCalendarGrid WorkspaceId="@WorkspaceContextStateProvider.CurrentWorkspaceId!.Value"
+                                View="_view"
+                                AnchorDate="_anchorDate"
+                                Posts="_posts"
+                                TimeZone="@TimeZoneId" />
+        }
+    }
+</div>
+
+@code {
+    private const string TimeZoneId = "America/Sao_Paulo";
+
+    private SocialCalendarView _view = SocialCalendarView.Month;
+    private DateOnly _anchorDate = DateOnly.FromDateTime(DateTime.UtcNow);
+    private IReadOnlyList<OrganicPostDto> _posts = Array.Empty<OrganicPostDto>();
+    private bool _isLoading;
+    private string? _loadError;
+    private Guid? _loadedWorkspaceId;
+
+    private string PeriodLabel => _view switch
+    {
+        SocialCalendarView.Month => _anchorDate.ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")),
+        SocialCalendarView.Week => $"Semana de {SocialCalendarDateHelper.StartOfWeekMonday(_anchorDate):dd/MM/yyyy}",
+        _ => _anchorDate.ToString("d"),
+    };
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
+        await LoadPostsIfNeededAsync();
+    }
+
+    private void HandleWorkspaceChanged()
+    {
+        _posts = Array.Empty<OrganicPostDto>();
+        _loadedWorkspaceId = null;
+        _ = InvokeAsync(async () =>
+        {
+            await LoadPostsIfNeededAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadPostsIfNeededAsync()
+    {
+        if (!WorkspaceContextStateProvider.HasWorkspaceSelected)
+        {
+            _posts = Array.Empty<OrganicPostDto>();
+            _loadedWorkspaceId = null;
+            return;
+        }
+
+        var workspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId!.Value;
+        _isLoading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId);
+        var visibleDays = SocialCalendarDateHelper.GetVisibleDays(_view, _anchorDate);
+        var (fromUtc, toUtc) = SocialCalendarDateHelper.GetUtcRangeForVisibleDays(visibleDays, timeZone);
+
+        var result = await SocialClient.ListPostsAsync(workspaceId, fromUtc, toUtc);
+        _isLoading = false;
+
+        if (result.IsFailure)
+        {
+            _loadError = result.Error.Description;
+            _posts = Array.Empty<OrganicPostDto>();
+            _loadedWorkspaceId = workspaceId;
+            return;
+        }
+
+        _posts = result.Value;
+        _loadedWorkspaceId = workspaceId;
+    }
+
+    private async Task SetView(SocialCalendarView view)
+    {
+        _view = view;
+        await LoadPostsIfNeededAsync();
+    }
+
+    private async Task GoPrevious()
+    {
+        _anchorDate = _view switch
+        {
+            SocialCalendarView.Month => _anchorDate.AddMonths(-1),
+            SocialCalendarView.Week => _anchorDate.AddDays(-7),
+            _ => _anchorDate,
+        };
+        await LoadPostsIfNeededAsync();
+    }
+
+    private async Task GoNext()
+    {
+        _anchorDate = _view switch
+        {
+            SocialCalendarView.Month => _anchorDate.AddMonths(1),
+            SocialCalendarView.Week => _anchorDate.AddDays(7),
+            _ => _anchorDate,
+        };
+        await LoadPostsIfNeededAsync();
+    }
+
+    private async Task GoToday()
+    {
+        _anchorDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        await LoadPostsIfNeededAsync();
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
+    }
+}

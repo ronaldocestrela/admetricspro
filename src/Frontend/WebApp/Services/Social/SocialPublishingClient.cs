@@ -1,9 +1,11 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using BuildingBlocks.Domain.Primitives;
+using System.Globalization;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
+using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Domain.Connections;
 using WebApp.State;
 
@@ -163,6 +165,86 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         {
             return Result.Failure(
                 Error.Failure("Social.NetworkError", $"Erro de comunicação ao revogar conexão orgânica: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<IReadOnlyList<OrganicPostDto>>> ListPostsAsync(
+        Guid workspaceId,
+        DateTime fromUtc,
+        DateTime toUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<IReadOnlyList<OrganicPostDto>>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        var from = DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc);
+        var to = DateTime.SpecifyKind(toUtc, DateTimeKind.Utc);
+        var fromQuery = Uri.EscapeDataString(from.ToString("O", CultureInfo.InvariantCulture));
+        var toQuery = Uri.EscapeDataString(to.ToString("O", CultureInfo.InvariantCulture));
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"/api/v1/social/posts?workspaceId={workspaceId}&from={fromQuery}&to={toQuery}");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<IReadOnlyList<OrganicPostDto>>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<IReadOnlyList<OrganicPostDto>>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao listar posts orgânicos."));
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<OrganicPostDto>>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao listar posts orgânicos: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<OrganicPostDto>> RescheduleAsync(
+        Guid workspaceId,
+        Guid postId,
+        DateTime scheduledAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<OrganicPostDto>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        if (postId == Guid.Empty)
+        {
+            return Result<OrganicPostDto>.Failure(
+                Error.Validation("Social.PostNotFound", "Post orgânico não encontrado."));
+        }
+
+        var utc = DateTime.SpecifyKind(scheduledAtUtc, DateTimeKind.Utc);
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/api/v1/social/posts/{postId}:reschedule?workspaceId={workspaceId}")
+            {
+                Content = JsonContent.Create(new { scheduledAtUtc = utc }, options: JsonOptions),
+            };
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<OrganicPostDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<OrganicPostDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao reagendar post orgânico."));
+        }
+        catch (Exception ex)
+        {
+            return Result<OrganicPostDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao reagendar post orgânico: {ex.Message}"));
         }
     }
 

@@ -1,0 +1,186 @@
+@namespace WebApp.Components.Social
+@using WebApp.Components.Shared.Components
+@using WebApp.Services.Social
+@using SocialPublishing.Application.Posts.DTOs
+@using SocialPublishing.Domain.Posts
+@inject ISocialPublishingClient SocialClient
+
+<div class="social-calendar-grid" data-testid="social-calendar-grid">
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger" role="alert" data-testid="social-calendar-error">@_errorMessage</div>
+    }
+
+    <div class="social-calendar-weekdays" data-testid="social-calendar-weekdays">
+        @foreach (var label in WeekdayLabels)
+        {
+            <div class="social-calendar-weekday">@label</div>
+        }
+    </div>
+
+    <div class="@GridCssClass" data-testid="social-calendar-cells">
+        @foreach (var day in _visibleDays)
+        {
+            var isPadding = View == SocialCalendarView.Month && day.Month != AnchorDate.Month;
+            <div class="social-calendar-day @(isPadding ? "is-padding" : string.Empty)"
+                 data-testid="@($"calendar-day-{day:yyyy-MM-dd}")"
+                 @ondragover:preventDefault="true"
+                 @ondrop:preventDefault="true"
+                 @ondrop="@(() => HandleDropAsync(day))">
+                <div class="social-calendar-day-label">@day.Day</div>
+                @foreach (var post in GetPostsForDay(day))
+                {
+                    var canDrag = CanReschedule(post);
+                    <article class="social-calendar-post-card"
+                             data-testid="@($"post-card-{post.Id}")"
+                             draggable="@canDrag"
+                             @ondragstart="@(() => HandleDragStart(post))"
+                             @ondragend="HandleDragEnd">
+                        @if (canDrag)
+                        {
+                            <span class="social-calendar-drag-handle" data-testid="@($"drag-handle-{post.Id}")" title="Arrastar para reagendar">⋮⋮</span>
+                        }
+                        <OrganicPostStatusBadge Status="post.Status" />
+                        <ContentPillarChip Pillar="post.Pillar" />
+                        <div class="social-calendar-post-caption">@TruncateCaption(post.Caption)</div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly string[] WeekdayLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+    private List<OrganicPostDto> _displayPosts = [];
+    private IReadOnlyList<DateOnly> _visibleDays = [];
+    private OrganicPostDto? _draggingPost;
+    private string? _errorMessage;
+    private TimeZoneInfo _timeZone = TimeZoneInfo.Utc;
+
+    /// <summary>
+    /// Workspace proprietário dos posts exibidos e alvo do reagendamento.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Guid WorkspaceId { get; set; }
+
+    /// <summary>
+    /// Modo de visualização (mês civil ou semana).
+    /// </summary>
+    [Parameter]
+    public SocialCalendarView View { get; set; } = SocialCalendarView.Month;
+
+    /// <summary>
+    /// Data âncora do período visível (qualquer dia do mês ou da semana).
+    /// </summary>
+    [Parameter]
+    public DateOnly AnchorDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    /// <summary>
+    /// Posts carregados pela página via API.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<OrganicPostDto> Posts { get; set; } = Array.Empty<OrganicPostDto>();
+
+    /// <summary>
+    /// Identificador IANA do fuso do workspace (ex.: America/Sao_Paulo).
+    /// </summary>
+    [Parameter]
+    public string TimeZone { get; set; } = "America/Sao_Paulo";
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        _displayPosts = Posts?.ToList() ?? [];
+        _errorMessage = null;
+        _timeZone = ResolveTimeZone(TimeZone);
+        _visibleDays = SocialCalendarDateHelper.GetVisibleDays(View, AnchorDate);
+    }
+
+    private string GridCssClass => View == SocialCalendarView.Week
+        ? "social-calendar-cells social-calendar-cells-week"
+        : "social-calendar-cells social-calendar-cells-month";
+
+    private IEnumerable<OrganicPostDto> GetPostsForDay(DateOnly day) =>
+        _displayPosts.Where(p => SocialCalendarDateHelper.ToLocalDate(p.ScheduledAtUtc, _timeZone) == day);
+
+    private static bool CanReschedule(OrganicPostDto post) =>
+        post.Status is OrganicPostStatus.Draft
+            or OrganicPostStatus.PendingApproval
+            or OrganicPostStatus.Approved
+            or OrganicPostStatus.Scheduled;
+
+    private void HandleDragStart(OrganicPostDto post)
+    {
+        if (!CanReschedule(post))
+        {
+            return;
+        }
+
+        _draggingPost = post;
+        _errorMessage = null;
+    }
+
+    private void HandleDragEnd() => _draggingPost = null;
+
+    private async Task HandleDropAsync(DateOnly targetDay)
+    {
+        if (_draggingPost is null || WorkspaceId == Guid.Empty)
+        {
+            return;
+        }
+
+        var post = _draggingPost;
+        _draggingPost = null;
+
+        var originDay = SocialCalendarDateHelper.ToLocalDate(post.ScheduledAtUtc, _timeZone);
+        if (originDay == targetDay)
+        {
+            return;
+        }
+
+        var newUtc = SocialCalendarDateHelper.ReschedulePreservingLocalTime(post.ScheduledAtUtc, targetDay, _timeZone);
+        var snapshot = _displayPosts.ToList();
+        var index = _displayPosts.FindIndex(p => p.Id == post.Id);
+        if (index < 0)
+        {
+            return;
+        }
+
+        _displayPosts[index] = post with { ScheduledAtUtc = newUtc };
+        _errorMessage = null;
+        StateHasChanged();
+
+        var result = await SocialClient.RescheduleAsync(WorkspaceId, post.Id, newUtc);
+        if (result.IsFailure)
+        {
+            _displayPosts = snapshot;
+            _errorMessage = result.Error.Description;
+            StateHasChanged();
+            return;
+        }
+
+        _displayPosts[index] = result.Value;
+        StateHasChanged();
+    }
+
+    private static TimeZoneInfo ResolveTimeZone(string timeZoneId)
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+        }
+    }
+
+    private static string TruncateCaption(string caption) =>
+        caption.Length <= 80 ? caption : caption[..77] + "...";
+}
