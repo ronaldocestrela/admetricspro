@@ -256,6 +256,18 @@ public sealed class ScanOrganicTractionCommandTests
             Guid workspaceId,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlySet<Guid>>(OpenPostIds);
+
+        public Task<PaidBoostSuggestion?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(AllSuggestions.FirstOrDefault(s => s.Id == id));
+
+        public Task<IReadOnlyList<PaidBoostSuggestion>> ListByWorkspaceAsync(
+            Guid workspaceId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<PaidBoostSuggestion>>(
+                AllSuggestions.Where(s => s.WorkspaceId == workspaceId).ToList());
+
+        public Task UpdateAsync(PaidBoostSuggestion suggestion, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class InMemoryOrganicConnectionRepository : IOrganicConnectionRepository

@@ -28,6 +28,10 @@ using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Application.Posts.Queries.ListOrganicPosts;
 using SocialPublishing.Application.Status.DTOs;
 using SocialPublishing.Application.Status.Queries.GetSocialModuleStatus;
+using SocialPublishing.Application.Traction.Commands.AcceptPaidBoostSuggestion;
+using SocialPublishing.Application.Traction.Commands.DismissPaidBoostSuggestion;
+using SocialPublishing.Application.Traction.DTOs;
+using SocialPublishing.Application.Traction.Queries.ListPaidBoostSuggestions;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
@@ -711,6 +715,132 @@ public sealed class SocialController : ControllerBase
         var result = await _sender.Send(
             new CreateApprovalLinkCommand(request.WorkspaceId, request.ExpiresAtUtc),
             cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
+    /// Lista sugestões de impulsionamento por tração orgânica do workspace.
+    /// </summary>
+    /// <param name="workspaceId">Workspace filtrado.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Sugestões persistidas ou falha de negócio.</returns>
+    [HttpGet("boost-suggestions")]
+    [EndpointSummary("Lista sugestões de impulsionamento orgânico do workspace")]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<PaidBoostSuggestionDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<PaidBoostSuggestionDto>>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<PaidBoostSuggestionDto>>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<PaidBoostSuggestionDto>>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<IReadOnlyList<PaidBoostSuggestionDto>>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result<IReadOnlyList<PaidBoostSuggestionDto>>>> ListBoostSuggestions(
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteBoostSuggestionQueryAsync(workspaceId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Aceita uma sugestão de impulsionamento e solicita rascunho pausado de anúncio pago.
+    /// </summary>
+    /// <param name="id">Identificador da sugestão.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Sugestão atualizada ou falha propagada de Integrations.</returns>
+    [HttpPost("boost-suggestions/{id:guid}:accept")]
+    [EndpointSummary("Aceita sugestão de impulsionamento e cria rascunho pausado de anúncio")]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<PaidBoostSuggestionDto>>> AcceptBoostSuggestion(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteBoostSuggestionCommandAsync(
+            workspaceId,
+            id,
+            wsId => new AcceptPaidBoostSuggestionCommand(wsId, id),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Dispensa uma sugestão de impulsionamento sem criar rascunho de anúncio.
+    /// </summary>
+    /// <param name="id">Identificador da sugestão.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Sugestão dispensada ou falha de negócio.</returns>
+    [HttpPost("boost-suggestions/{id:guid}:dismiss")]
+    [EndpointSummary("Dispensa sugestão de impulsionamento orgânico")]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<PaidBoostSuggestionDto>), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<Result<PaidBoostSuggestionDto>>> DismissBoostSuggestion(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteBoostSuggestionCommandAsync(
+            workspaceId,
+            id,
+            wsId => new DismissPaidBoostSuggestionCommand(wsId, id),
+            cancellationToken);
+    }
+
+    private async Task<ActionResult<Result<IReadOnlyList<PaidBoostSuggestionDto>>>> ExecuteBoostSuggestionQueryAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(new ListPaidBoostSuggestionsQuery(workspaceId), cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
+    private async Task<ActionResult<Result<PaidBoostSuggestionDto>>> ExecuteBoostSuggestionCommandAsync<TCommand>(
+        Guid workspaceId,
+        Guid suggestionId,
+        Func<Guid, TCommand> commandFactory,
+        CancellationToken cancellationToken)
+        where TCommand : IRequest<Result<PaidBoostSuggestionDto>>
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<PaidBoostSuggestionDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<PaidBoostSuggestionDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<PaidBoostSuggestionDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<PaidBoostSuggestionDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(commandFactory(workspaceId), cancellationToken);
         return MapSocialConnectionResult(result);
     }
 

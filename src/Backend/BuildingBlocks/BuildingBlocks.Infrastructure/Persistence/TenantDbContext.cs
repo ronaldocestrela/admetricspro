@@ -68,6 +68,10 @@ public class TenantDbContext : DbContext
     /// <summary>Diário de idempotência e auditoria de operações Meta.</summary>
     public DbSet<BuildingBlocks.Domain.Integrations.MetaApiOperation> MetaApiOperations => Set<BuildingBlocks.Domain.Integrations.MetaApiOperation>();
 
+    /// <summary>Rascunhos locais pausados de impulsionamento originados de tração orgânica.</summary>
+    public DbSet<BuildingBlocks.Domain.Integrations.PaidBoostDraft> PaidBoostDrafts =>
+        Set<BuildingBlocks.Domain.Integrations.PaidBoostDraft>();
+
     /// <summary>
     /// Gets the operational immutable audit logs table recording role updates and sensitive actions.
     /// </summary>
@@ -156,6 +160,7 @@ public class TenantDbContext : DbContext
             builder.Property(o => o.ErrorCode).HasMaxLength(100);
             builder.HasIndex(o => new { o.WorkspaceId, o.AccountId, o.CreatedAtUtc });
         });
+        modelBuilder.ApplyConfiguration(new PaidBoostDraftEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new TenantAuditLogEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new CampaignEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new AdSetEntityTypeConfiguration());

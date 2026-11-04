@@ -53,4 +53,50 @@ public sealed class PaidBoostSuggestionRepository : IPaidBoostSuggestionReposito
 
         return ids.ToHashSet();
     }
+
+    /// <inheritdoc />
+    public async Task<PaidBoostSuggestion?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return null;
+        }
+
+        return await contextResult.Value.PaidBoostSuggestions
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PaidBoostSuggestion>> ListByWorkspaceAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return Array.Empty<PaidBoostSuggestion>();
+        }
+
+        return await contextResult.Value.PaidBoostSuggestions
+            .AsNoTracking()
+            .Where(s => s.WorkspaceId == workspaceId)
+            .OrderByDescending(s => s.DetectedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateAsync(PaidBoostSuggestion suggestion, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return;
+        }
+
+        contextResult.Value.PaidBoostSuggestions.Update(suggestion);
+    }
 }

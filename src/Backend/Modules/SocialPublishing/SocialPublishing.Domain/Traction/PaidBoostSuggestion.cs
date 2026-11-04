@@ -141,4 +141,42 @@ public sealed class PaidBoostSuggestion : Entity<Guid>
                 detectedAtUtc,
                 paidDraftId: null));
     }
+
+    /// <summary>
+    /// Aceita a sugestão após criação bem-sucedida do rascunho de anúncio pago.
+    /// </summary>
+    /// <param name="paidDraftId">Identificador do rascunho local pausado.</param>
+    /// <returns>Sucesso ou erro de transição.</returns>
+    public Result Accept(Guid paidDraftId)
+    {
+        if (Status != PaidBoostSuggestionStatus.Open)
+        {
+            return Result.Failure(SocialErrors.InvalidTransition);
+        }
+
+        if (paidDraftId == Guid.Empty)
+        {
+            return Result.Failure(
+                Error.Validation("Social.PaidDraftIdRequired", "O identificador do rascunho pago é obrigatório."));
+        }
+
+        Status = PaidBoostSuggestionStatus.Accepted;
+        PaidDraftId = paidDraftId;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Dispensa a sugestão sem solicitar rascunho de mídia paga.
+    /// </summary>
+    /// <returns>Sucesso ou erro de transição.</returns>
+    public Result Dismiss()
+    {
+        if (Status != PaidBoostSuggestionStatus.Open)
+        {
+            return Result.Failure(SocialErrors.InvalidTransition);
+        }
+
+        Status = PaidBoostSuggestionStatus.Dismissed;
+        return Result.Success();
+    }
 }

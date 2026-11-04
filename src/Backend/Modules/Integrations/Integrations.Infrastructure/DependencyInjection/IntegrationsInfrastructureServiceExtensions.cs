@@ -133,6 +133,9 @@ public static class IntegrationsInfrastructureServiceExtensions
         // Repositório de persistência da hierarquia de campanhas
         services.AddScoped<Integrations.Domain.Campaigns.ICampaignHierarchyRepository, Integrations.Infrastructure.Campaigns.Persistence.CampaignHierarchyRepository>();
 
+        services.AddScoped<Integrations.Application.Boost.Persistence.IPaidBoostDraftRepository,
+            Integrations.Infrastructure.Boost.Persistence.PaidBoostDraftRepository>();
+
         // Repositório de persistência de métricas analíticas de campanhas (idempotente)
         services.AddScoped<Integrations.Domain.Campaigns.ICampaignMetricsRepository, Integrations.Infrastructure.Campaigns.Persistence.CampaignMetricsRepository>();
 

@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 6.1** o módulo inclui detecção pura de tração orgânica (`OrganicTractionDetector`) e a porta `IOrganicInsightsReader`. Até a **Subfase 5.4** já incluía o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections`, **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento, **portal público de aprovação** (`/approve/{token}`), **formulário de voz de marca** `/social/brand-voice` e **geração de cronograma** no calendário — tudo via **`ISocialPublishingClient`** (sem `DbContext`, repositório ou MediatR no frontend). Sinergia orgânica + mídia paga permanece na Fase 6 (ADR 0048).
+Até a **Subfase 6.3** o módulo inclui scan de tração, sugestões `PaidBoostSuggestion`, aceite/dispensa e handoff `CreatePaidBoostDraftCommand` para rascunho pausado em Integrations. Até a **Subfase 5.4** já incluía o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections`, **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento, **portal público de aprovação** (`/approve/{token}`), **formulário de voz de marca** `/social/brand-voice` e **geração de cronograma** no calendário — tudo via **`ISocialPublishingClient`** (sem `DbContext`, repositório ou MediatR no frontend). Sinergia orgânica + mídia paga permanece na Fase 6 (ADR 0048).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -85,6 +85,7 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.PublishFailed` | Falha definitiva após o teto de tentativas ou erro funcional da rede. |
 | `Social.PublishFormatUnsupported` | Formato não suportado pelo adaptador da plataforma do post. |
 | `Social.BoostAlreadyRequested` | Já existe sugestão aberta para o mesmo post. |
+| `Social.BoostSuggestionNotFound` | Sugestão inexistente ou de outro workspace (mesma resposta nos dois casos). |
 | `OrganicTraction.InsufficientData` | Menos de três posts com impressões na janela de 28 dias em todas as redes do workspace. |
 | `Social.InsightsReadFailed` | Falha HTTP ou corpo inválido ao ler métricas orgânicas na rede. |
 
@@ -1246,18 +1247,71 @@ Testes: `ScanOrganicTractionCommandTests`, `LinkOrganicAssetWhenTractionDetected
 
 ---
 
-## 13. Fora de escopo (após Subfase 6.2)
+## 13. Aceite da sugestão e rascunho pausado (Subfase 6.3)
+
+Comandos `AcceptPaidBoostSuggestionCommand` e `DismissPaidBoostSuggestionCommand`. Aceite valida sugestão `Open`, carrega legenda e `ObjectKey` da primeira mídia do post orgânico e envia `CreatePaidBoostDraftCommand` (contrato em `SocialPublishing.Contracts`). Integrations persiste `PaidBoostDraft` **pausado** no banco operacional do tenant; nenhuma escrita na rede de anúncios nesta subfase.
+
+### Rotas HTTP
+
+| Método | Rota | Permissão |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/social/boost-suggestions?workspaceId=` | `social.read` |
+| `POST` | `/api/v1/social/boost-suggestions/{id}:accept?workspaceId=` | `social.copilot.generate` |
+| `POST` | `/api/v1/social/boost-suggestions/{id}:dismiss?workspaceId=` | `social.copilot.generate` |
+
+### Exemplo — listagem (`Result` 200)
+
+```json
+{
+  "isSuccess": true,
+  "value": [
+    {
+      "id": "guid",
+      "organicPostId": "guid",
+      "platform": "Instagram",
+      "status": "Open",
+      "impressions": 5000,
+      "engagementRate": 0.05,
+      "engagementMultiple": 2.5,
+      "detectedAtUtc": "2026-11-03T15:00:00Z",
+      "paidDraftId": null
+    }
+  ],
+  "error": null
+}
+```
+
+### Exemplo — aceite com sucesso (`Result` 200)
+
+Mesmo envelope com `status: "Accepted"` e `paidDraftId` preenchido com o identificador do rascunho local.
+
+### Erros de borda
+
+| Cenário | HTTP | Código |
+| :--- | :--- | :--- |
+| Sugestão ausente ou de outro workspace | **404** | `Social.BoostSuggestionNotFound` |
+| Aceite/dispensa fora de `Open` | **409** | `Social.InvalidTransition` |
+| Post orgânico ausente | **404** | `Social.PostNotFound` |
+| Sem conta Meta conectada | **404** | `Meta.AccountNotLinked` |
+| Sem conta TikTok Ads conectada | **404** | `SyncCampaignHierarchy.AccountNotFound` |
+| Falha do Integrations no aceite | mesmo status do erro | código original; sugestão permanece `Open` |
+
+Testes: `AcceptPaidBoostSuggestionCommandTests`, `CreatePaidBoostDraftCommandHandlerTests`, `IntegrationsApplication_MayReferenceSocialPublishingContractsOnly`.
+
+---
+
+## 14. Fora de escopo (após Subfase 6.3)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh preventivo e revogação remota na rede (Subfase 2.3) |
 | Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
 | Lifecycle de posts na UI | Ações `:submit` / `:approve` / `:schedule` por card na grade |
-| Sinergia paga (continuação) | Aceite de boost, rascunho Integrations, rotas HTTP, banner Blazor (Subfases 6.3–6.4; parágrafo de origem orgânica no Creative Hub) |
+| Sinergia paga (continuação) | Banner Blazor e cliente HTTP na grade (Subfase 6.4) |
 
 ---
 
-## 14. Composição na Web API
+## 15. Composição na Web API
 
 Registro em `Program.cs`:
 

@@ -324,6 +324,14 @@ public static class SocialErrors
             "Já existe uma sugestão de impulsionamento aberta para este post orgânico.");
 
     /// <summary>
+    /// Erro quando a sugestão de impulsionamento não existe ou pertence a outro workspace.
+    /// </summary>
+    public static Error BoostSuggestionNotFound { get; } =
+        Error.NotFound(
+            "Social.BoostSuggestionNotFound",
+            "A sugestão de impulsionamento não está disponível para este workspace.");
+
+    /// <summary>
     /// Erro quando a leitura de insights orgânicos na rede falha.
     /// </summary>
     public static Error InsightsReadFailed { get; } =

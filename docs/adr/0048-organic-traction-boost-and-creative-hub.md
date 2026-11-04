@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceito em 2026-11-04. Subfase **6.2** implementada (scan persistido, `OrganicTractionDetectedNotification`, upsert no Creative Hub). Aceite de sugestão, rascunho de anúncio e superfície Blazor permanecem nas subfases **6.3** e **6.4**.
+Aceito em 2026-11-04. Subfases **6.2** e **6.3** implementadas (scan, Creative Hub, aceite/dispensa e rascunho local pausado). Superfície Blazor (banner na grade) permanece na subfase **6.4**.
 
 ## Contexto
 
@@ -39,6 +39,20 @@ Requisitos da subfase 6.2:
 
 1. **`ISocialPublishingSchemaMigrator`** continua aplicando migrações sociais; **`IAnalyticsSchemaMigrator`** aplica o schema analytics no provisionamento e no hosted service de migração de tenants (mesmo pipeline do decorator em `AddSocialPublishingTenantPersistenceComposition`).
 
+### Aceite e rascunho pausado (Subfase 6.3)
+
+1. **`CreatePaidBoostDraftCommand`** (`ICommand<Guid>`) em `SocialPublishing.Contracts`. Handler em `Integrations.Application`; `SocialPublishing.Application` despacha via `ISender` no aceite, sem referência a `Integrations.*`.
+
+2. **Rotas autenticadas:** `GET /api/v1/social/boost-suggestions`, `POST .../{id}:accept`, `POST .../{id}:dismiss`. Permissões: listagem `social.read`; aceite/dispensa `social.copilot.generate`.
+
+3. **Falha de Integrations** (ex.: conta ausente) **não** altera a sugestão `Open`; o erro original é repassado ao cliente. Sucesso marca `Accepted` e grava `PaidDraftId` após `CommitAsync` social.
+
+4. **Rascunho local `PaidBoostDraft`** no banco operacional do tenant (`PaidBoostDrafts`), status `Paused`, legenda e `MediaObjectKey` orgânicos. **Sem** POST na Meta/TikTok Ads e **sem** linha em `MetaApiOperations` (ADR 0040) nesta subfase — ativação continua pelo fluxo existente de mídia paga.
+
+5. **Idempotência:** índice único `(WorkspaceId, SuggestionId)` no rascunho; reexecução do comando devolve o mesmo `Guid`.
+
+6. **Mapeamento de rede:** Instagram/Facebook Page → `MetaAds` (`Meta.AccountNotLinked` se vazio); TikTok orgânico → `TikTokAds` (`SyncCampaignHierarchy.AccountNotFound` se vazio).
+
 ## Consequências
 
 ### Positivas
@@ -51,4 +65,4 @@ Requisitos da subfase 6.2:
 
 - Notificação in-process não sobrevive a crash entre commit e publish — mitigação futura: outbox ou reprocessamento idempotente; hoje a sugestão `Open` impede reenvio duplicado na mesma requisição.
 - Permalink orgânico ainda nulo no scan — UI e card do hub na subfase 6.4.
-- Parágrafo de origem orgânica em `docs/modules/creative-hub-and-fatigue-detector.md` e aceite Integrations → subfases 6.3–6.4.
+- Banner Blazor e cliente HTTP do WebApp → subfase 6.4.
