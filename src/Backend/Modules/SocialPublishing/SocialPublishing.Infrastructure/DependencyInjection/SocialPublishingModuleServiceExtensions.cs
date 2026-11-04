@@ -12,6 +12,7 @@ using Amazon.S3;
 using SocialPublishing.Infrastructure.Ai;
 using SocialPublishing.Infrastructure.Media;
 using SocialPublishing.Infrastructure.Publishing;
+using SocialPublishing.Infrastructure.Insights;
 using SocialPublishing.Infrastructure.OAuth;
 using SocialPublishing.Infrastructure.Persistence;
 using SocialPublishing.Infrastructure.Persistence.Repositories;
@@ -165,6 +166,8 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddHttpClient<MetaInstagramOrganicAdapter>().RemoveAllLoggers();
         services.AddHttpClient<MetaFacebookPageOrganicAdapter>().RemoveAllLoggers();
         services.AddHttpClient<TikTokContentPostingAdapter>().RemoveAllLoggers();
+
+        services.AddHttpClient<IOrganicInsightsReader, HttpOrganicInsightsReader>().RemoveAllLoggers();
 
         services.AddTransient<IOrganicPlatformAdapter>(sp => sp.GetRequiredService<MetaInstagramOrganicAdapter>());
         services.AddTransient<IOrganicPlatformAdapter>(sp => sp.GetRequiredService<MetaFacebookPageOrganicAdapter>());

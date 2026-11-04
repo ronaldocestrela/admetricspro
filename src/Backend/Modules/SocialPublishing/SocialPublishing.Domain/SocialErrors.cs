@@ -306,4 +306,28 @@ public static class SocialErrors
     /// </summary>
     public static Error ApprovalPostSelectionRequired { get; } =
         Error.Validation("Social.ApprovalPostSelectionRequired", "Selecione ao menos um post para decidir.");
+
+    /// <summary>
+    /// Erro quando não há posts publicados com impressões suficientes na janela para calcular tração.
+    /// </summary>
+    public static Error OrganicTractionInsufficientData { get; } =
+        Error.Validation(
+            "OrganicTraction.InsufficientData",
+            "Não há dados suficientes de impressões na janela para detectar tração orgânica.");
+
+    /// <summary>
+    /// Erro quando já existe sugestão de impulsionamento aberta para o mesmo post orgânico.
+    /// </summary>
+    public static Error BoostAlreadyRequested { get; } =
+        Error.Conflict(
+            "Social.BoostAlreadyRequested",
+            "Já existe uma sugestão de impulsionamento aberta para este post orgânico.");
+
+    /// <summary>
+    /// Erro quando a leitura de insights orgânicos na rede falha.
+    /// </summary>
+    public static Error InsightsReadFailed { get; } =
+        Error.Failure(
+            "Social.InsightsReadFailed",
+            "Não foi possível obter métricas orgânicas da rede para este post.");
 }

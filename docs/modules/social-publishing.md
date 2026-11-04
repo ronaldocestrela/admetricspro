@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 5.4** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections`, **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento, **portal público de aprovação** (`/approve/{token}`), **formulário de voz de marca** `/social/brand-voice` e **geração de cronograma** no calendário — tudo via **`ISocialPublishingClient`** (sem `DbContext`, repositório ou MediatR no frontend). Sinergia orgânica + mídia paga permanece na Fase 6 (ADR 0048).
+Até a **Subfase 6.1** o módulo inclui detecção pura de tração orgânica (`OrganicTractionDetector`) e a porta `IOrganicInsightsReader`. Até a **Subfase 5.4** já incluía o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections`, **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento, **portal público de aprovação** (`/approve/{token}`), **formulário de voz de marca** `/social/brand-voice` e **geração de cronograma** no calendário — tudo via **`ISocialPublishingClient`** (sem `DbContext`, repositório ou MediatR no frontend). Sinergia orgânica + mídia paga permanece na Fase 6 (ADR 0048).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -85,6 +85,8 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.PublishFailed` | Falha definitiva após o teto de tentativas ou erro funcional da rede. |
 | `Social.PublishFormatUnsupported` | Formato não suportado pelo adaptador da plataforma do post. |
 | `Social.BoostAlreadyRequested` | Já existe sugestão aberta para o mesmo post. |
+| `OrganicTraction.InsufficientData` | Menos de três posts com impressões na janela de 28 dias em todas as redes do workspace. |
+| `Social.InsightsReadFailed` | Falha HTTP ou corpo inválido ao ler métricas orgânicas na rede. |
 
 Todas as operações futuras devem retornar `Result` / `Result<T>` com esses códigos estáveis, sem `throw` para regra de negócio.
 
@@ -1147,18 +1149,79 @@ Testes: **`BrandVoiceFormTests`**, **`GeneratePlanDialogTests`**, extensões em 
 
 ---
 
-## 12. Fora de escopo (após Subfase 5.4)
+## 12. Detecção de tração orgânica (Subfase 6.1)
+
+Objetivo: identificar posts publicados com engajamento anômalo em relação à mediana do **mesmo workspace** na **mesma rede**, sem persistir sugestão, sem MediatR para outros módulos e sem rota HTTP nesta subfase.
+
+### Fórmula e limiares
+
+Constantes em `OrganicTractionThresholds`:
+
+| Constante | Valor | Uso |
+| :--- | :--- | :--- |
+| `MinimumSampleSize` | 3 | Mínimo de posts com impressões &gt; 0 na janela, por rede |
+| `BaselineWindowDays` | 28 | Janela retroativa a partir de `asOfUtc` |
+| `MinimumImpressions` | 1000 | Impressões mínimas para candidato a hit |
+| `EngagementMultiple` | 2,0 | Post é hit se taxa ≥ múltiplo × mediana |
+
+**Taxa de engajamento** (por post):
+
+\[
+\text{engajamento} = \frac{\text{curtidas} + \text{comentários} + \text{compartilhamentos} + \text{salvamentos}}{\text{impressões}}
+\]
+
+**Linha de base:** mediana das taxas dos posts elegíveis na janela (mesma rede, mesmo workspace). Posts com impressões zero ficam fora da janela. A mediana inclui o candidato e posts que já possuem sugestão `Open` (para não inflar artificialmente o limiar).
+
+**Hit:** impressões ≥ `MinimumImpressions` **e** engajamento ≥ `EngagementMultiple` × mediana (igualdade nos dois limiares conta).
+
+**Dados insuficientes:** se **nenhuma** rede atinge `MinimumSampleSize` na janela → `OrganicTraction.InsufficientData` e nenhum hit.
+
+**Sugestão já aberta:** post que passaria no limiar, mas `HasOpenSuggestion = true`, não entra em `Hits`; o relatório lista `SkippedDueToOpenSuggestion` com `Social.BoostAlreadyRequested`.
+
+### Domínio puro
+
+`OrganicTractionDetector.Detect(workspaceId, series, asOfUtc)` em `SocialPublishing.Domain/Traction/`:
+
+- Entrada: `IReadOnlyList<OrganicPostInsightSample>` (métricas já conhecidas pelo chamador).
+- Saída: `Result<OrganicTractionReport>` com `Hits` e `SkippedDueToOpenSuggestion`.
+- Função pura: mesmo input → mesmo output; sem `DateTime.UtcNow` interno.
+
+Testes: `OrganicTractionDetectorTests`.
+
+### Porta de insights (`IOrganicInsightsReader`)
+
+Coleta de métricas na rede fica atrás de `IOrganicInsightsReader.ReadAsync(OrganicInsightsReadRequest)` → `Result<OrganicPostInsightSnapshot>`. O request traz token **já decifrado**, `ExternalAccountId`, `PublishedExternalId` e `OrganicPlatform`. Falha de leitura → `Social.InsightsReadFailed` (401 → `Social.TokenRevoked`). O adaptador **não** abre cofre, **não** persiste sugestão e **não** referencia repositório.
+
+Implementação: `HttpOrganicInsightsReader` (`SocialPublishing.Infrastructure/Insights/`).
+
+| Rede | Chamada | Métricas mapeadas |
+| :--- | :--- | :--- |
+| Instagram | `GET /{media-id}/insights?metric=impressions,likes,comments,shares,saved` | Todas as cinco |
+| Facebook Page | `GET /{post-id}/insights?metric=post_impressions,post_reactions_like_total,post_comments,post_shares` | Salvamentos = 0 |
+| TikTok | `POST https://open.tiktokapis.com/v2/video/query/` (`video_ids`) | `view_count` → impressões; salvamentos = 0 |
+
+Autenticação: header `Authorization: Bearer`; token **não** aparece na URI. Versão Graph: `SocialPublishing:OAuth:Meta:GraphApiVersion` (padrão `v26.0`).
+
+Registro DI: `AddHttpClient<IOrganicInsightsReader, HttpOrganicInsightsReader>().RemoveAllLoggers()` em `AddSocialPublishingModule`.
+
+Testes: `HttpOrganicInsightsReaderTests`.
+
+O comando `ScanOrganicTraction`, persistência de `PaidBoostSuggestion`, notificação `OrganicTractionDetectedNotification` e worker ficam na **Subfase 6.2**.
+
+---
+
+## 13. Fora de escopo (após Subfase 6.1)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh preventivo e revogação remota na rede (Subfase 2.3) |
 | Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
 | Lifecycle de posts na UI | Ações `:submit` / `:approve` / `:schedule` por card na grade |
-| Sinergia paga | Boost e Creative Hub (Fase 6) |
+| Sinergia paga (continuação) | Scan persistido, Creative Hub, aceite de boost, rascunho Integrations, banner Blazor (Subfases 6.2–6.4; ADR 0048) |
 
 ---
 
-## 13. Composição na Web API
+## 14. Composição na Web API
 
 Registro em `Program.cs`:
 
