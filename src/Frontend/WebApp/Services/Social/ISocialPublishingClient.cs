@@ -1,9 +1,12 @@
 using BuildingBlocks.Domain.Primitives;
+using SocialPublishing.Application.Brand.DTOs;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.DTOs;
 using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
+using SocialPublishing.Application.Planning.DTOs;
 using SocialPublishing.Application.Posts.DTOs;
+using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
 
 namespace WebApp.Services.Social;
@@ -104,5 +107,67 @@ public interface ISocialPublishingClient
     Task<Result<ApprovalLinkCreatedDto>> CreateApprovalLinkAsync(
         Guid workspaceId,
         DateTime expiresAtUtc,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém o DNA de marca persistido para o workspace.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Perfil de voz de marca ou ausência.</returns>
+    Task<Result<BrandVoiceDto>> GetBrandVoiceAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cria ou atualiza o DNA de marca do workspace.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="tone">Tom de voz.</param>
+    /// <param name="persona">Persona da marca.</param>
+    /// <param name="mandatoryLinks">Links absolutos obrigatórios.</param>
+    /// <param name="forbiddenTerms">Termos proibidos.</param>
+    /// <param name="emojiPolicy">Política de emojis.</param>
+    /// <param name="hashtagLimit">Teto de hashtags.</param>
+    /// <param name="authorityWeight">Peso do pilar Autoridade.</param>
+    /// <param name="saleWeight">Peso do pilar Venda.</param>
+    /// <param name="connectionWeight">Peso do pilar Conexão.</param>
+    /// <param name="socialProofWeight">Peso do pilar Prova social.</param>
+    /// <param name="languageCode">Código de idioma.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Perfil persistido ou falha de validação.</returns>
+    Task<Result<BrandVoiceDto>> UpsertBrandVoiceAsync(
+        Guid workspaceId,
+        string tone,
+        string persona,
+        IReadOnlyList<string> mandatoryLinks,
+        IReadOnlyList<string> forbiddenTerms,
+        EmojiPolicy emojiPolicy,
+        int hashtagLimit,
+        int authorityWeight,
+        int saleWeight,
+        int connectionWeight,
+        int socialProofWeight,
+        string languageCode,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Materializa um plano editorial em posts orgânicos em rascunho.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="rangeStart">Data inicial inclusiva.</param>
+    /// <param name="rangeEnd">Data final inclusiva.</param>
+    /// <param name="timeZoneId">Identificador IANA do fuso.</param>
+    /// <param name="postsPerWeek">Posts por semana (1–7).</param>
+    /// <param name="seed">Semente determinística do planner.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Posts criados e slots que falharam.</returns>
+    Task<Result<GeneratedPlanDto>> GeneratePlanAsync(
+        Guid workspaceId,
+        DateOnly rangeStart,
+        DateOnly rangeEnd,
+        string timeZoneId,
+        int postsPerWeek,
+        int seed,
         CancellationToken cancellationToken = default);
 }

@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 5.3** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections` e **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento via `ISocialPublishingClient`. Portal público de aprovação, copilot na UI e sinergia paga permanecem nas Subfases 5.3–6 (ADRs 0047–0048).
+Até a **Subfase 5.4** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections`, **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento, **portal público de aprovação** (`/approve/{token}`), **formulário de voz de marca** `/social/brand-voice` e **geração de cronograma** no calendário — tudo via **`ISocialPublishingClient`** (sem `DbContext`, repositório ou MediatR no frontend). Sinergia orgânica + mídia paga permanece na Fase 6 (ADR 0048).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -1082,13 +1082,78 @@ ADR: [0047](../adr/0047-white-label-organic-approval-portal.md).
 
 ---
 
-## 12. Fora de escopo (após Subfase 5.3)
+## 11.4 Frontend Blazor — copilot (Subfase 5.4)
+
+Formulário de **Brand Voice** e diálogo **Gerar cronograma** no calendário. Toda leitura e mutação passa por **`ISocialPublishingClient`**; é **proibido** injetar `DbContext`, repositórios ou MediatR no `WebApp`.
+
+### Fluxo ponta a ponta (gestor)
+
+1. **Voz da marca** — em `/social/brand-voice`, salvar tom, persona, links, termos, emoji e pesos dos pilares (`PUT /api/v1/social/brand-voice/{workspaceId}`). A UI **bloqueia** salvar se a soma dos quatro pesos ≠ 100; validações adicionais continuam no backend (`Social.PillarWeightsInvalid`, etc.).
+2. **Gerar cronograma** — no calendário (`/social/calendar`), botão **Gerar cronograma** abre `GeneratePlanDialog` e chama `POST /api/v1/social/plans:generate` com intervalo (`DateOnly`), `postsPerWeek`, `seed` e fuso IANA (**`America/Sao_Paulo`**, constante da página até o `WorkspaceDto` expor fuso).
+3. **Revisar na grade** — posts em **`Draft`** aparecem na grade após fechar o diálogo com sucesso (total ou parcial); a página recarrega `ListPostsAsync`.
+4. **Aprovação interna / agendamento** — fluxos HTTP das Subfases 4.x (`:submit`, `:approve`, `:schedule`, …) permanecem na API; a UI de lifecycle por post pode evoluir depois desta subfase.
+5. **Link público** — botão **Link de aprovação** na toolbar do calendário (`CreateApprovalLinkAsync`); cliente final aprova em `/approve/{token}` ou `/t/{slug}/approve/{token}` (Subfase 5.3).
+
+### Rotas e componentes
+
+| Rota Blazor | Layout | Componente |
+| :--- | :--- | :--- |
+| `/social/brand-voice` | `TenantMainLayout` | `SocialBrandVoicePage` + `BrandVoiceForm` |
+| `/social/calendar` (ação) | `TenantMainLayout` | `GeneratePlanDialog` (modal) |
+
+Navegação lateral: **Voz da marca** (`TenantSidebar`), junto a Redes orgânicas e Calendário orgânico.
+
+### Brand Voice (UI)
+
+| Comportamento | Detalhe |
+| :--- | :--- |
+| Carregamento | `GetBrandVoiceAsync`; `Social.BrandVoiceNotFound` → formulário vazio **sem** alerta de erro |
+| Soma dos pesos | Exibida em tempo real; botão salvar desabilitado se ≠ 100 |
+| Falha no PUT | Descrição do erro em `Result`; campos digitados **não** são limpos |
+| Troca de workspace | `@key` no formulário recarrega o perfil do cliente ativo |
+
+### Gerar cronograma (UI)
+
+| Cenário | UI |
+| :--- | :--- |
+| HTTP **200** com `failedSlots` | Lista cada slot (data local, pilar, rede, `errorDescription`); mostra quantidade de `createdPostIds` e link **Ver no calendário orgânico** (`href="social/calendar"`) |
+| `Result` de falha (ex. Brand Voice ausente) | Mensagem de erro; **sem** lista de slots nem link de posts criados |
+| Fechar após sucesso | `OnGenerationSucceeded` → `ListPostsAsync` na página do calendário |
+
+Corpo HTTP gerado pelo cliente (espelha §7.4):
+
+```json
+{
+  "workspaceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "rangeStart": "2026-11-02",
+  "rangeEnd": "2026-11-06",
+  "timeZoneId": "America/Sao_Paulo",
+  "postsPerWeek": 5,
+  "seed": 0
+}
+```
+
+### Cliente HTTP (copilot)
+
+| Método | API |
+| :--- | :--- |
+| `GetBrandVoiceAsync` | `GET /api/v1/social/brand-voice/{workspaceId}` |
+| `UpsertBrandVoiceAsync` | `PUT /api/v1/social/brand-voice/{workspaceId}` |
+| `GeneratePlanAsync` | `POST /api/v1/social/plans:generate` |
+
+Permissões: leitura de Brand Voice **`social.read`**; upsert e geração **`social.copilot.generate`**. Falhas de rede → `Social.NetworkError` no cliente (sem exceção de fluxo na UI).
+
+Testes: **`BrandVoiceFormTests`**, **`GeneratePlanDialogTests`**, extensões em **`SocialPublishingClientTests`**.
+
+---
+
+## 12. Fora de escopo (após Subfase 5.4)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh preventivo e revogação remota na rede (Subfase 2.3) |
 | Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
-| Blazor (continuação) | Formulário Brand Voice e gerar cronograma na UI (Subfase 5.4) |
+| Lifecycle de posts na UI | Ações `:submit` / `:approve` / `:schedule` por card na grade |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
 
 ---

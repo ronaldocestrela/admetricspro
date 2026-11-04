@@ -3,7 +3,10 @@ using System.Text.Json;
 using BuildingBlocks.Domain.Primitives;
 using System.Globalization;
 using SocialPublishing.Application.Approvals.DTOs;
+using SocialPublishing.Application.Brand.DTOs;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
+using SocialPublishing.Application.Planning.DTOs;
+using SocialPublishing.Domain.Brand;
 using SocialPublishing.Application.Connections.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
 using SocialPublishing.Application.Posts.DTOs;
@@ -246,6 +249,139 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         {
             return Result<OrganicPostDto>.Failure(
                 Error.Failure("Social.NetworkError", $"Erro de comunicação ao reagendar post orgânico: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<BrandVoiceDto>> GetBrandVoiceAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<BrandVoiceDto>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"/api/v1/social/brand-voice/{workspaceId}");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<BrandVoiceDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<BrandVoiceDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao obter voz de marca."));
+        }
+        catch (Exception ex)
+        {
+            return Result<BrandVoiceDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao obter voz de marca: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<BrandVoiceDto>> UpsertBrandVoiceAsync(
+        Guid workspaceId,
+        string tone,
+        string persona,
+        IReadOnlyList<string> mandatoryLinks,
+        IReadOnlyList<string> forbiddenTerms,
+        EmojiPolicy emojiPolicy,
+        int hashtagLimit,
+        int authorityWeight,
+        int saleWeight,
+        int connectionWeight,
+        int socialProofWeight,
+        string languageCode,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<BrandVoiceDto>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/social/brand-voice/{workspaceId}")
+            {
+                Content = JsonContent.Create(
+                    new
+                    {
+                        tone,
+                        persona,
+                        mandatoryLinks,
+                        forbiddenTerms,
+                        emojiPolicy,
+                        hashtagLimit,
+                        authorityWeight,
+                        saleWeight,
+                        connectionWeight,
+                        socialProofWeight,
+                        languageCode,
+                    },
+                    options: JsonOptions),
+            };
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<BrandVoiceDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<BrandVoiceDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao salvar voz de marca."));
+        }
+        catch (Exception ex)
+        {
+            return Result<BrandVoiceDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao salvar voz de marca: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<GeneratedPlanDto>> GeneratePlanAsync(
+        Guid workspaceId,
+        DateOnly rangeStart,
+        DateOnly rangeEnd,
+        string timeZoneId,
+        int postsPerWeek,
+        int seed,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<GeneratedPlanDto>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/social/plans:generate")
+            {
+                Content = JsonContent.Create(
+                    new
+                    {
+                        workspaceId,
+                        rangeStart,
+                        rangeEnd,
+                        timeZoneId,
+                        postsPerWeek,
+                        seed,
+                    },
+                    options: JsonOptions),
+            };
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<GeneratedPlanDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<GeneratedPlanDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao gerar cronograma."));
+        }
+        catch (Exception ex)
+        {
+            return Result<GeneratedPlanDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao gerar cronograma: {ex.Message}"));
         }
     }
 

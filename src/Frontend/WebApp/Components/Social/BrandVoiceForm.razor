@@ -1,0 +1,249 @@
+@namespace WebApp.Components.Social
+@using BuildingBlocks.Domain.Primitives
+@using SocialPublishing.Application.Brand.DTOs
+@using SocialPublishing.Domain
+@using SocialPublishing.Domain.Brand
+@using WebApp.Services.Social
+@inject ISocialPublishingClient SocialClient
+
+<div class="brand-voice-form" data-testid="brand-voice-form">
+    @if (!string.IsNullOrEmpty(_loadError))
+    {
+        <div class="alert alert-danger" data-testid="brand-voice-load-error">@_loadError</div>
+    }
+
+    @if (!string.IsNullOrEmpty(_saveError))
+    {
+        <div class="alert alert-danger" data-testid="brand-voice-save-error">@_saveError</div>
+    }
+
+    @if (_isLoading)
+    {
+        <p class="text-muted" data-testid="brand-voice-loading">Carregando DNA de marca…</p>
+    }
+    else
+    {
+        <div class="mb-3">
+            <label class="form-label" for="brand-voice-tone">Tom de voz</label>
+            <input id="brand-voice-tone" class="form-control" data-testid="brand-voice-tone" @bind="_tone" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="brand-voice-persona">Persona</label>
+            <input id="brand-voice-persona" class="form-control" data-testid="brand-voice-persona" @bind="_persona" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="brand-voice-mandatory-links">Links obrigatórios (um por linha)</label>
+            <textarea id="brand-voice-mandatory-links" class="form-control" rows="2" data-testid="brand-voice-mandatory-links" @bind="_mandatoryLinksText"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="brand-voice-forbidden-terms">Termos proibidos (um por linha)</label>
+            <textarea id="brand-voice-forbidden-terms" class="form-control" rows="2" data-testid="brand-voice-forbidden-terms" @bind="_forbiddenTermsText"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="brand-voice-emoji">Política de emoji</label>
+            <select id="brand-voice-emoji" class="form-select" data-testid="brand-voice-emoji" @bind="_emojiPolicy">
+                <option value="@EmojiPolicy.Allowed">Permitidos</option>
+                <option value="@EmojiPolicy.Sparingly">Com moderação</option>
+                <option value="@EmojiPolicy.Forbidden">Proibidos</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="brand-voice-hashtag-limit">Teto de hashtags</label>
+            <input id="brand-voice-hashtag-limit" type="number" class="form-control" data-testid="brand-voice-hashtag-limit" @bind="_hashtagLimit" min="1" />
+        </div>
+
+        <fieldset class="mb-3">
+            <legend class="form-label">Pesos dos pilares (%)</legend>
+            <div class="row g-2">
+                <div class="col-6 col-md-3">
+                    <label class="form-label small">Autoridade</label>
+                    <input type="number" class="form-control" data-testid="brand-voice-weight-authority" @bind="_authorityWeight" min="0" max="100" />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small">Venda</label>
+                    <input type="number" class="form-control" data-testid="brand-voice-weight-sale" @bind="_saleWeight" min="0" max="100" />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small">Conexão</label>
+                    <input type="number" class="form-control" data-testid="brand-voice-weight-connection" @bind="_connectionWeight" min="0" max="100" />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small">Prova social</label>
+                    <input type="number" class="form-control" data-testid="brand-voice-weight-social-proof" @bind="_socialProofWeight" min="0" max="100" />
+                </div>
+            </div>
+            <p class="small mt-2 mb-0" data-testid="brand-voice-weights-sum">Soma: @_weightsSum % @( _weightsSum == 100 ? "" : "(deve ser 100)")</p>
+        </fieldset>
+
+        <input type="hidden" data-testid="brand-voice-language" value="@_languageCode" />
+
+        <button type="button"
+                class="btn btn-primary"
+                data-testid="brand-voice-save"
+                disabled="@(!CanSave)"
+                @onclick="SaveAsync">
+            @if (_isSaving)
+            {
+                <span>Salvando…</span>
+            }
+            else
+            {
+                <span>Salvar DNA de marca</span>
+            }
+        </button>
+
+        @if (!string.IsNullOrEmpty(_saveSuccess))
+        {
+            <div class="alert alert-success mt-3" data-testid="brand-voice-save-success">@_saveSuccess</div>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Workspace proprietário do perfil de voz de marca.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Guid WorkspaceId { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _loadError;
+    private string? _saveError;
+    private string? _saveSuccess;
+
+    private string _tone = string.Empty;
+    private string _persona = string.Empty;
+    private string _mandatoryLinksText = string.Empty;
+    private string _forbiddenTermsText = string.Empty;
+    private EmojiPolicy _emojiPolicy = EmojiPolicy.Sparingly;
+    private int _hashtagLimit = 20;
+    private int _authorityWeight = 25;
+    private int _saleWeight = 25;
+    private int _connectionWeight = 25;
+    private int _socialProofWeight = 25;
+    private string _languageCode = "pt-BR";
+
+    private int _weightsSum => _authorityWeight + _saleWeight + _connectionWeight + _socialProofWeight;
+
+    private bool CanSave => !_isSaving && !_isLoading && _weightsSum == 100;
+
+    private Guid _loadedForWorkspace;
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
+    {
+        if (WorkspaceId == Guid.Empty)
+        {
+            return;
+        }
+
+        if (_loadedForWorkspace == WorkspaceId && !_isLoading)
+        {
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        _saveError = null;
+        _saveSuccess = null;
+        StateHasChanged();
+
+        var result = await SocialClient.GetBrandVoiceAsync(WorkspaceId);
+        _isLoading = false;
+        _loadedForWorkspace = WorkspaceId;
+
+        if (result.IsSuccess)
+        {
+            ApplyDto(result.Value);
+            return;
+        }
+
+        if (result.Error.Code == SocialErrors.BrandVoiceNotFound.Code)
+        {
+            ResetToEmptyDefaults();
+            return;
+        }
+
+        _loadError = result.Error.Description;
+    }
+
+    private void ApplyDto(BrandVoiceDto dto)
+    {
+        _tone = dto.Tone;
+        _persona = dto.Persona;
+        _mandatoryLinksText = string.Join(Environment.NewLine, dto.MandatoryLinks);
+        _forbiddenTermsText = string.Join(Environment.NewLine, dto.ForbiddenTerms);
+        _emojiPolicy = dto.EmojiPolicy;
+        _hashtagLimit = dto.HashtagLimit;
+        _authorityWeight = dto.AuthorityWeight;
+        _saleWeight = dto.SaleWeight;
+        _connectionWeight = dto.ConnectionWeight;
+        _socialProofWeight = dto.SocialProofWeight;
+        _languageCode = dto.LanguageCode;
+    }
+
+    private void ResetToEmptyDefaults()
+    {
+        _tone = string.Empty;
+        _persona = string.Empty;
+        _mandatoryLinksText = string.Empty;
+        _forbiddenTermsText = string.Empty;
+        _emojiPolicy = EmojiPolicy.Sparingly;
+        _hashtagLimit = 20;
+        _authorityWeight = 25;
+        _saleWeight = 25;
+        _connectionWeight = 25;
+        _socialProofWeight = 25;
+        _languageCode = "pt-BR";
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanSave)
+        {
+            return;
+        }
+
+        _isSaving = true;
+        _saveError = null;
+        _saveSuccess = null;
+        StateHasChanged();
+
+        var mandatoryLinks = SplitLines(_mandatoryLinksText);
+        var forbiddenTerms = SplitLines(_forbiddenTermsText);
+
+        var result = await SocialClient.UpsertBrandVoiceAsync(
+            WorkspaceId,
+            _tone,
+            _persona,
+            mandatoryLinks,
+            forbiddenTerms,
+            _emojiPolicy,
+            _hashtagLimit,
+            _authorityWeight,
+            _saleWeight,
+            _connectionWeight,
+            _socialProofWeight,
+            _languageCode);
+
+        _isSaving = false;
+
+        if (result.IsFailure)
+        {
+            _saveError = result.Error.Description;
+            return;
+        }
+
+        ApplyDto(result.Value);
+        _saveSuccess = "DNA de marca salvo com sucesso.";
+    }
+
+    private static IReadOnlyList<string> SplitLines(string text) =>
+        text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}

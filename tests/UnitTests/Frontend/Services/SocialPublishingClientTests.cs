@@ -4,9 +4,11 @@ using BuildingBlocks.Domain.Primitives;
 using FluentAssertions;
 using NSubstitute;
 using System.Globalization;
+using SocialPublishing.Application.Brand.DTOs;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
+using SocialPublishing.Application.Planning.DTOs;
 using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
@@ -184,5 +186,154 @@ public sealed class SocialPublishingClientTests
         requestBody.Should().NotBeNull();
         requestBody.Should().Contain("scheduledAtUtc");
         requestBody.Should().Contain("2026-11-10T13:00:00");
+    }
+
+    /// <summary>
+    /// GetBrandVoiceAsync envia X-Tenant-Id e rota versionada.
+    /// </summary>
+    [Fact]
+    public async Task GetBrandVoiceAsync_ShouldSendTenantHeaderAndVersionedRoute()
+    {
+        var workspaceId = Guid.NewGuid();
+        var dto = new BrandVoiceDto(
+            Guid.NewGuid(),
+            workspaceId,
+            "Tom",
+            "Persona",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            EmojiPolicy.Sparingly,
+            20,
+            40,
+            20,
+            25,
+            15,
+            "pt-BR",
+            DateTime.UtcNow);
+
+        string? capturedTenantHeader = null;
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Get);
+            request.RequestUri!.AbsolutePath.Should().Be($"/api/v1/social/brand-voice/{workspaceId}");
+            request.Headers.TryGetValues("X-Tenant-Id", out var values).Should().BeTrue();
+            capturedTenantHeader = values!.First();
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<BrandVoiceDto>.Success(dto), JsonOptions)),
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.GetBrandVoiceAsync(workspaceId);
+
+        result.IsSuccess.Should().BeTrue();
+        capturedTenantHeader.Should().Be(_tenantId.ToString());
+    }
+
+    /// <summary>
+    /// UpsertBrandVoiceAsync envia PUT versionado com corpo JSON.
+    /// </summary>
+    [Fact]
+    public async Task UpsertBrandVoiceAsync_ShouldPutVersionedRouteWithBody()
+    {
+        var workspaceId = Guid.NewGuid();
+        var dto = new BrandVoiceDto(
+            Guid.NewGuid(),
+            workspaceId,
+            "Tom",
+            "Persona",
+            new[] { "https://example.com" },
+            new[] { "grátis" },
+            EmojiPolicy.Forbidden,
+            15,
+            25,
+            25,
+            25,
+            25,
+            "pt-BR",
+            DateTime.UtcNow);
+
+        string? requestBody = null;
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Put);
+            request.RequestUri!.AbsolutePath.Should().Be($"/api/v1/social/brand-voice/{workspaceId}");
+            requestBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<BrandVoiceDto>.Success(dto), JsonOptions)),
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.UpsertBrandVoiceAsync(
+            workspaceId,
+            "Tom",
+            "Persona",
+            new[] { "https://example.com" },
+            new[] { "grátis" },
+            EmojiPolicy.Forbidden,
+            15,
+            25,
+            25,
+            25,
+            25,
+            "pt-BR");
+
+        result.IsSuccess.Should().BeTrue();
+        requestBody.Should().Contain("authorityWeight");
+        requestBody.Should().Contain("forbiddenTerms");
+    }
+
+    /// <summary>
+    /// GeneratePlanAsync envia POST em plans:generate com envelope Result.
+    /// </summary>
+    [Fact]
+    public async Task GeneratePlanAsync_ShouldPostVersionedGenerateRoute()
+    {
+        var workspaceId = Guid.NewGuid();
+        var rangeStart = new DateOnly(2026, 11, 2);
+        var rangeEnd = new DateOnly(2026, 11, 6);
+        var plan = new GeneratedPlanDto(Array.Empty<Guid>(), Array.Empty<FailedEditorialSlotDto>());
+
+        string? requestBody = null;
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Post);
+            request.RequestUri!.AbsolutePath.Should().Be("/api/v1/social/plans:generate");
+            request.Headers.TryGetValues("X-Tenant-Id", out var tenantValues).Should().BeTrue();
+            tenantValues.Should().NotBeNull();
+            requestBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<GeneratedPlanDto>.Success(plan), JsonOptions)),
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.GeneratePlanAsync(workspaceId, rangeStart, rangeEnd, "America/Sao_Paulo", 5, 0);
+
+        result.IsSuccess.Should().BeTrue();
+        requestBody.Should().Contain("postsPerWeek");
+        requestBody.Should().Contain("timeZoneId");
+    }
+
+    /// <summary>
+    /// Falha de rede em GeneratePlanAsync retorna Social.NetworkError.
+    /// </summary>
+    [Fact]
+    public async Task GeneratePlanAsync_WhenNetworkFails_ShouldReturnNetworkError()
+    {
+        var handler = new TestHttpMessageHandler((_, _) => throw new HttpRequestException("timeout"));
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+
+        var result = await client.GeneratePlanAsync(Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateOnly.FromDateTime(DateTime.UtcNow), "America/Sao_Paulo", 3, 0);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Social.NetworkError");
     }
 }

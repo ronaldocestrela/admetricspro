@@ -47,7 +47,13 @@
             <button type="button" class="btn btn-outline-secondary btn-sm" data-testid="calendar-next" @onclick="GoNext">Próximo</button>
             <span class="fw-semibold ms-2" data-testid="calendar-period-label">@PeriodLabel</span>
             <button type="button"
-                    class="btn btn-outline-primary btn-sm ms-auto"
+                    class="btn btn-primary btn-sm ms-auto"
+                    data-testid="calendar-generate-plan"
+                    @onclick="OpenGeneratePlanDialog">
+                Gerar cronograma
+            </button>
+            <button type="button"
+                    class="btn btn-outline-primary btn-sm"
                     data-testid="calendar-create-approval-link"
                     disabled="@_isCreatingLink"
                     @onclick="CreateApprovalLinkAsync">
@@ -87,6 +93,15 @@
                                 Posts="_posts"
                                 TimeZone="@TimeZoneId" />
         }
+
+        @if (_showGeneratePlan && WorkspaceContextStateProvider.HasWorkspaceSelected)
+        {
+            <GeneratePlanDialog IsOpen="_showGeneratePlan"
+                                WorkspaceId="@WorkspaceContextStateProvider.CurrentWorkspaceId!.Value"
+                                TimeZoneId="@TimeZoneId"
+                                OnClose="CloseGeneratePlanDialog"
+                                OnGenerationSucceeded="HandlePlanGenerationSucceeded" />
+        }
     }
 </div>
 
@@ -102,6 +117,7 @@
     private bool _isCreatingLink;
     private string? _approvalLinkMessage;
     private string? _approvalLinkError;
+    private bool _showGeneratePlan;
 
     private string PeriodLabel => _view switch
     {
@@ -192,6 +208,27 @@
     private async Task GoToday()
     {
         _anchorDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        await LoadPostsIfNeededAsync();
+    }
+
+    private void OpenGeneratePlanDialog()
+    {
+        if (!WorkspaceContextStateProvider.HasWorkspaceSelected)
+        {
+            return;
+        }
+
+        _showGeneratePlan = true;
+    }
+
+    private Task CloseGeneratePlanDialog()
+    {
+        _showGeneratePlan = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task HandlePlanGenerationSucceeded()
+    {
         await LoadPostsIfNeededAsync();
     }
 

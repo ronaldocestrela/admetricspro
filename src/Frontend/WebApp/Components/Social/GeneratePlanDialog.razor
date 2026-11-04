@@ -1,0 +1,216 @@
+@namespace WebApp.Components.Social
+@using Microsoft.AspNetCore.Components.Forms
+@using SocialPublishing.Application.Planning.DTOs
+@using WebApp.Components.Shared.Components
+@using WebApp.Services.Social
+@inject ISocialPublishingClient SocialClient
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" data-testid="generate-plan-dialog-backdrop" @onclick="RequestClose">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="generate-plan-title" data-testid="generate-plan-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h2 class="h5 mb-0" id="generate-plan-title">Gerar cronograma editorial</h2>
+                <button type="button" class="btn-close" aria-label="Fechar" data-testid="generate-plan-close" @onclick="RequestClose"></button>
+            </div>
+            <div class="modal-body">
+                @if (_phase == GeneratePlanPhase.Form)
+                {
+                    @if (!string.IsNullOrEmpty(_formError))
+                    {
+                        <div class="alert alert-danger" data-testid="generate-plan-form-error">@_formError</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label" for="generate-plan-range-start">Início</label>
+                        <InputDate TValue="DateOnly" id="generate-plan-range-start" class="form-control" data-testid="generate-plan-range-start" @bind-Value="_rangeStart" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="generate-plan-range-end">Fim</label>
+                        <InputDate TValue="DateOnly" id="generate-plan-range-end" class="form-control" data-testid="generate-plan-range-end" @bind-Value="_rangeEnd" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="generate-plan-posts-per-week">Posts por semana (1–7)</label>
+                        <input id="generate-plan-posts-per-week" type="number" class="form-control" data-testid="generate-plan-posts-per-week" @bind="_postsPerWeek" min="1" max="7" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="generate-plan-seed">Semente</label>
+                        <input id="generate-plan-seed" type="number" class="form-control" data-testid="generate-plan-seed" @bind="_seed" />
+                    </div>
+                    <p class="text-muted small">Fuso: @TimeZoneId</p>
+                }
+                else if (_phase == GeneratePlanPhase.Result && _planResult is not null)
+                {
+                    <div class="alert alert-info" data-testid="generate-plan-created-summary">
+                        @_planResult.CreatedPostIds.Count post(s) criado(s) em rascunho.
+                    </div>
+                    <a href="social/calendar" class="btn btn-link p-0 mb-3" data-testid="generate-plan-created-link">Ver no calendário orgânico</a>
+
+                    @if (_planResult.FailedSlots.Count > 0)
+                    {
+                        <h3 class="h6">Slots sem texto gerado</h3>
+                        <ul class="list-unstyled" data-testid="generate-plan-failed-slots">
+                            @foreach (var slot in _planResult.FailedSlots)
+                            {
+                                <li class="mb-2 border rounded p-2" data-testid="@($"generate-plan-failed-slot-{slot.LocalDate:yyyy-MM-dd}")">
+                                    <strong>@slot.LocalDate.ToString("dd/MM/yyyy")</strong>
+                                    · @slot.Platform · @slot.Format
+                                    <div><ContentPillarChip Pillar="slot.Pillar" /></div>
+                                    <p class="small text-danger mb-0">@slot.ErrorDescription</p>
+                                </li>
+                            }
+                        </ul>
+                    }
+                }
+                else if (_phase == GeneratePlanPhase.Error)
+                {
+                    <div class="alert alert-danger" data-testid="generate-plan-error">@_errorDescription</div>
+                }
+            </div>
+            <div class="modal-footer">
+                @if (_phase == GeneratePlanPhase.Form)
+                {
+                    <button type="button" class="btn btn-outline-secondary" data-testid="generate-plan-cancel" @onclick="RequestClose">Cancelar</button>
+                    <button type="button" class="btn btn-primary" data-testid="generate-plan-confirm" disabled="@_isGenerating" @onclick="ConfirmAsync">
+                        @(_isGenerating ? "Gerando…" : "Gerar")
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-primary" data-testid="generate-plan-done" @onclick="CloseAfterSuccessAsync">Fechar</button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum GeneratePlanPhase
+    {
+        Form,
+        Result,
+        Error,
+    }
+
+    /// <summary>
+    /// Indica se o diálogo está visível.
+    /// </summary>
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    /// <summary>
+    /// Workspace que receberá os rascunhos gerados.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Guid WorkspaceId { get; set; }
+
+    /// <summary>
+    /// Identificador IANA do fuso usado pelo planner (ex.: America/Sao_Paulo).
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string TimeZoneId { get; set; } = "America/Sao_Paulo";
+
+    /// <summary>
+    /// Solicitação de fechamento sem recarregar o calendário.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    /// <summary>
+    /// Notifica sucesso (total ou parcial) para o host recarregar posts.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnGenerationSucceeded { get; set; }
+
+    private GeneratePlanPhase _phase = GeneratePlanPhase.Form;
+    private bool _isGenerating;
+    private string? _formError;
+    private string? _errorDescription;
+    private GeneratedPlanDto? _planResult;
+    private bool _generationSucceeded;
+
+    private DateOnly _rangeStart = DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly _rangeEnd = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(13);
+    private int _postsPerWeek = 5;
+    private int _seed;
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && _phase == GeneratePlanPhase.Form && _rangeEnd < _rangeStart)
+        {
+            _rangeEnd = _rangeStart.AddDays(13);
+        }
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (WorkspaceId == Guid.Empty)
+        {
+            _formError = "Selecione um workspace.";
+            return;
+        }
+
+        if (_rangeEnd < _rangeStart)
+        {
+            _formError = "A data final deve ser igual ou posterior à inicial.";
+            return;
+        }
+
+        _isGenerating = true;
+        _formError = null;
+        StateHasChanged();
+
+        var result = await SocialClient.GeneratePlanAsync(
+            WorkspaceId,
+            _rangeStart,
+            _rangeEnd,
+            TimeZoneId,
+            _postsPerWeek,
+            _seed);
+
+        _isGenerating = false;
+
+        if (result.IsFailure)
+        {
+            _phase = GeneratePlanPhase.Error;
+            _errorDescription = result.Error.Description;
+            _planResult = null;
+            _generationSucceeded = false;
+            return;
+        }
+
+        _phase = GeneratePlanPhase.Result;
+        _planResult = result.Value;
+        _generationSucceeded = true;
+    }
+
+    private async Task CloseAfterSuccessAsync()
+    {
+        if (_generationSucceeded)
+        {
+            await OnGenerationSucceeded.InvokeAsync();
+        }
+
+        await RequestClose();
+    }
+
+    private async Task RequestClose()
+    {
+        ResetState();
+        await OnClose.InvokeAsync();
+    }
+
+    /// <summary>
+    /// Reinicia o estado interno ao fechar o diálogo.
+    /// </summary>
+    public void ResetState()
+    {
+        _phase = GeneratePlanPhase.Form;
+        _isGenerating = false;
+        _formError = null;
+        _errorDescription = null;
+        _planResult = null;
+        _generationSucceeded = false;
+    }
+}
