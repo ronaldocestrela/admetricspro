@@ -2,9 +2,11 @@
 @layout WebApp.Components.Layout.TenantMainLayout
 @namespace WebApp.Components.Social
 @using WebApp.Services.Social
+@using WebApp.State
 @using SocialPublishing.Application.Posts.DTOs
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 @inject ISocialPublishingClient SocialClient
+@inject ITenantStateProvider TenantStateProvider
 @implements IDisposable
 
 <PageTitle>Calendário orgânico</PageTitle>
@@ -44,7 +46,30 @@
             <button type="button" class="btn btn-outline-secondary btn-sm" data-testid="calendar-today" @onclick="GoToday">Hoje</button>
             <button type="button" class="btn btn-outline-secondary btn-sm" data-testid="calendar-next" @onclick="GoNext">Próximo</button>
             <span class="fw-semibold ms-2" data-testid="calendar-period-label">@PeriodLabel</span>
+            <button type="button"
+                    class="btn btn-outline-primary btn-sm ms-auto"
+                    data-testid="calendar-create-approval-link"
+                    disabled="@_isCreatingLink"
+                    @onclick="CreateApprovalLinkAsync">
+                @if (_isCreatingLink)
+                {
+                    <span>Gerando link…</span>
+                }
+                else
+                {
+                    <span>Link de aprovação</span>
+                }
+            </button>
         </div>
+
+        @if (!string.IsNullOrEmpty(_approvalLinkMessage))
+        {
+            <div class="alert alert-success" data-testid="calendar-approval-link-result">@_approvalLinkMessage</div>
+        }
+        else if (!string.IsNullOrEmpty(_approvalLinkError))
+        {
+            <div class="alert alert-danger" data-testid="calendar-approval-link-error">@_approvalLinkError</div>
+        }
 
         @if (_isLoading)
         {
@@ -74,6 +99,9 @@
     private bool _isLoading;
     private string? _loadError;
     private Guid? _loadedWorkspaceId;
+    private bool _isCreatingLink;
+    private string? _approvalLinkMessage;
+    private string? _approvalLinkError;
 
     private string PeriodLabel => _view switch
     {
@@ -165,6 +193,45 @@
     {
         _anchorDate = DateOnly.FromDateTime(DateTime.UtcNow);
         await LoadPostsIfNeededAsync();
+    }
+
+    private async Task CreateApprovalLinkAsync()
+    {
+        if (!WorkspaceContextStateProvider.HasWorkspaceSelected)
+        {
+            return;
+        }
+
+        _isCreatingLink = true;
+        _approvalLinkMessage = null;
+        _approvalLinkError = null;
+        StateHasChanged();
+
+        var workspaceId = WorkspaceContextStateProvider.CurrentWorkspaceId!.Value;
+        var expires = DateTime.UtcNow.AddDays(14);
+        var result = await SocialClient.CreateApprovalLinkAsync(workspaceId, expires);
+        _isCreatingLink = false;
+
+        if (result.IsFailure)
+        {
+            _approvalLinkError = result.Error.Description;
+            return;
+        }
+
+        var tenant = TenantStateProvider.CurrentTenant;
+        var path = result.Value.RelativePath;
+        if (!string.IsNullOrWhiteSpace(tenant?.CustomDomain))
+        {
+            _approvalLinkMessage = $"https://{tenant.CustomDomain}{path}";
+        }
+        else if (!string.IsNullOrWhiteSpace(tenant?.Slug) && tenant.Slug != "default")
+        {
+            _approvalLinkMessage = $"/t/{tenant.Slug}{path}";
+        }
+        else
+        {
+            _approvalLinkMessage = path;
+        }
     }
 
     /// <inheritdoc />

@@ -14,6 +14,11 @@ public sealed class TenantResolutionOptions
     public string HeaderName { get; set; } = "X-Tenant-Id";
 
     /// <summary>
+    /// Gets or sets the HTTP header carrying the original browser host for resolução de tenant em rotas públicas.
+    /// </summary>
+    public string ForwardedHostHeaderName { get; set; } = "X-Forwarded-Host";
+
+    /// <summary>
     /// Gets or sets the JWT claim type used to extract tenant identity.
     /// Default is "tenant_id".
     /// </summary>
@@ -37,6 +42,7 @@ public sealed class TenantResolutionOptions
     public IReadOnlyList<TenantResolutionSource> ResolutionOrder { get; set; } =
     [
         TenantResolutionSource.Header,
+        TenantResolutionSource.ForwardedHost,
         TenantResolutionSource.JwtClaim,
         TenantResolutionSource.Subdomain,
         TenantResolutionSource.CustomDomain

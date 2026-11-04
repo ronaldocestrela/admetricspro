@@ -7,6 +7,7 @@ using BuildingBlocks.Infrastructure.MultiTenancy;
 using NSubstitute;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Domain;
+using SocialPublishing.Domain.Approvals;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Posts;
 using SocialPublishing.Domain.Publications;
@@ -183,6 +184,55 @@ internal sealed class InMemoryOrganicPostRepository : IOrganicPostRepository
         OrganicPostStatus status,
         CancellationToken cancellationToken = default) =>
         Task.FromResult(AllPosts.Count(p => p.WorkspaceId == workspaceId && p.Status == status));
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
+        Guid workspaceId,
+        OrganicPostStatus status,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<OrganicPost>>(
+            AllPosts.Where(p => p.WorkspaceId == workspaceId && p.Status == status).ToList());
+}
+
+/// <summary>
+/// Repositório em memória para testes de links de aprovação.
+/// </summary>
+internal sealed class InMemoryApprovalLinkRepository : IApprovalLinkRepository
+{
+    /// <summary>
+    /// Links armazenados.
+    /// </summary>
+    public List<ApprovalLink> AllLinks { get; } = new();
+
+    /// <inheritdoc />
+    public Task<ApprovalLink?> GetByTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default) =>
+        Task.FromResult(AllLinks.FirstOrDefault(l => l.TokenHash == tokenHash));
+
+    /// <inheritdoc />
+    public Task AddAsync(ApprovalLink link, CancellationToken cancellationToken = default)
+    {
+        AllLinks.Add(link);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task UpdateAsync(ApprovalLink link, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    /// <inheritdoc />
+    public Task<int> RevokeActiveByWorkspaceAsync(
+        Guid workspaceId,
+        DateTime revokedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var count = 0;
+        foreach (var link in AllLinks.Where(l => l.WorkspaceId == workspaceId && l.RevokedAtUtc is null))
+        {
+            link.Revoke(revokedAtUtc);
+            count++;
+        }
+
+        return Task.FromResult(count);
+    }
 }
 
 /// <summary>

@@ -284,5 +284,11 @@ public sealed class SocialStatusEndpointTests : IClassFixture<WebApplicationFact
             OrganicPostStatus status,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(0);
+
+        public Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
+            Guid workspaceId,
+            OrganicPostStatus status,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPost>>(Array.Empty<OrganicPost>());
     }
 }

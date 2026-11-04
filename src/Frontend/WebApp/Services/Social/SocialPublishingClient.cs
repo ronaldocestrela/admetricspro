@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using BuildingBlocks.Domain.Primitives;
 using System.Globalization;
+using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
@@ -245,6 +246,32 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         {
             return Result<OrganicPostDto>.Failure(
                 Error.Failure("Social.NetworkError", $"Erro de comunicação ao reagendar post orgânico: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<ApprovalLinkCreatedDto>> CreateApprovalLinkAsync(
+        Guid workspaceId,
+        DateTime expiresAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/social/approval-links")
+            {
+                Content = JsonContent.Create(new { workspaceId, expiresAtUtc }, options: JsonOptions),
+            };
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<ApprovalLinkCreatedDto>>(JsonOptions, cancellationToken);
+            return result ?? Result<ApprovalLinkCreatedDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao emitir link de aprovação."));
+        }
+        catch (Exception ex)
+        {
+            return Result<ApprovalLinkCreatedDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao emitir link: {ex.Message}"));
         }
     }
 

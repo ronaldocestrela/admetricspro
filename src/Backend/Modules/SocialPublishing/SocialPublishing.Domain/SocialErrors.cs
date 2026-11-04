@@ -282,4 +282,28 @@ public static class SocialErrors
     /// </summary>
     public static Error PublishedExternalIdRequired { get; } =
         Error.Validation("Social.PublishedExternalIdRequired", "O identificador externo da publicação é obrigatório.");
+
+    /// <summary>
+    /// Erro quando o token de aprovação pública é inválido, expirado ou revogado.
+    /// </summary>
+    public static Error ApprovalTokenInvalid { get; } =
+        Error.NotFound("Social.ApprovalTokenInvalid", "O link de aprovação não está disponível.");
+
+    /// <summary>
+    /// Erro quando a expiração do link de aprovação é inválida ou ausente.
+    /// </summary>
+    public static Error ApprovalLinkExpirationInvalid { get; } =
+        Error.Validation("Social.ApprovalLinkExpirationInvalid", "A data de expiração do link deve ser futura em UTC.");
+
+    /// <summary>
+    /// Erro quando a decisão pública exige comentário e ele está ausente.
+    /// </summary>
+    public static Error ApprovalCommentRequired { get; } =
+        Error.Validation("Social.ApprovalCommentRequired", "Informe um comentário ao solicitar alterações.");
+
+    /// <summary>
+    /// Erro quando nenhum post foi selecionado na decisão pública.
+    /// </summary>
+    public static Error ApprovalPostSelectionRequired { get; } =
+        Error.Validation("Social.ApprovalPostSelectionRequired", "Selecione ao menos um post para decidir.");
 }

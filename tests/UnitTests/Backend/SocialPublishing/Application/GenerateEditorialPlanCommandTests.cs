@@ -329,6 +329,13 @@ public sealed class GenerateEditorialPlanCommandTests
             OrganicPostStatus status,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(AllPosts.Count(p => p.WorkspaceId == workspaceId && p.Status == status));
+
+        public Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
+            Guid workspaceId,
+            OrganicPostStatus status,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPost>>(
+                AllPosts.Where(p => p.WorkspaceId == workspaceId && p.Status == status).ToList());
     }
 
     private sealed class InMemoryPlanGenerationRepository : IEditorialPlanGenerationRepository

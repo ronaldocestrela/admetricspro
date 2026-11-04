@@ -38,6 +38,7 @@ public sealed class OrganicPostEntityTypeConfiguration : IEntityTypeConfiguratio
             .IsRequired();
         builder.Property(p => p.CreatedAtUtc).IsRequired();
         builder.Property(p => p.PublishedExternalId).HasMaxLength(256);
+        builder.Property(p => p.ClientApprovalComment).HasMaxLength(2000);
 
         builder.HasIndex(p => new { p.WorkspaceId, p.ScheduledAtUtc });
         builder.HasIndex(p => p.WorkspaceId);

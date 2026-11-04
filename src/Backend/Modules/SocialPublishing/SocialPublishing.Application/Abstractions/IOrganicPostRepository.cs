@@ -64,4 +64,16 @@ public interface IOrganicPostRepository
         Guid workspaceId,
         OrganicPostStatus status,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista posts de um workspace com o status informado.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace.</param>
+    /// <param name="status">Status filtrado.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Posts do workspace no status solicitado.</returns>
+    Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
+        Guid workspaceId,
+        OrganicPostStatus status,
+        CancellationToken cancellationToken = default);
 }

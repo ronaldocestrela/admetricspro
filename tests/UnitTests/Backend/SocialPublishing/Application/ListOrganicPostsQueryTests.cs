@@ -113,5 +113,12 @@ public sealed class ListOrganicPostsQueryTests
             OrganicPostStatus status,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(posts.Count(p => p.WorkspaceId == workspaceId && p.Status == status));
+
+        public Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
+            Guid workspaceId,
+            OrganicPostStatus status,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPost>>(
+                posts.Where(p => p.WorkspaceId == workspaceId && p.Status == status).ToList());
     }
 }

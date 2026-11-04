@@ -23,6 +23,39 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("SocialPublishing.Domain.Approvals.ApprovalLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceId", "RevokedAtUtc");
+
+                    b.ToTable("ApprovalLinks", "social");
+                });
+
             modelBuilder.Entity("SocialPublishing.Domain.Brand.BrandVoiceProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -238,6 +271,10 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(2200)
                         .HasColumnType("nvarchar(2200)");
+
+                    b.Property<string>("ClientApprovalComment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<Guid>("ConnectionId")
                         .HasColumnType("uniqueidentifier");

@@ -314,6 +314,12 @@ public sealed class SocialEditorialPlanEndpointTests : IClassFixture<WebApplicat
             OrganicPostStatus status,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(0);
+
+        public Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
+            Guid workspaceId,
+            OrganicPostStatus status,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPost>>(Array.Empty<OrganicPost>());
     }
 
     private sealed class StubConnectionRepository : IOrganicConnectionRepository

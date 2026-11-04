@@ -2,6 +2,7 @@ using BuildingBlocks.Domain.Primitives;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
@@ -209,6 +210,30 @@ public sealed class SocialCalendarGridTests : BunitTestBase
 
         await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(workspaceB, "Cliente B");
         cut.WaitForAssertion(() => cut.FindAll($"[data-testid='post-card-{postA.Id}']").Count.Should().Be(0));
+    }
+
+    /// <summary>
+    /// Botão de link de aprovação chama o cliente autenticado.
+    /// </summary>
+    [Fact]
+    public async Task Page_CreateApprovalLink_CallsClient()
+    {
+        var workspaceId = Guid.NewGuid();
+        _socialClient.ListPostsAsync(workspaceId, Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<OrganicPostDto>>.Success(Array.Empty<OrganicPostDto>())));
+        _socialClient.CreateApprovalLinkAsync(workspaceId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ApprovalLinkCreatedDto>.Success(
+                new ApprovalLinkCreatedDto("plain-token", DateTime.UtcNow.AddDays(7), "/approve/plain-token")));
+
+        await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(workspaceId, "Cliente");
+        var cut = Render<SocialCalendarPage>();
+        cut.Find("[data-testid='calendar-create-approval-link']").Click();
+
+        await _socialClient.Received().CreateApprovalLinkAsync(
+            workspaceId,
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
+        cut.WaitForAssertion(() => cut.Find("[data-testid='calendar-approval-link-result']").Should().NotBeNull());
     }
 
     /// <summary>

@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 5.2** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections` e **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento via `ISocialPublishingClient`. Portal público de aprovação, copilot na UI e sinergia paga permanecem nas Subfases 5.3–6 (ADRs 0047–0048).
+Até a **Subfase 5.3** o módulo inclui o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections` e **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento via `ISocialPublishingClient`. Portal público de aprovação, copilot na UI e sinergia paga permanecem nas Subfases 5.3–6 (ADRs 0047–0048).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -68,6 +68,14 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.TimeZoneInvalid` | Fuso IANA ausente ou desconhecido no planner. |
 | `Social.SlotNotReschedulable` | Post em `Publishing`, `Published` ou `Cancelled`. |
 | `Social.InvalidTransition` | Transição de status não permitida pela máquina de estados. |
+| `Social.ApprovalTokenInvalid` | Link de aprovação indisponível (token inválido, expirado ou revogado). |
+| `Social.ApprovalLinkExpirationInvalid` | Expiração do link inválida na emissão autenticada. |
+| `Social.ApprovalCommentRequired` | Comentário ausente em solicitação de alterações no portal público. |
+| `Social.ApprovalPostSelectionRequired` | Nenhum post selecionado na decisão pública. |
+| `Social.ApprovalTokenInvalid` | Link de aprovação indisponível (token inválido, expirado ou revogado). |
+| `Social.ApprovalLinkExpirationInvalid` | Expiração do link inválida na emissão. |
+| `Social.ApprovalCommentRequired` | Comentário ausente em solicitação de alterações. |
+| `Social.ApprovalPostSelectionRequired` | Nenhum post selecionado na decisão pública. |
 | `Social.PostNotFound` | Post inexistente ou de outro workspace. |
 | `Social.ScheduleInThePast` | Post em `Scheduled` recebeu `scheduledAtUtc` anterior ao instante atual. |
 | `Social.ScheduleInstantNotUtc` | Instant de reagendamento ou revisão sem `DateTimeKind.Utc`. |
@@ -969,13 +977,118 @@ Testes: **`SocialCalendarGridTests`**, extensões em **`SocialPublishingClientTe
 
 ---
 
-## 12. Fora de escopo (após Subfase 5.2)
+## 11. Portal de aprovação compartilhável (Subfase 5.3)
+
+Link canônico: `https://{dominio-da-agencia}/approve/{token}`. Sem CNAME: `/t/{slug}/approve/{token}`. Token opaco (32 bytes, Base64Url) persistido **somente** como SHA-256 hex (64 caracteres). Um link ativo por workspace; nova emissão revoga o anterior.
+
+### Erros
+
+| Código | Quando |
+| :--- | :--- |
+| `Social.ApprovalTokenInvalid` | Token ausente, malformado, expirado ou revogado (mesma resposta HTTP 404 pública). |
+| `Social.ApprovalLinkExpirationInvalid` | Expiração ausente ou no passado na emissão autenticada. |
+| `Social.ApprovalCommentRequired` | `RequestChanges` sem comentário. |
+| `Social.ApprovalPostSelectionRequired` | Decisão sem posts selecionados. |
+
+### `POST /api/v1/social/approval-links` (autenticado)
+
+Permissão: `social.copilot.generate`.
+
+**Entrada**
+
+```json
+{
+  "workspaceId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "expiresAtUtc": "2026-06-30T23:59:59Z"
+}
+```
+
+**Sucesso (`200`, token em claro só aqui)**
+
+```json
+{
+  "isSuccess": true,
+  "value": {
+    "plainToken": "xY9k…",
+    "expiresAtUtc": "2026-06-30T23:59:59Z",
+    "relativePath": "/approve/xY9k…"
+  }
+}
+```
+
+### `GET /api/v1/public/social/approvals/{token}` (anônimo)
+
+Tenant resolvido antes do banco (`X-Tenant-Id` slug ou `X-Forwarded-Host`). Handler Social retorna posts; Web API compõe branding.
+
+**Sucesso (`200`)**
+
+```json
+{
+  "isSuccess": true,
+  "value": {
+    "posts": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "caption": "Legenda…",
+        "platform": "Instagram",
+        "format": "FeedImage",
+        "pillar": "Authority",
+        "scheduledAtUtc": "2026-07-01T13:00:00Z"
+      }
+    ],
+    "primaryColor": "#2563EB",
+    "logoUrl": "https://cdn/logo.png",
+    "agencyName": "Agência Alfa"
+  }
+}
+```
+
+**Indisponível (`404`, mesmo corpo para expirado/inexistente/revogado)**
+
+```json
+{
+  "isSuccess": false,
+  "error": {
+    "code": "Social.ApprovalTokenInvalid",
+    "description": "O link de aprovação não está disponível."
+  }
+}
+```
+
+### `POST /api/v1/public/social/approvals/{token}/decisions` (anônimo)
+
+```json
+{
+  "postIds": ["3fa85f64-5717-4562-b3fc-2c963f66afa6"],
+  "decision": "Approve",
+  "comment": null
+}
+```
+
+`decision`: `Approve` | `RequestChanges` (comentário obrigatório).
+
+### Blazor
+
+| Rota | Layout | Componente |
+| :--- | :--- | :--- |
+| `/approve/{token}` | `EmptyLayout` | `PublicApprovalPage` |
+| `/t/{slug}/approve/{token}` | `EmptyLayout` | `PublicApprovalPage` |
+
+Calendário autenticado: botão **Link de aprovação** em `/social/calendar` (`CreateApprovalLinkAsync`).
+
+Testes: `CreateApprovalLinkCommandTests`, `PublicApprovalQueryAndCommandTests`, `PublicApprovalEndpointTests`, `PublicApprovalPageTests`.
+
+ADR: [0047](../adr/0047-white-label-organic-approval-portal.md).
+
+---
+
+## 12. Fora de escopo (após Subfase 5.3)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh preventivo e revogação remota na rede (Subfase 2.3) |
 | Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
-| Blazor (continuação) | Portal `/approve/{token}`, formulário Brand Voice e gerar cronograma na UI (Subfases 5.3–5.4) |
+| Blazor (continuação) | Formulário Brand Voice e gerar cronograma na UI (Subfase 5.4) |
 | Sinergia paga | Boost e Creative Hub (Fase 6) |
 
 ---

@@ -98,6 +98,11 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     public string? PublishedExternalId { get; private set; }
 
     /// <summary>
+    /// Obtém o comentário do cliente final ao solicitar alterações via portal público.
+    /// </summary>
+    public string? ClientApprovalComment { get; private set; }
+
+    /// <summary>
     /// Obtém a coleção de mídias associadas ao post.
     /// </summary>
     public IReadOnlyList<OrganicMediaAsset> Media => _media.AsReadOnly();
@@ -273,7 +278,34 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     /// </summary>
     /// <returns>Resultado da transição.</returns>
     public Result RequestChanges() =>
-        Transition(OrganicPostStatus.PendingApproval, OrganicPostStatus.ChangesRequested);
+        RequestChanges(null);
+
+    /// <summary>
+    /// Solicita alterações ao autor, opcionalmente persistindo comentário do portal público.
+    /// </summary>
+    /// <param name="comment">Comentário do aprovador externo (obrigatório no portal público).</param>
+    /// <returns>Resultado da transição.</returns>
+    public Result RequestChanges(string? comment)
+    {
+        if (comment is not null)
+        {
+            var trimmed = comment.Trim();
+            if (trimmed.Length == 0)
+            {
+                return Result.Failure(SocialErrors.ApprovalCommentRequired);
+            }
+
+            if (trimmed.Length > 2000)
+            {
+                return Result.Failure(
+                    Error.Validation("Social.ApprovalCommentTooLong", "O comentário de aprovação excede 2000 caracteres."));
+            }
+
+            ClientApprovalComment = trimmed;
+        }
+
+        return Transition(OrganicPostStatus.PendingApproval, OrganicPostStatus.ChangesRequested);
+    }
 
     /// <summary>
     /// Agenda o post para publicação no horário já definido.

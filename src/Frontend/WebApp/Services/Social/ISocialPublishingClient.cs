@@ -1,6 +1,7 @@
 using BuildingBlocks.Domain.Primitives;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.DTOs;
+using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
 using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Domain.Connections;
@@ -92,5 +93,16 @@ public interface ISocialPublishingClient
         Guid workspaceId,
         Guid postId,
         DateTime scheduledAtUtc,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Emite link compartilhável de aprovação orgânica (token em claro só nesta resposta).
+    /// </summary>
+    /// <param name="workspaceId">Workspace do pacote.</param>
+    /// <param name="expiresAtUtc">Expiração do link em UTC.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    Task<Result<ApprovalLinkCreatedDto>> CreateApprovalLinkAsync(
+        Guid workspaceId,
+        DateTime expiresAtUtc,
         CancellationToken cancellationToken = default);
 }

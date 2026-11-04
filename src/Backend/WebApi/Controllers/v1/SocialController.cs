@@ -17,6 +17,8 @@ using SocialPublishing.Application.Media.DTOs;
 using SocialPublishing.Application.Options;
 using SocialPublishing.Application.Planning.Commands.GenerateEditorialPlan;
 using SocialPublishing.Application.Planning.DTOs;
+using SocialPublishing.Application.Approvals.Commands.CreateApprovalLink;
+using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Posts.Commands.ApprovePost;
 using SocialPublishing.Application.Posts.Commands.SchedulePost;
 using SocialPublishing.Application.Posts.Commands.RejectPost;
@@ -672,6 +674,46 @@ public sealed class SocialController : ControllerBase
         return MapSocialConnectionResult(result);
     }
 
+    /// <summary>
+    /// Emite um link compartilhável de aprovação orgânica para o workspace (token em claro só nesta resposta).
+    /// </summary>
+    /// <param name="request">Workspace e expiração UTC.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Token opaco, expiração e caminho relativo sugerido.</returns>
+    [HttpPost("approval-links")]
+    [EndpointSummary("Emite link compartilhável de aprovação orgânica")]
+    [ProducesResponseType(typeof(Result<ApprovalLinkCreatedDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<ApprovalLinkCreatedDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<ApprovalLinkCreatedDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<ApprovalLinkCreatedDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<ApprovalLinkCreatedDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<ApprovalLinkCreatedDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<ApprovalLinkCreatedDto>>> CreateApprovalLink(
+        [FromBody] CreateApprovalLinkApiRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.WorkspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<ApprovalLinkCreatedDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(request.WorkspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<ApprovalLinkCreatedDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<ApprovalLinkCreatedDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<ApprovalLinkCreatedDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(
+            new CreateApprovalLinkCommand(request.WorkspaceId, request.ExpiresAtUtc),
+            cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
     private async Task<ActionResult<Result<OrganicPostDto>>> ExecutePostLifecycleCommandAsync<TCommand>(
         Guid workspaceId,
         Guid postId,
@@ -828,3 +870,10 @@ public sealed record GenerateEditorialPlanRequest(
     string TimeZoneId,
     int PostsPerWeek,
     int Seed);
+
+/// <summary>
+/// Corpo da requisição para emissão de link de aprovação orgânica compartilhável.
+/// </summary>
+/// <param name="WorkspaceId">Workspace cujos posts pendentes entram no pacote.</param>
+/// <param name="ExpiresAtUtc">Expiração obrigatória do link em UTC.</param>
+public sealed record CreateApprovalLinkApiRequest(Guid WorkspaceId, DateTime ExpiresAtUtc);

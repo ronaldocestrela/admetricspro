@@ -342,6 +342,13 @@ public sealed class SocialPostLifecycleEndpointTests : IClassFixture<WebApplicat
             OrganicPostStatus status,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(0);
+
+        public Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
+            Guid workspaceId,
+            OrganicPostStatus status,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPost>>(
+                AllPosts.Where(p => p.WorkspaceId == workspaceId && p.Status == status).ToList());
     }
 
     private sealed class StubUnitOfWork : ISocialPublishingUnitOfWork

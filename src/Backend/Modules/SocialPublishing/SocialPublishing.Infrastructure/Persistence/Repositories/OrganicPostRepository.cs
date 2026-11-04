@@ -123,4 +123,24 @@ public sealed class OrganicPostRepository : IOrganicPostRepository
             .AsNoTracking()
             .CountAsync(p => p.WorkspaceId == workspaceId && p.Status == status, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
+        Guid workspaceId,
+        OrganicPostStatus status,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return Array.Empty<OrganicPost>();
+        }
+
+        return await contextResult.Value.OrganicPosts
+            .AsNoTracking()
+            .Where(p => p.WorkspaceId == workspaceId && p.Status == status)
+            .OrderBy(p => p.ScheduledAtUtc)
+            .ToListAsync(cancellationToken);
+    }
 }

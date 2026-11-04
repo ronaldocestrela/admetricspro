@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using SocialPublishing.Domain.Approvals;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Planning;
@@ -51,6 +52,11 @@ public sealed class SocialPublishingDbContext : DbContext
     /// Obtém o conjunto de jobs de publicação orgânica (outbox).
     /// </summary>
     public DbSet<PublicationJob> PublicationJobs => Set<PublicationJob>();
+
+    /// <summary>
+    /// Obtém o conjunto de links compartilháveis de aprovação orgânica.
+    /// </summary>
+    public DbSet<ApprovalLink> ApprovalLinks => Set<ApprovalLink>();
 
     /// <summary>
     /// Cria opções SQL Server com schema padrão <c>social</c> e histórico de migrações isolado.
