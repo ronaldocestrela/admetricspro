@@ -51,6 +51,7 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddScoped<IEditorialPlanGenerationRepository, EditorialPlanGenerationRepository>();
         services.AddScoped<IPublicationJobRepository, PublicationJobRepository>();
         services.AddScoped<IApprovalLinkRepository, ApprovalLinkRepository>();
+        services.AddScoped<IPaidBoostSuggestionRepository, PaidBoostSuggestionRepository>();
         services.AddScoped<ISocialPublishingUnitOfWork, SocialPublishingUnitOfWork>();
         services.AddScoped<ISocialPublishingSchemaMigrator, SocialPublishingSchemaMigrator>();
 

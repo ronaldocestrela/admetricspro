@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Application.Status.DTOs;
 using SocialPublishing.Domain.Posts;
 using System.IdentityModel.Tokens.Jwt;
@@ -290,5 +291,10 @@ public sealed class SocialStatusEndpointTests : IClassFixture<WebApplicationFact
             OrganicPostStatus status,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<OrganicPost>>(Array.Empty<OrganicPost>());
+
+        public Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+            DateTime publishedSinceUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPostTractionCandidate>>(Array.Empty<OrganicPostTractionCandidate>());
     }
 }

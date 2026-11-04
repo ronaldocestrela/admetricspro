@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Application.Planning.DTOs;
 using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Domain;
@@ -320,6 +321,11 @@ public sealed class SocialEditorialPlanEndpointTests : IClassFixture<WebApplicat
             OrganicPostStatus status,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<OrganicPost>>(Array.Empty<OrganicPost>());
+
+        public Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+            DateTime publishedSinceUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPostTractionCandidate>>(Array.Empty<OrganicPostTractionCandidate>());
     }
 
     private sealed class StubConnectionRepository : IOrganicConnectionRepository

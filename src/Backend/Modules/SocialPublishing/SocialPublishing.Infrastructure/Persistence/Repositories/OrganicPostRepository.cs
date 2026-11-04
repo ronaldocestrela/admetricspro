@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Domain.Posts;
 
 namespace SocialPublishing.Infrastructure.Persistence.Repositories;
@@ -142,5 +143,43 @@ public sealed class OrganicPostRepository : IOrganicPostRepository
             .Where(p => p.WorkspaceId == workspaceId && p.Status == status)
             .OrderBy(p => p.ScheduledAtUtc)
             .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+        DateTime publishedSinceUtc,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return Array.Empty<OrganicPostTractionCandidate>();
+        }
+
+        var posts = await contextResult.Value.OrganicPosts
+            .AsNoTracking()
+            .Include("_media")
+            .Where(p =>
+                p.Status == OrganicPostStatus.Published &&
+                p.ScheduledAtUtc >= publishedSinceUtc &&
+                p.PublishedExternalId != null &&
+                p.PublishedExternalId != string.Empty)
+            .ToListAsync(cancellationToken);
+
+        return posts
+            .Select(p =>
+            {
+                var primaryMedia = p.Media.OrderBy(m => m.SortOrder).FirstOrDefault();
+                return new OrganicPostTractionCandidate(
+                    p.Id,
+                    p.WorkspaceId,
+                    p.ConnectionId,
+                    p.Platform,
+                    p.ScheduledAtUtc,
+                    p.PublishedExternalId!,
+                    primaryMedia?.ObjectKey);
+            })
+            .ToList();
     }
 }

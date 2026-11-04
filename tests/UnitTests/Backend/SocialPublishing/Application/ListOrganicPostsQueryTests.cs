@@ -1,6 +1,7 @@
 using BuildingBlocks.Domain.Tenants;
 using FluentAssertions;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Application.Posts.Queries.ListOrganicPosts;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Brand;
@@ -120,5 +121,10 @@ public sealed class ListOrganicPostsQueryTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<OrganicPost>>(
                 posts.Where(p => p.WorkspaceId == workspaceId && p.Status == status).ToList());
+
+        public Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+            DateTime publishedSinceUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPostTractionCandidate>>(Array.Empty<OrganicPostTractionCandidate>());
     }
 }

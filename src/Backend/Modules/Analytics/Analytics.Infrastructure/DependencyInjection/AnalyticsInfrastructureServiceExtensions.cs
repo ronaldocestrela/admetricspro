@@ -5,7 +5,11 @@ using Analytics.Domain.Taxonomy;
 using Analytics.Infrastructure.Attribution;
 using Analytics.Infrastructure.Blended;
 using Analytics.Infrastructure.Currencies;
+using Analytics.Application.Abstractions;
+using Analytics.Domain.Creatives;
+using Analytics.Infrastructure.Persistence;
 using Analytics.Infrastructure.Taxonomy;
+using BuildingBlocks.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -51,6 +55,13 @@ public static class AnalyticsInfrastructureServiceExtensions
         services.AddSingleton<Analytics.Domain.Creatives.IAdFatigueDetector, Analytics.Domain.Creatives.AdFatigueDetector>();
         services.AddSingleton<Analytics.Domain.Creatives.ICreativeHubAggregator, Analytics.Domain.Creatives.CreativeHubAggregator>();
         services.AddScoped<Analytics.Domain.Creatives.ICreativeHubDataProvider, Analytics.Infrastructure.Creatives.CreativeHubDataProvider>();
+
+        services.AddScoped<AnalyticsDbContextFactory>();
+        services.AddScoped<ITenantDbContextFactory<AnalyticsDbContext>>(sp =>
+            sp.GetRequiredService<AnalyticsDbContextFactory>());
+        services.AddScoped<AnalyticsDbContextAccessor>();
+        services.AddScoped<ICreativeHubAssetRepository, CreativeHubAssetRepository>();
+        services.AddScoped<IAnalyticsSchemaMigrator, AnalyticsSchemaMigrator>();
 
         // Copiloto de IA & Auditor de Tráfego
         services.AddSingleton<Analytics.Domain.Copilot.IAudienceOverlapDetector, Analytics.Domain.Copilot.MetaAudienceOverlapDetector>();

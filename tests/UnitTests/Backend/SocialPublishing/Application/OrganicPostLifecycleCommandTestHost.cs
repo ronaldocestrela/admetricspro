@@ -6,6 +6,7 @@ using BuildingBlocks.Domain.Tenants;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using NSubstitute;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Approvals;
 using SocialPublishing.Domain.Connections;
@@ -192,6 +193,44 @@ internal sealed class InMemoryOrganicPostRepository : IOrganicPostRepository
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<OrganicPost>>(
             AllPosts.Where(p => p.WorkspaceId == workspaceId && p.Status == status).ToList());
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+        DateTime publishedSinceUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (TractionCandidates.Count > 0)
+        {
+            return Task.FromResult<IReadOnlyList<OrganicPostTractionCandidate>>(
+                TractionCandidates.Where(c => c.PublishedAtUtc >= publishedSinceUtc).ToList());
+        }
+
+        var fromPosts = AllPosts
+            .Where(p =>
+                p.Status == OrganicPostStatus.Published &&
+                p.ScheduledAtUtc >= publishedSinceUtc &&
+                !string.IsNullOrWhiteSpace(p.PublishedExternalId))
+            .Select(p =>
+            {
+                var media = p.Media.OrderBy(m => m.SortOrder).FirstOrDefault();
+                return new OrganicPostTractionCandidate(
+                    p.Id,
+                    p.WorkspaceId,
+                    p.ConnectionId,
+                    p.Platform,
+                    p.ScheduledAtUtc,
+                    p.PublishedExternalId!,
+                    media?.ObjectKey);
+            })
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<OrganicPostTractionCandidate>>(fromPosts);
+    }
+
+    /// <summary>
+    /// Candidatos explícitos para testes de scan de tração.
+    /// </summary>
+    public List<OrganicPostTractionCandidate> TractionCandidates { get; } = new();
 }
 
 /// <summary>

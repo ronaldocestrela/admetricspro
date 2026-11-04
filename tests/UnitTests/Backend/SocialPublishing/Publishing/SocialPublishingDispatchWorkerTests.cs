@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using SocialPublishing.Application.Publishing.Commands.DispatchDuePublications;
+using SocialPublishing.Application.Traction.Commands.ScanOrganicTraction;
 using WebApi.Background;
 using Xunit;
 
@@ -102,6 +103,24 @@ public sealed class SocialPublishingDispatchWorkerTests
         captured.Should().NotBeNull();
         captured!.TenantContext.TenantId.Should().Be(tenantId);
         await sender.Received(1).Send(Arg.Any<DispatchDuePublicationsCommand>(), Arg.Any<CancellationToken>());
+        await sender.Received(1).Send(Arg.Any<ScanOrganicTractionCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Kill switch armado não envia scan de tração.
+    /// </summary>
+    [Fact]
+    public async Task RunCycleAsync_KillSwitchArmado_NaoEnviaScanDeTraction()
+    {
+        var sender = Substitute.For<ISender>();
+        var featureFlags = Substitute.For<IFeatureFlagService>();
+        featureFlags.IsFeatureEnabledAsync(MasterCatalogFeatureFlagKeys.SocialPublishingDispatch, null, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var worker = CreateWorker(sender, featureFlags, null);
+        await worker.RunCycleAsync(CancellationToken.None);
+
+        await sender.DidNotReceive().Send(Arg.Any<ScanOrganicTractionCommand>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>
@@ -157,6 +176,8 @@ public sealed class SocialPublishingDispatchWorkerTests
             var inner = Substitute.For<ISender>();
             inner.Send(Arg.Any<DispatchDuePublicationsCommand>(), Arg.Any<CancellationToken>())
                 .Returns(Result<DispatchDuePublicationsSummary>.Success(new(0, 0, 0, 0)));
+            inner.Send(Arg.Any<ScanOrganicTractionCommand>(), Arg.Any<CancellationToken>())
+                .Returns(Result<ScanOrganicTractionSummary>.Success(new(0, 0)));
             return inner;
         });
         return tenantServices.BuildServiceProvider();

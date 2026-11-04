@@ -6,6 +6,7 @@ using Master.Domain.FeatureFlags;
 using MediatR;
 using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Publishing.Commands.DispatchDuePublications;
+using SocialPublishing.Application.Traction.Commands.ScanOrganicTraction;
 
 namespace WebApi.Background;
 
@@ -133,5 +134,6 @@ public sealed class SocialPublishingDispatchWorker(
             TenantContext.Create(tenantId, subdomain, TenantResolutionSource.None);
         var sender = tenantScope.ServiceProvider.GetRequiredService<ISender>();
         await sender.Send(new DispatchDuePublicationsCommand(), cancellationToken);
+        await sender.Send(new ScanOrganicTractionCommand(), cancellationToken);
     }
 }

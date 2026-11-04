@@ -1,3 +1,4 @@
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Domain.Posts;
 
 namespace SocialPublishing.Application.Abstractions;
@@ -75,5 +76,15 @@ public interface IOrganicPostRepository
     Task<IReadOnlyList<OrganicPost>> ListByWorkspaceAndStatusAsync(
         Guid workspaceId,
         OrganicPostStatus status,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista posts publicados elegíveis ao scan de tração orgânica.
+    /// </summary>
+    /// <param name="publishedSinceUtc">Limite inferior UTC inclusivo da data de publicação (slot).</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Candidatos com metadados mínimos para insights e fingerprint.</returns>
+    Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+        DateTime publishedSinceUtc,
         CancellationToken cancellationToken = default);
 }

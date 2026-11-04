@@ -5,6 +5,7 @@ using FluentAssertions;
 using MediatR;
 using NSubstitute;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Application.Planning.Commands.GenerateEditorialPlan;
 using SocialPublishing.Application.Planning.Commands.GenerateSlotCopy;
 using SocialPublishing.Application.Planning.Copy;
@@ -336,6 +337,11 @@ public sealed class GenerateEditorialPlanCommandTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<OrganicPost>>(
                 AllPosts.Where(p => p.WorkspaceId == workspaceId && p.Status == status).ToList());
+
+        public Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+            DateTime publishedSinceUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPostTractionCandidate>>(Array.Empty<OrganicPostTractionCandidate>());
     }
 
     private sealed class InMemoryPlanGenerationRepository : IEditorialPlanGenerationRepository

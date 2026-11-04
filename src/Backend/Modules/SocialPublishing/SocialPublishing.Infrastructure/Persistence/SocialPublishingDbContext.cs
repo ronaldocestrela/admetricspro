@@ -6,6 +6,7 @@ using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Planning;
 using SocialPublishing.Domain.Posts;
 using SocialPublishing.Domain.Publications;
+using SocialPublishing.Domain.Traction;
 
 namespace SocialPublishing.Infrastructure.Persistence;
 
@@ -57,6 +58,11 @@ public sealed class SocialPublishingDbContext : DbContext
     /// Obtém o conjunto de links compartilháveis de aprovação orgânica.
     /// </summary>
     public DbSet<ApprovalLink> ApprovalLinks => Set<ApprovalLink>();
+
+    /// <summary>
+    /// Obtém o conjunto de sugestões de impulsionamento por tração orgânica.
+    /// </summary>
+    public DbSet<PaidBoostSuggestion> PaidBoostSuggestions => Set<PaidBoostSuggestion>();
 
     /// <summary>
     /// Cria opções SQL Server com schema padrão <c>social</c> e histórico de migrações isolado.

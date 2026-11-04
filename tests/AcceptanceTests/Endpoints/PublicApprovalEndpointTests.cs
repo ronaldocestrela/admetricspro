@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Application.Approvals;
 using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Domain;
@@ -244,5 +245,10 @@ public sealed class PublicApprovalEndpointTests : IClassFixture<WebApplicationFa
             OrganicPostStatus status,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<OrganicPost>>(Array.Empty<OrganicPost>());
+
+        public Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+            DateTime publishedSinceUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPostTractionCandidate>>(Array.Empty<OrganicPostTractionCandidate>());
     }
 }

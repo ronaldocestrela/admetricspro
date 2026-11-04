@@ -1206,18 +1206,54 @@ Registro DI: `AddHttpClient<IOrganicInsightsReader, HttpOrganicInsightsReader>()
 
 Testes: `HttpOrganicInsightsReaderTests`.
 
-O comando `ScanOrganicTraction`, persistência de `PaidBoostSuggestion`, notificação `OrganicTractionDetectedNotification` e worker ficam na **Subfase 6.2**.
+### Scan, sugestão e notificação (Subfase 6.2)
+
+Comando interno `ScanOrganicTractionCommand` (sem rota HTTP). O `SocialPublishingDispatchWorker` executa, **por tenant**, `DispatchDuePublicationsCommand` e em seguida `ScanOrganicTractionCommand`, respeitando o mesmo kill switch `killswitch.social-publishing.dispatch`.
+
+Fluxo do scan:
+
+1. Lista posts `Published` desde `asOfUtc − 28 dias` via `ListPublishedForTractionAsync` (usa `ScheduledAtUtc` como instante de publicação e `PublishedExternalId` obrigatório).
+2. Por workspace, lê métricas na rede com `IOrganicInsightsReader` (token decifrado como no disparo). Falha de insights → post ignorado; o comando continua.
+3. Monta `OrganicPostInsightSample` com `HasOpenSuggestion` a partir de sugestões `Open` já persistidas.
+4. `OrganicTractionDetector.Detect` — mesmas regras da subfase 6.1.
+5. Para cada hit: `PaidBoostSuggestion.Open` → `CommitAsync` → **somente então** `IPublisher.Publish(OrganicTractionDetectedNotification)`.
+
+**Fingerprint de mídia:** SHA-256 hexadecimal (UTF-8) da `ObjectKey` do primeiro item de mídia (`OrganicMediaFingerprint.FromObjectKey`). Sem chave → `MediaFingerprint` nulo na notificação.
+
+**Contrato** (`SocialPublishing.Contracts/Notifications/OrganicTractionDetectedNotification`):
+
+```json
+{
+  "tenantId": "guid",
+  "workspaceId": "guid",
+  "organicPostId": "guid",
+  "network": "Instagram",
+  "mediaFingerprint": "a1b2…",
+  "permalink": null,
+  "impressions": 5000,
+  "engagementRate": 0.05,
+  "baselineMedianEngagement": 0.02,
+  "engagementMultiple": 2.5,
+  "detectedAtUtc": "2026-11-03T15:00:00Z"
+}
+```
+
+**Persistência social:** tabela `social.PaidBoostSuggestions`, índice único filtrado `(WorkspaceId, OrganicPostId)` onde `Status = Open`.
+
+**Creative Hub (Analytics):** handler `LinkOrganicAssetWhenTractionDetected` faz upsert em `analytics.CreativeHubAssets` pela `(WorkspaceId, MediaFingerprint)`. Fingerprint ausente → log com `Analytics.OrganicFingerprintMissing`; nenhuma linha gravada; o post orgânico permanece publicado.
+
+Testes: `ScanOrganicTractionCommandTests`, `LinkOrganicAssetWhenTractionDetectedTests`, extensões em `SocialPublishingDispatchWorkerTests`. ADR: [0048](../adr/0048-organic-traction-boost-and-creative-hub.md).
 
 ---
 
-## 13. Fora de escopo (após Subfase 6.1)
+## 13. Fora de escopo (após Subfase 6.2)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh preventivo e revogação remota na rede (Subfase 2.3) |
 | Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
 | Lifecycle de posts na UI | Ações `:submit` / `:approve` / `:schedule` por card na grade |
-| Sinergia paga (continuação) | Scan persistido, Creative Hub, aceite de boost, rascunho Integrations, banner Blazor (Subfases 6.2–6.4; ADR 0048) |
+| Sinergia paga (continuação) | Aceite de boost, rascunho Integrations, rotas HTTP, banner Blazor (Subfases 6.3–6.4; parágrafo de origem orgânica no Creative Hub) |
 
 ---
 
@@ -1230,7 +1266,7 @@ builder.Services.AddSocialPublishingModule(builder.Configuration);
 builder.Services.AddSocialPublishingTenantPersistenceComposition();
 ```
 
-`AddSocialPublishingModule` registra MediatR, repositórios, fábrica de `SocialPublishingDbContext` e `ISocialPublishingSchemaMigrator`. `AddSocialPublishingTenantPersistenceComposition` decora `ITenantProvisioningService` e registra o hosted service de migração social para tenants existentes.
+`AddSocialPublishingModule` registra MediatR, repositórios, fábrica de `SocialPublishingDbContext` e `ISocialPublishingSchemaMigrator`. `AddSocialPublishingTenantPersistenceComposition` decora `ITenantProvisioningService` (migrações **social** e **analytics**) e registra o hosted service de migração para tenants existentes.
 
 Worker de disparo (mesmo `Program.cs`):
 

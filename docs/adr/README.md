@@ -57,6 +57,7 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0045](0045-ai-social-copilot-brand-voice-and-editorial-plan.md) | Brand Voice, planner editorial determinístico e geração de cópia via SocialAi | Aceito | 2026-11-03 |
 | [0046](0046-organic-publication-outbox-and-dispatch-worker.md) | Outbox `PublicationJob`, claim otimista e worker de disparo orgânico | Aceito | 2026-11-03 |
 | [0047](0047-white-label-organic-approval-portal.md) | Portal white-label de aprovação orgânica por link compartilhável | Aceito | 2026-11-04 |
+| [0048](0048-organic-traction-boost-and-creative-hub.md) | Tração orgânica, notificação via Contracts e Creative Hub | Aceito | 2026-11-04 |
 
 ---
 

@@ -271,6 +271,24 @@ public sealed class AgentsArchitectureComplianceTests
     }
 
     /// <summary>
+    /// Subfase 6.2: Analytics.Application referencia apenas SocialPublishing.Contracts entre módulos Social.
+    /// </summary>
+    [Fact]
+    public void AnalyticsApplication_MayReferenceSocialPublishingContractsOnly()
+    {
+        var assembly = Assembly.Load(new AssemblyName("Analytics.Application"));
+        var referencedAssemblies = assembly.GetReferencedAssemblies()
+            .Select(a => a.Name)
+            .Where(n => n is not null)
+            .ToList();
+
+        referencedAssemblies.Should().NotContain(name => name!.StartsWith("SocialPublishing.Domain", StringComparison.Ordinal));
+        referencedAssemblies.Should().NotContain(name => name!.StartsWith("SocialPublishing.Application", StringComparison.Ordinal));
+        referencedAssemblies.Should().NotContain(name => name!.StartsWith("SocialPublishing.Infrastructure", StringComparison.Ordinal));
+        referencedAssemblies.Should().Contain("SocialPublishing.Contracts");
+    }
+
+    /// <summary>
     /// Roadmap SocialPublishing Subfase 1.1: Contracts expõe apenas tipos de integração leves sobre BuildingBlocks.
     /// </summary>
     [Fact]

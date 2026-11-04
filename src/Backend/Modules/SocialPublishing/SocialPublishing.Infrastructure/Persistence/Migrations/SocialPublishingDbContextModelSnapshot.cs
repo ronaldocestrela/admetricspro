@@ -373,6 +373,58 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                     b.ToTable("PublicationJobs", "social");
                 });
 
+            modelBuilder.Entity("SocialPublishing.Domain.Traction.PaidBoostSuggestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("BaselineMedianEngagement")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateTime>("DetectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("EngagementMultiple")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("EngagementRate")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<long>("Impressions")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("OrganicPostId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PaidDraftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId", "OrganicPostId", "Status")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Open'");
+
+                    b.ToTable("PaidBoostSuggestions", "social");
+                });
+
             modelBuilder.Entity("SocialPublishing.Domain.Brand.BrandVoiceProfile", b =>
                 {
                     b.OwnsOne("SocialPublishing.Domain.Brand.PillarWeights", "PillarWeights", b1 =>

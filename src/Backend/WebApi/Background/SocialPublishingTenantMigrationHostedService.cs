@@ -1,5 +1,6 @@
 using Master.Application.Tenants.Queries.GetTenants;
 using MediatR;
+using Analytics.Application.Abstractions;
 using SocialPublishing.Application.Abstractions;
 
 namespace WebApi.Background;
@@ -51,6 +52,7 @@ public sealed class SocialPublishingTenantMigrationHostedService : IHostedServic
         using var scope = _serviceProvider.CreateScope();
         var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         var migrator = scope.ServiceProvider.GetRequiredService<ISocialPublishingSchemaMigrator>();
+        var analyticsMigrator = scope.ServiceProvider.GetRequiredService<IAnalyticsSchemaMigrator>();
 
         var tenantsResult = await sender.Send(new GetTenantsQuery(), cancellationToken);
         if (tenantsResult.IsFailure)
@@ -75,9 +77,21 @@ public sealed class SocialPublishingTenantMigrationHostedService : IHostedServic
                 throw new InvalidOperationException(
                     $"Migração social falhou para tenant {tenant.Id}: {migrationResult.Error.Description}");
             }
+
+            var analyticsMigrationResult = await analyticsMigrator.ApplyForTenantAsync(tenant.Id, cancellationToken);
+            if (analyticsMigrationResult.IsFailure)
+            {
+                _logger.LogError(
+                    "Migração analytics falhou para tenant {TenantId}: {Code} - {Message}",
+                    tenant.Id,
+                    analyticsMigrationResult.Error.Code,
+                    analyticsMigrationResult.Error.Description);
+                throw new InvalidOperationException(
+                    $"Migração analytics falhou para tenant {tenant.Id}: {analyticsMigrationResult.Error.Description}");
+            }
         }
 
-        _logger.LogInformation("Migrações do schema social concluídas para tenants elegíveis.");
+        _logger.LogInformation("Migrações dos schemas social e analytics concluídas para tenants elegíveis.");
     }
 
     /// <inheritdoc />

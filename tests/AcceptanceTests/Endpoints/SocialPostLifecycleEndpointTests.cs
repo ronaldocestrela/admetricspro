@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Traction;
 using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
@@ -349,6 +350,11 @@ public sealed class SocialPostLifecycleEndpointTests : IClassFixture<WebApplicat
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<OrganicPost>>(
                 AllPosts.Where(p => p.WorkspaceId == workspaceId && p.Status == status).ToList());
+
+        public Task<IReadOnlyList<OrganicPostTractionCandidate>> ListPublishedForTractionAsync(
+            DateTime publishedSinceUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicPostTractionCandidate>>(Array.Empty<OrganicPostTractionCandidate>());
     }
 
     private sealed class StubUnitOfWork : ISocialPublishingUnitOfWork
