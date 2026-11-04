@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceito em 2026-11-04. Subfases **6.2** e **6.3** implementadas (scan, Creative Hub, aceite/dispensa e rascunho local pausado). Superfície Blazor (banner na grade) permanece na subfase **6.4**.
+Aceito em 2026-11-04. Subfases **6.2**, **6.3** e **6.4** implementadas (scan, Creative Hub, aceite/dispensa, rascunho local pausado, `BoostSuggestionBanner`, cliente HTTP social e card orgânico no hub).
 
 ## Contexto
 
@@ -64,5 +64,4 @@ Requisitos da subfase 6.2:
 ### Negativas / Mitigações
 
 - Notificação in-process não sobrevive a crash entre commit e publish — mitigação futura: outbox ou reprocessamento idempotente; hoje a sugestão `Open` impede reenvio duplicado na mesma requisição.
-- Permalink orgânico ainda nulo no scan — UI e card do hub na subfase 6.4.
-- Banner Blazor e cliente HTTP do WebApp → subfase 6.4.
+- Permalink orgânico ainda nulo no scan — o card do hub só exibe link quando o valor estiver persistido em `CreativeHubAssets`.

@@ -16,4 +16,14 @@ public interface ICreativeHubAssetRepository
     Task<Result<Guid>> UpsertByFingerprintAsync(
         CreativeHubAssetUpsertRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista ativos com origem orgânica (post social) no workspace.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Ativos orgânicos persistidos ou falha de acesso.</returns>
+    Task<Result<IReadOnlyList<CreativeHubAsset>>> ListOrganicByWorkspaceAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default);
 }

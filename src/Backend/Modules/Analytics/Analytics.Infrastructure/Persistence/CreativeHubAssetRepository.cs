@@ -71,4 +71,26 @@ public sealed class CreativeHubAssetRepository : ICreativeHubAssetRepository
         await context.SaveChangesAsync(cancellationToken);
         return Result<Guid>.Success(existing.Id);
     }
+
+    /// <inheritdoc />
+    public async Task<Result<IReadOnlyList<CreativeHubAsset>>> ListOrganicByWorkspaceAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return Result<IReadOnlyList<CreativeHubAsset>>.Failure(contextResult.Error);
+        }
+
+        var context = contextResult.Value;
+        var assets = await context.CreativeHubAssets
+            .AsNoTracking()
+            .Where(a => a.WorkspaceId == workspaceId && a.OrganicPostId != null)
+            .OrderByDescending(a => a.DetectedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        return Result<IReadOnlyList<CreativeHubAsset>>.Success(assets);
+    }
 }

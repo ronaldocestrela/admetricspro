@@ -11,6 +11,10 @@
         <div class="alert alert-danger" role="alert" data-testid="social-calendar-error">@_errorMessage</div>
     }
 
+    <div data-testid="boost-suggestion-banner-host">
+        <BoostSuggestionBanner WorkspaceId="WorkspaceId" />
+    </div>
+
     <div class="social-calendar-weekdays" data-testid="social-calendar-weekdays">
         @foreach (var label in WeekdayLabels)
         {

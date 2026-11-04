@@ -6,6 +6,7 @@ using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
 using SocialPublishing.Application.Planning.DTOs;
 using SocialPublishing.Application.Posts.DTOs;
+using SocialPublishing.Application.Traction.DTOs;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
 
@@ -169,5 +170,39 @@ public interface ISocialPublishingClient
         string timeZoneId,
         int postsPerWeek,
         int seed,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista sugestões de impulsionamento por tração orgânica do workspace.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Sugestões persistidas ou falha semântica.</returns>
+    Task<Result<IReadOnlyList<PaidBoostSuggestionDto>>> ListBoostSuggestionsAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Aceita uma sugestão e solicita rascunho pausado de anúncio pago.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="suggestionId">Identificador da sugestão.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Sugestão atualizada ou erro propagado.</returns>
+    Task<Result<PaidBoostSuggestionDto>> AcceptBoostSuggestionAsync(
+        Guid workspaceId,
+        Guid suggestionId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Dispensa uma sugestão de impulsionamento sem criar rascunho.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="suggestionId">Identificador da sugestão.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Sugestão dispensada ou falha de negócio.</returns>
+    Task<Result<PaidBoostSuggestionDto>> DismissBoostSuggestionAsync(
+        Guid workspaceId,
+        Guid suggestionId,
         CancellationToken cancellationToken = default);
 }

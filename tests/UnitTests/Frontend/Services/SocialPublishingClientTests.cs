@@ -10,6 +10,8 @@ using SocialPublishing.Application.Connections.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
 using SocialPublishing.Application.Planning.DTOs;
 using SocialPublishing.Application.Posts.DTOs;
+using SocialPublishing.Application.Traction.DTOs;
+using SocialPublishing.Domain.Traction;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Posts;
@@ -335,5 +337,133 @@ public sealed class SocialPublishingClientTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Social.NetworkError");
+    }
+
+    /// <summary>
+    /// ListBoostSuggestionsAsync usa GET versionado com workspaceId e header de tenant.
+    /// </summary>
+    [Fact]
+    public async Task ListBoostSuggestionsAsync_ShouldGetVersionedRouteWithTenantHeader()
+    {
+        var workspaceId = Guid.NewGuid();
+        var dto = new PaidBoostSuggestionDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            SocialPublishing.Domain.Connections.OrganicPlatform.Instagram,
+            PaidBoostSuggestionStatus.Open,
+            1000,
+            0.04m,
+            2.2m,
+            DateTime.UtcNow,
+            null);
+
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Get);
+            request.RequestUri!.PathAndQuery.Should().Be($"/api/v1/social/boost-suggestions?workspaceId={workspaceId}");
+            request.Headers.TryGetValues("X-Tenant-Id", out var tenantValues).Should().BeTrue();
+            tenantValues.Should().NotBeNull();
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Success(new[] { dto }), JsonOptions)),
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.ListBoostSuggestionsAsync(workspaceId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle();
+    }
+
+    /// <summary>
+    /// AcceptBoostSuggestionAsync envia POST em :accept com workspaceId na query.
+    /// </summary>
+    [Fact]
+    public async Task AcceptBoostSuggestionAsync_ShouldPostAcceptRoute()
+    {
+        var workspaceId = Guid.NewGuid();
+        var suggestionId = Guid.NewGuid();
+        var draftId = Guid.NewGuid();
+        var dto = new PaidBoostSuggestionDto(
+            suggestionId,
+            Guid.NewGuid(),
+            SocialPublishing.Domain.Connections.OrganicPlatform.Instagram,
+            PaidBoostSuggestionStatus.Accepted,
+            1000,
+            0.04m,
+            2.2m,
+            DateTime.UtcNow,
+            draftId);
+
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Post);
+            request.RequestUri!.PathAndQuery.Should().Be($"/api/v1/social/boost-suggestions/{suggestionId}:accept?workspaceId={workspaceId}");
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<PaidBoostSuggestionDto>.Success(dto), JsonOptions)),
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.AcceptBoostSuggestionAsync(workspaceId, suggestionId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaidDraftId.Should().Be(draftId);
+    }
+
+    /// <summary>
+    /// DismissBoostSuggestionAsync envia POST em :dismiss com workspaceId na query.
+    /// </summary>
+    [Fact]
+    public async Task DismissBoostSuggestionAsync_ShouldPostDismissRoute()
+    {
+        var workspaceId = Guid.NewGuid();
+        var suggestionId = Guid.NewGuid();
+        var dto = new PaidBoostSuggestionDto(
+            suggestionId,
+            Guid.NewGuid(),
+            SocialPublishing.Domain.Connections.OrganicPlatform.TikTok,
+            PaidBoostSuggestionStatus.Dismissed,
+            1000,
+            0.04m,
+            2.2m,
+            DateTime.UtcNow,
+            null);
+
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Post);
+            request.RequestUri!.PathAndQuery.Should().Be($"/api/v1/social/boost-suggestions/{suggestionId}:dismiss?workspaceId={workspaceId}");
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<PaidBoostSuggestionDto>.Success(dto), JsonOptions)),
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.DismissBoostSuggestionAsync(workspaceId, suggestionId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(PaidBoostSuggestionStatus.Dismissed);
+    }
+
+    /// <summary>
+    /// ListBoostSuggestionsAsync com workspace vazio retorna Social.WorkspaceRequired sem HTTP.
+    /// </summary>
+    [Fact]
+    public async Task ListBoostSuggestionsAsync_WhenWorkspaceEmpty_ShouldReturnWorkspaceRequired()
+    {
+        var handler = new TestHttpMessageHandler((_, _) => throw new InvalidOperationException("Should not call HTTP"));
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+
+        var result = await client.ListBoostSuggestionsAsync(Guid.Empty);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(SocialPublishing.Domain.SocialErrors.WorkspaceRequired.Code);
     }
 }

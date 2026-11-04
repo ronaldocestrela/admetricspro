@@ -123,5 +123,16 @@ public sealed class LinkOrganicAssetWhenTractionDetectedTests
             _store[key] = asset;
             return Task.FromResult(Result<Guid>.Success(asset.Id));
         }
+
+        public Task<Result<IReadOnlyList<CreativeHubAsset>>> ListOrganicByWorkspaceAsync(
+            Guid workspaceId,
+            CancellationToken cancellationToken = default)
+        {
+            var list = _store.Values
+                .Where(a => a.WorkspaceId == workspaceId && a.OrganicPostId != null)
+                .ToList();
+
+            return Task.FromResult(Result<IReadOnlyList<CreativeHubAsset>>.Success(list));
+        }
     }
 }

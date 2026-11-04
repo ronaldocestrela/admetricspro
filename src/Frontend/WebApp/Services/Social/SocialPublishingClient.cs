@@ -10,6 +10,8 @@ using SocialPublishing.Domain.Brand;
 using SocialPublishing.Application.Connections.DTOs;
 using SocialPublishing.Application.Connections.Queries.StartOrganicAuthorization;
 using SocialPublishing.Application.Posts.DTOs;
+using SocialPublishing.Application.Traction.DTOs;
+using SocialPublishing.Domain;
 using SocialPublishing.Domain.Connections;
 using WebApp.State;
 
@@ -408,6 +410,98 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         {
             return Result<ApprovalLinkCreatedDto>.Failure(
                 Error.Failure("Social.NetworkError", $"Erro de comunicação ao emitir link: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<IReadOnlyList<PaidBoostSuggestionDto>>> ListBoostSuggestionsAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<IReadOnlyList<PaidBoostSuggestionDto>>.Failure(SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"/api/v1/social/boost-suggestions?workspaceId={workspaceId}");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<IReadOnlyList<PaidBoostSuggestionDto>>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<IReadOnlyList<PaidBoostSuggestionDto>>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao listar sugestões de impulsionamento."));
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<PaidBoostSuggestionDto>>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao listar sugestões: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<PaidBoostSuggestionDto>> AcceptBoostSuggestionAsync(
+        Guid workspaceId,
+        Guid suggestionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<PaidBoostSuggestionDto>.Failure(SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/api/v1/social/boost-suggestions/{suggestionId}:accept?workspaceId={workspaceId}");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<PaidBoostSuggestionDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<PaidBoostSuggestionDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao aceitar sugestão de impulsionamento."));
+        }
+        catch (Exception ex)
+        {
+            return Result<PaidBoostSuggestionDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao aceitar sugestão: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<PaidBoostSuggestionDto>> DismissBoostSuggestionAsync(
+        Guid workspaceId,
+        Guid suggestionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<PaidBoostSuggestionDto>.Failure(SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/api/v1/social/boost-suggestions/{suggestionId}:dismiss?workspaceId={workspaceId}");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<PaidBoostSuggestionDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<PaidBoostSuggestionDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao dispensar sugestão de impulsionamento."));
+        }
+        catch (Exception ex)
+        {
+            return Result<PaidBoostSuggestionDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao dispensar sugestão: {ex.Message}"));
         }
     }
 

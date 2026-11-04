@@ -51,6 +51,21 @@ public sealed record CrossPlatformComparisonDto(
     string EfficiencySummary);
 
 /// <summary>
+/// DTO de ativo orgânico registrado no Creative Hub por tração de publicação social.
+/// </summary>
+/// <param name="Id">Identificador do registro no hub.</param>
+/// <param name="OrganicPostId">Post orgânico de origem.</param>
+/// <param name="Network">Rede social de origem.</param>
+/// <param name="Permalink">URL pública do post, quando conhecida.</param>
+/// <param name="EngagementMultiple">Múltiplo de engajamento sobre a mediana na detecção.</param>
+public sealed record CreativeHubOrganicAssetDto(
+    Guid Id,
+    Guid OrganicPostId,
+    string Network,
+    string? Permalink,
+    decimal EngagementMultiple);
+
+/// <summary>
 /// DTO consolidado para visão geral do Creative Hub do workspace.
 /// </summary>
 public sealed record CreativeHubOverviewDto(
@@ -60,4 +75,5 @@ public sealed record CreativeHubOverviewDto(
     int WarningCreativesCount,
     int HealthyCreativesCount,
     int ReplacementsSuggestedCount,
-    IReadOnlyList<CreativeFatigueDto> Creatives);
+    IReadOnlyList<CreativeFatigueDto> Creatives,
+    IReadOnlyList<CreativeHubOrganicAssetDto>? OrganicAssets = null);

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Posts.DTOs;
+using SocialPublishing.Application.Traction.DTOs;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Posts;
@@ -28,6 +29,29 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     public SocialCalendarGridTests()
     {
         Services.AddSingleton(_socialClient);
+        _socialClient.ListBoostSuggestionsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Success(Array.Empty<PaidBoostSuggestionDto>())));
+    }
+
+    /// <summary>
+    /// A grade inclui o banner de sugestão de impulsionamento como filho.
+    /// </summary>
+    [Fact]
+    public void Grid_ShouldRenderBoostSuggestionBannerChild()
+    {
+        var workspaceId = Guid.NewGuid();
+        _socialClient.ListBoostSuggestionsAsync(workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Success(Array.Empty<PaidBoostSuggestionDto>())));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, Array.Empty<OrganicPostDto>()));
+
+        cut.Find("[data-testid='boost-suggestion-banner-host']").Should().NotBeNull();
+        _socialClient.Received(1).ListBoostSuggestionsAsync(workspaceId, Arg.Any<CancellationToken>());
     }
 
     /// <summary>
@@ -37,6 +61,8 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     public void Grid_MonthView_ShouldRenderMonthCellsWithPaddingDays()
     {
         var workspaceId = Guid.NewGuid();
+        _socialClient.ListBoostSuggestionsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Success(Array.Empty<PaidBoostSuggestionDto>())));
         var anchor = new DateOnly(2026, 11, 15);
 
         var cut = Render<SocialCalendarGrid>(p => p
@@ -60,6 +86,8 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     public void Grid_WeekView_ShouldRenderSevenWeekColumns()
     {
         var workspaceId = Guid.NewGuid();
+        _socialClient.ListBoostSuggestionsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Success(Array.Empty<PaidBoostSuggestionDto>())));
         var anchor = new DateOnly(2026, 11, 3);
 
         var cut = Render<SocialCalendarGrid>(p => p

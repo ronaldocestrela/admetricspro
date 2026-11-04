@@ -4,7 +4,7 @@
 
 O bounded context **SocialPublishing** cobre gestão e publicação orgânica na plataforma AdMetricsPro: conexão com Meta (Instagram Professional/Business e Facebook Pages) e TikTok Content Posting API, geração de cronograma e criativos com IA, calendário com aprovação white-label e sugestão de impulsionamento quando um post orgânico ganha tração.
 
-Até a **Subfase 6.3** o módulo inclui scan de tração, sugestões `PaidBoostSuggestion`, aceite/dispensa e handoff `CreatePaidBoostDraftCommand` para rascunho pausado em Integrations. Até a **Subfase 5.4** já incluía o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections`, **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento, **portal público de aprovação** (`/approve/{token}`), **formulário de voz de marca** `/social/brand-voice` e **geração de cronograma** no calendário — tudo via **`ISocialPublishingClient`** (sem `DbContext`, repositório ou MediatR no frontend). Sinergia orgânica + mídia paga permanece na Fase 6 (ADR 0048).
+Até a **Subfase 6.4** o módulo inclui scan de tração, sugestões `PaidBoostSuggestion`, aceite/dispensa, handoff `CreatePaidBoostDraftCommand` para rascunho pausado em Integrations e **superfície Blazor** (`BoostSuggestionBanner` na grade do calendário, métodos de boost em `ISocialPublishingClient`). Até a **Subfase 5.4** já incluía o **modelo de domínio puro**, **persistência EF no schema `social`**, `GET /api/v1/social/status`, permissões RBAC `SocialRead` (`social.read`), **`SocialConnectionsManage`** (`social.connections.manage`), **`SocialMediaManage`** (`social.media.manage`) e **`SocialCopilotGenerate`** (`social.copilot.generate`), **state OAuth HMAC-SHA256**, adaptadores com **`ExchangeCodeAsync`** e **`PublishAsync`**, **`OrganicTokenProtector`**, rotas OAuth **`authorize`** / **`callback`**, porta **`IOrganicMediaStore`** (local ou S3-compatível), **`POST /api/v1/social/media`**, **ingestão de Brand Voice**, **planner editorial** e **geração de cópia** (`GenerateSlotCopyCommand` / `GenerateEditorialPlanCommand`), **aprovação interna e agendamento** (`:submit`, `:approve`, `:schedule`, `:reject`, `:reschedule`), **outbox `PublicationJob`**, **`DispatchDuePublicationsCommand`** (somente worker) e **`SocialPublishingDispatchWorker`** com kill switch `killswitch.social-publishing.dispatch` (desligado por padrão), **listagem/revogação local de conexões** (`GET`/`DELETE /api/v1/social/connections`), **UI Blazor** `/social/connections`, **grade de calendário** `/social/calendar` com drag-and-drop de reagendamento, **portal público de aprovação** (`/approve/{token}`), **formulário de voz de marca** `/social/brand-voice` e **geração de cronograma** no calendário — tudo via **`ISocialPublishingClient`** (sem `DbContext`, repositório ou MediatR no frontend). Sinergia orgânica + mídia paga concluída na Fase 6 (ADR 0048).
 
 Stack e limites (detalhados no ADR 0043):
 
@@ -1096,6 +1096,8 @@ Formulário de **Brand Voice** e diálogo **Gerar cronograma** no calendário. T
 3. **Revisar na grade** — posts em **`Draft`** aparecem na grade após fechar o diálogo com sucesso (total ou parcial); a página recarrega `ListPostsAsync`.
 4. **Aprovação interna / agendamento** — fluxos HTTP das Subfases 4.x (`:submit`, `:approve`, `:schedule`, …) permanecem na API; a UI de lifecycle por post pode evoluir depois desta subfase.
 5. **Link público** — botão **Link de aprovação** na toolbar do calendário (`CreateApprovalLinkAsync`); cliente final aprova em `/approve/{token}` ou `/t/{slug}/approve/{token}` (Subfase 5.3).
+6. **Tração orgânica** — worker detecta anomalia e persiste sugestão `Open`; `BoostSuggestionBanner` na grade lista sugestões e permite **Aceitar** (rascunho pausado via Integrations) ou **Dispensar** (Subfases 6.2–6.4).
+7. **Creative Hub** — ativos orgânicos aparecem em `/creatives` com permalink quando persistido; fadiga de anúncios pagos permanece inalterada (Subfase 6.4).
 
 ### Rotas e componentes
 
@@ -1300,18 +1302,65 @@ Testes: `AcceptPaidBoostSuggestionCommandTests`, `CreatePaidBoostDraftCommandHan
 
 ---
 
-## 14. Fora de escopo (após Subfase 6.3)
+## 14. Superfície Blazor — sugestão de impulsionamento (Subfase 6.4)
+
+Componentes e cliente HTTP para sugestões `PaidBoostSuggestion`. A grade **não** referencia Integrations; aceite e dispensa usam apenas **`ISocialPublishingClient`**.
+
+### Componentes
+
+| Componente | Onde | Responsabilidade |
+| :--- | :--- | :--- |
+| `BoostSuggestionBanner` | Filho de `SocialCalendarGrid` | Lista sugestões; Aceitar / Dispensar; exibe `PaidDraftId` após aceite |
+| `CreativeHubOrganicAssetCard` | `CreativeHubPage` | Ativos com `OrganicPostId`; link `Permalink` quando não nulo |
+
+### Métodos do cliente (`ISocialPublishingClient`)
+
+| Método | HTTP |
+| :--- | :--- |
+| `ListBoostSuggestionsAsync` | `GET /api/v1/social/boost-suggestions?workspaceId=` |
+| `AcceptBoostSuggestionAsync` | `POST /api/v1/social/boost-suggestions/{id}:accept?workspaceId=` |
+| `DismissBoostSuggestionAsync` | `POST /api/v1/social/boost-suggestions/{id}:dismiss?workspaceId=` |
+
+Envelope `Result<T>` em todas as respostas; falha de aceite (ex.: conta Meta ausente) mantém sugestão `Open` e mostra `Error.Description` no banner (`data-testid="boost-suggestion-error"`).
+
+### Comportamento do banner
+
+| Status | UI |
+| :--- | :--- |
+| `Open` | Rede, múltiplo de engajamento (pt-BR), botões Aceitar e Dispensar |
+| `Accepted` | Texto com `PaidDraftId`; sem ações |
+| `Dismissed` | Mensagem de dispensado; sem ações |
+| Lista vazia | Banner oculto (sem itens) |
+
+### Creative Hub (overview)
+
+`GET` do Creative Hub inclui `organicAssets[]` (`CreativeHubOrganicAssetDto`: rede, `engagementMultiple`, `permalink` opcional). Falha ao ler ativos orgânicos **não** altera contadores Healthy/Warning/Fatigued dos anúncios pagos.
+
+Testes: `BoostSuggestionBannerTests`, `SocialCalendarGridTests` (host do banner), `SocialPublishingClientTests` (rotas de boost), `CreativeHubOrganicAssetCardTests`, `CreativeHubPageTests`, `CreativeHubQueriesTests` (overview orgânico).
+
+### Checklist de aceite (AGENTS.md)
+
+- [x] Testes bUnit/cliente escritos antes da implementação (Red → Green).
+- [x] Falhas de negócio via `Result<T>` (sem `throw` para fluxo de regra).
+- [x] XML `<summary>` em tipos e métodos públicos novos (WebApp, Analytics.Application, Domain).
+- [x] Rotas versionadas `/api/v1/social/...` já expostas na 6.3; cliente alinhado ao OpenAPI.
+- [x] WebApp sem `DbContext`/repositório; tenant via header `X-Tenant-Id`.
+- [x] Spec viva (`social-publishing.md`, `creative-hub-and-fatigue-detector.md`) e ADR [0048](../adr/0048-organic-traction-boost-and-creative-hub.md) atualizado.
+
+---
+
+## 15. Fora de escopo (após Subfase 6.4)
 
 | Área | Entrega futura |
 | :--- | :--- |
 | OAuth orgânico (continuação) | Refresh preventivo e revogação remota na rede (Subfase 2.3) |
 | Reclaim de jobs `InProgress` órfãos | Timeout operacional ou job dedicado |
 | Lifecycle de posts na UI | Ações `:submit` / `:approve` / `:schedule` por card na grade |
-| Sinergia paga (continuação) | Banner Blazor e cliente HTTP na grade (Subfase 6.4) |
+| Permalink no scan orgânico | Preencher `Permalink` na notificação quando a API de insights expuser URL pública |
 
 ---
 
-## 15. Composição na Web API
+## 16. Composição na Web API
 
 Registro em `Program.cs`:
 

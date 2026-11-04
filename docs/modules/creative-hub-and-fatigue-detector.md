@@ -8,6 +8,8 @@ O **Creative Hub & Detector de Fadiga de Criativos** é o subsistema de intelig�
 
 **Origem orgânica (Social Publishing, subfase 6.2):** quando um post orgânico ganha tração, o scan persiste uma sugestão social e emite `OrganicTractionDetectedNotification`. O handler `LinkOrganicAssetWhenTractionDetected` faz upsert em `CreativeHubAssets` usando `MediaFingerprint` = SHA-256 hexadecimal (UTF-8) da `ObjectKey` da primeira mídia do post — o mesmo valor enviado na notificação. Esses ativos convivem com fingerprints derivados de anúncios pagos (`Ad.PreviewUrl`); a regra de fadiga (`AdFatigueDetector`) e a classificação Healthy/Warning/Fatigued **não** mudam por causa da origem orgânica.
 
+**UI (Subfase 6.4):** a visão geral do hub (`CreativeHubOverviewDto.organicAssets`) lista registros com `OrganicPostId` preenchido. A página `/creatives` renderiza `CreativeHubOrganicAssetCard` com rede, múltiplo de engajamento na detecção e link **Ver post publicado** quando `Permalink` está persistido; permalink ausente não exibe `<a href>` vazio. A tabela e os KPIs de fadiga continuam baseados apenas em anúncios pagos ativos.
+
 ---
 
 ## 2. Modelagem Matemática & Regras de Negócio

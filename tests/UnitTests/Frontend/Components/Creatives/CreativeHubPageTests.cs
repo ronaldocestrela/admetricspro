@@ -81,4 +81,60 @@ public sealed class CreativeHubPageTests : BunitTestBase
         cut.Find($"#creative-fatigue-alert-{adId}").Should().NotBeNull();
         cut.Find($"#btn-replace-creative-{adId}").Should().NotBeNull();
     }
+
+    /// <summary>
+    /// Criativo fadigado e ativo orgânico coexistem: badge de fadiga e permalink orgânico visíveis.
+    /// </summary>
+    [Fact]
+    public void CreativeHubPage_ShouldShowFatiguedBadgeAndOrganicPermalink_WhenBothPresent()
+    {
+        var adId = Guid.NewGuid();
+        var organicPostId = Guid.NewGuid();
+        var creativeDto = new CreativeFatigueDto(
+            adId,
+            "Criativo Black Friday",
+            "MetaAds",
+            "https://cdn.example.com/ad.jpg",
+            "Fatigued",
+            AnalyzedDays: 7,
+            InitialCtr: 3.5m,
+            CurrentCtr: 1.2m,
+            CtrChangePercentage: -65.7m,
+            CtrTrendSlope: -0.32m,
+            AverageFrequency: 3.4m,
+            CurrentFrequency: 3.8m,
+            ReplacementSuggested: true,
+            Reason: "Queda severa de CTR.",
+            ActionRecommendation: "Substitua a peça.");
+
+        var organic = new CreativeHubOrganicAssetDto(
+            Guid.NewGuid(),
+            organicPostId,
+            "Instagram",
+            "https://instagram.com/p/traction-post",
+            2.8m);
+
+        var overview = new CreativeHubOverviewDto(
+            _workspaceId,
+            TotalCreatives: 1,
+            FatiguedCreativesCount: 1,
+            WarningCreativesCount: 0,
+            HealthyCreativesCount: 0,
+            ReplacementsSuggestedCount: 1,
+            Creatives: new List<CreativeFatigueDto> { creativeDto },
+            OrganicAssets: new List<CreativeHubOrganicAssetDto> { organic });
+
+        _creativeService.GetOverviewAsync(_workspaceId, Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<CreativeHubOverviewDto>.Success(overview));
+
+        var cut = Render<CreativeHubPage>(parameters => parameters
+            .Add(p => p.WorkspaceId, _workspaceId));
+
+        cut.WaitForState(() => cut.FindAll("#creative-kpi-cards").Count > 0);
+
+        cut.Find("#badge-status-fatigued").Should().NotBeNull();
+        cut.Find("#kpi-fatigued-creatives").TextContent.Should().Be("1");
+        cut.Find("[data-testid='organic-asset-permalink']").GetAttribute("href")
+            .Should().Be("https://instagram.com/p/traction-post");
+    }
 }

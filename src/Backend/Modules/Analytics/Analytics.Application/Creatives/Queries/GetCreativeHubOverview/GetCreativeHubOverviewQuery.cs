@@ -24,18 +24,22 @@ public sealed class GetCreativeHubOverviewQueryHandler : IRequestHandler<GetCrea
 {
     private readonly ICreativeHubDataProvider _dataProvider;
     private readonly IAdFatigueDetector _fatigueDetector;
+    private readonly ICreativeHubAssetRepository? _assetRepository;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="GetCreativeHubOverviewQueryHandler"/>.
     /// </summary>
     /// <param name="dataProvider">Provedor de dados de criativos e métricas.</param>
     /// <param name="fatigueDetector">Motor analítico de detecção de fadiga.</param>
+    /// <param name="assetRepository">Repositório de ativos orgânicos do hub; opcional para testes.</param>
     public GetCreativeHubOverviewQueryHandler(
         ICreativeHubDataProvider dataProvider,
-        IAdFatigueDetector fatigueDetector)
+        IAdFatigueDetector fatigueDetector,
+        ICreativeHubAssetRepository? assetRepository = null)
     {
         _dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider));
         _fatigueDetector = fatigueDetector ?? throw new ArgumentNullException(nameof(fatigueDetector));
+        _assetRepository = assetRepository;
     }
 
     /// <inheritdoc />
@@ -127,6 +131,8 @@ public sealed class GetCreativeHubOverviewQueryHandler : IRequestHandler<GetCrea
         var healthy = creativeDtos.Count(c => c.Status == CreativeFatigueStatus.Healthy.ToString());
         var replacementSuggested = creativeDtos.Count(c => c.ReplacementSuggested);
 
+        var organicAssets = await LoadOrganicAssetsAsync(request.WorkspaceId, cancellationToken);
+
         var overview = new CreativeHubOverviewDto(
             request.WorkspaceId,
             total,
@@ -134,8 +140,35 @@ public sealed class GetCreativeHubOverviewQueryHandler : IRequestHandler<GetCrea
             warning,
             healthy,
             replacementSuggested,
-            creativeDtos);
+            creativeDtos,
+            organicAssets);
 
         return Result<CreativeHubOverviewDto>.Success(overview);
+    }
+
+    private async Task<IReadOnlyList<CreativeHubOrganicAssetDto>> LoadOrganicAssetsAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken)
+    {
+        if (_assetRepository is null)
+        {
+            return Array.Empty<CreativeHubOrganicAssetDto>();
+        }
+
+        var organicResult = await _assetRepository.ListOrganicByWorkspaceAsync(workspaceId, cancellationToken);
+        if (organicResult.IsFailure)
+        {
+            return Array.Empty<CreativeHubOrganicAssetDto>();
+        }
+
+        return organicResult.Value
+            .Where(a => a.OrganicPostId.HasValue)
+            .Select(a => new CreativeHubOrganicAssetDto(
+                a.Id,
+                a.OrganicPostId!.Value,
+                a.Network,
+                a.Permalink,
+                a.EngagementMultiple))
+            .ToList();
     }
 }
