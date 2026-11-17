@@ -824,18 +824,35 @@
         if (_selectedSquadDetails == null || !_selectedMemberIdsToAdd.Any()) return;
 
         _isAssigning = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var failedDescriptions = new List<string>();
         foreach (var userId in _selectedMemberIdsToAdd.ToList())
         {
-            await SquadClientService.AddSquadMemberAsync(_selectedSquadDetails.Id, userId);
+            var result = await SquadClientService.AddSquadMemberAsync(_selectedSquadDetails.Id, userId);
+            if (result.IsFailure)
+            {
+                failedDescriptions.Add(result.Error.Description);
+            }
         }
 
-        _selectedMemberIdsToAdd.Clear();
-        _successMessage = "Membros vinculados com sucesso ao squad!";
-        _isAssigning = false;
-
-        // Recarrega detalhes
         await RefreshSelectedSquadDetailsAsync();
         await LoadDataAsync();
+
+        if (failedDescriptions.Count == 0)
+        {
+            _selectedMemberIdsToAdd.Clear();
+            _successMessage = "Membros vinculados com sucesso ao squad!";
+        }
+        else
+        {
+            _errorMessage = failedDescriptions.Count == 1
+                ? failedDescriptions[0]
+                : $"Não foi possível vincular todos os colaboradores: {string.Join(" ", failedDescriptions.Distinct())}";
+        }
+
+        _isAssigning = false;
     }
 
     private async Task HandleRemoveMemberAsync(Guid userId)
@@ -860,17 +877,35 @@
         if (_selectedSquadDetails == null || !_selectedWorkspaceIdsToAdd.Any()) return;
 
         _isAssigning = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var failedDescriptions = new List<string>();
         foreach (var wsId in _selectedWorkspaceIdsToAdd.ToList())
         {
-            await SquadClientService.AssignSquadWorkspaceAsync(_selectedSquadDetails.Id, wsId);
+            var result = await SquadClientService.AssignSquadWorkspaceAsync(_selectedSquadDetails.Id, wsId);
+            if (result.IsFailure)
+            {
+                failedDescriptions.Add(result.Error.Description);
+            }
         }
-
-        _selectedWorkspaceIdsToAdd.Clear();
-        _successMessage = "Clientes alocados com sucesso à carteira do squad!";
-        _isAssigning = false;
 
         await RefreshSelectedSquadDetailsAsync();
         await LoadDataAsync();
+
+        if (failedDescriptions.Count == 0)
+        {
+            _selectedWorkspaceIdsToAdd.Clear();
+            _successMessage = "Clientes alocados com sucesso à carteira do squad!";
+        }
+        else
+        {
+            _errorMessage = failedDescriptions.Count == 1
+                ? failedDescriptions[0]
+                : $"Não foi possível alocar todos os clientes: {string.Join(" ", failedDescriptions.Distinct())}";
+        }
+
+        _isAssigning = false;
     }
 
     private async Task HandleUnassignWorkspaceAsync(Guid workspaceId)

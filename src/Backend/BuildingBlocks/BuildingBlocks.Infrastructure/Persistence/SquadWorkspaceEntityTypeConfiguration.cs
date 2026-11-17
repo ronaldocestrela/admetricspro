@@ -16,6 +16,9 @@ public sealed class SquadWorkspaceEntityTypeConfiguration : IEntityTypeConfigura
 
         builder.HasKey(workspace => workspace.Id);
 
+        builder.Property(workspace => workspace.Id)
+            .ValueGeneratedNever();
+
         builder.Property(workspace => workspace.SquadId)
             .IsRequired();
 

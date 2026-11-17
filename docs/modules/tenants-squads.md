@@ -12,6 +12,7 @@ Em agências de tráfego pago, a organização do trabalho ocorre através de c�
 - **`Squad` (Agregado Raiz):** Identificado por `Id`, com `Name`, `Description`, `IsActive` e timestamps UTC.
 - **`SquadMember` (Entidade Associativa):** Representa a alocação de um colaborador (`TenantUser`) ao Squad.
 - **`SquadWorkspace` (Entidade Associativa):** Representa a alocação de um cliente gerenciado (`Workspace`) à carteira do Squad.
+- **Chaves de vínculo (`SquadMember.Id`, `SquadWorkspace.Id`):** Geradas no domínio (`Guid.NewGuid()` em `Create`). No EF Core, o mapeamento usa `ValueGeneratedNever()` para que novos vínculos sejam persistidos com `INSERT` (evita o EF classificar filhos com chave já preenchida como `Modified` e emitir `UPDATE` inexistente).
 - **Modelo Matricial N:N:** Um colaborador pode pertencer a múltiplos squads, e um workspace pode ter atendimento compartilhado entre squads (ex: Squad de Aquisição + Squad de Retenção).
 
 ```mermaid

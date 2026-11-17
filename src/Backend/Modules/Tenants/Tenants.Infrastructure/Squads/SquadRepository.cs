@@ -130,9 +130,16 @@ public sealed class SquadRepository : ISquadRepository
     {
         ArgumentNullException.ThrowIfNull(squad);
         var contextResult = _contextAccessor.GetDbContextAsync().GetAwaiter().GetResult();
-        if (contextResult.IsSuccess)
+        if (contextResult.IsFailure)
         {
-            contextResult.Value.Squads.Update(squad);
+            return;
+        }
+
+        var context = contextResult.Value;
+        var entry = context.Entry(squad);
+        if (entry.State == EntityState.Detached)
+        {
+            context.Squads.Update(squad);
         }
     }
 

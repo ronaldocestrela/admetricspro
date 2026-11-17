@@ -1,5 +1,6 @@
 using AngleSharp.Dom;
 using Bunit;
+using BuildingBlocks.Domain.Primitives;
 using FluentAssertions;
 using NSubstitute;
 using Tenants.Application.Squads.DTOs;
@@ -245,6 +246,29 @@ public sealed class SquadManagerTests : BunitTestBase
 
         // Assert
         SquadClientService.Received(1).AddSquadMemberAsync(_squad1Id, _user2Id, Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Valida que falha ao vincular membro exibe mensagem de erro e não mostra sucesso falso.
+    /// </summary>
+    [Fact]
+    public async Task SquadManager_MultiSelectMembers_WhenApiFails_ShouldShowErrorNotSuccess()
+    {
+        SquadClientService.AddSquadMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure(Error.Failure("Squad.NetworkError", "Falha de rede simulada.")));
+
+        var cut = Render<SquadManager>();
+
+        cut.Find($".btn-manage-squad[data-squad-id='{_squad1Id}']").Click();
+
+        await cut.Find($".member-select-checkbox[data-user-id='{_user2Id}']").ChangeAsync(true);
+        await cut.Find("#btn-assign-selected-members").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.Should().Contain("Falha de rede simulada.");
+            cut.Markup.Should().NotContain("Membros vinculados com sucesso ao squad!");
+        });
     }
 
     /// <summary>

@@ -16,6 +16,9 @@ public sealed class SquadMemberEntityTypeConfiguration : IEntityTypeConfiguratio
 
         builder.HasKey(member => member.Id);
 
+        builder.Property(member => member.Id)
+            .ValueGeneratedNever();
+
         builder.Property(member => member.SquadId)
             .IsRequired();
 
