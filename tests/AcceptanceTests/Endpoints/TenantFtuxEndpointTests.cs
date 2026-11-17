@@ -15,7 +15,19 @@ using Tenants.Application.Ftux.DTOs;
 using Tenants.Application.Integrations.Repositories;
 using Tenants.Application.Persistence;
 using Tenants.Application.Squads.Repositories;
+using BuildingBlocks.Application.Emails;
+using BuildingBlocks.Application.MultiTenancy;
+using BuildingBlocks.Application.Security;
+using BuildingBlocks.Infrastructure.Emails;
+using BuildingBlocks.Infrastructure.MultiTenancy;
+using Microsoft.Extensions.Options;
+using Tenants.Application.Users.DTOs;
+using Tenants.Application.Users.Options;
+using Master.Application.Repositories;
+using Master.Domain.Tenants;
 using Tenants.Application.Users.Repositories;
+using Tenants.Application.Users.Services;
+using Tenants.Infrastructure.Users;
 using Tenants.Application.Workspaces.Repositories;
 using WebApi.Models;
 using Xunit;
@@ -174,7 +186,12 @@ public sealed class TenantFtuxEndpointTests : IClassFixture<WebApplicationFactor
 
     private static string CreateTestJwt(Guid tenantId, bool expired = false) => new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
         issuer: "AdMetricsPro.Tenants", audience: "AdMetricsPro.ClientApp",
-        claims: [new Claim("sub", Guid.NewGuid().ToString()), new Claim("tenant_id", tenantId.ToString())],
+        claims:
+        [
+            new Claim("sub", Guid.NewGuid().ToString()),
+            new Claim("tenant_id", tenantId.ToString()),
+            new Claim(ClaimTypes.Role, TenantRole.Owner.ToString())
+        ],
         notBefore: DateTime.UtcNow.AddHours(-1), expires: expired ? DateTime.UtcNow.AddMinutes(-5) : DateTime.UtcNow.AddMinutes(10),
         signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwtKey)), SecurityAlgorithms.HmacSha256)));
 
@@ -195,18 +212,35 @@ public sealed class TenantFtuxEndpointTests : IClassFixture<WebApplicationFactor
     {
         // Arrange
         var fakeUserRepo = new FakeTenantUserRepository();
+        var fakeInvitationRepo = new FakeTenantUserInvitationRepository();
         var fakeUow = new FakeTenantUnitOfWork();
-
+        var tenantContextAccessor = new TenantContextAccessor
+        {
+            TenantContext = TenantContext.Create(TestTenantId, "test-agency", TenantResolutionSource.Header)
+        };
         var client = _factory.WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["TenantJwt:SecretKey"] = TestJwtKey,
+                ["Tenants:Invitations:WebAppBaseUrl"] = "http://localhost:5001"
+            }));
             builder.ConfigureServices(services =>
             {
                 services.AddScoped<ITenantUserRepository>(_ => fakeUserRepo);
+                services.AddScoped<ITenantUserInvitationRepository>(_ => fakeInvitationRepo);
                 services.AddScoped<ITenantUnitOfWork>(_ => fakeUow);
+                services.AddSingleton<ITenantContextAccessor>(tenantContextAccessor);
+                services.AddSingleton<IEmailSender, InMemoryEmailSender>();
+                services.AddSingleton<ITenantInvitationTokenService, TenantInvitationTokenService>();
+                services.AddScoped<ITenantInvitationEmailComposer, TenantInvitationEmailComposer>();
+                services.AddScoped<Tenants.Application.Rbac.Services.IPermissionEvaluator, TestPermissionEvaluator>();
+                services.AddScoped<ITenantRepository>(_ => new FakeMasterTenantRepository(TestTenantId, "test-agency"));
             });
         }).CreateClient();
 
         client.DefaultRequestHeaders.Add("X-Tenant-Id", TestTenantId.ToString());
+        client.DefaultRequestHeaders.Authorization = new("Bearer", CreateTestJwt(TestTenantId));
 
         var request = new InviteTenantUserApiRequest("Gestor Tráfego", "gestor.novo@agencia.com", "MediaManager");
 
@@ -215,10 +249,44 @@ public sealed class TenantFtuxEndpointTests : IClassFixture<WebApplicationFactor
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var envelope = await response.Content.ReadFromJsonAsync<Result<Guid>>(JsonOptions);
+        var envelope = await response.Content.ReadFromJsonAsync<Result<InviteTenantUserResultDto>>(JsonOptions);
         envelope.Should().NotBeNull();
         envelope!.IsSuccess.Should().BeTrue();
-        envelope.Value.Should().NotBeEmpty();
+        envelope.Value.UserId.Should().NotBeEmpty();
+        envelope.Value.EmailDispatched.Should().BeTrue();
+    }
+
+    private sealed class FakeTenantUserInvitationRepository : ITenantUserInvitationRepository
+    {
+        private readonly List<TenantUserInvitation> _items = new();
+
+        public Task<TenantUserInvitation?> GetByTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default)
+            => Task.FromResult(_items.FirstOrDefault(i => i.TokenHash == tokenHash));
+
+        public Task<TenantUserInvitation?> GetOpenByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+            return Task.FromResult(_items.FirstOrDefault(i =>
+                i.UserId == userId && i.AcceptedAtUtc is null && i.RevokedAtUtc is null && i.ExpiresAtUtc > now));
+        }
+
+        public Task<IReadOnlyList<TenantUserInvitation>> GetOpenByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds,
+            CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+            return Task.FromResult<IReadOnlyList<TenantUserInvitation>>(_items
+                .Where(i => userIds.Contains(i.UserId) && i.AcceptedAtUtc is null && i.RevokedAtUtc is null && i.ExpiresAtUtc > now)
+                .ToList());
+        }
+
+        public Task AddAsync(TenantUserInvitation invitation, CancellationToken cancellationToken = default)
+        {
+            _items.Add(invitation);
+            return Task.CompletedTask;
+        }
+
+        public void Update(TenantUserInvitation invitation) { }
     }
 
     private sealed class FakeWorkspaceRepository : IWorkspaceRepository
@@ -332,4 +400,49 @@ public sealed class TenantFtuxEndpointTests : IClassFixture<WebApplicationFactor
     {
         public Task<int> CommitAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
     }
+
+    private sealed class FakeMasterTenantRepository : ITenantRepository
+    {
+        private readonly Guid _tenantId;
+        private readonly string _subdomain;
+        private readonly Tenant _tenant;
+
+        public FakeMasterTenantRepository(Guid tenantId, string subdomain)
+        {
+            _tenantId = tenantId;
+            _subdomain = subdomain;
+            _tenant = Tenant.Create(
+                "Agência Teste",
+                "12345678000199",
+                subdomain,
+                SubscriptionTier.Pro,
+                adminEmail: "owner@test.local",
+                adminFullName: "Owner Teste").Value;
+        }
+
+        public Task<Tenant?> GetByIdAsync(TenantId id, CancellationToken cancellationToken = default)
+            => Task.FromResult(id.Value == _tenantId ? _tenant : null);
+
+        public Task<Tenant?> GetBySubdomainAsync(string subdomain, CancellationToken cancellationToken = default)
+            => Task.FromResult(string.Equals(subdomain, _subdomain, StringComparison.OrdinalIgnoreCase) ? _tenant : null);
+
+        public Task<Tenant?> GetByCustomDomainAsync(string customDomain, CancellationToken cancellationToken = default)
+            => Task.FromResult<Tenant?>(null);
+
+        public Task<Tenant?> GetByCnpjAsync(string cnpj, CancellationToken cancellationToken = default)
+            => Task.FromResult<Tenant?>(null);
+
+        public Task<IReadOnlyList<Tenant>> GetTenantsForDunningEvaluationAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<Tenant>>(Array.Empty<Tenant>());
+
+        public Task<IReadOnlyList<Tenant>> GetTenantsForTrialNoticeEvaluationAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<Tenant>>(Array.Empty<Tenant>());
+
+        public Task AddAsync(Tenant aggregate, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public void Update(Tenant aggregate) { }
+
+        public void Remove(Tenant aggregate) { }
+    }
+
 }

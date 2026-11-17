@@ -1,4 +1,7 @@
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Domain.Tenants;
+using Tenants.Application.Rbac.Attributes;
+using Tenants.Application.Users.DTOs;
 
 namespace Tenants.Application.Users.Commands.InviteTenantUser;
 
@@ -9,8 +12,9 @@ namespace Tenants.Application.Users.Commands.InviteTenantUser;
 /// <param name="Email">Endereço de e-mail corporativo.</param>
 /// <param name="Role">Papel de governança (ex: MediaManager, Analyst).</param>
 /// <param name="PhoneNumber">Telefone opcional de contato.</param>
+[RequireTenantPermission(TenantPermission.ManageTeamMembers)]
 public sealed record InviteTenantUserCommand(
     string FullName,
     string Email,
     string Role,
-    string? PhoneNumber = null) : ICommand<Guid>;
+    string? PhoneNumber = null) : ICommand<InviteTenantUserResultDto>;

@@ -60,8 +60,8 @@ public sealed class SquadManagerTests : BunitTestBase
 
         _sampleUsers = new List<TenantUserDto>
         {
-            new(_user1Id, "Carlos Gestor", "carlos@agencia.com", null, "MediaManager", true, DateTime.UtcNow),
-            new(_user2Id, "Ana Analista", "ana@agencia.com", null, "Analyst", true, DateTime.UtcNow)
+            new(_user1Id, "Carlos Gestor", "carlos@agencia.com", null, "MediaManager", true, DateTime.UtcNow, "Active"),
+            new(_user2Id, "Ana Analista", "ana@agencia.com", null, "Analyst", true, DateTime.UtcNow, "Active")
         };
 
         _sampleWorkspaces = new List<WorkspaceDto>

@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Tenants.Application.Users.Commands.InviteTenantUser;
+using Tenants.Application.Users.Commands.ResendTenantUserInvitation;
 using Tenants.Application.Users.DTOs;
 using Tenants.Application.Users.Queries.GetTenantUsers;
 using WebApi.Models;
@@ -35,16 +36,17 @@ public sealed class TenantUsersController : ControllerBase
     /// <returns>Identificador do colaborador criado.</returns>
     [HttpPost]
     [EndpointSummary("Cadastra ou convida um novo membro/colaborador para a agência")]
-    [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<Result<Guid>>> InviteUser(
+    [ProducesResponseType(typeof(Result<InviteTenantUserResultDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(Result<InviteTenantUserResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<InviteTenantUserResultDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<InviteTenantUserResultDto>), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<Result<InviteTenantUserResultDto>>> InviteUser(
         [FromBody] InviteTenantUserApiRequest request,
         CancellationToken cancellationToken = default)
     {
         if (request is null)
         {
-            return BadRequest(Result<Guid>.Failure(
+            return BadRequest(Result<InviteTenantUserResultDto>.Failure(
                 Error.Validation("Request.Null", "O corpo da requisição não pode ser nulo.")));
         }
 
@@ -61,11 +63,43 @@ public sealed class TenantUsersController : ControllerBase
             return result.Error.Type switch
             {
                 ErrorType.Conflict => Conflict(result),
+                ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, result),
                 _ => BadRequest(result)
             };
         }
 
         return StatusCode(StatusCodes.Status201Created, result);
+    }
+
+    /// <summary>
+    /// Reenvia o e-mail de convite para um colaborador com conta pendente.
+    /// </summary>
+    /// <param name="id">Identificador do colaborador.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado do reenvio com status do e-mail.</returns>
+    [HttpPost("{id:guid}/invitations")]
+    [EndpointSummary("Reenvia convite por e-mail para colaborador pendente")]
+    [ProducesResponseType(typeof(Result<InviteTenantUserResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<InviteTenantUserResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<InviteTenantUserResultDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<InviteTenantUserResultDto>), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<Result<InviteTenantUserResultDto>>> ResendInvitation(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new ResendTenantUserInvitationCommand(id);
+        var result = await _sender.Send(command, cancellationToken);
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(result),
+                ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return Ok(result);
     }
 
     /// <summary>

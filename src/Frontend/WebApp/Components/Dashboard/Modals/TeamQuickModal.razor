@@ -203,9 +203,19 @@
 
         if (result.IsSuccess)
         {
+            if (!result.Value.EmailDispatched)
+            {
+                _errorMessage = "Convite criado, mas o e-mail não foi enviado. Reenvie em Configurações → Equipe.";
+            }
+
             _memberName = string.Empty;
             _memberEmail = string.Empty;
-            await CloseAsync();
+
+            if (result.Value.EmailDispatched)
+            {
+                await CloseAsync();
+            }
+
             await OnTeamConfigured.InvokeAsync();
         }
         else

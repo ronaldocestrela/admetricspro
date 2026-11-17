@@ -1,0 +1,214 @@
+@page "/settings/team"
+@layout TenantMainLayout
+@namespace WebApp.Components.Pages.Settings
+@using BuildingBlocks.Domain.Tenants
+@using WebApp.Components.Shared
+@using WebApp.Models
+@inject ITenantTeamClientService TeamClientService
+@inject ITenantSessionStateProvider SessionProvider
+
+<PageTitle>Equipe — AdMetricsPro</PageTitle>
+
+<div class="team-settings-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Gestão de <span class="tenant-title-accent">Equipe</span></h1>
+            <p class="page-subtitle">Convide colaboradores, acompanhe convites pendentes e reenvie acessos por e-mail.</p>
+        </div>
+    </div>
+
+    <TenantAuthorizeView AllowedRoles="@_managerRoles" NotAuthorized="@DeniedFragment">
+        @if (!string.IsNullOrWhiteSpace(_successMessage))
+        {
+            <div class="alert alert-success" role="status">@_successMessage</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">@_errorMessage</div>
+        }
+
+        <div class="settings-grid">
+            <section class="settings-card">
+                <h2 class="section-title">Convidar colaborador</h2>
+                <form @onsubmit="HandleInviteAsync" class="invite-form">
+                    <div class="form-row">
+                        <label for="invite-name">Nome completo *</label>
+                        <input id="invite-name" class="form-control" @bind="_inviteName" required disabled="@_isSubmitting" />
+                    </div>
+                    <div class="form-row">
+                        <label for="invite-email">E-mail corporativo *</label>
+                        <input id="invite-email" type="email" class="form-control" @bind="_inviteEmail" required disabled="@_isSubmitting" />
+                    </div>
+                    <div class="form-row">
+                        <label for="invite-phone">Telefone</label>
+                        <input id="invite-phone" class="form-control" @bind="_invitePhone" disabled="@_isSubmitting" />
+                    </div>
+                    <div class="form-row">
+                        <label for="invite-role">Papel</label>
+                        <select id="invite-role" class="form-control" @bind="_inviteRole" disabled="@_isSubmitting">
+                            <option value="Admin">Administrador</option>
+                            <option value="SquadLeader">Líder de Squad</option>
+                            <option value="MediaManager">Gestor de Tráfego</option>
+                            <option value="Analyst">Analista</option>
+                            <option value="Guest">Visualizador (Guest)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">
+                        @(_isSubmitting ? "Enviando convite..." : "Enviar convite")
+                    </button>
+                </form>
+            </section>
+
+            <section class="settings-card">
+                <h2 class="section-title">Colaboradores</h2>
+                @if (_isLoading)
+                {
+                    <p>Carregando equipe...</p>
+                }
+                else if (_users.Count == 0)
+                {
+                    <p class="text-muted">Nenhum colaborador cadastrado além do proprietário.</p>
+                }
+                else
+                {
+                    <table class="team-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th>Papel</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in _users)
+                            {
+                                <tr>
+                                    <td>@user.FullName</td>
+                                    <td>@user.Email</td>
+                                    <td>@user.Role</td>
+                                    <td><span class="status-pill status-@user.AccountStatus.ToLowerInvariant()">@FormatStatus(user.AccountStatus)</span></td>
+                                    <td>
+                                        @if (user.AccountStatus == nameof(TenantUserAccountStatus.PendingAcceptance))
+                                        {
+                                            <button type="button" class="btn btn-link" disabled="@_resendingUserId == user.Id" @onclick="() => HandleResendAsync(user.Id)">
+                                                @(_resendingUserId == user.Id ? "Reenviando..." : "Reenviar convite")
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
+        </div>
+    </TenantAuthorizeView>
+</div>
+
+@code {
+    private static readonly IReadOnlyList<TenantRole> _managerRoles =
+        [TenantRole.Owner, TenantRole.Admin];
+
+    private readonly List<Tenants.Application.Users.DTOs.TenantUserDto> _users = new();
+    private string _inviteName = string.Empty;
+    private string _inviteEmail = string.Empty;
+    private string? _invitePhone;
+    private string _inviteRole = "MediaManager";
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private Guid? _resendingUserId;
+    private string? _successMessage;
+    private string? _errorMessage;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private RenderFragment DeniedFragment => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "alert alert-warning");
+        builder.AddContent(2, "Somente proprietários e administradores podem gerenciar convites de colaboradores.");
+        builder.CloseElement();
+    };
+
+    private async Task LoadUsersAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        var result = await TeamClientService.GetUsersAsync();
+        _isLoading = false;
+
+        _users.Clear();
+        if (result.IsSuccess)
+        {
+            _users.AddRange(result.Value);
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task HandleInviteAsync()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+
+        if (string.IsNullOrWhiteSpace(_inviteName) || string.IsNullOrWhiteSpace(_inviteEmail))
+        {
+            _errorMessage = "Nome e e-mail são obrigatórios.";
+            return;
+        }
+
+        _isSubmitting = true;
+        var model = new InviteTenantUserModel(_inviteName.Trim(), _inviteEmail.Trim(), _inviteRole, _invitePhone?.Trim());
+        var result = await TeamClientService.InviteUserAsync(model);
+        _isSubmitting = false;
+
+        if (result.IsFailure)
+        {
+            _errorMessage = result.Error.Description;
+            return;
+        }
+
+        _inviteName = string.Empty;
+        _inviteEmail = string.Empty;
+        _invitePhone = null;
+        _successMessage = result.Value.EmailDispatched
+            ? "Convite criado e e-mail enviado com sucesso."
+            : "Convite criado, mas o e-mail não foi enviado. Use «Reenviar convite» na lista.";
+        await LoadUsersAsync();
+    }
+
+    private async Task HandleResendAsync(Guid userId)
+    {
+        _errorMessage = null;
+        _successMessage = null;
+        _resendingUserId = userId;
+        var result = await TeamClientService.ResendInvitationAsync(userId);
+        _resendingUserId = null;
+
+        if (result.IsFailure)
+        {
+            _errorMessage = result.Error.Description;
+            return;
+        }
+
+        _successMessage = result.Value.EmailDispatched
+            ? "Convite reenviado por e-mail."
+            : "Novo convite gerado, mas o e-mail não foi enviado. Tente novamente mais tarde.";
+    }
+
+    private static string FormatStatus(string status) => status switch
+    {
+        nameof(TenantUserAccountStatus.PendingAcceptance) => "Aguardando aceite",
+        nameof(TenantUserAccountStatus.Inactive) => "Inativo",
+        _ => "Ativo"
+    };
+}

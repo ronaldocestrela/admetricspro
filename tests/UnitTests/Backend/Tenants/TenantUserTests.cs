@@ -16,6 +16,24 @@ public sealed class TenantUserTests
     private const string ValidPasswordHash = "AQAAAAEAACcQAAAAEHASH1234567890SECUREHASH";
 
     /// <summary>
+    /// Verifies that CreatePending produces an inactive user awaiting invitation acceptance.
+    /// </summary>
+    [Fact]
+    public void CreatePending_ShouldReturnInactiveUser()
+    {
+        var result = TenantUser.CreatePending(
+            _validId,
+            ValidFullName,
+            ValidEmail,
+            ValidPhone,
+            ValidPasswordHash,
+            TenantRole.MediaManager);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.IsActive.Should().BeFalse();
+    }
+
+    /// <summary>
     /// Verifies that a valid TenantUser can be instantiated via factory method.
     /// </summary>
     [Fact]

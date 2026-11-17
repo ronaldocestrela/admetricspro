@@ -10,6 +10,7 @@ namespace Tenants.Application.Users.DTOs;
 /// <param name="Role">Papel de governança (ex: Owner, Admin, MediaManager, Analyst).</param>
 /// <param name="IsActive">Status ativo da conta.</param>
 /// <param name="CreatedAtUtc">Data de cadastro.</param>
+/// <param name="AccountStatus">Estado operacional (Active, PendingAcceptance, Inactive).</param>
 public sealed record TenantUserDto(
     Guid Id,
     string FullName,
@@ -17,4 +18,5 @@ public sealed record TenantUserDto(
     string? PhoneNumber,
     string Role,
     bool IsActive,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    string AccountStatus);

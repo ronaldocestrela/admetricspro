@@ -1,0 +1,143 @@
+@page "/convite/{Token}"
+@layout WebApp.Components.Landing.LandingLayout
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager NavigationManager
+@inject ITenantInvitationClientService InvitationClientService
+
+<PageTitle>Aceitar convite — AdMetricsPro</PageTitle>
+
+<div class="tenant-login-wrapper">
+    <main class="login-main">
+        <div class="login-card">
+            <h1 class="login-title">Defina sua senha</h1>
+
+            @if (_isLoadingPreview)
+            {
+                <p>Validando convite...</p>
+            }
+            else if (_preview is null)
+            {
+                <div class="alert alert-danger" role="alert">@(_errorMessage ?? "Convite inválido ou expirado.")</div>
+            }
+            else
+            {
+                <p class="login-subtitle">
+                    <strong>@_preview.FullName</strong>, você foi convidado(a) para <strong>@_preview.AgencyName</strong>.
+                    Crie sua senha para acessar o painel.
+                </p>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">@_errorMessage</div>
+                }
+
+                <form @onsubmit="HandleAcceptAsync" class="login-form">
+                    <label for="password">Senha *</label>
+                    <input id="password" type="password" class="form-control" @bind="_password" required />
+
+                    <label for="confirm-password">Confirmar senha *</label>
+                    <input id="confirm-password" type="password" class="form-control" @bind="_confirmPassword" required />
+
+                    <button type="submit" class="btn btn-primary w-100" disabled="@_isSubmitting">
+                        @(_isSubmitting ? "Ativando conta..." : "Ativar conta")
+                    </button>
+                </form>
+            }
+        </div>
+    </main>
+</div>
+
+@code {
+    /// <summary>
+    /// Token opaco recebido na URL do convite.
+    /// </summary>
+    [Parameter]
+    public string Token { get; set; } = string.Empty;
+
+    private Tenants.Application.Users.DTOs.TenantInvitationPreviewDto? _preview;
+    private string _subdomain = string.Empty;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private bool _isLoadingPreview = true;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        _subdomain = ResolveSubdomain();
+        if (string.IsNullOrWhiteSpace(_subdomain) || string.IsNullOrWhiteSpace(Token))
+        {
+            _isLoadingPreview = false;
+            _errorMessage = "Link de convite incompleto. Verifique se o subdomínio está na URL.";
+            return;
+        }
+
+        var result = await InvitationClientService.GetInvitationAsync(Token, _subdomain);
+        _isLoadingPreview = false;
+
+        if (result.IsSuccess)
+        {
+            _preview = result.Value;
+        }
+        else
+        {
+            _errorMessage = result.Error.Description;
+        }
+    }
+
+    private async Task HandleAcceptAsync()
+    {
+        if (_preview is null)
+        {
+            return;
+        }
+
+        _errorMessage = null;
+
+        if (!HasValidPassword(_password))
+        {
+            _errorMessage = "A senha precisa de 8 caracteres, letras maiúsculas e minúsculas, número e símbolo.";
+            return;
+        }
+
+        if (!string.Equals(_password, _confirmPassword, StringComparison.Ordinal))
+        {
+            _errorMessage = "As senhas não coincidem.";
+            return;
+        }
+
+        _isSubmitting = true;
+        var result = await InvitationClientService.AcceptInvitationAsync(Token, _subdomain, _password, _confirmPassword);
+        _isSubmitting = false;
+
+        if (result.IsFailure)
+        {
+            _errorMessage = result.Error.Description;
+            return;
+        }
+
+        var loginUrl = string.IsNullOrWhiteSpace(_subdomain)
+            ? "/login"
+            : $"/login?subdomain={Uri.EscapeDataString(_subdomain)}";
+        NavigationManager.NavigateTo(loginUrl);
+    }
+
+    private string ResolveSubdomain()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("subdomain", out var values) && !string.IsNullOrWhiteSpace(values.ToString()))
+        {
+            return values.ToString().Trim().ToLowerInvariant();
+        }
+
+        return string.Empty;
+    }
+
+    private static bool HasValidPassword(string password) => password.Length >= 8
+        && password.Any(char.IsUpper)
+        && password.Any(char.IsLower)
+        && password.Any(char.IsDigit)
+        && password.Any(c => !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c));
+}

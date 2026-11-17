@@ -30,6 +30,8 @@ var apiUri = new Uri(apiBaseUrl);
 
 builder.Services.AddHttpClient<ITenantAuthClientService, TenantAuthClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+builder.Services.AddHttpClient<ITenantInvitationClientService, TenantInvitationClientService>(client => client.BaseAddress = apiUri)
+    .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<ITenantDirectoryService, TenantDirectoryService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<ITenantOnboardingClientService, TenantOnboardingClientService>(client => client.BaseAddress = apiUri)

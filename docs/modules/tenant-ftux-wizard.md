@@ -134,22 +134,21 @@ Ao atingir 100%, o componente exibe uma faixa comemorativa com botão de dispens
   "fullName": "Carlos Gestor de Tráfego",
   "email": "carlos@agenciaalpha.com.br",
   "phoneNumber": "11988887777",
-  "role": 2
+  "role": "MediaManager"
 }
 ```
-*(Papéis RBAC suportados: `Owner = 0`, `Admin = 1`, `Manager = 2`, `Analyst = 3`, `ClientViewer = 4`)*
+*(Papéis atribuíveis: `Admin`, `SquadLeader`, `MediaManager`, `Analyst`, `Guest` — `Owner` apenas no onboarding.)*
+
+O convite gera conta inativa e envia e-mail com link público. Gestão contínua em `/settings/team`. Ver [tenants-team-invitations.md](./tenants-team-invitations.md).
 
 #### Resposta de Sucesso (`201 Created`):
 ```json
 {
   "isSuccess": true,
-  "isFailure": false,
-  "error": {
-    "code": "",
-    "description": "",
-    "type": 0
-  },
-  "value": "5d2b781a-6539-4ce1-85f9-2d1796be20a1"
+  "value": {
+    "userId": "5d2b781a-6539-4ce1-85f9-2d1796be20a1",
+    "emailDispatched": true
+  }
 }
 ```
 

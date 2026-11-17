@@ -1109,6 +1109,47 @@ namespace Master.Infrastructure.Persistence.Migrations.TenantOperational
                     b.ToTable("TenantUsers", (string)null);
                 });
 
+            modelBuilder.Entity("BuildingBlocks.Domain.Tenants.TenantUserInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AcceptedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "AcceptedAtUtc", "RevokedAtUtc");
+
+                    b.ToTable("TenantUserInvitations", (string)null);
+                });
+
             modelBuilder.Entity("BuildingBlocks.Domain.Tenants.Workspace", b =>
                 {
                     b.Property<Guid>("Id")

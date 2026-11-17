@@ -171,6 +171,42 @@ public sealed partial class TenantUser : Entity<Guid>
     }
 
     /// <summary>
+    /// Creates a new <see cref="TenantUser"/> aguardando aceite de convite (conta inativa).
+    /// </summary>
+    /// <param name="id">The unique identifier of the user.</param>
+    /// <param name="fullName">The full name of the user.</param>
+    /// <param name="email">The email address of the user.</param>
+    /// <param name="phoneNumber">Optional phone number.</param>
+    /// <param name="passwordHash">Placeholder password hash until invitation acceptance.</param>
+    /// <param name="role">The assigned role.</param>
+    /// <param name="createdAtUtc">Optional creation timestamp; defaults to UTC now.</param>
+    /// <returns>A <see cref="Result{T}"/> containing the pending user on success or a validation failure.</returns>
+    public static Result<TenantUser> CreatePending(
+        Guid id,
+        string fullName,
+        string email,
+        string? phoneNumber,
+        string passwordHash,
+        TenantRole role,
+        DateTime? createdAtUtc = null)
+    {
+        var createResult = Create(id, fullName, email, phoneNumber, passwordHash, role, createdAtUtc);
+        if (createResult.IsFailure)
+        {
+            return createResult;
+        }
+
+        var user = createResult.Value;
+        var deactivateResult = user.Deactivate();
+        if (deactivateResult.IsFailure)
+        {
+            return Result<TenantUser>.Failure(deactivateResult.Error);
+        }
+
+        return Result<TenantUser>.Success(user);
+    }
+
+    /// <summary>
     /// Updates the user profile details.
     /// </summary>
     /// <param name="fullName">New full name.</param>

@@ -1,7 +1,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Tenants.Application.Auth.Services;
+using Tenants.Application.Users.Options;
+using Tenants.Application.Users.Repositories;
+using Tenants.Application.Users.Services;
 using Tenants.Infrastructure.Auth;
+using Tenants.Infrastructure.Users;
 using Microsoft.AspNetCore.Http;
 
 namespace Tenants.Infrastructure.DependencyInjection;
@@ -28,6 +32,8 @@ public static class TenantsInfrastructureServiceExtensions
         {
             configuration.GetSection(TenantJwtOptions.SectionName).Bind(options);
         });
+
+        services.Configure<TenantInvitationOptions>(configuration.GetSection(TenantInvitationOptions.SectionName));
 
         services.AddAuthentication("Tenant")
             .AddJwtBearer("Tenant", options =>
@@ -68,7 +74,11 @@ public static class TenantsInfrastructureServiceExtensions
         services.AddScoped<ITenantTokenService, TenantJwtTokenService>();
         services.AddScoped<Tenants.Application.Workspaces.Repositories.IWorkspaceRepository, Tenants.Infrastructure.Workspaces.WorkspaceRepository>();
         services.AddScoped<Tenants.Application.Squads.Repositories.ISquadRepository, Tenants.Infrastructure.Squads.SquadRepository>();
-        services.AddScoped<Tenants.Application.Users.Repositories.ITenantUserRepository, Tenants.Infrastructure.Users.TenantUserRepository>();
+        services.AddScoped<ITenantUserRepository, TenantUserRepository>();
+        services.AddScoped<ITenantUserInvitationRepository, TenantUserInvitationRepository>();
+        services.AddSingleton<ITenantInvitationTokenService, TenantInvitationTokenService>();
+        services.AddScoped<ITenantInvitationEmailComposer, TenantInvitationEmailComposer>();
+        services.AddScoped<ITenantInvitationPublicGateway, TenantInvitationPublicGateway>();
         services.AddScoped<Tenants.Application.Squads.Services.IUserPortfolioService, Tenants.Infrastructure.Squads.UserPortfolioService>();
         services.AddScoped<Tenants.Application.Integrations.Repositories.IConnectedAdAccountRepository, Tenants.Infrastructure.Integrations.ConnectedAdAccountRepository>();
         services.AddScoped<Tenants.Application.Audit.Repositories.ITenantAuditLogRepository, Tenants.Infrastructure.Audit.TenantAuditLogRepository>();

@@ -29,13 +29,13 @@ public sealed class TenantTeamClientService : ITenantTeamClientService
     }
 
     /// <inheritdoc />
-    public async Task<Result<Guid>> InviteUserAsync(
+    public async Task<Result<InviteTenantUserResultDto>> InviteUserAsync(
         InviteTenantUserModel model,
         CancellationToken cancellationToken = default)
     {
         if (model is null)
         {
-            return Result<Guid>.Failure(
+            return Result<InviteTenantUserResultDto>.Failure(
                 Error.Validation("Request.Null", "Os dados do colaborador não podem ser nulos."));
         }
 
@@ -56,14 +56,37 @@ public sealed class TenantTeamClientService : ITenantTeamClientService
             AppendTenantHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var result = await response.Content.ReadFromJsonAsync<Result<Guid>>(JsonOptions, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<InviteTenantUserResultDto>>(JsonOptions, cancellationToken);
 
-            return result ?? Result<Guid>.Failure(
+            return result ?? Result<InviteTenantUserResultDto>.Failure(
                 Error.Failure("TenantUser.InvalidResponse", "Resposta inválida ao cadastrar colaborador."));
         }
         catch (Exception ex)
         {
-            return Result<Guid>.Failure(
+            return Result<InviteTenantUserResultDto>.Failure(
+                Error.Failure("TenantUser.NetworkError", $"Erro de comunicação com a API: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<InviteTenantUserResultDto>> ResendInvitationAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/tenants/users/{userId}/invitations");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<InviteTenantUserResultDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<InviteTenantUserResultDto>.Failure(
+                Error.Failure("TenantUser.InvalidResponse", "Resposta inválida ao reenviar convite."));
+        }
+        catch (Exception ex)
+        {
+            return Result<InviteTenantUserResultDto>.Failure(
                 Error.Failure("TenantUser.NetworkError", $"Erro de comunicação com a API: {ex.Message}"));
         }
     }

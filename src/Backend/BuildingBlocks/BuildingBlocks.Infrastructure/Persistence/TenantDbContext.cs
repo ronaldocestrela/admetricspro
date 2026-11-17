@@ -28,6 +28,11 @@ public class TenantDbContext : DbContext
     public DbSet<TenantUser> TenantUsers => Set<TenantUser>();
 
     /// <summary>
+    /// Gets the operational tenant user invitations table.
+    /// </summary>
+    public DbSet<TenantUserInvitation> TenantUserInvitations => Set<TenantUserInvitation>();
+
+    /// <summary>
     /// Gets the operational tenant branding configuration table.
     /// </summary>
     public DbSet<TenantBranding> TenantBranding => Set<TenantBranding>();
@@ -135,6 +140,7 @@ public class TenantDbContext : DbContext
         });
 
         modelBuilder.ApplyConfiguration(new TenantUserEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new TenantUserInvitationEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new TenantBrandingEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new WorkspaceEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new SquadEntityTypeConfiguration());

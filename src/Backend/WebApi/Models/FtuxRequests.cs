@@ -21,3 +21,16 @@ public sealed record InviteTenantUserApiRequest(
     string Email,
     string Role,
     string? PhoneNumber = null);
+
+/// <summary>
+/// Contrato para aceite público de convite de colaborador.
+/// </summary>
+/// <param name="Token">Token opaco do convite.</param>
+/// <param name="Subdomain">Subdomínio da agência.</param>
+/// <param name="Password">Senha escolhida.</param>
+/// <param name="ConfirmPassword">Confirmação da senha.</param>
+public sealed record AcceptTenantInvitationApiRequest(
+    string Token,
+    string Subdomain,
+    string Password,
+    string ConfirmPassword);
