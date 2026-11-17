@@ -28,6 +28,8 @@
     <ProjectReference Include="..\Modules\Analytics\Analytics.Infrastructure\Analytics.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Automations\Automations.Application\Automations.Application.csproj" />
     <ProjectReference Include="..\Modules\Automations\Automations.Infrastructure\Automations.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\SocialPublishing\SocialPublishing.Application\SocialPublishing.Application.csproj" />
+    <ProjectReference Include="..\Modules\SocialPublishing\SocialPublishing.Infrastructure\SocialPublishing.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -38,6 +38,7 @@ public static class MultiTenancyServiceExtensions
         services.TryAddScoped<ITenantCustomDomainResolver, NullTenantCustomDomainResolver>();
 
         services.AddTransient<ITenantIdentificationStrategy, HeaderTenantIdentificationStrategy>();
+        services.AddTransient<ITenantIdentificationStrategy, ForwardedHostTenantIdentificationStrategy>();
         services.AddTransient<ITenantIdentificationStrategy, JwtClaimTenantIdentificationStrategy>();
         services.AddTransient<ITenantIdentificationStrategy, SubdomainTenantIdentificationStrategy>();
         services.AddTransient<ITenantIdentificationStrategy, CustomDomainTenantIdentificationStrategy>();

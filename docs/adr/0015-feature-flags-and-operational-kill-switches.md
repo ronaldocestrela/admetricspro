@@ -28,7 +28,7 @@ Sem um mecanismo centralizado e instantâneo de contenção e chaveamento:
    - Padronização de chaves de Kill Switches:
      - Global: `killswitch.automation.global`
      - Plataformas específicas: `killswitch.automation.meta`, `killswitch.automation.google`, `killswitch.automation.tiktok`, `killswitch.automation.bing`
-     - Background jobs: `killswitch.data-sync.global`
+     - Background jobs: `killswitch.data-sync.global`, `killswitch.social-publishing.dispatch` (worker de publicação orgânica agendada)
    - O método `IsAutomationFrozenAsync(platform)` do `IFeatureFlagService` avalia se o disjuntor global OU o disjuntor específico da plataforma está armado, garantindo isolamento sem impactar redes saudáveis.
 
 3. **Auditoria Imutável Obrigatória via `IMasterAuditService`:**

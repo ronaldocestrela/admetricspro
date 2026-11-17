@@ -7,6 +7,7 @@ using Tenants.Application.Rbac.Services;
 using Tenants.Application.Squads.Repositories;
 using Tenants.Application.Squads.Services;
 using Tenants.Application.Users.Repositories;
+using Tenants.Application.Rbac.Queries.GetTenantRbacMatrix;
 using Tenants.Infrastructure.Rbac;
 using Xunit;
 
@@ -262,5 +263,235 @@ public sealed class TenantPermissionEvaluatorTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("TenantUser.Inactive");
+    }
+
+    /// <summary>
+    /// Valida que a permissão SocialRead (alias social.read) está definida no catálogo canônico.
+    /// </summary>
+    [Fact]
+    public void SocialRead_DeveExistirNoEnumTenantPermission()
+    {
+        Enum.IsDefined(typeof(TenantPermission), TenantPermission.SocialRead).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Valida que os papéis operacionais incluem SocialRead na matriz canônica.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Owner)]
+    [InlineData(TenantRole.Admin)]
+    [InlineData(TenantRole.SquadLeader)]
+    [InlineData(TenantRole.MediaManager)]
+    [InlineData(TenantRole.Analyst)]
+    [InlineData(TenantRole.Guest)]
+    public void GetPermissionsForRole_DeveIncluirSocialRead(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().Contain(TenantPermission.SocialRead);
+    }
+
+    /// <summary>
+    /// Valida isolamento de carteira para SocialRead (Analista dentro e fora do workspace).
+    /// </summary>
+    [Fact]
+    public async Task HasPermission_SocialRead_QuandoAnalista_DeveRespeitarCarteira()
+    {
+        var analystId = Guid.NewGuid();
+        var workspaceIn = Guid.NewGuid();
+        var workspaceOut = Guid.NewGuid();
+        var analyst = TenantUser.Create(analystId, "Analista", "a@test.com", null, "hash", TenantRole.Analyst).Value;
+        _userRepository.GetByIdAsync(analystId, Arg.Any<CancellationToken>()).Returns(analyst);
+        _portfolioService.HasAccessToWorkspaceAsync(analystId, workspaceIn, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(true));
+        _portfolioService.HasAccessToWorkspaceAsync(analystId, workspaceOut, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(false));
+
+        var allowed = await _evaluator.HasPermissionAsync(
+            analystId,
+            TenantPermission.SocialRead,
+            new PermissionContext(WorkspaceId: workspaceIn));
+        var blocked = await _evaluator.HasPermissionAsync(
+            analystId,
+            TenantPermission.SocialRead,
+            new PermissionContext(WorkspaceId: workspaceOut));
+
+        allowed.Value.Should().BeTrue();
+        blocked.Value.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Valida que a matriz RBAC exposta pela API inclui SocialRead em allPermissions.
+    /// </summary>
+    [Fact]
+    public async Task GetTenantRbacMatrix_DeveIncluirSocialReadEmAllPermissions()
+    {
+        var handler = new GetTenantRbacMatrixQueryHandler(_evaluator);
+        var result = await handler.Handle(new GetTenantRbacMatrixQuery(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AllPermissions.Should().Contain("SocialRead");
+    }
+
+    /// <summary>
+    /// Valida que SocialConnectionsManage existe no catálogo canônico.
+    /// </summary>
+    [Fact]
+    public void SocialConnectionsManage_DeveExistirNoEnumTenantPermission()
+    {
+        Enum.IsDefined(typeof(TenantPermission), TenantPermission.SocialConnectionsManage).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Valida que SocialMediaManage existe no catálogo canônico.
+    /// </summary>
+    [Fact]
+    public void SocialMediaManage_DeveExistirNoEnumTenantPermission()
+    {
+        Enum.IsDefined(typeof(TenantPermission), TenantPermission.SocialMediaManage).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Valida que papéis operacionais de gestão incluem SocialMediaManage.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Owner)]
+    [InlineData(TenantRole.Admin)]
+    [InlineData(TenantRole.SquadLeader)]
+    [InlineData(TenantRole.MediaManager)]
+    public void GetPermissionsForRole_DeveIncluirSocialMediaManage(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().Contain(TenantPermission.SocialMediaManage);
+    }
+
+    /// <summary>
+    /// Valida que Analyst e Guest não possuem SocialMediaManage.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Analyst)]
+    [InlineData(TenantRole.Guest)]
+    public void GetPermissionsForRole_NaoDeveIncluirSocialMediaManageParaLeitura(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().NotContain(TenantPermission.SocialMediaManage);
+    }
+
+    /// <summary>
+    /// Valida que papéis operacionais de gestão incluem SocialConnectionsManage.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Owner)]
+    [InlineData(TenantRole.Admin)]
+    [InlineData(TenantRole.SquadLeader)]
+    [InlineData(TenantRole.MediaManager)]
+    public void GetPermissionsForRole_DeveIncluirSocialConnectionsManage(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().Contain(TenantPermission.SocialConnectionsManage);
+    }
+
+    /// <summary>
+    /// Valida que Analyst e Guest não possuem SocialConnectionsManage.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Analyst)]
+    [InlineData(TenantRole.Guest)]
+    public void GetPermissionsForRole_NaoDeveIncluirSocialConnectionsManageParaLeitura(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().NotContain(TenantPermission.SocialConnectionsManage);
+    }
+
+    /// <summary>
+    /// Valida isolamento de carteira para SocialConnectionsManage.
+    /// </summary>
+    [Fact]
+    public async Task HasPermission_SocialConnectionsManage_QuandoMediaManager_DeveRespeitarCarteira()
+    {
+        var userId = Guid.NewGuid();
+        var workspaceIn = Guid.NewGuid();
+        var workspaceOut = Guid.NewGuid();
+        var user = TenantUser.Create(userId, "Gestor", "m@test.com", null, "hash", TenantRole.MediaManager).Value;
+        _userRepository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _portfolioService.HasAccessToWorkspaceAsync(userId, workspaceIn, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(true));
+        _portfolioService.HasAccessToWorkspaceAsync(userId, workspaceOut, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(false));
+
+        var allowed = await _evaluator.HasPermissionAsync(
+            userId,
+            TenantPermission.SocialConnectionsManage,
+            new PermissionContext(WorkspaceId: workspaceIn));
+        var blocked = await _evaluator.HasPermissionAsync(
+            userId,
+            TenantPermission.SocialConnectionsManage,
+            new PermissionContext(WorkspaceId: workspaceOut));
+
+        allowed.Value.Should().BeTrue();
+        blocked.Value.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Valida que SocialCopilotGenerate existe no catálogo canônico.
+    /// </summary>
+    [Fact]
+    public void SocialCopilotGenerate_DeveExistirNoEnumTenantPermission()
+    {
+        Enum.IsDefined(typeof(TenantPermission), TenantPermission.SocialCopilotGenerate).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Valida que papéis operacionais de gestão incluem SocialCopilotGenerate.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Owner)]
+    [InlineData(TenantRole.Admin)]
+    [InlineData(TenantRole.SquadLeader)]
+    [InlineData(TenantRole.MediaManager)]
+    public void GetPermissionsForRole_DeveIncluirSocialCopilotGenerate(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().Contain(TenantPermission.SocialCopilotGenerate);
+    }
+
+    /// <summary>
+    /// Valida que Analyst e Guest não possuem SocialCopilotGenerate.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantRole.Analyst)]
+    [InlineData(TenantRole.Guest)]
+    public void GetPermissionsForRole_NaoDeveIncluirSocialCopilotGenerateParaLeitura(TenantRole role)
+    {
+        var permissions = _evaluator.GetPermissionsForRole(role);
+        permissions.Should().NotContain(TenantPermission.SocialCopilotGenerate);
+    }
+
+    /// <summary>
+    /// Valida isolamento de carteira para SocialCopilotGenerate.
+    /// </summary>
+    [Fact]
+    public async Task HasPermission_SocialCopilotGenerate_QuandoMediaManager_DeveRespeitarCarteira()
+    {
+        var userId = Guid.NewGuid();
+        var workspaceIn = Guid.NewGuid();
+        var workspaceOut = Guid.NewGuid();
+        var user = TenantUser.Create(userId, "Gestor", "m@test.com", null, "hash", TenantRole.MediaManager).Value;
+        _userRepository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _portfolioService.HasAccessToWorkspaceAsync(userId, workspaceIn, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(true));
+        _portfolioService.HasAccessToWorkspaceAsync(userId, workspaceOut, Arg.Any<CancellationToken>())
+            .Returns(Result<bool>.Success(false));
+
+        var allowed = await _evaluator.HasPermissionAsync(
+            userId,
+            TenantPermission.SocialCopilotGenerate,
+            new PermissionContext(WorkspaceId: workspaceIn));
+        var blocked = await _evaluator.HasPermissionAsync(
+            userId,
+            TenantPermission.SocialCopilotGenerate,
+            new PermissionContext(WorkspaceId: workspaceOut));
+
+        allowed.Value.Should().BeTrue();
+        blocked.Value.Should().BeFalse();
     }
 }

@@ -17,6 +17,7 @@ public sealed class CreativeHubQueriesTests
     private readonly ICreativeHubDataProvider _dataProvider = Substitute.For<ICreativeHubDataProvider>();
     private readonly IAdFatigueDetector _fatigueDetector = new AdFatigueDetector();
     private readonly ICreativeHubAggregator _aggregator = new CreativeHubAggregator();
+    private readonly ICreativeHubAssetRepository _assetRepository = Substitute.For<ICreativeHubAssetRepository>();
 
     /// <summary>
     /// Valida que a consulta de análise de fadiga rejeita identificadores vazios.
@@ -177,5 +178,80 @@ public sealed class CreativeHubQueriesTests
         overview.FatiguedCreativesCount.Should().Be(1);
         overview.HealthyCreativesCount.Should().Be(1);
         overview.ReplacementsSuggestedCount.Should().Be(1);
+    }
+
+    /// <summary>
+    /// Visão geral inclui ativos orgânicos do repositório sem alterar contadores de fadiga pagos.
+    /// </summary>
+    [Fact]
+    public async Task GetCreativeHubOverview_ShouldIncludeOrganicAssets_WhenRepositoryHasPermalink()
+    {
+        var workspaceId = Guid.NewGuid();
+        var adId = Guid.NewGuid();
+        var organicAssetId = Guid.NewGuid();
+        var organicPostId = Guid.NewGuid();
+
+        var handler = new GetCreativeHubOverviewQueryHandler(_dataProvider, _fatigueDetector, _assetRepository);
+
+        _dataProvider.GetWorkspaceActiveAdsAsync(workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<CreativeMetadata>>.Success(new List<CreativeMetadata>
+            {
+                new(adId, "Ad Fadigado", "MetaAds", null, "hash1"),
+            }));
+
+        var startDate = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fatiguedMetrics = new List<CreativeDailyMetricPoint>
+        {
+            new(startDate.AddDays(0), 10000, 300, 100m, 10m, 300m, 1.5m),
+            new(startDate.AddDays(1), 10000, 250, 100m, 8m, 250m, 2.0m),
+            new(startDate.AddDays(2), 10000, 180, 100m, 5m, 180m, 2.5m),
+            new(startDate.AddDays(3), 10000, 120, 100m, 3m, 120m, 3.0m),
+        };
+
+        _dataProvider.GetAdDailyMetricsAsync(workspaceId, adId, Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<CreativeDailyMetricPoint>>.Success(fatiguedMetrics));
+
+        var organicEntity = new CreativeHubAsset(
+            organicAssetId,
+            workspaceId,
+            "fingerprint-organic",
+            organicPostId,
+            "Instagram",
+            "https://instagram.com/p/organic",
+            5000,
+            0.05m,
+            0.02m,
+            2.5m,
+            DateTime.UtcNow);
+
+        _assetRepository.ListOrganicByWorkspaceAsync(workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<CreativeHubAsset>>.Success(new List<CreativeHubAsset> { organicEntity }));
+
+        var result = await handler.Handle(new GetCreativeHubOverviewQuery(workspaceId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.FatiguedCreativesCount.Should().Be(1);
+        result.Value.HealthyCreativesCount.Should().Be(0);
+        result.Value.OrganicAssets.Should().ContainSingle();
+        result.Value.OrganicAssets![0].Permalink.Should().Be("https://instagram.com/p/organic");
+        result.Value.OrganicAssets[0].Network.Should().Be("Instagram");
+    }
+
+    /// <summary>
+    /// Sem repositório de ativos orgânicos a lista orgânica vem vazia.
+    /// </summary>
+    [Fact]
+    public async Task GetCreativeHubOverview_ShouldReturnEmptyOrganicAssets_WhenRepositoryIsNull()
+    {
+        var workspaceId = Guid.NewGuid();
+        var handler = new GetCreativeHubOverviewQueryHandler(_dataProvider, _fatigueDetector, assetRepository: null);
+
+        _dataProvider.GetWorkspaceActiveAdsAsync(workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<CreativeMetadata>>.Success(Array.Empty<CreativeMetadata>()));
+
+        var result = await handler.Handle(new GetCreativeHubOverviewQuery(workspaceId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.OrganicAssets.Should().BeEmpty();
     }
 }

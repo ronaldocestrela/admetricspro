@@ -1,0 +1,63 @@
+@page "/social/connections"
+@layout WebApp.Components.Layout.TenantMainLayout
+@namespace WebApp.Components.Social
+@using WebApp.State
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@implements IDisposable
+
+<PageTitle>Conexões orgânicas</PageTitle>
+
+<div class="social-connections-page" data-testid="social-connections-page">
+    <header class="mb-4">
+        <h1 class="h3">Conexões orgânicas</h1>
+        <p class="text-muted">Conecte Instagram, Facebook Page e TikTok Content Posting para publicação orgânica e calendário editorial.</p>
+    </header>
+
+    @if (!WorkspaceContextStateProvider.HasWorkspaceSelected)
+    {
+        <div class="alert alert-info" data-testid="social-connections-select-workspace">
+            Selecione um cliente ativo na barra lateral para gerenciar conexões orgânicas.
+        </div>
+    }
+    else
+    {
+        <SocialConnectionsPanel WorkspaceId="@WorkspaceContextStateProvider.CurrentWorkspaceId!.Value"
+                                OAuthCode="@Code"
+                                OAuthState="@State"
+                                OAuthProviderError="@Error" />
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Código OAuth retornado pelo provedor após consentimento.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+
+    /// <summary>
+    /// State anti-CSRF retornado pelo provedor.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "state")]
+    public string? State { get; set; }
+
+    /// <summary>
+    /// Erro retornado pelo provedor OAuth, se houver.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
+    }
+
+    private void HandleWorkspaceChanged() => InvokeAsync(StateHasChanged);
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
+    }
+}

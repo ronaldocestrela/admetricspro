@@ -1,0 +1,21 @@
+@namespace WebApp.Components.Shared.Components
+@using SocialPublishing.Domain.Brand
+
+<span class="content-pillar-chip pillar-@Pillar.ToString().ToLowerInvariant()" data-testid="content-pillar-chip">@Label</span>
+
+@code {
+    /// <summary>
+    /// Pilar editorial do slot.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public ContentPillar Pillar { get; set; }
+
+    private string Label => Pillar switch
+    {
+        ContentPillar.Authority => "Autoridade",
+        ContentPillar.Sale => "Venda",
+        ContentPillar.Connection => "Conexão",
+        ContentPillar.SocialProof => "Prova social",
+        _ => Pillar.ToString(),
+    };
+}

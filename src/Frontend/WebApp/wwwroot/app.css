@@ -81,3 +81,65 @@ h1:focus {
 #blazor-error-ui .dismiss:hover {
     color: #ffffff;
 }
+
+/* Social organic calendar (Subfase 5.2) */
+.social-calendar-weekdays,
+.social-calendar-cells {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.35rem;
+}
+
+.social-calendar-weekday {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted, #64748b);
+    padding: 0.25rem 0.5rem;
+}
+
+.social-calendar-day {
+    min-height: 6.5rem;
+    border: 1px solid var(--border-subtle, #e2e8f0);
+    border-radius: 0.375rem;
+    padding: 0.35rem;
+    background: var(--surface-elevated, #fff);
+}
+
+.social-calendar-day.is-padding {
+    opacity: 0.55;
+    background: var(--surface-muted, #f8fafc);
+}
+
+.social-calendar-day-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.social-calendar-post-card {
+    font-size: 0.7rem;
+    border: 1px solid var(--border-subtle, #cbd5e1);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    margin-bottom: 0.25rem;
+    background: var(--surface-card, #f1f5f9);
+    cursor: grab;
+}
+
+.social-calendar-post-card[draggable="false"] {
+    cursor: default;
+}
+
+.social-calendar-drag-handle {
+    float: right;
+    opacity: 0.5;
+    font-size: 0.65rem;
+    user-select: none;
+}
+
+.social-calendar-post-caption {
+    margin-top: 0.15rem;
+    line-height: 1.2;
+    word-break: break-word;
+}

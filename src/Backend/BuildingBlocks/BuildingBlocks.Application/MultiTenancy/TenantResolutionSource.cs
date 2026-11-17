@@ -28,5 +28,10 @@ public enum TenantResolutionSource
     /// <summary>
     /// Tenant identity was extracted from a custom domain mapped via CNAME (e.g. relatorios.agencia.com.br).
     /// </summary>
-    CustomDomain = 4
+    CustomDomain = 4,
+
+    /// <summary>
+    /// Tenant identity was inferred from the forwarded browser host header (portal público Blazor → API).
+    /// </summary>
+    ForwardedHost = 5
 }

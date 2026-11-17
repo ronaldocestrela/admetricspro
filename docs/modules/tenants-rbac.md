@@ -33,6 +33,10 @@ O controle de acesso baseado em funções (**Role-Based Access Control - RBAC**)
 | `ManageAutomations` | Sim | Sim | Na Carteira | Na Carteira | Não | **BLOCKED** |
 | `ViewFinancialMargins` | Sim | Sim | Sim | Não | Não | **BLOCKED ESTRITO** |
 | `ExportReports` | Sim | Sim | Na Carteira | Na Carteira | Na Carteira | Apenas Próprio |
+| `SocialRead` (`social.read`) | Sim | Sim | Na Carteira | Na Carteira | Na Carteira | Apenas Próprio |
+| `SocialConnectionsManage` (`social.connections.manage`) | Sim | Sim | Na Carteira | Na Carteira | Não | **BLOCKED** |
+| `SocialMediaManage` (`social.media.manage`) | Sim | Sim | Na Carteira | Na Carteira | Não | **BLOCKED** |
+| `SocialCopilotGenerate` (`social.copilot.generate`) | Sim | Sim | Na Carteira | Na Carteira | Não | **BLOCKED** |
 
 ---
 
@@ -81,14 +85,14 @@ Todas as operações críticas de governança, incluindo alterações de papéis
   "error": { "code": "", "description": "", "type": 0 },
   "value": {
     "roles": {
-      "Owner": ["ManageBilling", "ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports"],
-      "Admin": ["ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports"],
-      "SquadLeader": ["ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports"],
-      "MediaManager": ["ViewCampaigns", "EditCampaigns", "ManageAutomations", "ExportReports"],
-      "Analyst": ["ViewCampaigns", "ExportReports"],
-      "Guest": ["ViewCampaigns", "ExportReports"]
+      "Owner": ["ManageBilling", "ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead", "SocialConnectionsManage", "SocialMediaManage", "SocialCopilotGenerate"],
+      "Admin": ["ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead", "SocialConnectionsManage", "SocialMediaManage", "SocialCopilotGenerate"],
+      "SquadLeader": ["ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead", "SocialConnectionsManage", "SocialMediaManage", "SocialCopilotGenerate"],
+      "MediaManager": ["ViewCampaigns", "EditCampaigns", "ManageAutomations", "ExportReports", "SocialRead", "SocialConnectionsManage", "SocialMediaManage", "SocialCopilotGenerate"],
+      "Analyst": ["ViewCampaigns", "ExportReports", "SocialRead"],
+      "Guest": ["ViewCampaigns", "ExportReports", "SocialRead"]
     },
-    "allPermissions": ["ManageBilling", "ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports"]
+    "allPermissions": ["ManageBilling", "ManageSettings", "ViewAuditLogs", "ManageTeamMembers", "ManageSquads", "ManageWorkspaces", "ViewCampaigns", "EditCampaigns", "ManageAutomations", "ViewFinancialMargins", "ExportReports", "SocialRead", "SocialConnectionsManage", "SocialMediaManage", "SocialCopilotGenerate"]
   }
 }
 ```

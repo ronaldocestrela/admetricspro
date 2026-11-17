@@ -1,0 +1,43 @@
+@page "/social/brand-voice"
+@layout WebApp.Components.Layout.TenantMainLayout
+@namespace WebApp.Components.Social
+@using WebApp.State
+@inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
+@implements IDisposable
+
+<PageTitle>Voz da marca</PageTitle>
+
+<div class="social-brand-voice-page" data-testid="social-brand-voice-page">
+    <header class="mb-4">
+        <h1 class="h3">Voz da marca</h1>
+        <p class="text-muted mb-0">Configure tom, persona e pesos dos pilares para o copiloto social gerar legendas alinhadas ao cliente.</p>
+    </header>
+
+    @if (!WorkspaceContextStateProvider.HasWorkspaceSelected)
+    {
+        <div class="alert alert-info" data-testid="social-brand-voice-select-workspace">
+            Selecione um cliente ativo na barra lateral para editar o DNA de marca.
+        </div>
+    }
+    else
+    {
+        <BrandVoiceForm WorkspaceId="@WorkspaceContextStateProvider.CurrentWorkspaceId!.Value"
+                        @key="WorkspaceContextStateProvider.CurrentWorkspaceId" />
+    }
+</div>
+
+@code {
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged += HandleWorkspaceChanged;
+    }
+
+    private void HandleWorkspaceChanged() => InvokeAsync(StateHasChanged);
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleWorkspaceChanged;
+    }
+}

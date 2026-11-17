@@ -59,5 +59,25 @@ public enum TenantPermission
     /// <summary>
     /// Exportação de relatórios analíticos de performance.
     /// </summary>
-    ExportReports = 11
+    ExportReports = 11,
+
+    /// <summary>
+    /// Leitura do módulo de publicação orgânica e calendário social (alias de produto: social.read).
+    /// </summary>
+    SocialRead = 12,
+
+    /// <summary>
+    /// Conectar, reconectar e gerenciar credenciais OAuth orgânicas (alias: social.connections.manage).
+    /// </summary>
+    SocialConnectionsManage = 13,
+
+    /// <summary>
+    /// Registrar e gerenciar mídia orgânica (upload de binário e metadados) (alias: social.media.manage).
+    /// </summary>
+    SocialMediaManage = 14,
+
+    /// <summary>
+    /// Gravar DNA de marca e gerar cronograma/cópia com o copiloto social (alias: social.copilot.generate).
+    /// </summary>
+    SocialCopilotGenerate = 15
 }

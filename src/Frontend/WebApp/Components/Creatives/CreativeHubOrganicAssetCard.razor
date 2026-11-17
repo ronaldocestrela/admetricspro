@@ -1,0 +1,29 @@
+@using Analytics.Application.Creatives.DTOs
+@namespace WebApp.Components.Creatives
+
+<div class="card shadow-sm border-0 rounded-3 mb-2" data-testid="@($"organic-asset-card-{Asset.Id}")">
+    <div class="card-body py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <span class="badge bg-light text-dark border me-2">@Asset.Network</span>
+            <span class="text-muted small">Origem orgânica · @Asset.EngagementMultiple.ToString("0.#")× engajamento</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Asset.Permalink))
+        {
+            <a href="@Asset.Permalink"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="btn btn-sm btn-outline-primary"
+               data-testid="organic-asset-permalink">
+                Ver post publicado
+            </a>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Ativo orgânico exibido no Creative Hub.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public CreativeHubOrganicAssetDto Asset { get; set; } = default!;
+}

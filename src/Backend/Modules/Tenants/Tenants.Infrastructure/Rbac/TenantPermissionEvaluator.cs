@@ -33,7 +33,11 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.EditCampaigns,
             TenantPermission.ManageAutomations,
             TenantPermission.ViewFinancialMargins,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead,
+            TenantPermission.SocialConnectionsManage,
+            TenantPermission.SocialMediaManage,
+            TenantPermission.SocialCopilotGenerate
         ],
         [TenantRole.Admin] =
         [
@@ -46,7 +50,11 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.EditCampaigns,
             TenantPermission.ManageAutomations,
             TenantPermission.ViewFinancialMargins,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead,
+            TenantPermission.SocialConnectionsManage,
+            TenantPermission.SocialMediaManage,
+            TenantPermission.SocialCopilotGenerate
         ],
         [TenantRole.SquadLeader] =
         [
@@ -57,24 +65,34 @@ public sealed class TenantPermissionEvaluator : IPermissionEvaluator
             TenantPermission.EditCampaigns,
             TenantPermission.ManageAutomations,
             TenantPermission.ViewFinancialMargins,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead,
+            TenantPermission.SocialConnectionsManage,
+            TenantPermission.SocialMediaManage,
+            TenantPermission.SocialCopilotGenerate
         ],
         [TenantRole.MediaManager] =
         [
             TenantPermission.ViewCampaigns,
             TenantPermission.EditCampaigns,
             TenantPermission.ManageAutomations,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead,
+            TenantPermission.SocialConnectionsManage,
+            TenantPermission.SocialMediaManage,
+            TenantPermission.SocialCopilotGenerate
         ],
         [TenantRole.Analyst] =
         [
             TenantPermission.ViewCampaigns,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead
         ],
         [TenantRole.Guest] =
         [
             TenantPermission.ViewCampaigns,
-            TenantPermission.ExportReports
+            TenantPermission.ExportReports,
+            TenantPermission.SocialRead
         ]
     };
 

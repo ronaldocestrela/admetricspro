@@ -1,0 +1,80 @@
+using BuildingBlocks.Domain.Primitives;
+using Microsoft.Extensions.Options;
+using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Connections;
+using SocialPublishing.Application.Options;
+using SocialPublishing.Application.Publishing;
+using SocialPublishing.Domain;
+using SocialPublishing.Domain.Connections;
+using SocialPublishing.Domain.Posts;
+
+namespace SocialPublishing.Infrastructure.OAuth;
+
+/// <summary>
+/// Adaptador OAuth orgânico para publicação em Facebook Pages via Facebook Login.
+/// </summary>
+public sealed class MetaFacebookPageOrganicAdapter : IOrganicPlatformAdapter
+{
+    private readonly HttpClient _httpClient;
+    private readonly MetaOrganicOAuthOptions _options;
+
+    /// <summary>
+    /// Inicializa o adaptador com cliente HTTP dedicado (sem loggers de URL).
+    /// </summary>
+    /// <param name="httpClient">Cliente HTTP nomeado do módulo.</param>
+    /// <param name="options">Opções OAuth orgânicas da Meta.</param>
+    public MetaFacebookPageOrganicAdapter(HttpClient httpClient, IOptions<OrganicOAuthOptions> options)
+    {
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _options = options?.Value.Meta ?? throw new ArgumentNullException(nameof(options));
+    }
+
+    /// <inheritdoc />
+    public OrganicPlatform Platform => OrganicPlatform.FacebookPage;
+
+    /// <inheritdoc />
+    public Result<string> BuildAuthorizationUrl(string state, string redirectUri)
+    {
+        if (string.IsNullOrWhiteSpace(_options.AppId))
+        {
+            return Result<string>.Failure(SocialErrors.OAuthConfigurationMissing);
+        }
+
+        var url =
+            $"https://www.facebook.com/{_options.GraphApiVersion}/dialog/oauth?client_id={Uri.EscapeDataString(_options.AppId)}" +
+            $"&redirect_uri={Uri.EscapeDataString(redirectUri)}&state={Uri.EscapeDataString(state)}" +
+            $"&scope={Uri.EscapeDataString(_options.FacebookPageScopes)}&response_type=code";
+
+        return Result<string>.Success(url);
+    }
+
+    /// <inheritdoc />
+    public Task<Result<OrganicAuthorizationGrant>> ExchangeCodeAsync(
+        string code,
+        string redirectUri,
+        CancellationToken cancellationToken = default) =>
+        MetaOrganicOAuthExchange.ExchangeFacebookPageAsync(
+            _httpClient,
+            _options,
+            code,
+            redirectUri,
+            _options.FacebookPageScopes,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public Task<Result<OrganicPublishReceipt>> PublishAsync(
+        OrganicPublishRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.Format != OrganicPostFormat.FeedImage)
+        {
+            return Task.FromResult(Result<OrganicPublishReceipt>.Failure(SocialErrors.PublishFormatUnsupported));
+        }
+
+        return MetaOrganicPublishHttp.PublishFacebookFeedImageAsync(
+            _httpClient,
+            _options.GraphApiVersion,
+            request,
+            cancellationToken);
+    }
+}

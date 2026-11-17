@@ -1,0 +1,201 @@
+@page "/approve/{Token}"
+@page "/t/{TenantSlug}/approve/{Token}"
+@layout WebApp.Components.Layout.EmptyLayout
+@using SocialPublishing.Application.Approvals
+@using SocialPublishing.Application.Approvals.DTOs
+@using WebApp.Services.Social
+@inject IPublicSocialApprovalClient PublicApprovalClient
+@inject NavigationManager Navigation
+
+<PageTitle>Aprovação de conteúdo</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="d-flex flex-column align-items-center justify-content-center vh-100 bg-light">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="text-muted mt-3">Carregando pacote de aprovação…</p>
+    </div>
+}
+else if (_board is null)
+{
+    <div class="d-flex align-items-center justify-content-center vh-100 bg-light px-3" data-testid="public-approval-unavailable">
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center" style="max-width: 480px;">
+            <h4 class="fw-bold">Link indisponível</h4>
+            <p class="text-muted small mb-0">
+                O link que você tentou acessar não está disponível. Solicite um novo link à sua agência.
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="public-approval-page vh-100 bg-light"
+         data-testid="public-approval-content"
+         style="--brand-primary: @_board.PrimaryColor;">
+        <header class="border-bottom bg-white py-3 px-4 d-flex align-items-center gap-3">
+            @if (!string.IsNullOrWhiteSpace(_board.LogoUrl))
+            {
+                <img src="@_board.LogoUrl" alt="@_board.AgencyName" style="max-height: 40px;" />
+            }
+            <span class="fw-bold fs-5">@_board.AgencyName</span>
+        </header>
+
+        <main class="container py-4" style="max-width: 720px;">
+            <h1 class="h4 mb-3">Revise os posts abaixo</h1>
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger" data-testid="public-approval-error">@_error</div>
+            }
+
+            @foreach (var post in _board.Posts)
+            {
+                <div class="card border-0 shadow-sm mb-3 p-3">
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               id="post-@post.Id"
+                               checked="@_selected.Contains(post.Id)"
+                               @onchange="e => TogglePost(post.Id, e.Value is true)"
+                               data-testid="public-approval-post-@post.Id" />
+                        <label class="form-check-label w-100" for="post-@post.Id">
+                            <div class="text-muted small">@post.Platform · @post.ScheduledAtUtc.ToString("dd/MM/yyyy HH:mm") UTC</div>
+                            <div class="mt-1">@post.Caption</div>
+                        </label>
+                    </div>
+                </div>
+            }
+
+            @if (_showComment)
+            {
+                <label class="form-label" for="approval-comment">Comentário para alterações</label>
+                <textarea id="approval-comment"
+                          class="form-control mb-3"
+                          rows="3"
+                          @bind="_comment"
+                          data-testid="public-approval-comment"></textarea>
+            }
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button"
+                        class="btn btn-primary"
+                        disabled="@_isSubmitting"
+                        data-testid="public-approval-approve"
+                        @onclick="async () => await ApproveSelectedAsync()">
+                    Aprovar selecionados
+                </button>
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@_isSubmitting"
+                        data-testid="public-approval-request-changes"
+                        @onclick="async () => await ShowCommentAndRequestChangesAsync()">
+                    Solicitar alterações
+                </button>
+            </div>
+        </main>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string Token { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? TenantSlug { get; set; }
+
+    private PublicApprovalBoardDto? _board;
+    private readonly HashSet<Guid> _selected = new();
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private bool _showComment;
+    private string? _error;
+    private string _comment = string.Empty;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        var host = new Uri(Navigation.Uri).Host;
+        var result = await PublicApprovalClient.GetBoardAsync(Token, TenantSlug, host);
+        _isLoading = false;
+        if (result.IsSuccess)
+        {
+            _board = result.Value;
+            foreach (var post in _board.Posts)
+            {
+                _selected.Add(post.Id);
+            }
+        }
+    }
+
+    private void TogglePost(Guid id, bool selected)
+    {
+        if (selected)
+        {
+            _selected.Add(id);
+        }
+        else
+        {
+            _selected.Remove(id);
+        }
+    }
+
+    private async Task ApproveSelectedAsync()
+    {
+        await SubmitAsync(PublicApprovalDecision.Approve, null);
+    }
+
+    private Task ShowCommentAndRequestChangesAsync()
+    {
+        _showComment = true;
+        return SubmitAsync(PublicApprovalDecision.RequestChanges, string.IsNullOrWhiteSpace(_comment) ? null : _comment);
+    }
+
+    private async Task SubmitAsync(PublicApprovalDecision decision, string? comment)
+    {
+        if (_selected.Count == 0)
+        {
+            _error = "Selecione ao menos um post.";
+            return;
+        }
+
+        if (decision == PublicApprovalDecision.RequestChanges && string.IsNullOrWhiteSpace(comment) && !_showComment)
+        {
+            _showComment = true;
+            _error = "Informe um comentário antes de enviar.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _error = null;
+        var host = new Uri(Navigation.Uri).Host;
+        var result = await PublicApprovalClient.SubmitDecisionAsync(
+            Token,
+            _selected.ToList(),
+            decision,
+            comment,
+            TenantSlug,
+            host);
+        _isSubmitting = false;
+
+        if (result.IsFailure)
+        {
+            _error = result.Error.Description;
+            return;
+        }
+
+        await ReloadBoardAsync(host);
+    }
+
+    private async Task ReloadBoardAsync(string host)
+    {
+        var result = await PublicApprovalClient.GetBoardAsync(Token, TenantSlug, host);
+        if (result.IsSuccess)
+        {
+            _board = result.Value;
+            _selected.Clear();
+            foreach (var post in _board.Posts)
+            {
+                _selected.Add(post.Id);
+            }
+        }
+    }
+}

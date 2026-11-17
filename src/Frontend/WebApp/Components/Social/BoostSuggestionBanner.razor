@@ -1,0 +1,170 @@
+@namespace WebApp.Components.Social
+@using System.Globalization
+@using WebApp.Services.Social
+@using SocialPublishing.Application.Traction.DTOs
+@using SocialPublishing.Domain.Traction
+@inject ISocialPublishingClient SocialClient
+
+@if (_suggestions.Count > 0)
+{
+    <div class="boost-suggestion-banner mb-3" data-testid="boost-suggestion-banner">
+        @if (!string.IsNullOrEmpty(_actionError))
+        {
+            <div class="alert alert-danger py-2 mb-2" role="alert" data-testid="boost-suggestion-error">@_actionError</div>
+        }
+
+        @foreach (var suggestion in _suggestions)
+        {
+            <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"
+                 data-testid="boost-suggestion-item"
+                 @key="suggestion.Id">
+                @if (suggestion.Status == PaidBoostSuggestionStatus.Open)
+                {
+                    <div>
+                        <strong>Tração orgânica detectada</strong>
+                        <span class="ms-2 text-muted">@FormatPlatform(suggestion.Platform)</span>
+                        <span class="ms-2" data-testid="boost-suggestion-multiple">@FormatMultiple(suggestion.EngagementMultiple)×</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button"
+                                class="btn btn-sm btn-primary"
+                                data-testid="@($"boost-suggestion-accept-{suggestion.Id}")"
+                                disabled="@IsBusy(suggestion.Id)"
+                                @onclick="() => AcceptAsync(suggestion)">
+                            Aceitar
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                data-testid="@($"boost-suggestion-dismiss-{suggestion.Id}")"
+                                disabled="@IsBusy(suggestion.Id)"
+                                @onclick="() => DismissAsync(suggestion)">
+                            Dispensar
+                        </button>
+                    </div>
+                }
+                else if (suggestion.Status == PaidBoostSuggestionStatus.Accepted)
+                {
+                    <div data-testid="@($"boost-suggestion-accepted-{suggestion.Id}")">
+                        Sugestão aceita. Rascunho pausado:
+                        <span class="font-monospace">@suggestion.PaidDraftId</span>
+                    </div>
+                }
+                else if (suggestion.Status == PaidBoostSuggestionStatus.Dismissed)
+                {
+                    <div class="text-muted" data-testid="@($"boost-suggestion-dismissed-{suggestion.Id}")">
+                        Sugestão de impulsionamento dispensada.
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+
+    private readonly List<PaidBoostSuggestionDto> _suggestions = [];
+    private readonly HashSet<Guid> _busyIds = [];
+    private string? _actionError;
+    private Guid _loadedForWorkspace;
+
+    /// <summary>
+    /// Workspace proprietário das sugestões exibidas.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Guid WorkspaceId { get; set; }
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
+    {
+        if (WorkspaceId == Guid.Empty)
+        {
+            _suggestions.Clear();
+            _loadedForWorkspace = Guid.Empty;
+            return;
+        }
+
+        if (WorkspaceId == _loadedForWorkspace)
+        {
+            return;
+        }
+
+        _loadedForWorkspace = WorkspaceId;
+        await LoadSuggestionsAsync();
+    }
+
+    private async Task LoadSuggestionsAsync()
+    {
+        if (WorkspaceId == Guid.Empty)
+        {
+            _suggestions.Clear();
+            return;
+        }
+
+        var result = await SocialClient.ListBoostSuggestionsAsync(WorkspaceId);
+        _suggestions.Clear();
+        if (result.IsSuccess && result.Value is { Count: > 0 })
+        {
+            _suggestions.AddRange(result.Value);
+        }
+    }
+
+    private async Task AcceptAsync(PaidBoostSuggestionDto suggestion)
+    {
+        _actionError = null;
+        _busyIds.Add(suggestion.Id);
+        try
+        {
+            var result = await SocialClient.AcceptBoostSuggestionAsync(WorkspaceId, suggestion.Id);
+            if (result.IsFailure)
+            {
+                _actionError = result.Error.Description;
+                return;
+            }
+
+            ReplaceSuggestion(result.Value);
+        }
+        finally
+        {
+            _busyIds.Remove(suggestion.Id);
+        }
+    }
+
+    private async Task DismissAsync(PaidBoostSuggestionDto suggestion)
+    {
+        _actionError = null;
+        _busyIds.Add(suggestion.Id);
+        try
+        {
+            var result = await SocialClient.DismissBoostSuggestionAsync(WorkspaceId, suggestion.Id);
+            if (result.IsFailure)
+            {
+                _actionError = result.Error.Description;
+                return;
+            }
+
+            ReplaceSuggestion(result.Value);
+        }
+        finally
+        {
+            _busyIds.Remove(suggestion.Id);
+        }
+    }
+
+    private void ReplaceSuggestion(PaidBoostSuggestionDto updated)
+    {
+        var index = _suggestions.FindIndex(s => s.Id == updated.Id);
+        if (index >= 0)
+        {
+            _suggestions[index] = updated;
+        }
+    }
+
+    private bool IsBusy(Guid suggestionId) => _busyIds.Contains(suggestionId);
+
+    private static string FormatPlatform(SocialPublishing.Domain.Connections.OrganicPlatform platform) =>
+        platform.ToString();
+
+    private static string FormatMultiple(decimal multiple) =>
+        multiple.ToString("0.#", PtBr);
+}

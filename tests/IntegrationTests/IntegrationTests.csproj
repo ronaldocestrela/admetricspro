@@ -31,6 +31,10 @@
     <ProjectReference Include="..\..\src\Backend\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Backend\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\src\Backend\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Domain\SocialPublishing.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Contracts\SocialPublishing.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Application\SocialPublishing.Application.csproj" />
+    <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Infrastructure\SocialPublishing.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

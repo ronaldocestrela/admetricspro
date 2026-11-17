@@ -1,0 +1,36 @@
+@namespace WebApp.Components.Shared.Components
+@using SocialPublishing.Domain.Posts
+
+<span class="organic-post-status-badge @CssClass" data-testid="organic-post-status-badge">@Label</span>
+
+@code {
+    /// <summary>
+    /// Status do post orgânico exibido no selo.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public OrganicPostStatus Status { get; set; }
+
+    private string Label => Status switch
+    {
+        OrganicPostStatus.Draft => "Rascunho",
+        OrganicPostStatus.PendingApproval => "Aguardando aprovação",
+        OrganicPostStatus.Approved => "Aprovado",
+        OrganicPostStatus.Scheduled => "Agendado",
+        OrganicPostStatus.Publishing => "Publicando",
+        OrganicPostStatus.Published => "Publicado",
+        OrganicPostStatus.Rejected => "Rejeitado",
+        OrganicPostStatus.ChangesRequested => "Alterações solicitadas",
+        OrganicPostStatus.Failed => "Falhou",
+        OrganicPostStatus.Cancelled => "Cancelado",
+        _ => Status.ToString(),
+    };
+
+    private string CssClass => Status switch
+    {
+        OrganicPostStatus.Scheduled => "badge-scheduled",
+        OrganicPostStatus.Published => "badge-published",
+        OrganicPostStatus.Failed => "badge-failed",
+        OrganicPostStatus.PendingApproval => "badge-pending",
+        _ => "badge-default",
+    };
+}
