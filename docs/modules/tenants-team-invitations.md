@@ -69,7 +69,9 @@ Erros comuns: `TenantInvitation.NotFound`, `TenantUser.WeakPassword`, `TenantUse
 
 ## Configuração
 
-`appsettings`:
+Convites exigem **URL base do WebApp** (montagem do link no e-mail) e provedor de e-mail **Smtp** para entrega real (ver [mensageria transacional](transactional-emails-and-trial-notices.md)).
+
+`appsettings` ou variáveis `.env`:
 
 ```json
 "Tenants": {
@@ -79,3 +81,13 @@ Erros comuns: `TenantInvitation.NotFound`, `TenantUser.WeakPassword`, `TenantUse
   }
 }
 ```
+
+Equivalente no `.env`:
+
+```bash
+Tenants__Invitations__WebAppBaseUrl=https://app.exemplo.com
+Tenants__Invitations__TokenValidityHours=72
+Email__Provider=Smtp
+```
+
+Se `WebAppBaseUrl` estiver ausente, o convite é persistido mas `emailDispatched` retorna `false` (`TenantInvitation.WebAppBaseUrlMissing`). Com `Email__Provider=InMemory`, a API pode marcar envio bem-sucedido sem SMTP real (apenas testes/desenvolvimento).
