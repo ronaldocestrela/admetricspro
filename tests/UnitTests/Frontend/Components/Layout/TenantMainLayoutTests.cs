@@ -1,6 +1,8 @@
 using AngleSharp.Dom;
 using Bunit;
 using FluentAssertions;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using UnitTests.Frontend.Common;
 using WebApp.Components.Layout;
@@ -106,6 +108,18 @@ public sealed class TenantMainLayoutTests : BunitTestBase
     [Fact]
     public void TenantMainLayout_ShouldRenderChildComponentsAndBody()
     {
+        TenantSessionStateProvider.SetSession(new Tenants.Application.Auth.DTOs.AuthenticatedTenantUserDto(
+            AccessToken: "token",
+            TokenType: "Bearer",
+            ExpiresIn: 3600,
+            UserId: Guid.NewGuid(),
+            Email: "gestor@alfa.com",
+            FullName: "Gestor Alfa",
+            Role: "Owner",
+            TenantId: Guid.NewGuid(),
+            Subdomain: "alfa",
+            Branding: null));
+
         // Arrange & Act
         var cut = Render<TenantMainLayout>(parameters => parameters
             .Add(p => p.Body, builder =>
@@ -223,6 +237,41 @@ public sealed class TenantMainLayoutTests : BunitTestBase
             cut.Find("#body-content").Should().NotBeNull();
             cut.Find("#body-content").TextContent.Should().Be("Conteúdo Protegido");
         });
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.Uri.Should().NotContain("/login");
+    }
+
+    /// <summary>
+    /// Valida que visitante sem sessão restaurável é redirecionado ao login com returnUrl da rota atual.
+    /// </summary>
+    [Fact]
+    public void TenantMainLayout_WhenAnonymous_ShouldRedirectToLoginWithReturnUrl()
+    {
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("http://localhost/workspaces");
+
+        BrowserStorageService.GetItemAsync<Tenants.Application.Auth.DTOs.AuthenticatedTenantUserDto>(
+                "admetricspro_tenant_session", Arg.Any<CancellationToken>())
+            .Returns(_ => default(ValueTask<Tenants.Application.Auth.DTOs.AuthenticatedTenantUserDto?>));
+
+        var cut = Render<TenantMainLayout>(parameters => parameters
+            .Add(p => p.Body, builder =>
+            {
+                builder.OpenElement(0, "div");
+                builder.AddAttribute(1, "id", "protected-body");
+                builder.AddContent(2, "Não deveria aparecer");
+                builder.CloseElement();
+            }));
+
+        cut.WaitForAssertion(() =>
+        {
+            nav.Uri.Should().Contain("/login");
+            nav.Uri.Should().Contain("returnUrl=");
+            nav.Uri.Should().Contain("workspaces");
+        });
+
+        cut.FindAll("#protected-body").Should().BeEmpty();
     }
 }
 

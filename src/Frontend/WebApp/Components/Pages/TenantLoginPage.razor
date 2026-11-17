@@ -1,4 +1,5 @@
 @page "/login"
+@using WebApp.Navigation
 @layout WebApp.Components.Landing.LandingLayout
 @using WebApp.Models
 @using WebApp.Services
@@ -281,7 +282,7 @@
             // Atualiza o estado da sessão e propaga branding garantindo persistência antes do redirecionamento
             await SessionProvider.SetSessionAsync(result.Value);
 
-            var destination = !string.IsNullOrWhiteSpace(ReturnUrl) ? ReturnUrl : "/dashboard";
+            var destination = TenantAuthNavigation.ResolvePostLoginDestination(ReturnUrl);
             NavigationManager.NavigateTo(destination);
         }
         catch (Exception ex)

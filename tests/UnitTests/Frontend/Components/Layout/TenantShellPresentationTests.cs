@@ -15,6 +15,33 @@ namespace UnitTests.Frontend.Components.Layout;
 /// <summary>Verifica a área do cliente com ações no menu lateral e identidade configurável.</summary>
 public sealed class TenantShellPresentationTests : BunitTestBase
 {
+    /// <summary>Após mutação do catálogo, o seletor lateral recarrega as opções sem recriar o layout.</summary>
+    [Fact]
+    public void Sidebar_WhenCatalogChanges_ShouldReloadWorkspaceOptionsWithoutRemount()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        WorkspaceClientService.GetWorkspacesAsync(true, Arg.Any<CancellationToken>())
+            .Returns(
+                Result<IReadOnlyList<WorkspaceDto>>.Success([new(firstId, "Cliente Alfa", "12345678000195", 1000m, "E-commerce", true, DateTime.UtcNow, null)]),
+                Result<IReadOnlyList<WorkspaceDto>>.Success(
+                [
+                    new(firstId, "Cliente Alfa", "12345678000195", 1000m, "E-commerce", true, DateTime.UtcNow, null),
+                    new(secondId, "Cliente Beta", "98765432000110", 2000m, "Serviços B2B", true, DateTime.UtcNow, null)
+                ]));
+        SetTenant(new TenantState(Guid.NewGuid(), "Agência Alfa", "alfa", null, TenantBranding.Default));
+        var cut = Render<TenantSidebar>();
+        cut.FindAll("#sidebar-workspace-select option").Should().HaveCount(2);
+
+        var notifier = Services.GetRequiredService<IWorkspaceCatalogNotifier>();
+        notifier.NotifyChanged();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("#sidebar-workspace-select").InnerHtml.Should().Contain("Cliente Beta");
+        });
+    }
+
     /// <summary>O seletor lateral mantém e limpa o contexto global do cliente ativo.</summary>
     [Fact]
     public async Task Sidebar_ShouldSelectWorkspaceAndReturnToConsolidatedView()

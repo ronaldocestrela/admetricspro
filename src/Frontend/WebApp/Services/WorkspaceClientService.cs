@@ -15,19 +15,26 @@ public sealed class WorkspaceClientService : IWorkspaceClientService
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
     private readonly ITenantSessionStateProvider? _session;
+    private readonly IWorkspaceCatalogNotifier? _catalogNotifier;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="WorkspaceClientService"/>.
     /// </summary>
     /// <param name="httpClient">Cliente HTTP para consumo da Web API.</param>
-    /// <param name="session">Sessão autenticada do usuário.</param>
     /// <param name="tenantStateProvider">Provedor de estado do inquilino ativo.</param>
-    public WorkspaceClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
+    /// <param name="session">Sessão autenticada do usuário.</param>
+    /// <param name="catalogNotifier">Notificador do catálogo de workspaces para componentes reativos.</param>
+    public WorkspaceClientService(
+        HttpClient httpClient,
+        ITenantStateProvider tenantStateProvider,
+        ITenantSessionStateProvider? session = null,
+        IWorkspaceCatalogNotifier? catalogNotifier = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
         _session = session;
+        _catalogNotifier = catalogNotifier;
     }
 
     /// <inheritdoc />
@@ -59,6 +66,9 @@ public sealed class WorkspaceClientService : IWorkspaceClientService
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
             var result = await response.Content.ReadFromJsonAsync<Result<Guid>>(JsonOptions, cancellationToken);
+
+            if (result is { IsSuccess: true })
+                _catalogNotifier?.NotifyChanged();
 
             return result ?? Result<Guid>.Failure(
                 Error.Failure("Workspace.InvalidResponse", "Resposta inválida ao cadastrar workspace."));
@@ -151,6 +161,9 @@ public sealed class WorkspaceClientService : IWorkspaceClientService
             using var response = await _httpClient.SendAsync(message, cancellationToken);
             var result = await response.Content.ReadFromJsonAsync<Result>(JsonOptions, cancellationToken);
 
+            if (result is { IsSuccess: true })
+                _catalogNotifier?.NotifyChanged();
+
             return result ?? Result.Failure(
                 Error.Failure("Workspace.InvalidResponse", "Resposta inválida ao atualizar workspace."));
         }
@@ -173,6 +186,9 @@ public sealed class WorkspaceClientService : IWorkspaceClientService
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
             var result = await response.Content.ReadFromJsonAsync<Result>(JsonOptions, cancellationToken);
+
+            if (result is { IsSuccess: true })
+                _catalogNotifier?.NotifyChanged();
 
             return result ?? Result.Failure(
                 Error.Failure("Workspace.InvalidResponse", "Resposta inválida ao alternar status do workspace."));

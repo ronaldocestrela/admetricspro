@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @namespace WebApp.Components.Layout
+@using WebApp.Navigation
 @inject ITenantStateProvider TenantStateProvider
 @inject ITenantSessionStateProvider TenantSessionStateProvider
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
@@ -62,8 +63,7 @@
         TenantSessionStateProvider.OnSessionChanged += HandleStateChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged += HandleStateChanged;
 
-        _isRestoringSession = !TenantSessionStateProvider.IsAuthenticated &&
-                              TenantStateProvider.CurrentTenant.TenantId == Guid.Empty;
+        _isRestoringSession = !TenantSessionStateProvider.IsAuthenticated;
     }
 
     /// <inheritdoc />
@@ -80,6 +80,12 @@
                 {
                     needsStateHasChanged = true;
                 }
+            }
+
+            if (!TenantSessionStateProvider.IsAuthenticated)
+            {
+                NavigationManager.NavigateTo(TenantAuthNavigation.BuildLoginUrl(NavigationManager), replace: true);
+                return;
             }
 
             if (!WorkspaceContextStateProvider.HasWorkspaceSelected)

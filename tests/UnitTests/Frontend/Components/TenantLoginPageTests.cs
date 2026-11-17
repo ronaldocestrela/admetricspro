@@ -164,6 +164,71 @@ public sealed class TenantLoginPageTests : BunitTestBase
     }
 
     /// <summary>
+    /// Valida que após login com returnUrl local o usuário retorna à rota solicitada.
+    /// </summary>
+    [Fact]
+    public void TenantLoginPage_WhenReturnUrlIsLocal_ShouldNavigateToReturnUrl()
+    {
+        var userDto = new AuthenticatedTenantUserDto(
+            AccessToken: "jwt_token",
+            TokenType: "Bearer",
+            ExpiresIn: 28800,
+            UserId: Guid.NewGuid(),
+            Email: "gestor@vanguarda.com.br",
+            FullName: "Carlos Gestor",
+            Role: "Owner",
+            TenantId: Guid.NewGuid(),
+            Subdomain: "vanguarda",
+            Branding: null);
+
+        _authClientService.LoginAsync(Arg.Any<TenantLoginModel>(), Arg.Any<CancellationToken>())
+            .Returns(Result<AuthenticatedTenantUserDto>.Success(userDto));
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("http://localhost/login?returnUrl=%2Fworkspaces");
+
+        var cut = Render<TenantLoginPage>();
+        cut.Find("input[type='email']").Change("gestor@vanguarda.com.br");
+        cut.Find("input[type='password']").Change("SenhaValida123!");
+        cut.Find("button[type='submit']").Click();
+
+        nav.Uri.Should().Contain("/workspaces");
+    }
+
+    /// <summary>
+    /// Valida que returnUrl absoluto externo é ignorado e o destino padrão é o dashboard.
+    /// </summary>
+    [Fact]
+    public void TenantLoginPage_WhenReturnUrlIsExternal_ShouldNavigateToDashboard()
+    {
+        var userDto = new AuthenticatedTenantUserDto(
+            AccessToken: "jwt_token",
+            TokenType: "Bearer",
+            ExpiresIn: 28800,
+            UserId: Guid.NewGuid(),
+            Email: "gestor@vanguarda.com.br",
+            FullName: "Carlos Gestor",
+            Role: "Owner",
+            TenantId: Guid.NewGuid(),
+            Subdomain: "vanguarda",
+            Branding: null);
+
+        _authClientService.LoginAsync(Arg.Any<TenantLoginModel>(), Arg.Any<CancellationToken>())
+            .Returns(Result<AuthenticatedTenantUserDto>.Success(userDto));
+
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("http://localhost/login?returnUrl=https%3A%2F%2Fevil.example%2Fsteal");
+
+        var cut = Render<TenantLoginPage>();
+        cut.Find("input[type='email']").Change("gestor@vanguarda.com.br");
+        cut.Find("input[type='password']").Change("SenhaValida123!");
+        cut.Find("button[type='submit']").Click();
+
+        nav.Uri.Should().Contain("/dashboard");
+        nav.Uri.Should().NotContain("evil.example");
+    }
+
+    /// <summary>
     /// Valida que quando o login falha na API (ex: credenciais inválidas), o erro retornado no Result é exibido ao usuário.
     /// </summary>
     [Fact]

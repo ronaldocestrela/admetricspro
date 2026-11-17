@@ -32,6 +32,11 @@ public abstract class BunitTestBase : BunitContext
     protected IWorkspaceContextStateProvider WorkspaceContextStateProvider { get; }
 
     /// <summary>
+    /// Notificador do catálogo de workspaces compartilhado no contexto de testes.
+    /// </summary>
+    protected IWorkspaceCatalogNotifier WorkspaceCatalogNotifier { get; }
+
+    /// <summary>
     /// Mock do serviço de storage do navegador.
     /// </summary>
     protected IBrowserStorageService BrowserStorageService { get; }
@@ -110,6 +115,7 @@ public abstract class BunitTestBase : BunitContext
         BrowserStorageService = NSubstitute.Substitute.For<IBrowserStorageService>();
         TenantSessionStateProvider = new TenantSessionStateProvider(TenantStateProvider, BrowserStorageService);
         WorkspaceContextStateProvider = new WorkspaceContextStateProvider(BrowserStorageService);
+        WorkspaceCatalogNotifier = new WorkspaceCatalogNotifier();
         ImpersonationStateProvider = new ImpersonationStateProvider();
         ImpersonationClientService = NSubstitute.Substitute.For<WebApp.Services.IImpersonationClientService>();
         TenantFtuxClientService = NSubstitute.Substitute.For<WebApp.Services.ITenantFtuxClientService>();
@@ -228,6 +234,7 @@ public abstract class BunitTestBase : BunitContext
         Services.AddSingleton<ITenantSessionStateProvider>(TenantSessionStateProvider);
         Services.AddSingleton<IBrowserStorageService>(BrowserStorageService);
         Services.AddSingleton<IWorkspaceContextStateProvider>(WorkspaceContextStateProvider);
+        Services.AddSingleton<IWorkspaceCatalogNotifier>(WorkspaceCatalogNotifier);
         Services.AddSingleton<IImpersonationStateProvider>(ImpersonationStateProvider);
         Services.AddSingleton<WebApp.Services.IImpersonationClientService>(ImpersonationClientService);
         Services.AddSingleton<WebApp.Services.ITenantFtuxClientService>(TenantFtuxClientService);

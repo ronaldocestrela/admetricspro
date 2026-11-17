@@ -21,6 +21,7 @@ builder.Services.AddScoped<IBrowserStorageService, ProtectedBrowserStorageServic
 builder.Services.AddScoped<ITenantStateProvider, TenantStateProvider>();
 builder.Services.AddScoped<ITenantSessionStateProvider, TenantSessionStateProvider>();
 builder.Services.AddScoped<IWorkspaceContextStateProvider, WorkspaceContextStateProvider>();
+builder.Services.AddScoped<IWorkspaceCatalogNotifier, WorkspaceCatalogNotifier>();
 builder.Services.AddScoped<IImpersonationStateProvider, ImpersonationStateProvider>();
 
 // Registro dos clientes HTTP fortemente tipados consumindo exclusivamente a Web API

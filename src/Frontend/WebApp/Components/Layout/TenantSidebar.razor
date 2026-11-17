@@ -3,6 +3,7 @@
 @inject ITenantSessionStateProvider TenantSessionStateProvider
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 @inject IWorkspaceClientService WorkspaceClientService
+@inject IWorkspaceCatalogNotifier WorkspaceCatalogNotifier
 @inject NavigationManager NavigationManager
 @using Tenants.Application.Workspaces.DTOs
 @implements IDisposable
@@ -243,10 +244,17 @@
     {
         TenantSessionStateProvider.OnSessionChanged += HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged += HandleContextChanged;
+        WorkspaceCatalogNotifier.Changed += HandleCatalogChanged;
         await LoadWorkspacesAsync();
     }
 
     private void HandleContextChanged() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
+
+    private void HandleCatalogChanged()
+    {
+        if (!_disposed)
+            _ = InvokeAsync(async () => { await LoadWorkspacesAsync(); if (!_disposed) StateHasChanged(); });
+    }
     private void HandleSessionChanged()
     {
         if (!_disposed) _ = InvokeAsync(async () => { await LoadWorkspacesAsync(); if (!_disposed) StateHasChanged(); });
@@ -297,6 +305,7 @@
         _requestVersion++;
         TenantSessionStateProvider.OnSessionChanged -= HandleSessionChanged;
         WorkspaceContextStateProvider.OnWorkspaceChanged -= HandleContextChanged;
+        WorkspaceCatalogNotifier.Changed -= HandleCatalogChanged;
     }
 
     /// <summary>

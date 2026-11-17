@@ -29,9 +29,17 @@ As cores explicitamente configuradas pelo cliente têm prioridade. Somente cores
 
 ## Cliente ativo e encerramento da sessão
 
-O seletor consulta `IWorkspaceClientService.GetWorkspacesAsync(activeOnly: true)` e permite selecionar um cliente ou todos os clientes. O contexto continua em `IWorkspaceContextStateProvider`, com notificação das telas assinantes e persistência protegida no navegador. Durante carregamento o seletor fica desabilitado; falhas mostram mensagem contextual. Nenhuma consulta a banco ocorre no frontend.
+O seletor consulta `IWorkspaceClientService.GetWorkspacesAsync(activeOnly: true)` e permite selecionar um cliente ou todos os clientes. O contexto continua em `IWorkspaceContextStateProvider`, com notificação das telas assinantes e persistência protegida no navegador. Após criação, edição ou pausa de workspace bem-sucedida, `IWorkspaceCatalogNotifier` dispara o recarregamento da lista no menu lateral sem exigir recarregar a página. Durante carregamento o seletor fica desabilitado; falhas mostram mensagem contextual. Nenhuma consulta a banco ocorre no frontend.
 
 A ação de sair fica no rodapé do menu lateral, desabilitada enquanto executa. Ela aguarda `WorkspaceContextStateProvider.ClearAsync()` e `TenantSessionStateProvider.ClearSessionAsync()`, removendo contexto e sessão persistidos antes de navegar para `/login`. A remoção é assíncrona para evitar bloqueio do circuito Blazor por espera síncrona em interoperabilidade com o navegador. Ausência de armazenamento disponível mantém o tratamento gracioso existente.
+
+### Acesso anônimo à área autenticada
+
+Toda rota que usa `TenantMainLayout` exige sessão ativa. No primeiro render o layout tenta `TenantSessionStateProvider.RestoreSessionAsync()` (sessão persistida no navegador). Enquanto a restauração não conclui, o usuário vê o estado de carregamento (`data-testid="tenant-session-loading"`), sem o conteúdo da página.
+
+Se não houver sessão válida após a restauração, o layout redireciona para `/login`, anexando `returnUrl` com o caminho relativo atual (ex.: `/login?returnUrl=%2Fworkspaces`). Após login bem-sucedido, `TenantLoginPage` navega para o `returnUrl` somente quando for caminho local (inicia com `/` e não com `//`); caso contrário, o destino padrão é `/dashboard`.
+
+Rotas públicas permanecem fora desse fluxo (landing, login, onboarding, aprovação pública e relatório compartilhado).
 
 ## Telas e contratos HTTP revisados
 
