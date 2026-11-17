@@ -91,3 +91,5 @@ Email__Provider=Smtp
 ```
 
 Se `WebAppBaseUrl` estiver ausente, o convite é persistido mas `emailDispatched` retorna `false` (`TenantInvitation.WebAppBaseUrlMissing`). Com `Email__Provider=InMemory`, a API pode marcar envio bem-sucedido sem SMTP real (apenas testes/desenvolvimento).
+
+No Docker, o arquivo `.env` não entra na imagem (`.dockerignore`). O `--env-file` do Compose só substitui `${VAR}` declaradas em `environment` do serviço `webapi`. `Email__*` e `Tenants__Invitations__*` precisam estar nessa lista; caso contrário o `appsettings.json` publicado (`Provider: InMemory`) permanece ativo. A URL do link deve ser a do portal publicado (padrão `http://localhost:7000`).

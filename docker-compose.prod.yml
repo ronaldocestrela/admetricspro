@@ -71,6 +71,20 @@ services:
       - Dunning__IsEnabled=${Dunning__IsEnabled:-true}
       - Dunning__GracePeriodDays=${Dunning__GracePeriodDays:-5}
       - Dunning__RetryIntervalHours=${Dunning__RetryIntervalHours:-24}
+      # SMTP: sem estas variáveis o appsettings publicado mantém Provider=InMemory.
+      - Email__Provider=${Email__Provider:-InMemory}
+      - Email__SmtpHost=${Email__SmtpHost:-localhost}
+      - Email__SmtpPort=${Email__SmtpPort:-587}
+      - Email__SecureSocket=${Email__SecureSocket:-StartTls}
+      - Email__EnableSsl=${Email__EnableSsl:-true}
+      - Email__FromEmail=${Email__FromEmail:-noreply@admetricspro.com.br}
+      - Email__FromDisplayName=${Email__FromDisplayName:-AdMetricsPro}
+      - Email__UserName=${Email__UserName:-}
+      - Email__Password=${Email__Password:-}
+      - Email__TimeoutSeconds=${Email__TimeoutSeconds:-10}
+      - Email__MaxRetryAttempts=${Email__MaxRetryAttempts:-1}
+      - Tenants__Invitations__WebAppBaseUrl=${Tenants__Invitations__WebAppBaseUrl:-http://localhost:7000}
+      - Tenants__Invitations__TokenValidityHours=${Tenants__Invitations__TokenValidityHours:-72}
     ports:
       - "${WEBAPI_PORT:-7001}:8080"
     networks:
