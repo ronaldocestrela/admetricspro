@@ -230,7 +230,7 @@ Consulta MediatR **`StartOrganicAuthorizationQuery`** (Application), exposta via
 - Formato: `{base64url(json)}.{base64url(hmac-sha256)}`.
 - Payload: `TenantId`, `WorkspaceId`, `OrganicPlatform`, `RedirectUri`, `IssuedAtUtc`, `Nonce` (32 bytes hex).
 - TTL: **15 minutos**; mesma resposta `Social.OAuthStateInvalid` para adulteração, expiração ou tenant/workspace divergente.
-- Chave HMAC: `SocialPublishing:OAuth:StateSigningKey` (**distinta** de `Integrations:OAuth:StateSigningKey`).
+- Chave HMAC: `SocialPublishing:OAuth:StateSigningKey` (variável `SocialPublishing__OAuth__StateSigningKey`, distinta de `Integrations:OAuth:StateSigningKey`). O Compose entrega essa variável somente ao serviço `webapi`. Sem ela, o host falha em `ValidateOnStart` porque a chave precisa ter pelo menos 32 caracteres.
 
 ### Provedores e escopos default (`OrganicOAuthOptions`)
 

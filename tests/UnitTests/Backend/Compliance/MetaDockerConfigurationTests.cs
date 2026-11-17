@@ -26,6 +26,7 @@ public sealed class MetaDockerConfigurationTests
         [
             "META_APP_ID", "META_APP_SECRET", "META_GRAPH_API_VERSION", "META_OAUTH_REDIRECT_URI",
             "Integrations__OAuth__StateSigningKey", "Integrations__OAuth__TokenEncryptionKey",
+            "SocialPublishing__OAuth__StateSigningKey",
             "Integrations__OAuth__Meta__DefaultScopes", "Integrations__OAuth__Meta__TimeoutSeconds",
             "Integrations__MetaSynchronization__Enabled", "Integrations__MetaSynchronization__IntervalMinutes",
             "Integrations__MetaSynchronization__LookbackDays"
