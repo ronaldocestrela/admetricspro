@@ -25,6 +25,7 @@ public static class EmailServiceExtensions
 
         if (string.Equals(emailOptions.Provider, "Smtp", StringComparison.OrdinalIgnoreCase))
         {
+            services.AddScoped<ISmtpMailTransport, MailKitSmtpTransport>();
             services.AddScoped<IEmailSender, SmtpEmailSender>();
         }
         else

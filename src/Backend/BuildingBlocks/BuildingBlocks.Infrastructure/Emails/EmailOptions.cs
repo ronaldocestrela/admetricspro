@@ -49,4 +49,19 @@ public sealed class EmailOptions
     /// Nome de exibição padrão do remetente corporativo.
     /// </summary>
     public string FromDisplayName { get; set; } = "AdMetricsPro";
+
+    /// <summary>
+    /// Modo explícito de conexão segura; quando não definido, deriva de <see cref="EnableSsl"/> e da porta.
+    /// </summary>
+    public EmailSecureSocketMode? SecureSocket { get; set; }
+
+    /// <summary>
+    /// Timeout máximo de cada tentativa de envio SMTP, em segundos.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// Número máximo de novas tentativas após falha transitória (além da primeira tentativa).
+    /// </summary>
+    public int MaxRetryAttempts { get; set; } = 1;
 }

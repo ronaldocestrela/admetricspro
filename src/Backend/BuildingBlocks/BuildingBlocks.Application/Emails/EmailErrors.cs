@@ -29,6 +29,13 @@ public static class EmailErrors
         "O corpo do e-mail (HTML ou texto plano) é obrigatório.");
 
     /// <summary>
+    /// Erro de configuração SMTP inválida ou incompleta para o provedor da plataforma.
+    /// </summary>
+    public static readonly Error InvalidConfiguration = Error.Validation(
+        "Email.InvalidConfiguration",
+        "A configuração SMTP da plataforma é inválida ou incompleta. Verifique host, porta, remetente, TLS e credenciais.");
+
+    /// <summary>
     /// Erro emitido quando o provedor de mensageria falha ao despachar a mensagem.
     /// </summary>
     /// <param name="details">Detalhes técnicos ou mensagem de erro da falha.</param>

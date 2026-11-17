@@ -1,7 +1,7 @@
 # ADR 0023: Mensageria Transacional e Régua Automatizada de Ciclo de Vida do Trial
 
 ## Status
-Aceito
+Aceito (transporte SMTP atualizado pelo [ADR 0049](0049-mailkit-platform-smtp.md))
 
 ## Data
 2026-09-07
@@ -16,8 +16,8 @@ No fluxo de onboarding self-service de agências e gestão multitenant:
 ## Decisão
 1. **Kernel Compartilhado de Mensageria (`BuildingBlocks.Application/Emails` & `BuildingBlocks.Infrastructure/Emails`):**
    - Abstração `IEmailSender` com contrato `SendEmailAsync(EmailMessage, CancellationToken)` retornando `Result`.
-   - Implementação `SmtpEmailSender` para envio em homologação/produção e `InMemoryEmailSender` para testes de integração e ambientes de desenvolvimento locais.
-   - Configurações via `EmailOptions` com suporte a variáveis de ambiente (`EMAIL__HOST`, `EMAIL__USERNAME`, `EMAIL__APIKEY`, etc.).
+   - Implementação `SmtpEmailSender` (orquestração + MailKit via `MailKitSmtpTransport`, ver [ADR 0049](0049-mailkit-platform-smtp.md)) para homologação/produção e `InMemoryEmailSender` para testes e desenvolvimento local.
+   - Configurações via `EmailOptions` / seção `Email` com variáveis de ambiente `Email__SmtpHost`, `Email__UserName`, `Email__Password`, `Email__Provider`, etc.
 2. **Registro e Auditoria Central no `MasterDb` (`TenantNotificationLog`):**
    - Criação da tabela `TenantNotificationLogs` no banco mestre, vinculada ao `TenantId`, armazenando tipo de aviso (`TrialNoticeType`), destinatário, assunto, status de sucesso, data UTC e payload/mensagem de erro.
    - Índice composto `IX_TenantNotificationLogs_TenantId_NoticeType_SentAtUtc` garantindo idempotência e consulta ultrarrápida da régua.

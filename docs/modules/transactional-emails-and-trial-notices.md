@@ -18,7 +18,7 @@ O módulo **Mensageria Transacional & Régua de Trial** implementa o sistema de 
    - Idempotência rigorosa garantida através da tabela de auditoria `TenantNotificationLogs` no `MasterDb`.
 
 3. **Abstração Desacoplada de E-mails (`BuildingBlocks.Application/Emails`):**
-   - Suporte transparente a envio via SMTP corporativo (`SmtpEmailSender`) e modo in-memory (`InMemoryEmailSender`) para testes automatizados.
+   - Suporte transparente a envio via SMTP corporativo (`SmtpEmailSender` + `MailKitSmtpTransport`, [ADR 0049](../adr/0049-mailkit-platform-smtp.md)) e modo in-memory (`InMemoryEmailSender`) para testes automatizados.
    - Templates HTML modernos, responsivos e acessíveis com paleta corporativa slate/indigo e fallback automático em texto plano.
 
 ---
@@ -171,3 +171,44 @@ Cada comunicação transacional gera uma entrada auditável na tabela `TenantNot
 | `ErrorMessage` | `nvarchar(2000)` | Mensagem de erro caso `IsSuccess` seja `false` |
 
 Um índice composto não agrupado (`IX_TenantNotificationLogs_TenantId_NoticeType_SentAtUtc`) garante alta performance nas consultas de verificação de idempotência da régua.
+
+---
+
+## 5. Configuração SMTP da Plataforma (`EmailOptions`)
+
+| Chave | Tipo | Padrão | Descrição |
+|---|---|---|---|
+| `Provider` | `string` | `InMemory` | `InMemory` (dev/testes) ou `Smtp` (homologação/produção) |
+| `SmtpHost` | `string` | `localhost` | Host do servidor SMTP |
+| `SmtpPort` | `int` | `587` | Porta SMTP (587 STARTTLS, 465 SSL) |
+| `EnableSsl` | `bool` | `true` | Fallback TLS quando `SecureSocket` não estiver definido |
+| `SecureSocket` | `enum` | `StartTls` | `Auto`, `None`, `StartTls`, `SslOnConnect` |
+| `FromEmail` | `string` | `noreply@admetricspro.com.br` | Remetente padrão da plataforma |
+| `FromDisplayName` | `string` | `AdMetricsPro` | Nome de exibição do remetente |
+| `UserName` | `string?` | — | Usuário SMTP (opcional; deve vir em par com `Password`) |
+| `Password` | `string?` | — | Senha/API key SMTP (**somente `.env`**, nunca `appsettings`) |
+| `TimeoutSeconds` | `int` | `10` | Timeout por tentativa de envio |
+| `MaxRetryAttempts` | `int` | `1` | Novas tentativas após falha transitória (rede ou SMTP 4xx) |
+
+### Exemplo `.env` (produção)
+
+```env
+Email__Provider=Smtp
+Email__SmtpHost=smtp.sendgrid.net
+Email__SmtpPort=587
+Email__SecureSocket=StartTls
+Email__FromEmail=noreply@admetricspro.com.br
+Email__FromDisplayName=AdMetricsPro
+Email__UserName=apikey
+Email__Password=SG.xxxxxxxxx
+Email__TimeoutSeconds=10
+Email__MaxRetryAttempts=1
+```
+
+### Erros de envio (`Result`)
+
+| Código | Situação |
+|---|---|
+| `Email.InvalidConfiguration` | Host, porta, remetente ou credencial incompleta |
+| `Email.SendFailed` | Falha no provedor SMTP após esgotar tentativas |
+| `Email.InvalidRecipient` | Destinatário ausente ou formato inválido (modelo `EmailMessage`) |
