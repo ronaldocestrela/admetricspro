@@ -1,6 +1,7 @@
 using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Infrastructure.Security;
+using Master.Application.Abstractions;
 using Master.Application.Billing.Payments;
 using Master.Application.Repositories;
 using Master.Application.Services;
@@ -58,6 +59,7 @@ public static class MasterDatabaseMigrationExtensions
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<IPlanReadOnlyRepository, PlanReadOnlyRepository>();
         services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
+        services.AddScoped<ITenantOperationalSchemaMigrator, TenantOperationalSchemaMigrator>();
         services.AddScoped<BuildingBlocks.Application.MultiTenancy.ITenantConnectionResolver, CachedTenantConnectionResolver>();
         services.AddScoped<BuildingBlocks.Application.MultiTenancy.ITenantCustomDomainResolver, TenantCustomDomainResolver>();
         services.AddScoped<IImpersonationSessionRepository, ImpersonationSessionRepository>();

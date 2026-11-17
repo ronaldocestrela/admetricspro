@@ -1,3 +1,4 @@
+using Master.Application.Abstractions;
 using Master.Application.Tenants.Queries.GetTenants;
 using MediatR;
 using Analytics.Application.Abstractions;
@@ -47,10 +48,11 @@ public sealed class SocialPublishingTenantMigrationHostedService : IHostedServic
             return;
         }
 
-        _logger.LogInformation("Iniciando migrações do schema social para tenants ativos...");
+        _logger.LogInformation("Iniciando migrações operacionais, sociais e analytics para tenants ativos...");
 
         using var scope = _serviceProvider.CreateScope();
         var sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        var operationalMigrator = scope.ServiceProvider.GetRequiredService<ITenantOperationalSchemaMigrator>();
         var migrator = scope.ServiceProvider.GetRequiredService<ISocialPublishingSchemaMigrator>();
         var analyticsMigrator = scope.ServiceProvider.GetRequiredService<IAnalyticsSchemaMigrator>();
 
@@ -66,6 +68,18 @@ public sealed class SocialPublishingTenantMigrationHostedService : IHostedServic
 
         foreach (var tenant in tenantsResult.Value.Where(t => t.Status is "Active" or "Trial"))
         {
+            var operationalMigrationResult = await operationalMigrator.ApplyForTenantAsync(tenant.Id, cancellationToken);
+            if (operationalMigrationResult.IsFailure)
+            {
+                _logger.LogError(
+                    "Migração operacional falhou para tenant {TenantId}: {Code} - {Message}",
+                    tenant.Id,
+                    operationalMigrationResult.Error.Code,
+                    operationalMigrationResult.Error.Description);
+                throw new InvalidOperationException(
+                    $"Migração operacional falhou para tenant {tenant.Id}: {operationalMigrationResult.Error.Description}");
+            }
+
             var migrationResult = await migrator.ApplyForTenantAsync(tenant.Id, cancellationToken);
             if (migrationResult.IsFailure)
             {
