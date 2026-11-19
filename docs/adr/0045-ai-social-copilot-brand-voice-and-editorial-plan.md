@@ -10,7 +10,7 @@ O módulo **SocialPublishing** precisa separar o que é **determinístico** (pes
 
 Requisitos:
 
-1. Brief montado apenas com `BrandVoiceProfile` + dados do slot (pilar, rede, formato).
+1. Brief montado com `BrandVoiceProfile` + dados do slot (pilar, rede, formato). A partir de 2026-11-19 o perfil inclui opcionalmente contexto de negócio e paleta de cores do cliente; linhas presentes entram no `CopyBrief` e no prompt do `HttpSocialCreativeGenerator` (sem inventar dados ausentes).
 2. Validação pós-IA com regras já existentes (`CaptionLimits`, `HashtagGroup`, termos proibidos).
 3. Provedor substituível via porta na Application; adaptador HTTP na Infrastructure.
 4. Falhas de rede/provedor como `Result.Failure`, sem exceção propagada ao handler MediatR.

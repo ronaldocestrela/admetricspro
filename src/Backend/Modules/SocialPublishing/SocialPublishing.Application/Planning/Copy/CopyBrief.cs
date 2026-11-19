@@ -25,6 +25,13 @@ public sealed class CopyBrief
     /// <param name="platform">Rede de publicação.</param>
     /// <param name="format">Formato de publicação.</param>
     /// <param name="formatInstruction">Instrução específica de formato.</param>
+    /// <param name="businessSummary">Resumo do negócio do cliente.</param>
+    /// <param name="targetAudience">Público-alvo.</param>
+    /// <param name="mainOffer">Oferta principal.</param>
+    /// <param name="differentiators">Diferenciais competitivos.</param>
+    /// <param name="primaryColor">Cor primária da identidade visual.</param>
+    /// <param name="secondaryColor">Cor secundária.</param>
+    /// <param name="accentColor">Cor de destaque.</param>
     public CopyBrief(
         string persona,
         string tone,
@@ -37,7 +44,14 @@ public sealed class CopyBrief
         ContentPillar pillar,
         OrganicPlatform platform,
         OrganicPostFormat format,
-        string formatInstruction)
+        string formatInstruction,
+        string? businessSummary = null,
+        string? targetAudience = null,
+        string? mainOffer = null,
+        string? differentiators = null,
+        string? primaryColor = null,
+        string? secondaryColor = null,
+        string? accentColor = null)
     {
         Persona = persona;
         Tone = tone;
@@ -51,6 +65,13 @@ public sealed class CopyBrief
         Platform = platform;
         Format = format;
         FormatInstruction = formatInstruction;
+        BusinessSummary = businessSummary;
+        TargetAudience = targetAudience;
+        MainOffer = mainOffer;
+        Differentiators = differentiators;
+        PrimaryColor = primaryColor;
+        SecondaryColor = secondaryColor;
+        AccentColor = accentColor;
     }
 
     /// <summary>
@@ -114,6 +135,41 @@ public sealed class CopyBrief
     public string FormatInstruction { get; }
 
     /// <summary>
+    /// Obtém o resumo do negócio do cliente, quando informado.
+    /// </summary>
+    public string? BusinessSummary { get; }
+
+    /// <summary>
+    /// Obtém o público-alvo, quando informado.
+    /// </summary>
+    public string? TargetAudience { get; }
+
+    /// <summary>
+    /// Obtém a oferta principal, quando informada.
+    /// </summary>
+    public string? MainOffer { get; }
+
+    /// <summary>
+    /// Obtém os diferenciais competitivos, quando informados.
+    /// </summary>
+    public string? Differentiators { get; }
+
+    /// <summary>
+    /// Obtém a cor primária da identidade visual, quando informada.
+    /// </summary>
+    public string? PrimaryColor { get; }
+
+    /// <summary>
+    /// Obtém a cor secundária, quando informada.
+    /// </summary>
+    public string? SecondaryColor { get; }
+
+    /// <summary>
+    /// Obtém a cor de destaque, quando informada.
+    /// </summary>
+    public string? AccentColor { get; }
+
+    /// <summary>
     /// Serializa o brief em texto para inspeção e prompt do modelo.
     /// </summary>
     /// <returns>Representação textual do brief.</returns>
@@ -122,6 +178,27 @@ public sealed class CopyBrief
         var sb = new StringBuilder();
         sb.AppendLine($"Persona: {Persona}");
         sb.AppendLine($"Tom: {Tone}");
+        if (!string.IsNullOrWhiteSpace(BusinessSummary))
+        {
+            sb.AppendLine($"Negócio: {BusinessSummary}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(TargetAudience))
+        {
+            sb.AppendLine($"Público-alvo: {TargetAudience}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(MainOffer))
+        {
+            sb.AppendLine($"Oferta principal: {MainOffer}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(Differentiators))
+        {
+            sb.AppendLine($"Diferenciais: {Differentiators}");
+        }
+
+        AppendVisualIdentityLine(sb);
         sb.AppendLine($"Idioma: {LanguageCode}");
         sb.AppendLine($"Pilar: {Pillar}");
         sb.AppendLine($"Rede: {Platform}");
@@ -133,5 +210,29 @@ public sealed class CopyBrief
         sb.AppendLine($"Links obrigatórios: {string.Join(", ", MandatoryLinks)}");
         sb.AppendLine($"Instrução de formato: {FormatInstruction}");
         return sb.ToString();
+    }
+
+    private void AppendVisualIdentityLine(StringBuilder sb)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(PrimaryColor))
+        {
+            parts.Add($"primária {PrimaryColor}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(SecondaryColor))
+        {
+            parts.Add($"secundária {SecondaryColor}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(AccentColor))
+        {
+            parts.Add($"destaque {AccentColor}");
+        }
+
+        if (parts.Count > 0)
+        {
+            sb.AppendLine($"Cores da identidade visual: {string.Join("; ", parts)}");
+        }
     }
 }

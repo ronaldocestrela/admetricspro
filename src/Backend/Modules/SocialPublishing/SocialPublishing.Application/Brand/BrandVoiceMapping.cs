@@ -28,5 +28,12 @@ public static class BrandVoiceMapping
             profile.PillarWeights.Connection,
             profile.PillarWeights.SocialProof,
             profile.LanguageCode,
+            profile.BusinessProfile?.BusinessSummary,
+            profile.BusinessProfile?.TargetAudience,
+            profile.BusinessProfile?.MainOffer,
+            profile.BusinessProfile?.Differentiators,
+            profile.VisualIdentity?.PrimaryColor,
+            profile.VisualIdentity?.SecondaryColor,
+            profile.VisualIdentity?.AccentColor,
             profile.CreatedAtUtc);
 }

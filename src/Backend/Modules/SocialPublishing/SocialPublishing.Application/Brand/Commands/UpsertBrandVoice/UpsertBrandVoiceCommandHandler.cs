@@ -73,7 +73,14 @@ public sealed class UpsertBrandVoiceCommandHandler : ICommandHandler<UpsertBrand
                 request.SaleWeight,
                 request.ConnectionWeight,
                 request.SocialProofWeight,
-                request.LanguageCode);
+                request.LanguageCode,
+                request.BusinessSummary,
+                request.TargetAudience,
+                request.MainOffer,
+                request.Differentiators,
+                request.PrimaryColor,
+                request.SecondaryColor,
+                request.AccentColor);
 
             if (createResult.IsFailure)
             {
@@ -96,7 +103,14 @@ public sealed class UpsertBrandVoiceCommandHandler : ICommandHandler<UpsertBrand
                 request.SaleWeight,
                 request.ConnectionWeight,
                 request.SocialProofWeight,
-                request.LanguageCode);
+                request.LanguageCode,
+                request.BusinessSummary,
+                request.TargetAudience,
+                request.MainOffer,
+                request.Differentiators,
+                request.PrimaryColor,
+                request.SecondaryColor,
+                request.AccentColor);
 
             if (reviseResult.IsFailure)
             {

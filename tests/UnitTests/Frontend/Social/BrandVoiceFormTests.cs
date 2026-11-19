@@ -58,6 +58,13 @@ public sealed class BrandVoiceFormTests : BunitTestBase
             Arg.Any<int>(),
             Arg.Any<int>(),
             Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -84,6 +91,13 @@ public sealed class BrandVoiceFormTests : BunitTestBase
                 25,
                 15,
                 "pt-BR",
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<BrandVoiceDto>.Success(CreateDto(workspaceId))));
 
@@ -112,7 +126,51 @@ public sealed class BrandVoiceFormTests : BunitTestBase
             25,
             15,
             "pt-BR",
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Seletores de cor nativos são renderizados para cada cor da identidade visual.
+    /// </summary>
+    [Fact]
+    public void Form_ShouldRenderColorPickers()
+    {
+        var workspaceId = Guid.NewGuid();
+        _socialClient.GetBrandVoiceAsync(workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<BrandVoiceDto>.Failure(SocialErrors.BrandVoiceNotFound)));
+
+        var cut = Render<BrandVoiceForm>(p => p.Add(x => x.WorkspaceId, workspaceId));
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("[data-testid='brand-voice-primary-color-picker']").GetAttribute("type").Should().Be("color");
+            cut.Find("[data-testid='brand-voice-secondary-color-picker']").Should().NotBeNull();
+            cut.Find("[data-testid='brand-voice-accent-color-picker']").Should().NotBeNull();
+        });
+    }
+
+    /// <summary>
+    /// Cor inválida desabilita salvar.
+    /// </summary>
+    [Fact]
+    public async Task Form_WhenPrimaryColorInvalid_ShouldDisableSave()
+    {
+        var workspaceId = Guid.NewGuid();
+        _socialClient.GetBrandVoiceAsync(workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<BrandVoiceDto>.Failure(SocialErrors.BrandVoiceNotFound)));
+
+        var cut = Render<BrandVoiceForm>(p => p.Add(x => x.WorkspaceId, workspaceId));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='brand-voice-primary-color']").Should().NotBeNull());
+
+        await cut.Find("[data-testid='brand-voice-primary-color']").ChangeAsync("azul");
+        cut.Find("[data-testid='brand-voice-colors-invalid']").Should().NotBeNull();
+        cut.Find("[data-testid='brand-voice-save']").HasAttribute("disabled").Should().BeTrue();
     }
 
     /// <summary>
@@ -174,6 +232,13 @@ public sealed class BrandVoiceFormTests : BunitTestBase
                 Arg.Any<int>(),
                 Arg.Any<int>(),
                 Arg.Any<string>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<BrandVoiceDto>.Failure(
                 Error.Validation("Social.PillarWeightsInvalid", "Soma inválida no servidor."))));
@@ -206,5 +271,12 @@ public sealed class BrandVoiceFormTests : BunitTestBase
             25,
             15,
             "pt-BR",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
             DateTime.UtcNow);
 }

@@ -194,4 +194,125 @@ public sealed class BrandVoiceProfileTests
         created.Tone.Should().Be(toneBefore);
         created.PillarWeights.Authority.Should().Be(40);
     }
+
+    /// <summary>
+    /// Valida criação com contexto de negócio e cores opcionais preenchidos.
+    /// </summary>
+    [Fact]
+    public void Create_ComNegocioECoresValidos_DevePersistirCampos()
+    {
+        var result = BrandVoiceProfile.Create(
+            Guid.NewGuid(),
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Sparingly,
+            15,
+            25,
+            25,
+            25,
+            25,
+            businessSummary: "Clínica odontológica premium",
+            targetAudience: "Adultos 30-55 em capitais",
+            mainOffer: "Clareamento e implantes",
+            differentiators: "Atendimento 24h",
+            primaryColor: "#2563EB",
+            secondaryColor: "#fff",
+            accentColor: "#FF5722");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.BusinessProfile!.BusinessSummary.Should().Be("Clínica odontológica premium");
+        result.Value.VisualIdentity!.PrimaryColor.Should().Be("#2563EB");
+        result.Value.VisualIdentity.SecondaryColor.Should().Be("#fff");
+    }
+
+    /// <summary>
+    /// Valida falha quando cor hexadecimal é inválida.
+    /// </summary>
+    [Fact]
+    public void Create_ComCorInvalida_DeveRetornarBrandColorInvalid()
+    {
+        var result = BrandVoiceProfile.Create(
+            Guid.NewGuid(),
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Allowed,
+            10,
+            25,
+            25,
+            25,
+            25,
+            primaryColor: "azul");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(SocialErrors.BrandColorInvalid.Code);
+    }
+
+    /// <summary>
+    /// Valida falha quando resumo do negócio excede o limite.
+    /// </summary>
+    [Fact]
+    public void Create_ComResumoLongo_DeveRetornarBrandBusinessInfoTooLong()
+    {
+        var result = BrandVoiceProfile.Create(
+            Guid.NewGuid(),
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Allowed,
+            10,
+            25,
+            25,
+            25,
+            25,
+            businessSummary: new string('a', BrandBusinessProfile.MaxBusinessSummaryLength + 1));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(SocialErrors.BrandBusinessInfoTooLong.Code);
+    }
+
+    /// <summary>
+    /// Revise atualiza negócio e cores mantendo identidade do agregado.
+    /// </summary>
+    [Fact]
+    public void Revise_ComNegocioECores_DeveAtualizarSemAlterarId()
+    {
+        var created = BrandVoiceProfile.Create(
+            Guid.NewGuid(),
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Sparingly,
+            10,
+            25,
+            25,
+            25,
+            25).Value;
+
+        var id = created.Id;
+
+        var result = created.Revise(
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Sparingly,
+            10,
+            25,
+            25,
+            25,
+            25,
+            businessSummary: "E-commerce de moda",
+            primaryColor: "#1E40AF");
+
+        result.IsSuccess.Should().BeTrue();
+        created.Id.Should().Be(id);
+        created.BusinessProfile!.BusinessSummary.Should().Be("E-commerce de moda");
+        created.VisualIdentity!.PrimaryColor.Should().Be("#1E40AF");
+    }
 }

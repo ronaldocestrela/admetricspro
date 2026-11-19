@@ -211,6 +211,13 @@ public sealed class SocialPublishingClientTests
             25,
             15,
             "pt-BR",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
             DateTime.UtcNow);
 
         string? capturedTenantHeader = null;
@@ -255,6 +262,13 @@ public sealed class SocialPublishingClientTests
             25,
             25,
             "pt-BR",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
             DateTime.UtcNow);
 
         string? requestBody = null;
@@ -287,6 +301,7 @@ public sealed class SocialPublishingClientTests
 
         result.IsSuccess.Should().BeTrue();
         requestBody.Should().Contain("authorityWeight");
+        requestBody.Should().Contain("\"businessSummary\"");
         requestBody.Should().Contain("forbiddenTerms");
     }
 

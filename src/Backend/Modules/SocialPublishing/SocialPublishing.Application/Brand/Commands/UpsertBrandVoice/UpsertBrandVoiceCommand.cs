@@ -21,6 +21,13 @@ namespace SocialPublishing.Application.Brand.Commands.UpsertBrandVoice;
 /// <param name="ConnectionWeight">Peso Connection.</param>
 /// <param name="SocialProofWeight">Peso SocialProof.</param>
 /// <param name="LanguageCode">Código de idioma.</param>
+/// <param name="BusinessSummary">Resumo do negócio do cliente.</param>
+/// <param name="TargetAudience">Público-alvo.</param>
+/// <param name="MainOffer">Oferta principal.</param>
+/// <param name="Differentiators">Diferenciais.</param>
+/// <param name="PrimaryColor">Cor primária.</param>
+/// <param name="SecondaryColor">Cor secundária.</param>
+/// <param name="AccentColor">Cor de destaque.</param>
 [RequireTenantPermission(TenantPermission.SocialCopilotGenerate, WorkspaceIdProperty = nameof(WorkspaceId))]
 public sealed record UpsertBrandVoiceCommand(
     Guid WorkspaceId,
@@ -34,4 +41,11 @@ public sealed record UpsertBrandVoiceCommand(
     int SaleWeight,
     int ConnectionWeight,
     int SocialProofWeight,
-    string LanguageCode = "pt-BR") : ICommand<BrandVoiceDto>;
+    string LanguageCode = "pt-BR",
+    string? BusinessSummary = null,
+    string? TargetAudience = null,
+    string? MainOffer = null,
+    string? Differentiators = null,
+    string? PrimaryColor = null,
+    string? SecondaryColor = null,
+    string? AccentColor = null) : ICommand<BrandVoiceDto>;

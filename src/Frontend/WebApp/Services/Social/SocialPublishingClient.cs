@@ -298,6 +298,13 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         int connectionWeight,
         int socialProofWeight,
         string languageCode,
+        string? businessSummary = null,
+        string? targetAudience = null,
+        string? mainOffer = null,
+        string? differentiators = null,
+        string? primaryColor = null,
+        string? secondaryColor = null,
+        string? accentColor = null,
         CancellationToken cancellationToken = default)
     {
         if (workspaceId == Guid.Empty)
@@ -323,6 +330,13 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
                         connectionWeight,
                         socialProofWeight,
                         languageCode,
+                        businessSummary,
+                        targetAudience,
+                        mainOffer,
+                        differentiators,
+                        primaryColor,
+                        secondaryColor,
+                        accentColor,
                     },
                     options: JsonOptions),
             };

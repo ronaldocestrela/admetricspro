@@ -31,6 +31,96 @@
             <label class="form-label" for="brand-voice-persona">Persona</label>
             <input id="brand-voice-persona" class="form-control" data-testid="brand-voice-persona" @bind="_persona" />
         </div>
+
+        <fieldset class="mb-3">
+            <legend class="form-label">Informações do negócio</legend>
+            <p class="small text-muted">Usadas pela IA para contextualizar legendas e criativos deste cliente.</p>
+            <div class="mb-3">
+                <label class="form-label" for="brand-voice-business-summary">Resumo do negócio</label>
+                <textarea id="brand-voice-business-summary" class="form-control" rows="3" maxlength="2000" data-testid="brand-voice-business-summary" @bind="_businessSummary"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="brand-voice-target-audience">Público-alvo</label>
+                <textarea id="brand-voice-target-audience" class="form-control" rows="2" maxlength="1000" data-testid="brand-voice-target-audience" @bind="_targetAudience"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="brand-voice-main-offer">Oferta principal</label>
+                <textarea id="brand-voice-main-offer" class="form-control" rows="2" maxlength="1000" data-testid="brand-voice-main-offer" @bind="_mainOffer"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="brand-voice-differentiators">Diferenciais</label>
+                <textarea id="brand-voice-differentiators" class="form-control" rows="2" maxlength="2000" data-testid="brand-voice-differentiators" @bind="_differentiators"></textarea>
+            </div>
+        </fieldset>
+
+        <fieldset class="mb-3">
+            <legend class="form-label">Identidade visual</legend>
+            <p class="small text-muted">Use o seletor ou digite o hex (#RGB, #RRGGBB ou #RRGGBBAA).</p>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label small" for="brand-voice-primary-color-picker">Primária</label>
+                    <div class="brand-voice-color-picker-wrapper">
+                        <input id="brand-voice-primary-color-picker"
+                               type="color"
+                               class="brand-voice-color-input"
+                               title="Selecionar cor primária"
+                               data-testid="brand-voice-primary-color-picker"
+                               value="@GetColorPickerValue(_primaryColor, "#2563EB")"
+                               @onchange="e => OnColorPicked(e, value => _primaryColor = value)" />
+                        <input id="brand-voice-primary-color"
+                               type="text"
+                               class="form-control text-uppercase"
+                               maxlength="9"
+                               data-testid="brand-voice-primary-color"
+                               @bind="_primaryColor"
+                               placeholder="#2563EB" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="brand-voice-secondary-color-picker">Secundária</label>
+                    <div class="brand-voice-color-picker-wrapper">
+                        <input id="brand-voice-secondary-color-picker"
+                               type="color"
+                               class="brand-voice-color-input"
+                               title="Selecionar cor secundária"
+                               data-testid="brand-voice-secondary-color-picker"
+                               value="@GetColorPickerValue(_secondaryColor, "#FFFFFF")"
+                               @onchange="e => OnColorPicked(e, value => _secondaryColor = value)" />
+                        <input id="brand-voice-secondary-color"
+                               type="text"
+                               class="form-control text-uppercase"
+                               maxlength="9"
+                               data-testid="brand-voice-secondary-color"
+                               @bind="_secondaryColor"
+                               placeholder="#FFFFFF" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="brand-voice-accent-color-picker">Destaque</label>
+                    <div class="brand-voice-color-picker-wrapper">
+                        <input id="brand-voice-accent-color-picker"
+                               type="color"
+                               class="brand-voice-color-input"
+                               title="Selecionar cor de destaque"
+                               data-testid="brand-voice-accent-color-picker"
+                               value="@GetColorPickerValue(_accentColor, "#F59E0B")"
+                               @onchange="e => OnColorPicked(e, value => _accentColor = value)" />
+                        <input id="brand-voice-accent-color"
+                               type="text"
+                               class="form-control text-uppercase"
+                               maxlength="9"
+                               data-testid="brand-voice-accent-color"
+                               @bind="_accentColor"
+                               placeholder="#F59E0B" />
+                    </div>
+                </div>
+            </div>
+            @if (!_colorsValid)
+            {
+                <p class="small text-danger mt-2 mb-0" data-testid="brand-voice-colors-invalid">Informe cores válidas ou deixe os campos vazios.</p>
+            }
+        </fieldset>
+
         <div class="mb-3">
             <label class="form-label" for="brand-voice-mandatory-links">Links obrigatórios (um por linha)</label>
             <textarea id="brand-voice-mandatory-links" class="form-control" rows="2" data-testid="brand-voice-mandatory-links" @bind="_mandatoryLinksText"></textarea>
@@ -99,6 +189,8 @@
     }
 </div>
 
+@using System.Text.RegularExpressions
+
 @code {
     /// <summary>
     /// Workspace proprietário do perfil de voz de marca.
@@ -123,10 +215,26 @@
     private int _connectionWeight = 25;
     private int _socialProofWeight = 25;
     private string _languageCode = "pt-BR";
+    private string _businessSummary = string.Empty;
+    private string _targetAudience = string.Empty;
+    private string _mainOffer = string.Empty;
+    private string _differentiators = string.Empty;
+    private string _primaryColor = string.Empty;
+    private string _secondaryColor = string.Empty;
+    private string _accentColor = string.Empty;
+
+    private static readonly Regex HexColorRegex = new(
+        @"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+        RegexOptions.Compiled);
 
     private int _weightsSum => _authorityWeight + _saleWeight + _connectionWeight + _socialProofWeight;
 
-    private bool CanSave => !_isSaving && !_isLoading && _weightsSum == 100;
+    private bool _colorsValid =>
+        IsOptionalColorValid(_primaryColor)
+        && IsOptionalColorValid(_secondaryColor)
+        && IsOptionalColorValid(_accentColor);
+
+    private bool CanSave => !_isSaving && !_isLoading && _weightsSum == 100 && _colorsValid;
 
     private Guid _loadedForWorkspace;
 
@@ -186,6 +294,13 @@
         _connectionWeight = dto.ConnectionWeight;
         _socialProofWeight = dto.SocialProofWeight;
         _languageCode = dto.LanguageCode;
+        _businessSummary = dto.BusinessSummary ?? string.Empty;
+        _targetAudience = dto.TargetAudience ?? string.Empty;
+        _mainOffer = dto.MainOffer ?? string.Empty;
+        _differentiators = dto.Differentiators ?? string.Empty;
+        _primaryColor = dto.PrimaryColor ?? string.Empty;
+        _secondaryColor = dto.SecondaryColor ?? string.Empty;
+        _accentColor = dto.AccentColor ?? string.Empty;
     }
 
     private void ResetToEmptyDefaults()
@@ -201,6 +316,13 @@
         _connectionWeight = 25;
         _socialProofWeight = 25;
         _languageCode = "pt-BR";
+        _businessSummary = string.Empty;
+        _targetAudience = string.Empty;
+        _mainOffer = string.Empty;
+        _differentiators = string.Empty;
+        _primaryColor = string.Empty;
+        _secondaryColor = string.Empty;
+        _accentColor = string.Empty;
     }
 
     private async Task SaveAsync()
@@ -230,7 +352,14 @@
             _saleWeight,
             _connectionWeight,
             _socialProofWeight,
-            _languageCode);
+            _languageCode,
+            NullIfWhiteSpace(_businessSummary),
+            NullIfWhiteSpace(_targetAudience),
+            NullIfWhiteSpace(_mainOffer),
+            NullIfWhiteSpace(_differentiators),
+            NullIfWhiteSpace(_primaryColor),
+            NullIfWhiteSpace(_secondaryColor),
+            NullIfWhiteSpace(_accentColor));
 
         _isSaving = false;
 
@@ -246,4 +375,46 @@
 
     private static IReadOnlyList<string> SplitLines(string text) =>
         text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static string? NullIfWhiteSpace(string value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool IsOptionalColorValid(string value) =>
+        string.IsNullOrWhiteSpace(value) || HexColorRegex.IsMatch(value.Trim());
+
+    private static string GetColorPickerValue(string value, string fallbackWhenEmpty) =>
+        ToSixDigitHex(value) ?? fallbackWhenEmpty;
+
+    private static string? ToSixDigitHex(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        if (!HexColorRegex.IsMatch(trimmed))
+        {
+            return null;
+        }
+
+        return trimmed.Length switch
+        {
+            4 => $"#{trimmed[1]}{trimmed[1]}{trimmed[2]}{trimmed[2]}{trimmed[3]}{trimmed[3]}".ToUpperInvariant(),
+            7 => trimmed.ToUpperInvariant(),
+            9 => trimmed[..7].ToUpperInvariant(),
+            _ => null,
+        };
+    }
+
+    private static void OnColorPicked(ChangeEventArgs args, Action<string> assign)
+    {
+        var picked = args.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(picked))
+        {
+            return;
+        }
+
+        assign(picked.Trim().ToUpperInvariant());
+    }
 }

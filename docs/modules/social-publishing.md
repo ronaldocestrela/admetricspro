@@ -104,7 +104,7 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 | `OrganicConnection` | Conexão OAuth orgânica por workspace; tokens apenas como `EncryptedAccessToken` / `EncryptedRefreshToken`; `Revoke` idempotente emite `OrganicConnectionRevoked`. |
 | `OrganicPost` | Post agendado com máquina de estados, legenda, mídia (dimensões), `ScheduledAtUtc` e histórico `ScheduleRevision`. |
 | `PublicationJob` | Job outbox por slot agendado: status, chave de idempotência, tentativas e claim otimista via `RowVersion`. |
-| `BrandVoiceProfile` | DNA de marca: tom, persona, links absolutos, termos proibidos, `EmojiPolicy`, teto de hashtags e pesos dos pilares. |
+| `BrandVoiceProfile` | DNA de marca: tom, persona, contexto de negócio, cores da identidade visual, links absolutos, termos proibidos, `EmojiPolicy`, teto de hashtags e pesos dos pilares. |
 
 ### Value objects e constantes
 
@@ -113,6 +113,8 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 | `AspectRatio` / `AspectRatioRules` | Proporções nomeadas com tolerância relativa de **1%**: `1:1`, `4:5` (feed/carrossel), `9:16` (Reel/TikTok). Constantes: `AspectRatioRules.Label11`, `Label45`, `Label916`. |
 | `HashtagGroup` | Sem duplicata (case insensitive, `#` opcional), sem espaço interno; quantidade ≤ `min(tetoDoPerfil, tetoDaRede)` (Instagram/Page: 30, TikTok: 8). |
 | `PillarWeights` | Quatro inteiros ≥ 0 somando exatamente 100. |
+| `BrandBusinessProfile` | Resumo do negócio, público-alvo, oferta principal e diferenciais (todos opcionais, com tetos de tamanho). |
+| `BrandVisualIdentity` | Cores primária, secundária e de destaque em hexadecimal (`#RGB`, `#RRGGBB`, `#RRGGBBAA`). |
 | `CaptionLimits` | Instagram, Facebook Page e TikTok: **2200** caracteres (constantes nomeadas, revisáveis). |
 | `EditorialSlot` | Slot planejado: `LocalDate`, `UtcInstant`, pilar, rede e formato; sem legenda. |
 | `EditorialCalendarPlanner` | Serviço estático de domínio; entrada intervalo, fuso IANA, posts/semana e semente; usa pesos de `BrandVoiceProfile`. |
@@ -169,7 +171,7 @@ Contexto: `SocialPublishingDbContext` (não herda `TenantDbContext`). Histórico
 | `OrganicPosts` | `Id`, `WorkspaceId`, `ConnectionId`, `Platform`, `Format`, `Pillar`, `Caption`, `ScheduledAtUtc`, `Status`, `CreatedAtUtc` | `(WorkspaceId, ScheduledAtUtc)` |
 | `ScheduleRevisions` | `Id`, `OrganicPostId`, `PreviousScheduledAtUtc`, `NewScheduledAtUtc`, `RevisedByUserId`, `RevisedAtUtc` | FK → `OrganicPosts` (cascade) |
 | `OrganicMediaAssets` | `Id`, `OrganicPostId` (nullable), `WorkspaceId`, `Format`, `ObjectKey`, `MimeType`, `DurationMilliseconds`, `AspectLabel`, `Width`, `Height`, `SortOrder` | FK opcional → `OrganicPosts` (cascade); índice `WorkspaceId`. **Sem coluna de binário.** |
-| `BrandVoiceProfiles` | `Id`, `WorkspaceId`, `Tone`, `Persona`, `EmojiPolicy`, `HashtagLimit`, pilares (`PillarAuthority`…), `LanguageCode`, `MandatoryLinksJson`, `ForbiddenTermsJson`, `CreatedAtUtc` | Único `WorkspaceId` |
+| `BrandVoiceProfiles` | `Id`, `WorkspaceId`, `Tone`, `Persona`, `EmojiPolicy`, `HashtagLimit`, pilares (`PillarAuthority`…), `LanguageCode`, `BusinessSummary`, `TargetAudience`, `MainOffer`, `Differentiators`, `PrimaryColor`, `SecondaryColor`, `AccentColor`, `MandatoryLinksJson`, `ForbiddenTermsJson`, `CreatedAtUtc` | Único `WorkspaceId` |
 
 Exemplo de valor persistido para token (nunca plaintext):
 
@@ -458,11 +460,18 @@ Comandos MediatR: **`UpsertBrandVoiceCommand`**, consulta **`GetBrandVoiceQuery`
   "saleWeight": 20,
   "connectionWeight": 25,
   "socialProofWeight": 15,
-  "languageCode": "pt-BR"
+  "languageCode": "pt-BR",
+  "businessSummary": "Clínica odontológica premium em São Paulo",
+  "targetAudience": "Adultos 30-55 com foco em estética",
+  "mainOffer": "Implantes e clareamento",
+  "differentiators": "Equipe 100% especializada",
+  "primaryColor": "#2563EB",
+  "secondaryColor": "#FFFFFF",
+  "accentColor": "#F59E0B"
 }
 ```
 
-`emojiPolicy`: `Allowed`, `Sparingly`, `Forbidden`.
+`emojiPolicy`: `Allowed`, `Sparingly`, `Forbidden`. Campos de negócio e cores são opcionais; cores inválidas retornam `Social.BrandColorInvalid`; textos acima do teto retornam `Social.BrandBusinessInfoTooLong`.
 
 ### Exemplo de sucesso (`200 OK`, `Result<BrandVoiceDto>`)
 
@@ -485,6 +494,13 @@ Comandos MediatR: **`UpsertBrandVoiceCommand`**, consulta **`GetBrandVoiceQuery`
     "connectionWeight": 25,
     "socialProofWeight": 15,
     "languageCode": "pt-BR",
+    "businessSummary": "Clínica odontológica premium em São Paulo",
+    "targetAudience": "Adultos 30-55 com foco em estética",
+    "mainOffer": "Implantes e clareamento",
+    "differentiators": "Equipe 100% especializada",
+    "primaryColor": "#2563EB",
+    "secondaryColor": "#FFFFFF",
+    "accentColor": "#F59E0B",
     "createdAtUtc": "2026-11-03T12:00:00Z"
   }
 }
@@ -499,6 +515,8 @@ Comandos MediatR: **`UpsertBrandVoiceCommand`**, consulta **`GetBrandVoiceQuery`
 | `Social.BrandVoiceRequired` | 422 | Tom ou persona vazios |
 | `Social.HashtagLimitInvalid` | 422 | Teto de hashtags ≤ 0 |
 | `Social.MandatoryLinkInvalid` | 422 | Link não absoluto |
+| `Social.BrandColorInvalid` | 422 | Cor informada fora do formato hexadecimal aceito |
+| `Social.BrandBusinessInfoTooLong` | 422 | Campo de negócio acima do teto (resumo 2000, público/oferta 1000, diferenciais 2000) |
 | `Social.BrandVoiceNotFound` | 404 | `GET` sem perfil para o workspace |
 
 ---
@@ -610,7 +628,7 @@ Comando MediatR **`GenerateSlotCopyCommand`** (permissão `social.copilot.genera
 
 ### Brief lógico (campos inspecionáveis em teste)
 
-O texto enviado ao modelo agrega: persona, tom, idioma, pilar, rede, formato, política de emoji, tetos de legenda/hashtag, termos proibidos, links obrigatórios e `formatInstruction`. O modelo deve responder JSON:
+O texto enviado ao modelo agrega: persona, tom, idioma, pilar, rede, formato, política de emoji, tetos de legenda/hashtag, termos proibidos, links obrigatórios, `formatInstruction` e, quando informados no Brand Voice, resumo do negócio, público-alvo, oferta principal, diferenciais e paleta de cores. O adaptador instrui o modelo a usar esse contexto sem inventar dados ausentes. O modelo deve responder JSON:
 
 ```json
 {
@@ -1093,7 +1111,7 @@ Formulário de **Brand Voice** e diálogo **Gerar cronograma** no calendário. T
 
 ### Fluxo ponta a ponta (gestor)
 
-1. **Voz da marca** — em `/social/brand-voice`, salvar tom, persona, links, termos, emoji e pesos dos pilares (`PUT /api/v1/social/brand-voice/{workspaceId}`). A UI **bloqueia** salvar se a soma dos quatro pesos ≠ 100; validações adicionais continuam no backend (`Social.PillarWeightsInvalid`, etc.).
+1. **Voz da marca** — em `/social/brand-voice`, salvar tom, persona, **informações do negócio** (resumo, público-alvo, oferta, diferenciais), **cores da identidade visual** (primária, secundária, destaque), links, termos, emoji e pesos dos pilares (`PUT /api/v1/social/brand-voice/{workspaceId}`). A UI **bloqueia** salvar se a soma dos quatro pesos ≠ 100 ou se alguma cor preenchida for hexadecimal inválido; validações adicionais continuam no backend (`Social.PillarWeightsInvalid`, `Social.BrandColorInvalid`, etc.).
 2. **Gerar cronograma** — no calendário (`/social/calendar`), botão **Gerar cronograma** abre `GeneratePlanDialog` e chama `POST /api/v1/social/plans:generate` com intervalo (`DateOnly`), `postsPerWeek`, `seed` e fuso IANA (**`America/Sao_Paulo`**, constante da página até o `WorkspaceDto` expor fuso).
 3. **Revisar na grade** — posts em **`Draft`** aparecem na grade após fechar o diálogo com sucesso (total ou parcial); a página recarrega `ListPostsAsync`.
 4. **Aprovação interna / agendamento** — fluxos HTTP das Subfases 4.x (`:submit`, `:approve`, `:schedule`, …) permanecem na API; a UI de lifecycle por post pode evoluir depois desta subfase.

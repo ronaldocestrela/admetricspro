@@ -4,7 +4,7 @@ using BuildingBlocks.Domain.Primitives;
 namespace SocialPublishing.Domain.Brand;
 
 /// <summary>
-/// Agregado que persiste o DNA de marca (tom, persona, links, termos proibidos e pesos de pilares) por workspace.
+/// Agregado que persiste o DNA de marca (tom, persona, contexto de negócio, cores, links, termos proibidos e pesos de pilares) por workspace.
 /// </summary>
 public sealed class BrandVoiceProfile : AggregateRoot<Guid>
 {
@@ -20,6 +20,8 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
         int hashtagLimit,
         PillarWeights pillarWeights,
         string languageCode,
+        BrandBusinessProfile? businessProfile,
+        BrandVisualIdentity? visualIdentity,
         DateTime createdAtUtc)
         : base(id)
     {
@@ -30,6 +32,8 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
         HashtagLimit = hashtagLimit;
         PillarWeights = pillarWeights;
         LanguageCode = languageCode;
+        BusinessProfile = businessProfile;
+        VisualIdentity = visualIdentity;
         CreatedAtUtc = createdAtUtc;
     }
 
@@ -94,6 +98,16 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
     public DateTime CreatedAtUtc { get; private set; }
 
     /// <summary>
+    /// Obtém o contexto de negócio do cliente, quando informado.
+    /// </summary>
+    public BrandBusinessProfile? BusinessProfile { get; private set; }
+
+    /// <summary>
+    /// Obtém as cores da identidade visual do cliente, quando informadas.
+    /// </summary>
+    public BrandVisualIdentity? VisualIdentity { get; private set; }
+
+    /// <summary>
     /// Cria um perfil de voz de marca para o workspace.
     /// </summary>
     /// <param name="workspaceId">Identificador do workspace.</param>
@@ -108,6 +122,13 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
     /// <param name="connectionWeight">Peso Connection.</param>
     /// <param name="socialProofWeight">Peso SocialProof.</param>
     /// <param name="languageCode">Código de idioma.</param>
+    /// <param name="businessSummary">Resumo do negócio do cliente.</param>
+    /// <param name="targetAudience">Público-alvo do cliente.</param>
+    /// <param name="mainOffer">Oferta principal.</param>
+    /// <param name="differentiators">Diferenciais competitivos.</param>
+    /// <param name="primaryColor">Cor primária da identidade visual.</param>
+    /// <param name="secondaryColor">Cor secundária.</param>
+    /// <param name="accentColor">Cor de destaque.</param>
     /// <returns>Resultado com o perfil ou erro de validação.</returns>
     public static Result<BrandVoiceProfile> Create(
         Guid workspaceId,
@@ -121,7 +142,14 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
         int saleWeight,
         int connectionWeight,
         int socialProofWeight,
-        string languageCode = "pt-BR")
+        string languageCode = "pt-BR",
+        string? businessSummary = null,
+        string? targetAudience = null,
+        string? mainOffer = null,
+        string? differentiators = null,
+        string? primaryColor = null,
+        string? secondaryColor = null,
+        string? accentColor = null)
     {
         if (workspaceId == Guid.Empty)
         {
@@ -132,6 +160,18 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
         if (weightsResult.IsFailure)
         {
             return Result<BrandVoiceProfile>.Failure(weightsResult.Error);
+        }
+
+        var businessResult = BrandBusinessProfile.Create(businessSummary, targetAudience, mainOffer, differentiators);
+        if (businessResult.IsFailure)
+        {
+            return Result<BrandVoiceProfile>.Failure(businessResult.Error);
+        }
+
+        var visualResult = BrandVisualIdentity.Create(primaryColor, secondaryColor, accentColor);
+        if (visualResult.IsFailure)
+        {
+            return Result<BrandVoiceProfile>.Failure(visualResult.Error);
         }
 
         var normalized = NormalizeContent(tone, persona, mandatoryLinks, forbiddenTerms, hashtagLimit, languageCode);
@@ -150,6 +190,8 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
             content.HashtagLimit,
             weightsResult.Value,
             content.LanguageCode,
+            businessResult.Value,
+            visualResult.Value,
             DateTime.UtcNow);
 
         profile._mandatoryLinks.AddRange(content.MandatoryLinks);
@@ -172,6 +214,13 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
     /// <param name="connectionWeight">Peso Connection.</param>
     /// <param name="socialProofWeight">Peso SocialProof.</param>
     /// <param name="languageCode">Código de idioma.</param>
+    /// <param name="businessSummary">Resumo do negócio do cliente.</param>
+    /// <param name="targetAudience">Público-alvo do cliente.</param>
+    /// <param name="mainOffer">Oferta principal.</param>
+    /// <param name="differentiators">Diferenciais competitivos.</param>
+    /// <param name="primaryColor">Cor primária da identidade visual.</param>
+    /// <param name="secondaryColor">Cor secundária.</param>
+    /// <param name="accentColor">Cor de destaque.</param>
     /// <returns>Resultado de sucesso ou erro de validação.</returns>
     public Result Revise(
         string tone,
@@ -184,12 +233,31 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
         int saleWeight,
         int connectionWeight,
         int socialProofWeight,
-        string languageCode = "pt-BR")
+        string languageCode = "pt-BR",
+        string? businessSummary = null,
+        string? targetAudience = null,
+        string? mainOffer = null,
+        string? differentiators = null,
+        string? primaryColor = null,
+        string? secondaryColor = null,
+        string? accentColor = null)
     {
         var weightsResult = PillarWeights.Create(authorityWeight, saleWeight, connectionWeight, socialProofWeight);
         if (weightsResult.IsFailure)
         {
             return Result.Failure(weightsResult.Error);
+        }
+
+        var businessResult = BrandBusinessProfile.Create(businessSummary, targetAudience, mainOffer, differentiators);
+        if (businessResult.IsFailure)
+        {
+            return Result.Failure(businessResult.Error);
+        }
+
+        var visualResult = BrandVisualIdentity.Create(primaryColor, secondaryColor, accentColor);
+        if (visualResult.IsFailure)
+        {
+            return Result.Failure(visualResult.Error);
         }
 
         var normalized = NormalizeContent(tone, persona, mandatoryLinks, forbiddenTerms, hashtagLimit, languageCode);
@@ -205,6 +273,8 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
         HashtagLimit = content.HashtagLimit;
         PillarWeights = weightsResult.Value;
         LanguageCode = content.LanguageCode;
+        BusinessProfile = businessResult.Value;
+        VisualIdentity = visualResult.Value;
 
         _mandatoryLinks.Clear();
         _mandatoryLinks.AddRange(content.MandatoryLinks);

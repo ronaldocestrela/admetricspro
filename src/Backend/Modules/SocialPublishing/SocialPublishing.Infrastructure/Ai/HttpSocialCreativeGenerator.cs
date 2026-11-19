@@ -52,7 +52,8 @@ public sealed class HttpSocialCreativeGenerator : ISocialCreativeGenerator
             "Não inclua markdown nem texto fora do JSON.";
 
         var userPrompt = brief.ToPromptText() +
-                         "\nGere caption e hashtags respeitando teto de legenda, teto de hashtags, termos proibidos e instrução de formato.";
+                         "\nGere caption e hashtags respeitando teto de legenda, teto de hashtags, termos proibidos e instrução de formato. " +
+                         "Use o contexto de negócio e as cores da identidade visual somente quando presentes no brief; não invente oferta, público-alvo ou paleta ausentes.";
 
         var payload = new ChatCompletionRequest
         {

@@ -18,6 +18,13 @@ namespace SocialPublishing.Application.Brand.DTOs;
 /// <param name="ConnectionWeight">Peso do pilar Connection.</param>
 /// <param name="SocialProofWeight">Peso do pilar SocialProof.</param>
 /// <param name="LanguageCode">Código de idioma (ex.: pt-BR).</param>
+/// <param name="BusinessSummary">Resumo do negócio do cliente.</param>
+/// <param name="TargetAudience">Público-alvo.</param>
+/// <param name="MainOffer">Oferta principal.</param>
+/// <param name="Differentiators">Diferenciais competitivos.</param>
+/// <param name="PrimaryColor">Cor primária da identidade visual.</param>
+/// <param name="SecondaryColor">Cor secundária.</param>
+/// <param name="AccentColor">Cor de destaque.</param>
 /// <param name="CreatedAtUtc">Carimbo UTC de criação do perfil.</param>
 public sealed record BrandVoiceDto(
     Guid Id,
@@ -33,4 +40,11 @@ public sealed record BrandVoiceDto(
     int ConnectionWeight,
     int SocialProofWeight,
     string LanguageCode,
+    string? BusinessSummary,
+    string? TargetAudience,
+    string? MainOffer,
+    string? Differentiators,
+    string? PrimaryColor,
+    string? SecondaryColor,
+    string? AccentColor,
     DateTime CreatedAtUtc);

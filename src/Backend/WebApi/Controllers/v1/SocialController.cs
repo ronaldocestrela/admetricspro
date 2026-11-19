@@ -388,7 +388,14 @@ public sealed class SocialController : ControllerBase
                 request.SaleWeight,
                 request.ConnectionWeight,
                 request.SocialProofWeight,
-                request.LanguageCode),
+                request.LanguageCode,
+                request.BusinessSummary,
+                request.TargetAudience,
+                request.MainOffer,
+                request.Differentiators,
+                request.PrimaryColor,
+                request.SecondaryColor,
+                request.AccentColor),
             cancellationToken);
 
         return MapSocialConnectionResult(result);
@@ -965,6 +972,13 @@ public sealed record CompleteOrganicAuthorizationRequest(
 /// <param name="ConnectionWeight">Peso do pilar Connection.</param>
 /// <param name="SocialProofWeight">Peso do pilar SocialProof.</param>
 /// <param name="LanguageCode">Código de idioma.</param>
+/// <param name="BusinessSummary">Resumo do negócio do cliente.</param>
+/// <param name="TargetAudience">Público-alvo.</param>
+/// <param name="MainOffer">Oferta principal.</param>
+/// <param name="Differentiators">Diferenciais.</param>
+/// <param name="PrimaryColor">Cor primária.</param>
+/// <param name="SecondaryColor">Cor secundária.</param>
+/// <param name="AccentColor">Cor de destaque.</param>
 public sealed record UpsertBrandVoiceRequest(
     string Tone,
     string Persona,
@@ -976,7 +990,14 @@ public sealed record UpsertBrandVoiceRequest(
     int SaleWeight,
     int ConnectionWeight,
     int SocialProofWeight,
-    string LanguageCode = "pt-BR");
+    string LanguageCode = "pt-BR",
+    string? BusinessSummary = null,
+    string? TargetAudience = null,
+    string? MainOffer = null,
+    string? Differentiators = null,
+    string? PrimaryColor = null,
+    string? SecondaryColor = null,
+    string? AccentColor = null);
 
 /// <summary>
 /// Corpo da requisição de reagendamento de post orgânico.

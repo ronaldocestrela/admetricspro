@@ -74,6 +74,18 @@ public static class SocialErrors
         Error.NotFound("Social.BrandVoiceNotFound", "Nenhum perfil de voz de marca foi encontrado para este workspace.");
 
     /// <summary>
+    /// Erro quando uma cor de identidade visual não está em formato hexadecimal válido.
+    /// </summary>
+    public static Error BrandColorInvalid { get; } =
+        Error.Validation("Social.BrandColorInvalid", "Cada cor informada deve ser um hexadecimal válido (#RGB, #RRGGBB ou #RRGGBBAA).");
+
+    /// <summary>
+    /// Erro quando um campo de contexto de negócio excede o tamanho máximo permitido.
+    /// </summary>
+    public static Error BrandBusinessInfoTooLong { get; } =
+        Error.Validation("Social.BrandBusinessInfoTooLong", "Um dos campos de informações do negócio excede o tamanho máximo permitido.");
+
+    /// <summary>
     /// Erro quando a data final do plano é anterior à data inicial.
     /// </summary>
     public static Error PlanRangeInvalid { get; } =

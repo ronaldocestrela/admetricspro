@@ -135,6 +135,31 @@ public sealed class UpsertBrandVoiceCommandTests
         await _unitOfWork.DidNotReceive().CommitAsync(Arg.Any<CancellationToken>());
     }
 
+    /// <summary>
+    /// Negócio e cores opcionais são mapeados no DTO de retorno.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ComNegocioECores_DeveMapearDto()
+    {
+        var handler = CreateHandler();
+        var command = ValidCommand() with
+        {
+            BusinessSummary = "Clínica estética",
+            TargetAudience = "Mulheres 25-45",
+            MainOffer = "Harmonização facial",
+            Differentiators = "Equipe médica própria",
+            PrimaryColor = "#2563EB",
+            SecondaryColor = "#FFFFFF",
+            AccentColor = "#F59E0B",
+        };
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.BusinessSummary.Should().Be("Clínica estética");
+        result.Value.PrimaryColor.Should().Be("#2563EB");
+    }
+
     private UpsertBrandVoiceCommand ValidCommand() =>
         new(
             _workspaceId,

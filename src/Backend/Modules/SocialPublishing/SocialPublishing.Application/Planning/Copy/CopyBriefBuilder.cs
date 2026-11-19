@@ -34,6 +34,13 @@ public static class CopyBriefBuilder
             slot.Pillar,
             slot.Platform,
             slot.Format,
-            formatInstruction);
+            formatInstruction,
+            brandVoice.BusinessProfile?.BusinessSummary,
+            brandVoice.BusinessProfile?.TargetAudience,
+            brandVoice.BusinessProfile?.MainOffer,
+            brandVoice.BusinessProfile?.Differentiators,
+            brandVoice.VisualIdentity?.PrimaryColor,
+            brandVoice.VisualIdentity?.SecondaryColor,
+            brandVoice.VisualIdentity?.AccentColor);
     }
 }

@@ -40,6 +40,32 @@ public sealed class BrandVoiceProfileEntityTypeConfiguration : IEntityTypeConfig
             weights.Property(w => w.SocialProof).HasColumnName("PillarSocialProof").IsRequired();
         });
 
+        builder.OwnsOne(p => p.BusinessProfile, business =>
+        {
+            business.Property(b => b.BusinessSummary)
+                .HasColumnName("BusinessSummary")
+                .HasMaxLength(BrandBusinessProfile.MaxBusinessSummaryLength);
+
+            business.Property(b => b.TargetAudience)
+                .HasColumnName("TargetAudience")
+                .HasMaxLength(BrandBusinessProfile.MaxTargetAudienceLength);
+
+            business.Property(b => b.MainOffer)
+                .HasColumnName("MainOffer")
+                .HasMaxLength(BrandBusinessProfile.MaxMainOfferLength);
+
+            business.Property(b => b.Differentiators)
+                .HasColumnName("Differentiators")
+                .HasMaxLength(BrandBusinessProfile.MaxDifferentiatorsLength);
+        });
+
+        builder.OwnsOne(p => p.VisualIdentity, visual =>
+        {
+            visual.Property(v => v.PrimaryColor).HasColumnName("PrimaryColor").HasMaxLength(9);
+            visual.Property(v => v.SecondaryColor).HasColumnName("SecondaryColor").HasMaxLength(9);
+            visual.Property(v => v.AccentColor).HasColumnName("AccentColor").HasMaxLength(9);
+        });
+
         builder.Property<List<string>>("_mandatoryLinks")
             .HasField("_mandatoryLinks")
             .UsePropertyAccessMode(PropertyAccessMode.Field)

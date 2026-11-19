@@ -135,6 +135,13 @@ public interface ISocialPublishingClient
     /// <param name="connectionWeight">Peso do pilar Conexão.</param>
     /// <param name="socialProofWeight">Peso do pilar Prova social.</param>
     /// <param name="languageCode">Código de idioma.</param>
+    /// <param name="businessSummary">Resumo do negócio do cliente.</param>
+    /// <param name="targetAudience">Público-alvo.</param>
+    /// <param name="mainOffer">Oferta principal.</param>
+    /// <param name="differentiators">Diferenciais competitivos.</param>
+    /// <param name="primaryColor">Cor primária da identidade visual.</param>
+    /// <param name="secondaryColor">Cor secundária.</param>
+    /// <param name="accentColor">Cor de destaque.</param>
     /// <param name="cancellationToken">Token de cancelamento.</param>
     /// <returns>Perfil persistido ou falha de validação.</returns>
     Task<Result<BrandVoiceDto>> UpsertBrandVoiceAsync(
@@ -150,6 +157,13 @@ public interface ISocialPublishingClient
         int connectionWeight,
         int socialProofWeight,
         string languageCode,
+        string? businessSummary = null,
+        string? targetAudience = null,
+        string? mainOffer = null,
+        string? differentiators = null,
+        string? primaryColor = null,
+        string? secondaryColor = null,
+        string? accentColor = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

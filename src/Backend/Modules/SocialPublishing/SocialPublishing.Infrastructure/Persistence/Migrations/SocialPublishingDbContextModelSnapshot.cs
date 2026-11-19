@@ -427,6 +427,67 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("SocialPublishing.Domain.Brand.BrandVoiceProfile", b =>
                 {
+                    b.OwnsOne("SocialPublishing.Domain.Brand.BrandBusinessProfile", "BusinessProfile", b1 =>
+                        {
+                            b1.Property<Guid>("BrandVoiceProfileId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("BusinessSummary")
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("BusinessSummary");
+
+                            b1.Property<string>("Differentiators")
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("Differentiators");
+
+                            b1.Property<string>("MainOffer")
+                                .HasMaxLength(1000)
+                                .HasColumnType("nvarchar(1000)")
+                                .HasColumnName("MainOffer");
+
+                            b1.Property<string>("TargetAudience")
+                                .HasMaxLength(1000)
+                                .HasColumnType("nvarchar(1000)")
+                                .HasColumnName("TargetAudience");
+
+                            b1.HasKey("BrandVoiceProfileId");
+
+                            b1.ToTable("BrandVoiceProfiles", "social");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BrandVoiceProfileId");
+                        });
+
+                    b.OwnsOne("SocialPublishing.Domain.Brand.BrandVisualIdentity", "VisualIdentity", b1 =>
+                        {
+                            b1.Property<Guid>("BrandVoiceProfileId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("AccentColor")
+                                .HasMaxLength(9)
+                                .HasColumnType("nvarchar(9)")
+                                .HasColumnName("AccentColor");
+
+                            b1.Property<string>("PrimaryColor")
+                                .HasMaxLength(9)
+                                .HasColumnType("nvarchar(9)")
+                                .HasColumnName("PrimaryColor");
+
+                            b1.Property<string>("SecondaryColor")
+                                .HasMaxLength(9)
+                                .HasColumnType("nvarchar(9)")
+                                .HasColumnName("SecondaryColor");
+
+                            b1.HasKey("BrandVoiceProfileId");
+
+                            b1.ToTable("BrandVoiceProfiles", "social");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BrandVoiceProfileId");
+                        });
+
                     b.OwnsOne("SocialPublishing.Domain.Brand.PillarWeights", "PillarWeights", b1 =>
                         {
                             b1.Property<Guid>("BrandVoiceProfileId")
@@ -456,8 +517,12 @@ namespace SocialPublishing.Infrastructure.Persistence.Migrations
                                 .HasForeignKey("BrandVoiceProfileId");
                         });
 
+                    b.Navigation("BusinessProfile");
+
                     b.Navigation("PillarWeights")
                         .IsRequired();
+
+                    b.Navigation("VisualIdentity");
                 });
 
             modelBuilder.Entity("SocialPublishing.Domain.Posts.OrganicMediaAsset", b =>
