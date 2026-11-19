@@ -61,8 +61,10 @@
     </div>
 
     <OrganicPostDetailDialog Post="_detailPost"
+                             WorkspaceId="WorkspaceId"
                              TimeZoneId="TimeZone"
-                             OnClose="CloseDetailAsync" />
+                             OnClose="CloseDetailAsync"
+                             OnPostUpdated="HandlePostUpdatedAsync" />
 </div>
 
 @code {
@@ -188,6 +190,26 @@
     private Task CloseDetailAsync()
     {
         _detailPost = null;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Propaga atualização de status do post após aprovação no diálogo de detalhe.
+    /// </summary>
+    /// <param name="updated">Post retornado pela API.</param>
+    private Task HandlePostUpdatedAsync(OrganicPostDto updated)
+    {
+        var index = _displayPosts.FindIndex(p => p.Id == updated.Id);
+        if (index >= 0)
+        {
+            _displayPosts[index] = updated;
+        }
+
+        if (_detailPost?.Id == updated.Id)
+        {
+            _detailPost = updated;
+        }
+
         return Task.CompletedTask;
     }
 

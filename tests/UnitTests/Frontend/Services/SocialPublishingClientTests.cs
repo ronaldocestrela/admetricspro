@@ -191,6 +191,80 @@ public sealed class SocialPublishingClientTests
     }
 
     /// <summary>
+    /// SubmitForApprovalAsync envia POST na rota :submit sem corpo.
+    /// </summary>
+    [Fact]
+    public async Task SubmitForApprovalAsync_ShouldPostVersionedSubmitRoute()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var dto = new OrganicPostDto(
+            postId,
+            workspaceId,
+            Guid.NewGuid(),
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Sale,
+            "Legenda",
+            new DateTime(2026, 11, 10, 13, 0, 0, DateTimeKind.Utc),
+            OrganicPostStatus.PendingApproval);
+
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Post);
+            request.RequestUri!.PathAndQuery.Should().Be($"/api/v1/social/posts/{postId}:submit?workspaceId={workspaceId}");
+            request.Content.Should().BeNull();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<OrganicPostDto>.Success(dto), JsonOptions))
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.SubmitForApprovalAsync(workspaceId, postId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(OrganicPostStatus.PendingApproval);
+    }
+
+    /// <summary>
+    /// ApprovePostAsync envia POST na rota :approve sem corpo.
+    /// </summary>
+    [Fact]
+    public async Task ApprovePostAsync_ShouldPostVersionedApproveRoute()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var dto = new OrganicPostDto(
+            postId,
+            workspaceId,
+            Guid.NewGuid(),
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Sale,
+            "Legenda",
+            new DateTime(2026, 11, 10, 13, 0, 0, DateTimeKind.Utc),
+            OrganicPostStatus.Approved);
+
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Post);
+            request.RequestUri!.PathAndQuery.Should().Be($"/api/v1/social/posts/{postId}:approve?workspaceId={workspaceId}");
+            request.Content.Should().BeNull();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<OrganicPostDto>.Success(dto), JsonOptions))
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.ApprovePostAsync(workspaceId, postId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(OrganicPostStatus.Approved);
+    }
+
+    /// <summary>
     /// GetBrandVoiceAsync envia X-Tenant-Id e rota versionada.
     /// </summary>
     [Fact]

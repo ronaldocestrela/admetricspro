@@ -9,6 +9,7 @@ using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Application.Traction.DTOs;
 using SocialPublishing.Domain.Brand;
 using SocialPublishing.Domain.Connections;
+using SocialPublishing.Domain.Posts;
 
 namespace WebApp.Services.Social;
 
@@ -97,6 +98,30 @@ public interface ISocialPublishingClient
         Guid workspaceId,
         Guid postId,
         DateTime scheduledAtUtc,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Envia um post orgânico em rascunho para aprovação interna.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="postId">Identificador do post.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post em <see cref="OrganicPostStatus.PendingApproval"/> ou falha de negócio.</returns>
+    Task<Result<OrganicPostDto>> SubmitForApprovalAsync(
+        Guid workspaceId,
+        Guid postId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Aprova um post orgânico em revisão interna.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="postId">Identificador do post.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post em <see cref="OrganicPostStatus.Approved"/> ou falha de negócio.</returns>
+    Task<Result<OrganicPostDto>> ApprovePostAsync(
+        Guid workspaceId,
+        Guid postId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

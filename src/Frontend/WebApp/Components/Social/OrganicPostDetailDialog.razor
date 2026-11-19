@@ -4,6 +4,7 @@
 @using SocialPublishing.Application.Posts.DTOs
 @using SocialPublishing.Domain.Connections
 @using SocialPublishing.Domain.Posts
+@inject ISocialPublishingClient SocialClient
 
 @if (Post is not null)
 {
@@ -33,7 +34,7 @@
                     <div class="organic-post-detail-badge-row"
                          data-testid="organic-post-detail-status-row">
                         <span class="organic-post-detail-badge-label">Status</span>
-                        <OrganicPostStatusBadge Status="Post.Status"
+                        <OrganicPostStatusBadge Status="_displayedPost.Status"
                                                 AdditionalCssClass="organic-post-detail-badge-pill" />
                     </div>
                     <div class="organic-post-detail-badge-row"
@@ -75,8 +76,29 @@
                         }
                     </div>
                 }
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger mt-3 mb-0" role="alert" data-testid="organic-post-detail-error">@_errorMessage</div>
+                }
             </div>
             <div class="modal-footer">
+                @if (CanApprove)
+                {
+                    <button type="button"
+                            class="btn btn-success me-auto"
+                            data-testid="organic-post-detail-approve"
+                            disabled="@_isApproving"
+                            @onclick="ApproveAsync">
+                        @if (_isApproving)
+                        {
+                            <span>Aprovando…</span>
+                        }
+                        else
+                        {
+                            <span>Aprovar</span>
+                        }
+                    </button>
+                }
                 <button type="button" class="btn btn-primary" data-testid="organic-post-detail-done" @onclick="RequestClose">Fechar</button>
             </div>
         </div>
@@ -85,10 +107,16 @@
 
 @code {
     /// <summary>
-    /// Post selecionado para exibição somente leitura; ausência oculta o diálogo.
+    /// Post selecionado para exibição; ausência oculta o diálogo.
     /// </summary>
     [Parameter]
     public OrganicPostDto? Post { get; set; }
+
+    /// <summary>
+    /// Workspace proprietário do post (mutações de lifecycle na API).
+    /// </summary>
+    [Parameter]
+    public Guid WorkspaceId { get; set; }
 
     /// <summary>
     /// Identificador IANA do fuso para exibir o horário agendado.
@@ -102,7 +130,89 @@
     [Parameter]
     public EventCallback OnClose { get; set; }
 
+    /// <summary>
+    /// Notifica o host quando o post foi atualizado após aprovação ou envio parcial.
+    /// </summary>
+    [Parameter]
+    public EventCallback<OrganicPostDto> OnPostUpdated { get; set; }
+
+    private OrganicPostDto _displayedPost = null!;
+    private string? _errorMessage;
+    private bool _isApproving;
+
+    private bool CanApprove =>
+        _displayedPost.Status is OrganicPostStatus.Draft or OrganicPostStatus.PendingApproval;
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        if (Post is null)
+        {
+            return;
+        }
+
+        if (_displayedPost?.Id != Post.Id)
+        {
+            _displayedPost = Post;
+            _errorMessage = null;
+            _isApproving = false;
+        }
+        else if (_displayedPost.Status != Post.Status)
+        {
+            _displayedPost = Post;
+        }
+    }
+
     private async Task RequestClose() => await OnClose.InvokeAsync();
+
+    /// <summary>
+    /// Executa envio para aprovação (quando em rascunho) e aprovação interna.
+    /// </summary>
+    private async Task ApproveAsync()
+    {
+        if (WorkspaceId == Guid.Empty || !CanApprove)
+        {
+            return;
+        }
+
+        _isApproving = true;
+        _errorMessage = null;
+
+        if (_displayedPost.Status == OrganicPostStatus.Draft)
+        {
+            var submitResult = await SocialClient.SubmitForApprovalAsync(WorkspaceId, _displayedPost.Id);
+            if (submitResult.IsFailure)
+            {
+                _errorMessage = submitResult.Error.Description;
+                _isApproving = false;
+                return;
+            }
+
+            _displayedPost = submitResult.Value;
+            await NotifyPostUpdatedAsync(_displayedPost);
+        }
+
+        var approveResult = await SocialClient.ApprovePostAsync(WorkspaceId, _displayedPost.Id);
+        _isApproving = false;
+
+        if (approveResult.IsFailure)
+        {
+            _errorMessage = approveResult.Error.Description;
+            await NotifyPostUpdatedAsync(_displayedPost);
+            return;
+        }
+
+        _displayedPost = approveResult.Value;
+        await NotifyPostUpdatedAsync(_displayedPost);
+    }
+
+    private async Task NotifyPostUpdatedAsync(OrganicPostDto updated)
+    {
+        if (OnPostUpdated.HasDelegate)
+        {
+            await OnPostUpdated.InvokeAsync(updated);
+        }
+    }
 
     private void HandleBackdropKeydown(KeyboardEventArgs args)
     {

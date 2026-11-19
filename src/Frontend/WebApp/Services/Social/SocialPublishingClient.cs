@@ -255,6 +255,20 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
     }
 
     /// <inheritdoc />
+    public Task<Result<OrganicPostDto>> SubmitForApprovalAsync(
+        Guid workspaceId,
+        Guid postId,
+        CancellationToken cancellationToken = default) =>
+        PostLifecycleMutationAsync(workspaceId, postId, $"/api/v1/social/posts/{postId}:submit?workspaceId={workspaceId}", cancellationToken);
+
+    /// <inheritdoc />
+    public Task<Result<OrganicPostDto>> ApprovePostAsync(
+        Guid workspaceId,
+        Guid postId,
+        CancellationToken cancellationToken = default) =>
+        PostLifecycleMutationAsync(workspaceId, postId, $"/api/v1/social/posts/{postId}:approve?workspaceId={workspaceId}", cancellationToken);
+
+    /// <inheritdoc />
     public async Task<Result<BrandVoiceDto>> GetBrandVoiceAsync(
         Guid workspaceId,
         CancellationToken cancellationToken = default)
@@ -516,6 +530,41 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         {
             return Result<PaidBoostSuggestionDto>.Failure(
                 Error.Failure("Social.NetworkError", $"Erro de comunicação ao dispensar sugestão: {ex.Message}"));
+        }
+    }
+
+    private async Task<Result<OrganicPostDto>> PostLifecycleMutationAsync(
+        Guid workspaceId,
+        Guid postId,
+        string relativeUri,
+        CancellationToken cancellationToken)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<OrganicPostDto>.Failure(SocialErrors.WorkspaceRequired);
+        }
+
+        if (postId == Guid.Empty)
+        {
+            return Result<OrganicPostDto>.Failure(
+                Error.Validation("Social.PostNotFound", "Post orgânico não encontrado."));
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Post, relativeUri);
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<OrganicPostDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<OrganicPostDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida na transição de lifecycle do post orgânico."));
+        }
+        catch (Exception ex)
+        {
+            return Result<OrganicPostDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação na transição de lifecycle do post orgânico: {ex.Message}"));
         }
     }
 

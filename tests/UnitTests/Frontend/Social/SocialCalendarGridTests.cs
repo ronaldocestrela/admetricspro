@@ -418,6 +418,167 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     }
 
     /// <summary>
+    /// Aprovar rascunho chama submit e approve; o selo do card passa a Aprovado.
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenApproveDraft_ShouldSubmitThenApproveAndUpdateCardBadge()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var scheduledUtc = new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc);
+        var post = CreatePost(postId, workspaceId, scheduledUtc, OrganicPostStatus.Draft);
+        var pending = post with { Status = OrganicPostStatus.PendingApproval };
+        var approved = post with { Status = OrganicPostStatus.Approved };
+
+        _socialClient.SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(pending)));
+        _socialClient.ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(approved)));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
+
+        await _socialClient.Received(1).SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+        await _socialClient.Received(1).ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+
+        cut.WaitForAssertion(() =>
+            cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent
+                .Should().Contain("Aprovado"));
+    }
+
+    /// <summary>
+    /// Falha no submit não chama approve e mantém status Rascunho.
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenApproveDraftSubmitFails_ShouldNotCallApproveAndShowError()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.Draft);
+
+        _socialClient.SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Failure(SocialPublishing.Domain.SocialErrors.InvalidTransition)));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
+
+        await _socialClient.DidNotReceive().ApprovePostAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        cut.Find("[data-testid='organic-post-detail-error']").Should().NotBeNull();
+        cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent.Should().Contain("Rascunho");
+    }
+
+    /// <summary>
+    /// Submit ok e approve falha: status Aguardando aprovação; segundo clique chama só approve.
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenApproveDraftApproveFails_SecondClickApprovesOnly()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.Draft);
+        var pending = post with { Status = OrganicPostStatus.PendingApproval };
+        var approved = post with { Status = OrganicPostStatus.Approved };
+
+        _socialClient.SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(pending)));
+        _socialClient.ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult(Result<OrganicPostDto>.Failure(SocialPublishing.Domain.SocialErrors.InvalidTransition)),
+                Task.FromResult(Result<OrganicPostDto>.Success(approved)));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
+
+        await _socialClient.Received(1).SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+        await _socialClient.Received(1).ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+        cut.Find("[data-testid='organic-post-detail-error']").Should().NotBeNull();
+        cut.WaitForAssertion(() =>
+            cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent
+                .Should().Contain("Aguardando aprovação"));
+
+        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
+
+        await _socialClient.Received(1).SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+        await _socialClient.Received(2).ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+        cut.WaitForAssertion(() =>
+            cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent
+                .Should().Contain("Aprovado"));
+    }
+
+    /// <summary>
+    /// Post já em PendingApproval: Aprovar chama só approve.
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenApprovePendingApproval_ShouldCallApproveOnly()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.PendingApproval);
+        var approved = post with { Status = OrganicPostStatus.Approved };
+
+        _socialClient.ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(approved)));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
+
+        await _socialClient.DidNotReceive().SubmitForApprovalAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _socialClient.Received(1).ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Post agendado, aprovado ou publicado não exibe botão Aprovar no detalhe.
+    /// </summary>
+    [Theory]
+    [InlineData(OrganicPostStatus.Approved)]
+    [InlineData(OrganicPostStatus.Scheduled)]
+    [InlineData(OrganicPostStatus.Published)]
+    public void Grid_WhenDetailOpened_ForNonApprovableStatus_ShouldNotShowApproveButton(OrganicPostStatus status)
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc), status);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        cut.FindAll("[data-testid='organic-post-detail-approve']").Count.Should().Be(0);
+    }
+
+    /// <summary>
     /// Sem workspace selecionado exibe alerta orientando seleção na barra lateral.
     /// </summary>
     [Fact]
