@@ -72,14 +72,20 @@ public sealed class GenerateEditorialPlanCommandHandler : ICommandHandler<Genera
 
         if (existing is not null)
         {
-            return existing.Status switch
+            if (existing.Status == EditorialPlanGenerationStatus.InProgress)
             {
-                EditorialPlanGenerationStatus.Completed =>
-                    Result<GeneratedPlanDto>.Success(EditorialPlanMapping.ToDto(existing)),
-                EditorialPlanGenerationStatus.InProgress =>
-                    Result<GeneratedPlanDto>.Failure(SocialErrors.PlanGenerationInProgress),
-                _ => Result<GeneratedPlanDto>.Failure(SocialErrors.PlanGenerationInProgress),
-            };
+                return Result<GeneratedPlanDto>.Failure(SocialErrors.PlanGenerationInProgress);
+            }
+
+            if (existing.Status == EditorialPlanGenerationStatus.Completed && !existing.IsRetriableEmptyCompletion())
+            {
+                return Result<GeneratedPlanDto>.Success(EditorialPlanMapping.ToDto(existing));
+            }
+
+            if (existing.Status != EditorialPlanGenerationStatus.Completed)
+            {
+                return Result<GeneratedPlanDto>.Failure(SocialErrors.PlanGenerationInProgress);
+            }
         }
 
         var brandVoice = await _brandVoiceRepository.GetByWorkspaceAsync(request.WorkspaceId, cancellationToken);
@@ -96,23 +102,47 @@ public sealed class GenerateEditorialPlanCommandHandler : ICommandHandler<Genera
             return Result<GeneratedPlanDto>.Failure(planResult.Error);
         }
 
-        var startResult = EditorialPlanGeneration.Start(
-            request.WorkspaceId,
-            request.RangeStart,
-            request.RangeEnd,
-            request.Seed);
-
-        if (startResult.IsFailure)
+        EditorialPlanGeneration generation;
+        if (existing is not null && existing.IsRetriableEmptyCompletion())
         {
-            return Result<GeneratedPlanDto>.Failure(startResult.Error);
+            var reopenResult = existing.ReopenForRetriableRetry();
+            if (reopenResult.IsFailure)
+            {
+                return Result<GeneratedPlanDto>.Failure(reopenResult.Error);
+            }
+
+            await _planGenerationRepository.UpdateAsync(existing, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
+            generation = existing;
+        }
+        else
+        {
+            var startResult = EditorialPlanGeneration.Start(
+                request.WorkspaceId,
+                request.RangeStart,
+                request.RangeEnd,
+                request.Seed);
+
+            if (startResult.IsFailure)
+            {
+                return Result<GeneratedPlanDto>.Failure(startResult.Error);
+            }
+
+            generation = startResult.Value;
+            await _planGenerationRepository.AddAsync(generation, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
         }
 
-        var generation = startResult.Value;
-        await _planGenerationRepository.AddAsync(generation, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken);
+        return await MaterializeSlotsAsync(request, generation, planResult.Value, cancellationToken);
+    }
 
+    private async Task<Result<GeneratedPlanDto>> MaterializeSlotsAsync(
+        GenerateEditorialPlanCommand request,
+        EditorialPlanGeneration generation,
+        IReadOnlyList<EditorialSlot> slots,
+        CancellationToken cancellationToken)
+    {
         var connections = await _connectionRepository.ListByWorkspaceAsync(request.WorkspaceId, cancellationToken);
-        var slots = planResult.Value;
 
         for (var index = 0; index < slots.Count; index++)
         {
@@ -151,11 +181,6 @@ public sealed class GenerateEditorialPlanCommandHandler : ICommandHandler<Genera
         CancellationToken cancellationToken)
     {
         var connection = ResolveConnection(slot.Platform, connections);
-        if (connection is null)
-        {
-            generation.RecordFailedSlot(CreateFailedSlot(slot, SocialErrors.ConnectionRequired));
-            return;
-        }
 
         var copyCommand = new GenerateSlotCopyCommand(
             request.WorkspaceId,
@@ -194,7 +219,7 @@ public sealed class GenerateEditorialPlanCommandHandler : ICommandHandler<Genera
 
         var postResult = OrganicPost.CreateEditorialDraft(
             request.WorkspaceId,
-            connection.Id,
+            connection?.Id ?? Guid.Empty,
             slot.Platform,
             slot.Format,
             slot.Pillar,

@@ -52,7 +52,7 @@ public sealed class GenerateSlotCopyCommandHandler : ICommandHandler<GenerateSlo
             return Result<GeneratedCopyDto>.Failure(SocialErrors.BrandVoiceNotFound);
         }
 
-        var slotInput = new EditorialSlotCopyInput(request.Pillar, request.Platform, request.Format);
+        var slotInput = new EditorialSlotCopyInput(request.LocalDate, request.Pillar, request.Platform, request.Format);
         var brief = CopyBriefBuilder.Build(brandVoice, slotInput);
 
         var generated = await _creativeGenerator.GenerateAsync(brief, cancellationToken);

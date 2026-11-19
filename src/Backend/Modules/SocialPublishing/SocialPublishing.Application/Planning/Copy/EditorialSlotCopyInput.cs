@@ -7,10 +7,12 @@ namespace SocialPublishing.Application.Planning.Copy;
 /// <summary>
 /// Dados mínimos de um slot editorial para montagem de brief de cópia.
 /// </summary>
+/// <param name="LocalDate">Data civil do slot no fuso do workspace.</param>
 /// <param name="Pillar">Pilar editorial.</param>
 /// <param name="Platform">Rede de publicação.</param>
 /// <param name="Format">Formato sugerido.</param>
 public sealed record EditorialSlotCopyInput(
+    DateOnly LocalDate,
     ContentPillar Pillar,
     OrganicPlatform Platform,
     OrganicPostFormat Format);

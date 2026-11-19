@@ -170,6 +170,7 @@ public sealed class HttpSocialCreativeGeneratorTests
                 25,
                 25).Value,
             new EditorialSlotCopyInput(
+                new DateOnly(2026, 11, 2),
                 ContentPillar.Authority,
                 OrganicPlatform.Instagram,
                 OrganicPostFormat.FeedImage));

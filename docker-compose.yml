@@ -85,6 +85,13 @@ services:
       - Email__MaxRetryAttempts=${Email__MaxRetryAttempts:-1}
       - Tenants__Invitations__WebAppBaseUrl=${Tenants__Invitations__WebAppBaseUrl:-http://localhost:7000}
       - Tenants__Invitations__TokenValidityHours=${Tenants__Invitations__TokenValidityHours:-72}
+      # Social Publishing — IA (legendas; requer --env-file .env ou variáveis no host)
+      - SocialAi__BaseUrl=${SocialAi__BaseUrl:-https://api.openai.com/v1}
+      - SocialAi__Model=${SocialAi__Model:-gpt-4o-mini}
+      - SocialAi__ApiKey=${SocialAi__ApiKey:-}
+      - SocialAi__Temperature=${SocialAi__Temperature:-0.7}
+      - SocialAi__MaxTokens=${SocialAi__MaxTokens:-800}
+      - SocialAi__TimeoutSeconds=${SocialAi__TimeoutSeconds:-60}
     ports:
       - "${WEBAPI_PORT:-7001}:8080"
     networks:

@@ -35,6 +35,7 @@ public static class CopyBriefBuilder
             slot.Platform,
             slot.Format,
             formatInstruction,
+            slot.LocalDate,
             brandVoice.BusinessProfile?.BusinessSummary,
             brandVoice.BusinessProfile?.TargetAudience,
             brandVoice.BusinessProfile?.MainOffer,

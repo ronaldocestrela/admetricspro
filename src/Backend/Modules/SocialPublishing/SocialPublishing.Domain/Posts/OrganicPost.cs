@@ -197,7 +197,7 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     /// Cria um rascunho editorial sem exigir mídia (Reel, carrossel e TikTok podem nascer vazios até anexação na UI).
     /// </summary>
     /// <param name="workspaceId">Identificador do workspace.</param>
-    /// <param name="connectionId">Conexão orgânica.</param>
+    /// <param name="connectionId">Conexão orgânica. <see cref="Guid.Empty"/> deixa o rascunho sem conta até a publicação.</param>
     /// <param name="platform">Plataforma de destino.</param>
     /// <param name="format">Formato do post.</param>
     /// <param name="pillar">Pilar editorial.</param>
@@ -218,11 +218,6 @@ public sealed class OrganicPost : AggregateRoot<Guid>
         if (workspaceId == Guid.Empty)
         {
             return Result<OrganicPost>.Failure(SocialErrors.WorkspaceRequired);
-        }
-
-        if (connectionId == Guid.Empty)
-        {
-            return Result<OrganicPost>.Failure(SocialErrors.ConnectionRequired);
         }
 
         var captionValidation = ValidateCaption(platform, caption);

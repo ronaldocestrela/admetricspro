@@ -130,6 +130,27 @@ public sealed class OrganicPostTests
     }
 
     /// <summary>
+    /// Rascunho editorial pode nascer sem conexão; a conta é exigida só na publicação.
+    /// </summary>
+    [Fact]
+    public void CreateEditorialDraft_SemConexao_DeveIniciarEmDraft()
+    {
+        var result = OrganicPost.CreateEditorialDraft(
+            Guid.NewGuid(),
+            Guid.Empty,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Authority,
+            "Legenda gerada",
+            new DateTime(2026, 6, 2, 10, 0, 0),
+            SaoPauloTimeZone);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ConnectionId.Should().Be(Guid.Empty);
+        result.Value.Status.Should().Be(OrganicPostStatus.Draft);
+    }
+
+    /// <summary>
     /// Valida proporção 9:16 para Reels e TikTok.
     /// </summary>
     [Theory]

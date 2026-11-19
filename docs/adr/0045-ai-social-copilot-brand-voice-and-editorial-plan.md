@@ -33,9 +33,11 @@ Requisitos:
 
 4. **`GenerateSlotCopyCommand`**: MediatR + `social.copilot.generate`; **sem rota HTTP** nesta subfase.
 
-5. **`SocialAiOptions`**: `BaseUrl`, `Model`, `ApiKey`, `Temperature`, `MaxTokens`, `TimeoutSeconds`. Binding em `AddSocialPublishingModule`; `SOCIAL_AI_*` opcionais. Sem `ValidateOnStart` — o host sobe sem chave; chamadas falham com `Social.AiConfigurationMissing`.
+5. **`SocialAiOptions`**: `BaseUrl`, `Model`, `ApiKey`, `Temperature`, `MaxTokens`, `TimeoutSeconds`. Binding em `AddSocialPublishingModule`; `SOCIAL_AI_*` opcionais. Sem `ValidateOnStart` — o host sobe sem chave; chamadas falham com `Social.AiConfigurationMissing`. Em Docker, encaminhar `SocialAi__*` ao serviço `webapi` no compose além do `.env` do host (ver `docs/modules/social-publishing.md` § SocialAi).
 
-6. Erros estáveis: `Social.CopyContainsForbiddenTerm`, `Social.CopyGenerationFailed`, `Social.AiConfigurationMissing`.
+6. **`CopyBrief`**: inclui `localDate` do slot no prompt para variar legendas entre dias do cronograma.
+
+7. Erros estáveis: `Social.CopyContainsForbiddenTerm`, `Social.CopyGenerationFailed`, `Social.AiConfigurationMissing`.
 
 ### Subfase 3.4 (implementada)
 
@@ -43,7 +45,7 @@ Requisitos:
 
 2. **`OrganicPost.CreateEditorialDraft`**: rascunhos editoriais **sem exigir mídia** (Reel, carrossel e TikTok nascem vazios até anexação na UI). Publicação continua bloqueada na Fase 4 sem mídia válida.
 
-3. **Idempotência**: agregado **`EditorialPlanGeneration`** em `social.EditorialPlanGenerations`, chave **`workspaceId + rangeStart + rangeEnd + seed`**. Replay devolve snapshot **`Completed`**; corrida com registro **`InProgress`** → `Social.PlanGenerationInProgress` (409).
+3. **Idempotência**: agregado **`EditorialPlanGeneration`** em `social.EditorialPlanGenerations`, chave **`workspaceId + rangeStart + rangeEnd + seed`**. Replay devolve snapshot **`Completed`** quando já há posts; plano **`Completed`** sem posts e só com `Social.AiConfigurationMissing`, `Social.CopyGenerationFailed` ou `Social.ConnectionRequired` pode ser **reaberto** na mesma chave. A cópia é gerada mesmo sem conexão orgânica (`connectionId` vazio no rascunho). Corrida com registro **`InProgress`** → `Social.PlanGenerationInProgress` (409).
 
 4. **HTTP**: `POST /api/v1/social/plans:generate`, `GET /api/v1/social/posts?workspaceId&from&to` (UTC inclusivo).
 

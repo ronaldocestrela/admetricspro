@@ -81,6 +81,37 @@ public sealed class GenerateEditorialPlanCommandTests
     }
 
     /// <summary>
+    /// Falha total de configuração com mesma chave reabre o plano e chama o gerador novamente.
+    /// </summary>
+    [Fact]
+    public async Task Handle_AposFalhaTotalDeConfigComMesmaChave_DeveChamarGeradorNovamente()
+    {
+        SeedBrandVoice();
+        SeedAllPlatformConnections();
+        _generator.FailAll(SocialErrors.AiConfigurationMissing);
+
+        var handler = CreateHandler();
+        var command = DefaultCommand();
+
+        var first = await handler.Handle(command, CancellationToken.None);
+        first.IsSuccess.Should().BeTrue();
+        first.Value.CreatedPostIds.Should().BeEmpty();
+        first.Value.FailedSlots.Should().NotBeEmpty();
+        var callsAfterFirst = _generator.CallCount;
+        callsAfterFirst.Should().Be(5);
+
+        _generator.ClearFailAll();
+        _generator.SetDefaultSuccess("Legenda nova", ["marca"], [], []);
+
+        var second = await handler.Handle(command, CancellationToken.None);
+
+        second.IsSuccess.Should().BeTrue();
+        second.Value.CreatedPostIds.Should().HaveCount(5);
+        _generator.CallCount.Should().Be(callsAfterFirst + 5);
+        _postRepository.AllPosts.Should().HaveCount(5);
+    }
+
+    /// <summary>
     /// Reexecução com mesma chave não duplica posts nem chama o gerador.
     /// </summary>
     [Fact]
@@ -151,24 +182,50 @@ public sealed class GenerateEditorialPlanCommandTests
     }
 
     /// <summary>
-    /// Slot sem conexão ativa para a rede entra em failedSlots sem chamar o gerador para esse slot.
+    /// Sem conexão ativa a cópia ainda é pedida à LLM e o rascunho nasce sem vínculo de conta.
     /// </summary>
     [Fact]
-    public async Task Handle_SemConexaoParaRede_DeveRegistrarConnectionRequired()
+    public async Task Handle_SemConexaoParaRede_DeveGerarCopiaECriarRascunho()
     {
         SeedBrandVoice();
-        _connectionRepository.Seed(
-            CreateConnection(OrganicPlatform.Instagram),
-            CreateConnection(OrganicPlatform.FacebookPage));
-        _generator.SetDefaultSuccess("Legenda", ["a"], [], []);
+        _generator.SetDefaultSuccess("Legenda sem conta", ["a"], [], []);
 
         var result = await CreateHandler().Handle(DefaultCommand(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.FailedSlots.Should().Contain(f =>
-            f.Platform == OrganicPlatform.TikTok &&
-            f.ErrorCode == SocialErrors.ConnectionRequired.Code);
-        _generator.CallCount.Should().BeLessThan(5);
+        result.Value.FailedSlots.Should().BeEmpty();
+        result.Value.CreatedPostIds.Should().HaveCount(5);
+        _generator.CallCount.Should().Be(5);
+        _postRepository.AllPosts.Should().OnlyContain(p => p.ConnectionId == Guid.Empty);
+        _postRepository.AllPosts.Should().OnlyContain(p => p.Caption.Contains("Legenda sem conta"));
+    }
+
+    /// <summary>
+    /// Plano concluído só com ConnectionRequired e zero posts é reaberto e chama a LLM.
+    /// </summary>
+    [Fact]
+    public async Task Handle_AposFalhaTotalDeConexao_DeveChamarGeradorNovamente()
+    {
+        SeedBrandVoice();
+        _generator.SetDefaultSuccess("Legenda reaberta", ["a"], [], []);
+        var command = DefaultCommand();
+        var frozen = EditorialPlanGeneration.Start(command.WorkspaceId, command.RangeStart, command.RangeEnd, command.Seed).Value;
+        frozen.RecordFailedSlot(new EditorialPlanFailedSlot(
+            command.RangeStart,
+            new DateTime(2026, 11, 2, 13, 0, 0, DateTimeKind.Utc),
+            ContentPillar.Authority,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            SocialErrors.ConnectionRequired.Code,
+            SocialErrors.ConnectionRequired.Description));
+        frozen.Complete();
+        _planRepository.Seed(frozen);
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.CreatedPostIds.Should().HaveCount(5);
+        _generator.CallCount.Should().Be(5);
     }
 
     private GenerateEditorialPlanCommand DefaultCommand() =>
@@ -360,6 +417,8 @@ public sealed class GenerateEditorialPlanCommandTests
                 g.RangeEnd == rangeEnd &&
                 g.Seed == seed));
 
+        public void Seed(EditorialPlanGeneration generation) => _items.Add(generation);
+
         public Task AddAsync(EditorialPlanGeneration generation, CancellationToken cancellationToken = default)
         {
             _items.Add(generation);
@@ -372,12 +431,17 @@ public sealed class GenerateEditorialPlanCommandTests
     private sealed class SequentialCreativeGenerator : ISocialCreativeGenerator
     {
         private readonly List<(int CallIndex, Error Error)> _failures = new();
+        private Error? _failAllWith;
         private string _caption = "Legenda";
         private IReadOnlyList<string> _brand = ["marca"];
         private IReadOnlyList<string> _niche = [];
         private IReadOnlyList<string> _reach = [];
 
         public int CallCount { get; private set; }
+
+        public void FailAll(Error error) => _failAllWith = error;
+
+        public void ClearFailAll() => _failAllWith = null;
 
         public void SetDefaultSuccess(string caption, IReadOnlyList<string> brand, IReadOnlyList<string> niche, IReadOnlyList<string> reach)
         {
@@ -392,6 +456,11 @@ public sealed class GenerateEditorialPlanCommandTests
         public Task<Result<GeneratedCopyDraft>> GenerateAsync(CopyBrief brief, CancellationToken cancellationToken = default)
         {
             CallCount++;
+            if (_failAllWith is not null)
+            {
+                return Task.FromResult(Result<GeneratedCopyDraft>.Failure(_failAllWith));
+            }
+
             if (_failures.Any(f => f.CallIndex == CallCount))
             {
                 var error = _failures.First(f => f.CallIndex == CallCount).Error;

@@ -40,9 +40,10 @@ public sealed class CopyBriefBuilderTests
 
         var brief = CopyBriefBuilder.Build(
             brandVoice,
-            new EditorialSlotCopyInput(ContentPillar.Authority, OrganicPlatform.Instagram, OrganicPostFormat.FeedImage));
+            new EditorialSlotCopyInput(new DateOnly(2026, 11, 3), ContentPillar.Authority, OrganicPlatform.Instagram, OrganicPostFormat.FeedImage));
 
         var prompt = brief.ToPromptText();
+        prompt.Should().Contain("Data do slot: 2026-11-03");
         prompt.Should().Contain("Negócio: Software B2B");
         prompt.Should().Contain("Público-alvo: PMEs de tecnologia");
         prompt.Should().Contain("Cores da identidade visual: primária #111827");
@@ -69,7 +70,7 @@ public sealed class CopyBriefBuilderTests
 
         var brief = CopyBriefBuilder.Build(
             brandVoice,
-            new EditorialSlotCopyInput(ContentPillar.Sale, OrganicPlatform.FacebookPage, OrganicPostFormat.FeedImage));
+            new EditorialSlotCopyInput(new DateOnly(2026, 11, 4), ContentPillar.Sale, OrganicPlatform.FacebookPage, OrganicPostFormat.FeedImage));
 
         var prompt = brief.ToPromptText();
         prompt.Should().NotContain("Negócio:");

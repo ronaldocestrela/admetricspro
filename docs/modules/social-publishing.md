@@ -613,6 +613,8 @@ Comando MediatR **`GenerateSlotCopyCommand`** (permissão `social.copilot.genera
 | `SocialAi:MaxTokens` | Padrão `800` |
 | `SocialAi:TimeoutSeconds` | Padrão `60` |
 
+Em **Docker Compose**, defina as chaves no `.env` do host e use `docker compose --env-file .env up` (ou arquivo equivalente). O serviço **`webapi`** precisa receber `SocialAi__BaseUrl`, `SocialAi__Model`, `SocialAi__ApiKey` (e opcionais de temperatura/timeout) na seção `environment` do compose — o `--env-file` sozinho não injeta variáveis no processo .NET dentro do contêiner.
+
 ### Entrada do comando (exemplo)
 
 ```json
@@ -628,7 +630,7 @@ Comando MediatR **`GenerateSlotCopyCommand`** (permissão `social.copilot.genera
 
 ### Brief lógico (campos inspecionáveis em teste)
 
-O texto enviado ao modelo agrega: persona, tom, idioma, pilar, rede, formato, política de emoji, tetos de legenda/hashtag, termos proibidos, links obrigatórios, `formatInstruction` e, quando informados no Brand Voice, resumo do negócio, público-alvo, oferta principal, diferenciais e paleta de cores. O adaptador instrui o modelo a usar esse contexto sem inventar dados ausentes. O modelo deve responder JSON:
+O texto enviado ao modelo agrega: persona, tom, idioma, **data civil do slot** (`localDate`, com instrução de legenda única por dia), pilar, rede, formato, política de emoji, tetos de legenda/hashtag, termos proibidos, links obrigatórios, `formatInstruction` e, quando informados no Brand Voice, resumo do negócio, público-alvo, oferta principal, diferenciais e paleta de cores. O adaptador instrui o modelo a usar esse contexto sem inventar dados ausentes. O modelo deve responder JSON:
 
 ```json
 {
@@ -702,12 +704,12 @@ Orquestra **`EditorialCalendarPlanner.Plan`**, **`GenerateSlotCopyCommand`** (vi
 
 ### Idempotência
 
-Chave lógica: **`workspaceId` + `rangeStart` + `rangeEnd` + `seed`**. Persistida em `social.EditorialPlanGenerations` (índice único). Reexecução com a mesma chave devolve o **`GeneratedPlanDto`** já gravado, sem novas chamadas de IA nem posts duplicados. `postsPerWeek` e `timeZoneId` **não** entram na chave.
+Chave lógica: **`workspaceId` + `rangeStart` + `rangeEnd` + `seed`**. Persistida em `social.EditorialPlanGenerations` (índice único). Reexecução com a mesma chave devolve o **`GeneratedPlanDto`** já gravado, sem novas chamadas de IA nem posts duplicados, **desde que** o snapshot tenha pelo menos um post criado. Se o plano concluiu **sem posts** e todos os `failedSlots` são `Social.AiConfigurationMissing`, `Social.CopyGenerationFailed` ou `Social.ConnectionRequired`, uma nova chamada **reabre** o registro, limpa as falhas e volta a invocar a LLM por slot. `postsPerWeek` e `timeZoneId` **não** entram na chave.
 
 ### Fluxo por slot
 
-1. Resolve conexão **`Active`** mais recente da plataforma do slot (`Social.ConnectionRequired` em `failedSlots` se ausente).
-2. Gera cópia via **`GenerateSlotCopyCommand`**.
+1. Gera cópia via **`GenerateSlotCopyCommand`** (a LLM é chamada mesmo sem conta conectada).
+2. Resolve conexão **`Active`** mais recente da plataforma do slot. Se ausente, o rascunho é gravado com `connectionId` vazio; a conta passa a ser obrigatória só na publicação.
 3. Compõe legenda persistida: texto aceito + linha em branco + hashtags `#tag` (validação final contra `CaptionLimits`).
 4. Cria post com **`OrganicPost.CreateEditorialDraft`** (Reel / carrossel / TikTok **sem mídia** nesta subfase).
 5. **`CommitAsync` próprio por slot** (sucesso ou falha registrada no snapshot).
@@ -740,7 +742,8 @@ Chave lógica: **`workspaceId` + `rangeStart` + `rangeEnd` + `seed`**. Persistid
 | :--- | :---: | :--- |
 | Brand Voice ausente | **404** | Nenhum post criado; nenhum `CommitAsync` de slot. |
 | Provedor indisponível no meio do plano | **200** | Slots anteriores permanecem; falha listada em `failedSlots`. |
-| Chave de idempotência repetida | **200** | Mesmo `createdPostIds` / `failedSlots` do snapshot; sem duplicar. |
+| Chave de idempotência repetida (com posts ou falha não retentável) | **200** | Mesmo `createdPostIds` / `failedSlots` do snapshot; sem duplicar. |
+| Mesma chave após falha total de IA/config (`createdPostIds` vazio) | **200** | Reabre materialização e chama o provedor novamente (configure `SocialAi` no `webapi` antes). |
 | Geração concorrente mesma chave (registro `InProgress`) | **409** | `Social.PlanGenerationInProgress`. |
 | `to` &lt; `from` no GET | **422** | `Social.PostsRangeInvalid`. |
 

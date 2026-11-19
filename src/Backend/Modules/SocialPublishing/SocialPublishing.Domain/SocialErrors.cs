@@ -212,6 +212,12 @@ public static class SocialErrors
         Error.Conflict("Social.PlanGenerationInProgress", "A geração do plano editorial já está em andamento para este intervalo e semente.");
 
     /// <summary>
+    /// Erro quando o plano concluído não pode ser reaberto para nova materialização.
+    /// </summary>
+    public static Error PlanGenerationNotRetriable { get; } =
+        Error.Validation("Social.PlanGenerationNotRetriable", "O plano editorial concluído não está elegível para nova tentativa.");
+
+    /// <summary>
     /// Erro quando o limite superior da consulta de posts é anterior ao inferior.
     /// </summary>
     public static Error PostsRangeInvalid { get; } =

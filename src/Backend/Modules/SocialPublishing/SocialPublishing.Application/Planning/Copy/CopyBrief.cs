@@ -25,6 +25,7 @@ public sealed class CopyBrief
     /// <param name="platform">Rede de publicação.</param>
     /// <param name="format">Formato de publicação.</param>
     /// <param name="formatInstruction">Instrução específica de formato.</param>
+    /// <param name="localDate">Data civil do slot editorial.</param>
     /// <param name="businessSummary">Resumo do negócio do cliente.</param>
     /// <param name="targetAudience">Público-alvo.</param>
     /// <param name="mainOffer">Oferta principal.</param>
@@ -45,6 +46,7 @@ public sealed class CopyBrief
         OrganicPlatform platform,
         OrganicPostFormat format,
         string formatInstruction,
+        DateOnly localDate,
         string? businessSummary = null,
         string? targetAudience = null,
         string? mainOffer = null,
@@ -65,6 +67,7 @@ public sealed class CopyBrief
         Platform = platform;
         Format = format;
         FormatInstruction = formatInstruction;
+        LocalDate = localDate;
         BusinessSummary = businessSummary;
         TargetAudience = targetAudience;
         MainOffer = mainOffer;
@@ -135,6 +138,11 @@ public sealed class CopyBrief
     public string FormatInstruction { get; }
 
     /// <summary>
+    /// Obtém a data civil do slot editorial.
+    /// </summary>
+    public DateOnly LocalDate { get; }
+
+    /// <summary>
     /// Obtém o resumo do negócio do cliente, quando informado.
     /// </summary>
     public string? BusinessSummary { get; }
@@ -200,6 +208,8 @@ public sealed class CopyBrief
 
         AppendVisualIdentityLine(sb);
         sb.AppendLine($"Idioma: {LanguageCode}");
+        sb.AppendLine($"Data do slot: {LocalDate:yyyy-MM-dd}");
+        sb.AppendLine("Instrução: gere legenda única para esta data do cronograma; não repita texto de outros dias.");
         sb.AppendLine($"Pilar: {Pillar}");
         sb.AppendLine($"Rede: {Platform}");
         sb.AppendLine($"Formato: {Format}");

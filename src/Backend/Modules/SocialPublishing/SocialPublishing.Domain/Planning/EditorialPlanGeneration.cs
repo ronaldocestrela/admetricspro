@@ -8,6 +8,13 @@ namespace SocialPublishing.Domain.Planning;
 /// </summary>
 public sealed class EditorialPlanGeneration : AggregateRoot<Guid>
 {
+    private static readonly HashSet<string> RetriableEmptyPlanErrorCodes = new(StringComparer.Ordinal)
+    {
+        SocialErrors.AiConfigurationMissing.Code,
+        SocialErrors.CopyGenerationFailed.Code,
+        SocialErrors.ConnectionRequired.Code,
+    };
+
     private readonly List<Guid> _createdPostIds = new();
     private readonly List<EditorialPlanFailedSlot> _failedSlots = new();
 
@@ -160,6 +167,32 @@ public sealed class EditorialPlanGeneration : AggregateRoot<Guid>
         }
 
         Status = EditorialPlanGenerationStatus.Completed;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Indica se o plano concluiu sem posts e apenas com falhas retentáveis (IA, configuração ou ausência de conexão).
+    /// </summary>
+    /// <returns><c>true</c> quando uma nova materialização deve ser permitida.</returns>
+    public bool IsRetriableEmptyCompletion() =>
+        Status == EditorialPlanGenerationStatus.Completed &&
+        _createdPostIds.Count == 0 &&
+        _failedSlots.Count > 0 &&
+        _failedSlots.All(s => RetriableEmptyPlanErrorCodes.Contains(s.ErrorCode));
+
+    /// <summary>
+    /// Reabre materialização após falha total retentável, limpando slots falhos para nova execução.
+    /// </summary>
+    /// <returns>Resultado da operação.</returns>
+    public Result ReopenForRetriableRetry()
+    {
+        if (!IsRetriableEmptyCompletion())
+        {
+            return Result.Failure(SocialErrors.PlanGenerationNotRetriable);
+        }
+
+        _failedSlots.Clear();
+        Status = EditorialPlanGenerationStatus.InProgress;
         return Result.Success();
     }
 }
