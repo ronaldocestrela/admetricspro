@@ -1,7 +1,7 @@
 @namespace WebApp.Components.Shared.Components
 @using SocialPublishing.Domain.Brand
 
-<span class="content-pillar-chip pillar-@Pillar.ToString().ToLowerInvariant()" data-testid="content-pillar-chip">@Label</span>
+<span class="content-pillar-chip pillar-@Pillar.ToString().ToLowerInvariant() @AdditionalCssClass" data-testid="content-pillar-chip">@Label</span>
 
 @code {
     /// <summary>
@@ -9,6 +9,12 @@
     /// </summary>
     [Parameter, EditorRequired]
     public ContentPillar Pillar { get; set; }
+
+    /// <summary>
+    /// Classes CSS adicionais do host (ex.: destaque no diálogo de detalhe).
+    /// </summary>
+    [Parameter]
+    public string? AdditionalCssClass { get; set; }
 
     private string Label => Pillar switch
     {

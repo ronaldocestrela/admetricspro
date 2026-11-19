@@ -7,11 +7,12 @@
 
 @if (Post is not null)
 {
+    var captionParts = OrganicPostCaptionDisplay.Parse(Post.Caption);
     <div class="modal-backdrop organic-post-detail-backdrop"
          data-testid="organic-post-detail-backdrop"
          @onclick="RequestClose"
          @onkeydown="HandleBackdropKeydown">
-        <div class="modal-dialog"
+        <div class="modal-dialog organic-post-detail-dialog"
              role="dialog"
              aria-modal="true"
              aria-labelledby="organic-post-detail-title"
@@ -28,20 +29,52 @@
                         @onclick="RequestClose"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-                    <OrganicPostStatusBadge Status="Post.Status" />
-                    <ContentPillarChip Pillar="Post.Pillar" />
+                <div class="organic-post-detail-badges mb-3">
+                    <div class="organic-post-detail-badge-row"
+                         data-testid="organic-post-detail-status-row">
+                        <span class="organic-post-detail-badge-label">Status</span>
+                        <OrganicPostStatusBadge Status="Post.Status"
+                                                AdditionalCssClass="organic-post-detail-badge-pill" />
+                    </div>
+                    <div class="organic-post-detail-badge-row"
+                         data-testid="organic-post-detail-pillar-row">
+                        <span class="organic-post-detail-badge-label">Pilar</span>
+                        <ContentPillarChip Pillar="Post.Pillar"
+                                           AdditionalCssClass="organic-post-detail-badge-pill" />
+                    </div>
                 </div>
-                <dl class="row mb-3 small organic-post-detail-meta">
-                    <dt class="col-sm-4">Rede</dt>
-                    <dd class="col-sm-8" data-testid="organic-post-detail-platform">@FormatPlatform(Post.Platform)</dd>
-                    <dt class="col-sm-4">Formato</dt>
-                    <dd class="col-sm-8" data-testid="organic-post-detail-format">@FormatPostFormat(Post.Format)</dd>
-                    <dt class="col-sm-4">Agendado para</dt>
-                    <dd class="col-sm-8" data-testid="organic-post-detail-scheduled">@FormatScheduledLocal(Post.ScheduledAtUtc)</dd>
-                </dl>
-                <h3 class="h6 text-muted">Legenda</h3>
-                <p class="mb-0 organic-post-detail-caption" data-testid="organic-post-detail-caption">@Post.Caption</p>
+                <div class="organic-post-detail-meta-grid mb-3">
+                    <div class="organic-post-detail-meta-item">
+                        <span class="organic-post-detail-meta-label">Rede</span>
+                        <span class="organic-post-detail-meta-value"
+                              data-testid="organic-post-detail-meta-platform">@FormatPlatform(Post.Platform)</span>
+                    </div>
+                    <div class="organic-post-detail-meta-item">
+                        <span class="organic-post-detail-meta-label">Formato</span>
+                        <span class="organic-post-detail-meta-value"
+                              data-testid="organic-post-detail-meta-format">@FormatPostFormat(Post.Format)</span>
+                    </div>
+                    <div class="organic-post-detail-meta-item organic-post-detail-meta-item-wide">
+                        <span class="organic-post-detail-meta-label">Agendado para</span>
+                        <span class="organic-post-detail-meta-value"
+                              data-testid="organic-post-detail-meta-scheduled">@FormatScheduledLocal(Post.ScheduledAtUtc)</span>
+                    </div>
+                </div>
+                <h3 class="h6 organic-post-detail-section-title">Legenda</h3>
+                <p class="organic-post-detail-caption"
+                   data-testid="organic-post-detail-caption-body">@captionParts.Body</p>
+                @if (captionParts.Hashtags.Count > 0)
+                {
+                    <div class="organic-post-detail-hashtags"
+                         data-testid="organic-post-detail-hashtags"
+                         aria-label="Hashtags">
+                        @foreach (var tag in captionParts.Hashtags)
+                        {
+                            <span class="organic-post-detail-hashtag"
+                                  data-testid="organic-post-detail-hashtag">@tag</span>
+                        }
+                    </div>
+                }
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-testid="organic-post-detail-done" @onclick="RequestClose">Fechar</button>

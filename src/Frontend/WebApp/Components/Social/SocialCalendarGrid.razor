@@ -249,6 +249,9 @@
         }
     }
 
-    private static string TruncateCaption(string caption) =>
-        caption.Length <= 80 ? caption : caption[..77] + "...";
+    private static string TruncateCaption(string caption)
+    {
+        var collapsed = OrganicPostCaptionDisplay.CollapseForCardPreview(caption);
+        return collapsed.Length <= 80 ? collapsed : collapsed[..77] + "...";
+    }
 }

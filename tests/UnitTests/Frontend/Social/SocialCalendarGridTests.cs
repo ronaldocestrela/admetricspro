@@ -186,11 +186,68 @@ public sealed class SocialCalendarGridTests : BunitTestBase
         cut.Find($"[data-testid='post-card-{postId}']").Click();
 
         cut.Find("[data-testid='organic-post-detail-dialog']").Should().NotBeNull();
-        cut.Find("[data-testid='organic-post-detail-caption']").TextContent.Should().Be(longCaption);
-        cut.Find("[data-testid='organic-post-detail-platform']").TextContent.Should().Contain("Instagram");
-        cut.Find("[data-testid='organic-post-detail-format']").TextContent.Should().Contain("Imagem");
-        cut.Find("[data-testid='organic-post-detail-scheduled']").TextContent.Should().Contain("03/11/2026");
+        cut.Find("[data-testid='organic-post-detail-caption-body']").TextContent.Should().Be(longCaption);
+        cut.Find("[data-testid='organic-post-detail-meta-platform']").TextContent.Should().Contain("Instagram");
+        cut.Find("[data-testid='organic-post-detail-meta-format']").TextContent.Should().Contain("Imagem");
+        cut.Find("[data-testid='organic-post-detail-meta-scheduled']").TextContent.Should().Contain("03/11/2026");
         cut.Find("[data-testid='organic-post-status-badge']").TextContent.Should().Contain("Agendado");
+    }
+
+    /// <summary>
+    /// Legenda com <c>\n</c> literal não exibe o escape e separa hashtags em chips.
+    /// </summary>
+    [Fact]
+    public void Grid_WhenDetailOpened_WithLiteralNewlines_ShouldFormatCaptionAndMetadata()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var caption = "Linha um\\n\\nLinha dois\\n\\n#Marca #Nicho";
+        var scheduledUtc = new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc);
+        var post = CreatePost(postId, workspaceId, scheduledUtc, OrganicPostStatus.Draft, caption);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+
+        cut.Find("[data-testid='organic-post-detail-caption-body']").TextContent.Should().NotContain("\\n");
+        cut.Find("[data-testid='organic-post-detail-caption-body']").TextContent.Should().Contain("Linha um");
+        cut.Find("[data-testid='organic-post-detail-caption-body']").TextContent.Should().Contain("Linha dois");
+        cut.FindAll("[data-testid='organic-post-detail-hashtag']").Count.Should().Be(2);
+
+        cut.Find("[data-testid='organic-post-detail-status-row']").Should().NotBeNull();
+        cut.Find("[data-testid='organic-post-detail-pillar-row']").Should().NotBeNull();
+        cut.Find("[data-testid='organic-post-detail-meta-platform']").Should().NotBeNull();
+        cut.Find("[data-testid='organic-post-detail-meta-format']").Should().NotBeNull();
+        cut.Find("[data-testid='organic-post-detail-meta-scheduled']").Should().NotBeNull();
+    }
+
+    /// <summary>
+    /// Prévia do card não exibe sequência literal <c>\n</c>.
+    /// </summary>
+    [Fact]
+    public void Grid_CardPreview_ShouldCollapseLiteralNewlines()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var caption = "Abertura\\n\\nContinuação";
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.Draft, caption);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}'] .social-calendar-post-caption").TextContent
+            .Should().NotContain("\\n")
+            .And.Contain("Abertura")
+            .And.Contain("Continuação");
     }
 
     /// <summary>

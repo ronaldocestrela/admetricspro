@@ -1,7 +1,7 @@
 @namespace WebApp.Components.Shared.Components
 @using SocialPublishing.Domain.Posts
 
-<span class="organic-post-status-badge @CssClass" data-testid="organic-post-status-badge">@Label</span>
+<span class="organic-post-status-badge @CssClass @AdditionalCssClass" data-testid="organic-post-status-badge">@Label</span>
 
 @code {
     /// <summary>
@@ -9,6 +9,12 @@
     /// </summary>
     [Parameter, EditorRequired]
     public OrganicPostStatus Status { get; set; }
+
+    /// <summary>
+    /// Classes CSS adicionais do host (ex.: destaque no diálogo de detalhe).
+    /// </summary>
+    [Parameter]
+    public string? AdditionalCssClass { get; set; }
 
     private string Label => Status switch
     {
@@ -31,6 +37,7 @@
         OrganicPostStatus.Published => "badge-published",
         OrganicPostStatus.Failed => "badge-failed",
         OrganicPostStatus.PendingApproval => "badge-pending",
+        OrganicPostStatus.Draft => "badge-draft",
         _ => "badge-default",
     };
 }
