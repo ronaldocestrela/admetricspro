@@ -265,6 +265,44 @@ public sealed class SocialPublishingClientTests
     }
 
     /// <summary>
+    /// SchedulePostAsync envia POST na rota :schedule sem corpo.
+    /// </summary>
+    [Fact]
+    public async Task SchedulePostAsync_ShouldPostVersionedScheduleRoute()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var scheduledAtUtc = new DateTime(2026, 11, 10, 13, 0, 0, DateTimeKind.Utc);
+        var dto = new OrganicPostDto(
+            postId,
+            workspaceId,
+            Guid.NewGuid(),
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Sale,
+            "Legenda",
+            scheduledAtUtc,
+            OrganicPostStatus.Scheduled);
+
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            request.Method.Should().Be(HttpMethod.Post);
+            request.RequestUri!.PathAndQuery.Should().Be($"/api/v1/social/posts/{postId}:schedule?workspaceId={workspaceId}");
+            request.Content.Should().BeNull();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(Result<OrganicPostDto>.Success(dto), JsonOptions))
+            };
+        });
+
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var result = await client.SchedulePostAsync(workspaceId, postId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be(OrganicPostStatus.Scheduled);
+    }
+
+    /// <summary>
     /// GetBrandVoiceAsync envia X-Tenant-Id e rota versionada.
     /// </summary>
     [Fact]

@@ -269,6 +269,13 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         PostLifecycleMutationAsync(workspaceId, postId, $"/api/v1/social/posts/{postId}:approve?workspaceId={workspaceId}", cancellationToken);
 
     /// <inheritdoc />
+    public Task<Result<OrganicPostDto>> SchedulePostAsync(
+        Guid workspaceId,
+        Guid postId,
+        CancellationToken cancellationToken = default) =>
+        PostLifecycleMutationAsync(workspaceId, postId, $"/api/v1/social/posts/{postId}:schedule?workspaceId={workspaceId}", cancellationToken);
+
+    /// <inheritdoc />
     public async Task<Result<BrandVoiceDto>> GetBrandVoiceAsync(
         Guid workspaceId,
         CancellationToken cancellationToken = default)

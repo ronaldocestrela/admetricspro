@@ -87,7 +87,7 @@
                     <button type="button"
                             class="btn btn-success me-auto"
                             data-testid="organic-post-detail-approve"
-                            disabled="@_isApproving"
+                            disabled="@_isLifecycleBusy"
                             @onclick="ApproveAsync">
                         @if (_isApproving)
                         {
@@ -99,7 +99,24 @@
                         }
                     </button>
                 }
-                <button type="button" class="btn btn-primary" data-testid="organic-post-detail-done" @onclick="RequestClose">Fechar</button>
+                @if (CanSchedule)
+                {
+                    <button type="button"
+                            class="btn btn-primary me-auto"
+                            data-testid="organic-post-detail-schedule"
+                            disabled="@_isLifecycleBusy"
+                            @onclick="ScheduleAsync">
+                        @if (_isScheduling)
+                        {
+                            <span>Agendando…</span>
+                        }
+                        else
+                        {
+                            <span>Agendar publicação</span>
+                        }
+                    </button>
+                }
+                <button type="button" class="btn btn-outline-secondary" data-testid="organic-post-detail-done" @onclick="RequestClose">Fechar</button>
             </div>
         </div>
     </div>
@@ -131,7 +148,7 @@
     public EventCallback OnClose { get; set; }
 
     /// <summary>
-    /// Notifica o host quando o post foi atualizado após aprovação ou envio parcial.
+    /// Notifica o host quando o post foi atualizado após aprovação, agendamento ou envio parcial.
     /// </summary>
     [Parameter]
     public EventCallback<OrganicPostDto> OnPostUpdated { get; set; }
@@ -139,9 +156,14 @@
     private OrganicPostDto _displayedPost = null!;
     private string? _errorMessage;
     private bool _isApproving;
+    private bool _isScheduling;
+
+    private bool _isLifecycleBusy => _isApproving || _isScheduling;
 
     private bool CanApprove =>
         _displayedPost.Status is OrganicPostStatus.Draft or OrganicPostStatus.PendingApproval;
+
+    private bool CanSchedule => _displayedPost.Status == OrganicPostStatus.Approved;
 
     /// <inheritdoc />
     protected override void OnParametersSet()
@@ -156,6 +178,7 @@
             _displayedPost = Post;
             _errorMessage = null;
             _isApproving = false;
+            _isScheduling = false;
         }
         else if (_displayedPost.Status != Post.Status)
         {
@@ -203,6 +226,32 @@
         }
 
         _displayedPost = approveResult.Value;
+        await NotifyPostUpdatedAsync(_displayedPost);
+    }
+
+    /// <summary>
+    /// Agenda a publicação de um post já aprovado (outbox).
+    /// </summary>
+    private async Task ScheduleAsync()
+    {
+        if (WorkspaceId == Guid.Empty || !CanSchedule)
+        {
+            return;
+        }
+
+        _isScheduling = true;
+        _errorMessage = null;
+
+        var scheduleResult = await SocialClient.SchedulePostAsync(WorkspaceId, _displayedPost.Id);
+        _isScheduling = false;
+
+        if (scheduleResult.IsFailure)
+        {
+            _errorMessage = scheduleResult.Error.Description;
+            return;
+        }
+
+        _displayedPost = scheduleResult.Value;
         await NotifyPostUpdatedAsync(_displayedPost);
     }
 

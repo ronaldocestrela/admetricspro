@@ -988,9 +988,10 @@ Cada post é posicionado no dia civil obtido ao converter **`ScheduledAtUtc`** c
 3. Fechar: botão **Fechar**, backdrop ou **Escape** (`OnClose` limpa o post selecionado na grade).
 4. A listagem inicial vem de **`ListPostsAsync`**; **Aprovar** no rodapé (`organic-post-detail-approve`) só para **`Draft`** e **`PendingApproval`**.
 5. **`Draft`**: **`SubmitForApprovalAsync`** (`POST ...:submit`) e, com sucesso, **`ApprovePostAsync`** (`POST ...:approve`). Falha no submit não chama approve. Falha no approve após submit bem-sucedido deixa o post em **`PendingApproval`** e permite novo clique (só approve).
-6. **`PendingApproval`**: apenas **`ApprovePostAsync`**. O post termina em **`Approved`**; **`:schedule`** e outbox **não** são acionados por esta ação (agendamento explícito permanece evolução futura).
-7. Erros de **`Result`** no diálogo (`organic-post-detail-error`); o selo na grade atualiza via **`OnPostUpdated`** na **`SocialCalendarGrid`**.
-8. Após **arrastar e soltar**, o primeiro clique é suprimido para não abrir o detalhe acidentalmente.
+6. **`PendingApproval`**: apenas **`ApprovePostAsync`**. O post termina em **`Approved`**; **`:schedule`** e outbox **não** são acionados por **Aprovar** (use **Agendar publicação** em seguida).
+7. **`Approved`**: botão **Agendar publicação** (`organic-post-detail-schedule`) chama **`SchedulePostAsync`** (`POST ...:schedule`); sucesso move o post para **`Scheduled`** e cria job **`Pending`** na outbox (horário inalterado — reagendar continua por arraste).
+8. Erros de **`Result`** no diálogo (`organic-post-detail-error`); o selo na grade atualiza via **`OnPostUpdated`** na **`SocialCalendarGrid`**.
+9. Após **arrastar e soltar**, o primeiro clique é suprimido para não abrir o detalhe acidentalmente.
 
 ### Contrato do drop (reagendamento)
 
@@ -1010,9 +1011,10 @@ Cada post é posicionado no dia civil obtido ao converter **`ScheduledAtUtc`** c
 | `ListPostsAsync` | `GET /api/v1/social/posts?workspaceId=&from=&to=` (UTC inclusivo) |
 | `SubmitForApprovalAsync` | `POST /api/v1/social/posts/{id}:submit?workspaceId=` (corpo vazio) |
 | `ApprovePostAsync` | `POST /api/v1/social/posts/{id}:approve?workspaceId=` (corpo vazio) |
+| `SchedulePostAsync` | `POST /api/v1/social/posts/{id}:schedule?workspaceId=` (corpo vazio) |
 | `RescheduleAsync` | `POST /api/v1/social/posts/{id}:reschedule?workspaceId=` corpo `{ "scheduledAtUtc": "..." }` |
 
-Permissões: leitura **`social.read`**; reagendamento e aprovação interna **`social.copilot.generate`** (Subfase 4.1).
+Permissões: leitura **`social.read`**; reagendamento, aprovação e agendamento interno **`social.copilot.generate`** (Subfase 4.1).
 
 Testes: **`SocialCalendarGridTests`**, extensões em **`SocialPublishingClientTests`**.
 
@@ -1132,7 +1134,7 @@ Formulário de **Brand Voice** e diálogo **Gerar cronograma** no calendário. T
 1. **Voz da marca** — em `/social/brand-voice`, salvar tom, persona, **informações do negócio** (resumo, público-alvo, oferta, diferenciais), **cores da identidade visual** (primária, secundária, destaque), links, termos, emoji e pesos dos pilares (`PUT /api/v1/social/brand-voice/{workspaceId}`). A UI **bloqueia** salvar se a soma dos quatro pesos ≠ 100 ou se alguma cor preenchida for hexadecimal inválido; validações adicionais continuam no backend (`Social.PillarWeightsInvalid`, `Social.BrandColorInvalid`, etc.).
 2. **Gerar cronograma** — no calendário (`/social/calendar`), botão **Gerar cronograma** abre `GeneratePlanDialog` e chama `POST /api/v1/social/plans:generate` com intervalo (`DateOnly`), `postsPerWeek`, `seed` e fuso IANA (**`America/Sao_Paulo`**, constante da página até o `WorkspaceDto` expor fuso).
 3. **Revisar na grade** — posts em **`Draft`** aparecem na grade após fechar o diálogo com sucesso (total ou parcial); a página recarrega `ListPostsAsync`.
-4. **Aprovação interna** — no detalhe do card do calendário, **Aprovar** em rascunho encadeia `:submit` e `:approve` via **`ISocialPublishingClient`** até **`Approved`**. **Agendar** (`:schedule` / outbox) ainda não tem botão dedicado na UI.
+4. **Aprovação e agendamento interno** — no detalhe do card: **Aprovar** em rascunho encadeia `:submit` e `:approve` até **`Approved`**; em seguida **Agendar publicação** chama `:schedule` e abre a outbox até **`Scheduled`**.
 5. **Link público** — botão **Link de aprovação** na toolbar do calendário (`CreateApprovalLinkAsync`); cliente final aprova em `/approve/{token}` ou `/t/{slug}/approve/{token}` (Subfase 5.3).
 6. **Tração orgânica** — worker detecta anomalia e persiste sugestão `Open`; `BoostSuggestionBanner` na grade lista sugestões e permite **Aceitar** (rascunho pausado via Integrations) ou **Dispensar** (Subfases 6.2–6.4).
 7. **Creative Hub** — ativos orgânicos aparecem em `/creatives` com permalink quando persistido; fadiga de anúncios pagos permanece inalterada (Subfase 6.4).

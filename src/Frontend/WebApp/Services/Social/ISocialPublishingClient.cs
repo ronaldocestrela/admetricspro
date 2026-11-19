@@ -125,6 +125,18 @@ public interface ISocialPublishingClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Agenda um post aprovado e registra job pendente na outbox de publicação.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="postId">Identificador do post.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post em <see cref="OrganicPostStatus.Scheduled"/> ou falha de negócio.</returns>
+    Task<Result<OrganicPostDto>> SchedulePostAsync(
+        Guid workspaceId,
+        Guid postId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Emite link compartilhável de aprovação orgânica (token em claro só nesta resposta).
     /// </summary>
     /// <param name="workspaceId">Workspace do pacote.</param>

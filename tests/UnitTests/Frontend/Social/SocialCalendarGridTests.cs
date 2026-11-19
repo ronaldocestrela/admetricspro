@@ -579,6 +579,90 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     }
 
     /// <summary>
+    /// Post aprovado: Agendar publicação chama SchedulePostAsync e o selo passa a Agendado.
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenScheduleApproved_ShouldCallScheduleAndUpdateCardBadge()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var scheduledUtc = new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc);
+        var post = CreatePost(postId, workspaceId, scheduledUtc, OrganicPostStatus.Approved);
+        var scheduled = post with { Status = OrganicPostStatus.Scheduled };
+
+        _socialClient.SchedulePostAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(scheduled)));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        await cut.Find("[data-testid='organic-post-detail-schedule']").ClickAsync();
+
+        await _socialClient.Received(1).SchedulePostAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+        cut.WaitForAssertion(() =>
+            cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent
+                .Should().Contain("Agendado"));
+    }
+
+    /// <summary>
+    /// Falha ao agendar exibe erro e mantém selo Aprovado com botão visível.
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenScheduleFails_ShouldShowErrorAndKeepApprovedBadge()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.Approved);
+
+        _socialClient.SchedulePostAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Failure(SocialPublishing.Domain.SocialErrors.InvalidTransition)));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        await cut.Find("[data-testid='organic-post-detail-schedule']").ClickAsync();
+
+        cut.Find("[data-testid='organic-post-detail-error']").Should().NotBeNull();
+        cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent.Should().Contain("Aprovado");
+        cut.FindAll("[data-testid='organic-post-detail-schedule']").Count.Should().Be(1);
+    }
+
+    /// <summary>
+    /// Status que não são Approved não exibem botão Agendar publicação no detalhe.
+    /// </summary>
+    [Theory]
+    [InlineData(OrganicPostStatus.Draft)]
+    [InlineData(OrganicPostStatus.PendingApproval)]
+    [InlineData(OrganicPostStatus.Scheduled)]
+    [InlineData(OrganicPostStatus.Published)]
+    public void Grid_WhenDetailOpened_ForNonSchedulableStatus_ShouldNotShowScheduleButton(OrganicPostStatus status)
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc), status);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        cut.FindAll("[data-testid='organic-post-detail-schedule']").Count.Should().Be(0);
+    }
+
+    /// <summary>
     /// Sem workspace selecionado exibe alerta orientando seleção na barra lateral.
     /// </summary>
     [Fact]
