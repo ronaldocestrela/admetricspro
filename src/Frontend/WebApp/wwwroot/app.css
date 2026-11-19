@@ -143,3 +143,100 @@ h1:focus {
     line-height: 1.2;
     word-break: break-word;
 }
+
+/* Tenant shell — calendário orgânico usa tokens escuros (evita texto branco em fundo #fff) */
+.tenant-app-shell .social-calendar-weekday {
+    color: var(--tenant-muted, #8c909f);
+}
+
+.tenant-app-shell .social-calendar-day {
+    background: var(--tenant-surface, #171b27);
+    color: var(--tenant-text, #fff);
+    border-color: var(--tenant-border, #42475370);
+}
+
+.tenant-app-shell .social-calendar-day.is-padding {
+    opacity: 1;
+    background: color-mix(in srgb, var(--tenant-surface, #171b27) 65%, var(--tenant-app-bg, #01030f));
+}
+
+.tenant-app-shell .social-calendar-day.is-padding .social-calendar-day-label {
+    color: var(--tenant-muted, #8c909f);
+}
+
+.tenant-app-shell .social-calendar-day-label {
+    color: var(--tenant-text, #fff);
+}
+
+.tenant-app-shell .social-calendar-post-card {
+    background: var(--tenant-surface-elevated, #1b1f2b);
+    color: var(--tenant-copy, #c2c6d6);
+    border-color: var(--tenant-border, #42475370);
+}
+
+.tenant-app-shell .social-calendar-drag-handle {
+    color: var(--tenant-muted, #8c909f);
+    opacity: 0.85;
+}
+
+.tenant-app-shell .social-calendar-post-caption {
+    color: var(--tenant-copy, #c2c6d6);
+}
+
+.tenant-app-shell .organic-post-status-badge,
+.tenant-app-shell .content-pillar-chip {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
+    margin-right: 0.2rem;
+    margin-bottom: 0.15rem;
+}
+
+.tenant-app-shell .organic-post-status-badge.badge-scheduled {
+    background: #33e2801a;
+    color: #33e280;
+}
+
+.tenant-app-shell .organic-post-status-badge.badge-published {
+    background: var(--tenant-primary-soft, color-mix(in srgb, var(--tenant-primary-color, #4e8eff) 10%, #090e19));
+    color: var(--tenant-primary-color, #4e8eff);
+}
+
+.tenant-app-shell .organic-post-status-badge.badge-failed {
+    background: #ffb4ab1a;
+    color: #ffb4ab;
+}
+
+.tenant-app-shell .organic-post-status-badge.badge-pending {
+    background: #ffd1661a;
+    color: #ffd166;
+}
+
+.tenant-app-shell .organic-post-status-badge.badge-default {
+    background: var(--tenant-surface, #171b27);
+    color: var(--tenant-muted, #8c909f);
+    border: 1px solid var(--tenant-border, #42475370);
+}
+
+.tenant-app-shell .content-pillar-chip.pillar-authority {
+    color: var(--tenant-primary-color, #4e8eff);
+    background: var(--tenant-primary-soft, color-mix(in srgb, var(--tenant-primary-color, #4e8eff) 10%, #090e19));
+}
+
+.tenant-app-shell .content-pillar-chip.pillar-sale {
+    color: #33e280;
+    background: #33e28012;
+}
+
+.tenant-app-shell .content-pillar-chip.pillar-connection {
+    color: #ffd166;
+    background: #ffd16612;
+}
+
+.tenant-app-shell .content-pillar-chip.pillar-socialproof {
+    color: #c2c6d6;
+    background: #ffffff08;
+}

@@ -949,6 +949,8 @@ Grade mensal e semanal com reagendamento por arrastar e soltar. Toda mutação p
 
 Peças atômicas: **`OrganicPostStatusBadge`**, **`ContentPillarChip`**. Navegação lateral: **Calendário orgânico** (`TenantSidebar`).
 
+A grade e os cards usam os tokens escuros do **`tenant-app-shell`** (`--tenant-surface`, `--tenant-surface-elevated`, `--tenant-text`, `--tenant-copy`, `--tenant-muted`, `--tenant-border`) em `wwwroot/app.css`, alinhados a `tenant-workspace.css`, para contraste legível no layout autenticado.
+
 ### Modos da grade
 
 | Modo | Comportamento |
