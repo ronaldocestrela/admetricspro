@@ -124,11 +124,19 @@ h1:focus {
     padding: 0.25rem;
     margin-bottom: 0.25rem;
     background: var(--surface-card, #f1f5f9);
+}
+
+.social-calendar-post-card.is-draggable {
     cursor: grab;
 }
 
-.social-calendar-post-card[draggable="false"] {
-    cursor: default;
+.social-calendar-post-card.is-static {
+    cursor: pointer;
+}
+
+.social-calendar-post-card:focus-visible {
+    outline: 2px solid var(--tenant-primary-color, #4e8eff);
+    outline-offset: 1px;
 }
 
 .social-calendar-drag-handle {

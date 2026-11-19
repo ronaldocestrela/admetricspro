@@ -960,13 +960,13 @@ Testes: **`SocialPublishingClientTests`**, **`SocialConnectionsPanelTests`** (bU
 
 ## 11.1 Frontend Blazor — calendário orgânico (Subfase 5.2)
 
-Grade mensal e semanal com reagendamento por arrastar e soltar. Toda mutação passa por **`POST /api/v1/social/posts/{id}:reschedule`**; o JavaScript não contém regra de negócio.
+Grade mensal e semanal com **clique para detalhe** (somente leitura) e **reagendamento por arrastar e soltar**. Toda mutação passa por **`POST /api/v1/social/posts/{id}:reschedule`**. O script `wwwroot/js/socialCalendar.js` só preenche `dataTransfer` no `dragstart` síncrono do navegador; não contém regra de negócio.
 
 ### Rotas e componentes
 
 | Rota Blazor | Layout | Componente |
 | :--- | :--- | :--- |
-| `/social/calendar` | `TenantMainLayout` | `SocialCalendarPage` + `SocialCalendarGrid` |
+| `/social/calendar` | `TenantMainLayout` | `SocialCalendarPage` + `SocialCalendarGrid` + `OrganicPostDetailDialog` |
 
 Peças atômicas: **`OrganicPostStatusBadge`**, **`ContentPillarChip`**. Navegação lateral: **Calendário orgânico** (`TenantSidebar`).
 
@@ -981,14 +981,24 @@ A grade e os cards usam os tokens escuros do **`tenant-app-shell`** (`--tenant-s
 
 Cada post é posicionado no dia civil obtido ao converter **`ScheduledAtUtc`** com o fuso IANA informado (padrão da página: **`America/Sao_Paulo`**). O **`WorkspaceDto`** ainda **não** expõe fuso; a UI usa constante até persistência no módulo Tenants.
 
+### Contrato de clique (detalhe somente leitura)
+
+1. **Clique**, **Enter** ou **Espaço** no card abre **`OrganicPostDetailDialog`** com legenda integral, status, pilar, rede, formato e horário local (`data-testid` prefixo `organic-post-detail-*`).
+2. Fechar: botão **Fechar**, backdrop ou **Escape** (`OnClose` limpa o post selecionado na grade).
+3. Não há chamada HTTP adicional: os dados vêm do **`OrganicPostDto`** já carregado por **`ListPostsAsync`**.
+4. Após **arrastar e soltar**, o primeiro clique é suprimido para não abrir o detalhe acidentalmente.
+5. Ações de ciclo de vida (`:submit`, `:approve`, `:schedule`) permanecem fora de escopo (seção 15).
+
 ### Contrato do drop (reagendamento)
 
-1. Só posts em **`Draft`**, **`PendingApproval`**, **`Approved`** ou **`Scheduled`** exibem alça de arraste.
-2. **`Published`**, **`Publishing`** e **`Cancelled`** não são arrastáveis (`Social.SlotNotReschedulable` no backend se forçado).
-3. Soltar em **outro dia civil** (mesmo fuso): calcula novo **`scheduledAtUtc`** preservando **hora e minuto locais** do slot original; chama **`RescheduleAsync`**.
-4. Soltar no **mesmo dia**: nenhuma chamada HTTP.
-5. **`Result` de falha**: o card volta à célula de origem e a descrição do erro aparece na grade (`data-testid="social-calendar-error"`).
-6. Troca de workspace na barra lateral: a página limpa a lista e chama **`ListPostsAsync`** de novo (sem vazar posts de outro cliente).
+1. Cards reagendáveis renderizam **`draggable="true"`** (string literal); demais posts usam **`draggable="false"`** — o binding booleano do Blazor gera `draggable=""`, que o HTML trata como `auto` e impede o gesto.
+2. Durante o arraste, **`ShouldRender`** fica falso para o elemento não ser recriado no circuito Blazor Server; `socialCalendar.js` define `dataTransfer` no capture phase.
+3. Só posts em **`Draft`**, **`PendingApproval`**, **`Approved`** ou **`Scheduled`** exibem alça de arraste.
+4. **`Published`**, **`Publishing`** e **`Cancelled`** não são arrastáveis (`Social.SlotNotReschedulable` no backend se forçado).
+5. Soltar em **outro dia civil** (mesmo fuso): calcula novo **`scheduledAtUtc`** preservando **hora e minuto locais** do slot original; chama **`RescheduleAsync`**.
+6. Soltar no **mesmo dia**: nenhuma chamada HTTP.
+7. **`Result` de falha**: o card volta à célula de origem e a descrição do erro aparece na grade (`data-testid="social-calendar-error"`).
+8. Troca de workspace na barra lateral: a página limpa a lista e chama **`ListPostsAsync`** de novo (sem vazar posts de outro cliente).
 
 ### Cliente HTTP (calendário)
 

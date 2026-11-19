@@ -35,9 +35,16 @@
                 @foreach (var post in GetPostsForDay(day))
                 {
                     var canDrag = CanReschedule(post);
-                    <article class="social-calendar-post-card"
+                    var dragValue = canDrag ? "true" : "false";
+                    <article @key="post.Id"
+                             class="social-calendar-post-card @(canDrag ? "is-draggable" : "is-static")"
                              data-testid="@($"post-card-{post.Id}")"
-                             draggable="@canDrag"
+                             draggable="@dragValue"
+                             role="button"
+                             tabindex="0"
+                             aria-label="Ver post agendado"
+                             @onclick="() => HandlePostClickAsync(post)"
+                             @onkeydown="(e) => HandlePostKeydownAsync(e, post)"
                              @ondragstart="@(() => HandleDragStart(post))"
                              @ondragend="HandleDragEnd">
                         @if (canDrag)
@@ -52,6 +59,10 @@
             </div>
         }
     </div>
+
+    <OrganicPostDetailDialog Post="_detailPost"
+                             TimeZoneId="TimeZone"
+                             OnClose="CloseDetailAsync" />
 </div>
 
 @code {
@@ -60,8 +71,11 @@
     private List<OrganicPostDto> _displayPosts = [];
     private IReadOnlyList<DateOnly> _visibleDays = [];
     private OrganicPostDto? _draggingPost;
+    private OrganicPostDto? _detailPost;
     private string? _errorMessage;
     private TimeZoneInfo _timeZone = TimeZoneInfo.Utc;
+    private bool _isDragging;
+    private bool _suppressClickAfterDrag;
 
     /// <summary>
     /// Workspace proprietário dos posts exibidos e alvo do reagendamento.
@@ -102,6 +116,9 @@
         _visibleDays = SocialCalendarDateHelper.GetVisibleDays(View, AnchorDate);
     }
 
+    /// <inheritdoc />
+    protected override bool ShouldRender() => !_isDragging;
+
     private string GridCssClass => View == SocialCalendarView.Week
         ? "social-calendar-cells social-calendar-cells-week"
         : "social-calendar-cells social-calendar-cells-month";
@@ -123,10 +140,56 @@
         }
 
         _draggingPost = post;
+        _isDragging = true;
         _errorMessage = null;
     }
 
-    private void HandleDragEnd() => _draggingPost = null;
+    private void HandleDragEnd()
+    {
+        _draggingPost = null;
+        _isDragging = false;
+        _suppressClickAfterDrag = true;
+    }
+
+    /// <summary>
+    /// Abre o painel somente leitura do post, salvo supressão após arraste.
+    /// </summary>
+    /// <param name="post">Post clicado na grade.</param>
+    private Task HandlePostClickAsync(OrganicPostDto post)
+    {
+        if (_suppressClickAfterDrag)
+        {
+            _suppressClickAfterDrag = false;
+            return Task.CompletedTask;
+        }
+
+        _detailPost = post;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Atalhos de teclado no card (Enter/Espaço abrem o detalhe).
+    /// </summary>
+    /// <param name="args">Evento de tecla.</param>
+    /// <param name="post">Post focado.</param>
+    private Task HandlePostKeydownAsync(KeyboardEventArgs args, OrganicPostDto post)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            return HandlePostClickAsync(post);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Fecha o diálogo de detalhe do post.
+    /// </summary>
+    private Task CloseDetailAsync()
+    {
+        _detailPost = null;
+        return Task.CompletedTask;
+    }
 
     private async Task HandleDropAsync(DateOnly targetDay)
     {
@@ -135,6 +198,7 @@
             return;
         }
 
+        _isDragging = false;
         var post = _draggingPost;
         _draggingPost = null;
 

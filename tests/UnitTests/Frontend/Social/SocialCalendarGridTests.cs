@@ -124,10 +124,30 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     }
 
     /// <summary>
-    /// Post publicado não expõe alça de arraste.
+    /// Post reagendável expõe atributo draggable em string literal "true".
     /// </summary>
     [Fact]
-    public void Grid_PublishedPost_ShouldNotExposeDragHandle()
+    public void Grid_ScheduledPost_ShouldRenderDraggableTrue()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 3, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.Scheduled);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").GetAttribute("draggable").Should().Be("true");
+    }
+
+    /// <summary>
+    /// Post publicado renderiza draggable="false" e não expõe alça de arraste.
+    /// </summary>
+    [Fact]
+    public void Grid_PublishedPost_ShouldRenderDraggableFalse()
     {
         var workspaceId = Guid.NewGuid();
         var postId = Guid.NewGuid();
@@ -140,7 +160,83 @@ public sealed class SocialCalendarGridTests : BunitTestBase
             .Add(x => x.TimeZone, TimeZoneId)
             .Add(x => x.Posts, new[] { post }));
 
+        cut.Find($"[data-testid='post-card-{postId}']").GetAttribute("draggable").Should().Be("false");
         cut.FindAll($"[data-testid='drag-handle-{postId}']").Count.Should().Be(0);
+    }
+
+    /// <summary>
+    /// Clique no card abre o diálogo de detalhe com legenda completa e metadados.
+    /// </summary>
+    [Fact]
+    public void Grid_WhenCardClicked_ShouldOpenDetailWithFullCaptionAndMetadata()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var longCaption = new string('A', 100);
+        var scheduledUtc = new DateTime(2026, 11, 3, 16, 0, 0, DateTimeKind.Utc);
+        var post = CreatePost(postId, workspaceId, scheduledUtc, OrganicPostStatus.Scheduled, longCaption);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+
+        cut.Find("[data-testid='organic-post-detail-dialog']").Should().NotBeNull();
+        cut.Find("[data-testid='organic-post-detail-caption']").TextContent.Should().Be(longCaption);
+        cut.Find("[data-testid='organic-post-detail-platform']").TextContent.Should().Contain("Instagram");
+        cut.Find("[data-testid='organic-post-detail-format']").TextContent.Should().Contain("Imagem");
+        cut.Find("[data-testid='organic-post-detail-scheduled']").TextContent.Should().Contain("03/11/2026");
+        cut.Find("[data-testid='organic-post-status-badge']").TextContent.Should().Contain("Agendado");
+    }
+
+    /// <summary>
+    /// Fechar o diálogo de detalhe remove o painel.
+    /// </summary>
+    [Fact]
+    public void Grid_WhenDetailClosed_ShouldRemoveDialog()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 3, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.Scheduled);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        cut.Find("[data-testid='organic-post-detail-close']").Click();
+        cut.FindAll("[data-testid='organic-post-detail-dialog']").Count.Should().Be(0);
+    }
+
+    /// <summary>
+    /// Clique imediatamente após dragstart não abre o detalhe (supressão pós-arraste).
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenClickAfterDragStart_ShouldNotOpenDetail()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 3, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.Scheduled);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        await cut.Find($"[data-testid='post-card-{postId}']").TriggerEventAsync("ondragstart", new Microsoft.AspNetCore.Components.Web.DragEventArgs());
+        await cut.Find($"[data-testid='post-card-{postId}']").TriggerEventAsync("ondragend", new Microsoft.AspNetCore.Components.Web.DragEventArgs());
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+
+        cut.FindAll("[data-testid='organic-post-detail-dialog']").Count.Should().Be(0);
     }
 
     /// <summary>
@@ -279,7 +375,8 @@ public sealed class SocialCalendarGridTests : BunitTestBase
         Guid id,
         Guid workspaceId,
         DateTime scheduledAtUtc,
-        OrganicPostStatus status) =>
+        OrganicPostStatus status,
+        string? caption = null) =>
         new(
             id,
             workspaceId,
@@ -287,7 +384,7 @@ public sealed class SocialCalendarGridTests : BunitTestBase
             OrganicPlatform.Instagram,
             OrganicPostFormat.FeedImage,
             ContentPillar.Authority,
-            "Legenda de teste",
+            caption ?? "Legenda de teste",
             scheduledAtUtc,
             status);
 }

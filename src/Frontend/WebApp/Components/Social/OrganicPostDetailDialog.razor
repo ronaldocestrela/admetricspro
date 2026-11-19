@@ -1,0 +1,141 @@
+@namespace WebApp.Components.Social
+@using WebApp.Components.Shared.Components
+@using WebApp.Services.Social
+@using SocialPublishing.Application.Posts.DTOs
+@using SocialPublishing.Domain.Connections
+@using SocialPublishing.Domain.Posts
+
+@if (Post is not null)
+{
+    <div class="modal-backdrop organic-post-detail-backdrop"
+         data-testid="organic-post-detail-backdrop"
+         @onclick="RequestClose"
+         @onkeydown="HandleBackdropKeydown">
+        <div class="modal-dialog"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="organic-post-detail-title"
+             data-testid="organic-post-detail-dialog"
+             @onclick:stopPropagation="true"
+             @onkeydown="HandleDialogKeydown"
+             tabindex="-1">
+            <div class="modal-header">
+                <h2 class="h5 mb-0" id="organic-post-detail-title">Post orgânico</h2>
+                <button type="button"
+                        class="btn-close"
+                        aria-label="Fechar"
+                        data-testid="organic-post-detail-close"
+                        @onclick="RequestClose"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+                    <OrganicPostStatusBadge Status="Post.Status" />
+                    <ContentPillarChip Pillar="Post.Pillar" />
+                </div>
+                <dl class="row mb-3 small organic-post-detail-meta">
+                    <dt class="col-sm-4">Rede</dt>
+                    <dd class="col-sm-8" data-testid="organic-post-detail-platform">@FormatPlatform(Post.Platform)</dd>
+                    <dt class="col-sm-4">Formato</dt>
+                    <dd class="col-sm-8" data-testid="organic-post-detail-format">@FormatPostFormat(Post.Format)</dd>
+                    <dt class="col-sm-4">Agendado para</dt>
+                    <dd class="col-sm-8" data-testid="organic-post-detail-scheduled">@FormatScheduledLocal(Post.ScheduledAtUtc)</dd>
+                </dl>
+                <h3 class="h6 text-muted">Legenda</h3>
+                <p class="mb-0 organic-post-detail-caption" data-testid="organic-post-detail-caption">@Post.Caption</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-testid="organic-post-detail-done" @onclick="RequestClose">Fechar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Post selecionado para exibição somente leitura; ausência oculta o diálogo.
+    /// </summary>
+    [Parameter]
+    public OrganicPostDto? Post { get; set; }
+
+    /// <summary>
+    /// Identificador IANA do fuso para exibir o horário agendado.
+    /// </summary>
+    [Parameter]
+    public string TimeZoneId { get; set; } = "America/Sao_Paulo";
+
+    /// <summary>
+    /// Notifica o host para fechar o painel de detalhe.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private async Task RequestClose() => await OnClose.InvokeAsync();
+
+    private void HandleBackdropKeydown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _ = RequestClose();
+        }
+    }
+
+    private void HandleDialogKeydown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _ = RequestClose();
+        }
+    }
+
+    private string FormatScheduledLocal(DateTime scheduledAtUtc)
+    {
+        var tz = ResolveTimeZone(TimeZoneId);
+        var local = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(scheduledAtUtc, DateTimeKind.Utc),
+            tz);
+        return local.ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
+    }
+
+    /// <summary>
+    /// Rótulo legível da rede de destino.
+    /// </summary>
+    /// <param name="platform">Plataforma do post.</param>
+    /// <returns>Texto para UI.</returns>
+    internal static string FormatPlatform(OrganicPlatform platform) => platform switch
+    {
+        OrganicPlatform.Instagram => "Instagram",
+        OrganicPlatform.FacebookPage => "Facebook Page",
+        OrganicPlatform.TikTok => "TikTok",
+        _ => platform.ToString(),
+    };
+
+    /// <summary>
+    /// Rótulo legível do formato de publicação.
+    /// </summary>
+    /// <param name="format">Formato do post.</param>
+    /// <returns>Texto para UI.</returns>
+    internal static string FormatPostFormat(OrganicPostFormat format) => format switch
+    {
+        OrganicPostFormat.FeedImage => "Imagem no feed",
+        OrganicPostFormat.FeedCarousel => "Carrossel no feed",
+        OrganicPostFormat.Reel => "Reel",
+        OrganicPostFormat.TikTokVideo => "Vídeo TikTok",
+        _ => format.ToString(),
+    };
+
+    private static TimeZoneInfo ResolveTimeZone(string timeZoneId)
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+        }
+    }
+}
