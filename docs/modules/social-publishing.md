@@ -132,6 +132,8 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 
 Reagendamento (`Reschedule`): permitido em `Draft`, `PendingApproval`, `Approved`, `Scheduled`. Entrada HTTP: **`scheduledAtUtc`** (UTC). Cada alteração grava `ScheduleRevision` (de/para, `revisedByUserId`, `revisedAtUtc`). Post em `Scheduled` não aceita instante anterior ao relógio da aplicação → `Social.ScheduleInThePast`. Bloqueado em `Publishing`, `Published`, `Cancelled` → `Social.SlotNotReschedulable`. Permissão: `social.copilot.generate` (`SocialCopilotGenerate`).
 
+**Persistência:** colunas `datetime2` do schema `social` não armazenam fuso; o `SocialPublishingDbContext` aplica conversores EF que materializam todos os `DateTime` / `DateTime?` relidos com `DateTimeKind.Utc`, alinhando o domínio (`ScheduleRevision`, `PublicationJob`, etc.) sem alterar o tipo SQL.
+
 Carrossel (`FeedCarousel`): entre **2** e **10** itens de mídia.
 
 ### Exemplo JSON — post em `Draft`

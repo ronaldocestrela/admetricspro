@@ -10,6 +10,7 @@ using SocialPublishing.Domain.Connections;
 using SocialPublishing.Domain.Connections.Events;
 using SocialPublishing.Domain.Planning;
 using SocialPublishing.Domain.Posts;
+using SocialPublishing.Domain.Publications;
 using SocialPublishing.Infrastructure.Persistence;
 using SocialPublishing.Infrastructure.Persistence.Repositories;
 
@@ -394,6 +395,59 @@ public sealed class SocialPublishingRepositoryTests(SqlServerFixture fixture)
         reloaded.Should().NotBeNull();
         reloaded!.Status.Should().Be(EditorialPlanGenerationStatus.Completed);
         reloaded.CreatedPostIds.Should().ContainSingle().Which.Should().Be(inside.Id);
+    }
+
+    /// <summary>
+    /// Garante que <c>datetime2</c> relido do SQL Server materializa <see cref="DateTimeKind.Utc"/> para regras de domínio.
+    /// </summary>
+    [Fact]
+    public async Task OrganicPost_ReloadedFromSql_Should_HaveUtcKind_ForScheduleAndPublicationJob()
+    {
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var connectionString = await PrepareMigratedDatabaseAsync();
+        var resolver = new FakeTenantConnectionResolver(new Dictionary<Guid, string> { [tenantId] = connectionString });
+        resolver.SetCurrentTenant(tenantId);
+
+        var accessor = new SocialPublishingDbContextAccessor(new SocialPublishingDbContextFactory(resolver));
+        var postRepository = new OrganicPostRepository(accessor);
+        var unitOfWork = new SocialPublishingUnitOfWork(accessor);
+
+        var connection = OrganicConnection.Create(
+            workspaceId,
+            OrganicPlatform.Instagram,
+            "ig-utc",
+            "Conta",
+            "scope",
+            "cipher").Value;
+        await new OrganicConnectionRepository(accessor).AddAsync(connection, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var post = OrganicPost.CreateEditorialDraft(
+            workspaceId,
+            connection.Id,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Authority,
+            "Post",
+            new DateTime(2026, 6, 2, 10, 0, 0),
+            "America/Sao_Paulo").Value;
+
+        await postRepository.AddAsync(post, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var reloaded = await postRepository.GetByIdAsync(post.Id, CancellationToken.None);
+        reloaded.Should().NotBeNull();
+        reloaded!.ScheduledAtUtc.Kind.Should().Be(DateTimeKind.Utc);
+        reloaded.CreatedAtUtc.Kind.Should().Be(DateTimeKind.Utc);
+
+        var nowUtc = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        PublicationJob.Open(reloaded.Id, workspaceId, reloaded.ScheduledAtUtc, nowUtc).IsSuccess.Should().BeTrue();
+
+        var newUtc = new DateTime(2026, 7, 1, 14, 0, 0, DateTimeKind.Utc);
+        var revisedAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        reloaded.Reschedule(newUtc, actorId, revisedAt).IsSuccess.Should().BeTrue();
     }
 
     /// <summary>
