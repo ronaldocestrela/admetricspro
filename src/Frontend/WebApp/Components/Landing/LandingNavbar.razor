@@ -20,6 +20,7 @@
             </nav>
 
         <div class="flex items-center gap-space-sm">
+            <ThemeToggle CssClass="landing-theme-toggle" />
             <a class="hidden sm:inline-flex items-center justify-center px-space-md py-space-sm rounded-lg font-body-sm text-body-sm text-on-surface bg-surface-container-high hover:bg-surface-variant hover:text-on-surface transition-all focus:outline-none" href="/login">Entrar</a>
             <a class="inline-flex items-center justify-center px-space-md py-space-sm rounded-lg font-body-sm text-body-sm font-semibold text-on-primary bg-gradient-to-r from-primary-container to-secondary-container hover:opacity-95 shadow-[0_0_20px_rgba(0,180,199,0.3)] transition-all focus:outline-none" href="#planos">Começar agora</a>
             <button id="mobile-menu-toggle" aria-label="@(IsMobileMenuOpen ? "Fechar menu" : "Abrir menu")" aria-expanded="@IsMobileMenuOpen.ToString().ToLowerInvariant()" aria-controls="mobile-menu" class="lg:hidden p-space-xs rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container focus:outline-none" @onclick="ToggleMobileMenu" type="button">

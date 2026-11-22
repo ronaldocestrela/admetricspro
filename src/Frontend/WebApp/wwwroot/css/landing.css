@@ -7,31 +7,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
 :root {
-    /* Stitch Color Tokens */
-    --lp-bg-surface: #0f131d;
-    --lp-bg-surface-low: #171b26;
-    --lp-bg-surface-container: #1c1f2a;
-    --lp-bg-surface-high: #262a35;
-    --lp-bg-surface-highest: #313540;
-    --lp-bg-surface-lowest: #0a0e18;
-    
-    --lp-text-on-surface: #dfe2f1;
-    --lp-text-on-surface-variant: #c7c4d8;
-    --lp-outline: #918fa1;
-    --lp-outline-variant: #464555;
-    
-    --lp-primary: #c3c0ff;
-    --lp-primary-container: #4f46e5;
-    --lp-on-primary-container: #dad7ff;
-    --lp-on-primary: #1d00a5;
-    
-    --lp-secondary: #4edea3;
-    --lp-secondary-container: #00a572;
-    --lp-on-secondary-container: #00311f;
-    
-    --lp-tertiary: #4cd7f6;
-    --lp-tertiary-container: #006a7c;
-    --lp-on-tertiary-container: #93e8ff;
+    /* Stitch Color Tokens (mapeados ao design system AdMetricsPro) */
+    --lp-bg-surface: var(--ad-bg-canvas);
+    --lp-bg-surface-low: var(--ad-bg-surface);
+    --lp-bg-surface-container: var(--ad-bg-surface);
+    --lp-bg-surface-high: var(--ad-bg-surface-elevated);
+    --lp-bg-surface-highest: var(--ad-bg-surface-elevated);
+    --lp-bg-surface-lowest: var(--ad-bg-canvas);
+
+    --lp-text-on-surface: var(--ad-text-primary);
+    --lp-text-on-surface-variant: var(--ad-text-secondary);
+    --lp-outline: var(--ad-text-muted);
+    --lp-outline-variant: var(--ad-border-subtle);
+
+    --lp-primary: var(--ad-primary-brand);
+    --lp-primary-container: var(--ad-primary-brand);
+    --lp-on-primary-container: var(--ad-on-primary);
+    --lp-on-primary: var(--ad-on-primary);
+
+    --lp-secondary: var(--ad-accent-volt);
+    --lp-secondary-container: var(--ad-accent-volt);
+    --lp-on-secondary-container: var(--ad-on-accent);
+
+    --lp-tertiary: var(--ad-accent-volt);
+    --lp-tertiary-container: var(--ad-primary-brand);
+    --lp-on-tertiary-container: var(--ad-on-accent);
     
     /* Typography */
     --lp-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -44,8 +44,8 @@
 
 /* Base resets & styles for landing */
 .landing-shell {
-    background-color: var(--lp-bg-surface);
-    color: var(--lp-text-on-surface);
+    background-color: var(--ad-bg-canvas);
+    color: var(--ad-text-primary);
     font-family: var(--lp-font-sans);
     min-height: 100vh;
     display: flex;

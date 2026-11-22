@@ -45,6 +45,8 @@ A referência local é `sendium-lp/Sendium.LandingPage`. A implementação ativa
 
 O DOM das seções, grids, superfícies, tipografia Inter/JetBrains Mono, proporção 4:3 do carrossel, timeline, partículas, indicadores neon e comportamento responsivo derivam da referência. Os componentes antigos de cockpit, bento e depoimentos permanecem fora da composição pública.
 
+As superfícies e cores da LP consomem os tokens `--ad-*` (ver ADR 0050 e `docs/modules/frontend-blazor.md`). A navbar inclui `ThemeToggle`; partículas do hero leem `--ad-primary-brand` e `--ad-accent-volt` em runtime.
+
 ## Navegação e conversão
 
 - Âncoras: `#hero`, `#como-funciona`, `#recursos`, `#para-quem`, `#planos`, `#faq` e `#seguranca`.

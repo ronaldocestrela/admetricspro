@@ -1,16 +1,16 @@
-/* Cores explícitas mantêm contraste com o tema escuro do portal. */
-.modal-content { color: #e2e8f0; background: #111c2e; border: 1px solid #334155; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 80px #0008; color-scheme: dark; }
-.modal-header, .modal-footer { color: #f8fafc; background: #17243a !important; border-color: #334155 !important; }
-.modal-title { color: #f8fafc !important; font-size: 1.15rem; line-height: 1.5; }
-.schedule-intro { color: #aebed3; line-height: 1.6; margin-bottom: 24px; }
-.form-label, .form-check-label { color: #e2e8f0 !important; }
-.text-muted, .form-text, small { color: #b0bfd2 !important; }
-.form-control, .form-select { background-color: #0b1424; color: #f1f5f9; border: 1px solid #475569; border-radius: 9px; min-height: 42px; padding: 10px 12px; }
-.form-control::placeholder { color: #97a8bf; opacity: 1; }
-.form-control:focus, .form-select:focus { color: #fff; background-color: #0b1424; border-color: var(--tenant-primary, #818cf8); box-shadow: 0 0 0 3px #818cf833; outline: 2px solid transparent; }
-.form-select option { color: #f1f5f9; background: #0b1424; }
-.form-check-input { background-color: #0b1424; border-color: #64748b; }
-.form-check-input:checked { background-color: var(--tenant-primary, #6366f1); border-color: var(--tenant-primary, #6366f1); }
+/* Modal alinhado aos tokens do design system (claro/escuro via data-theme). */
+.modal-content { color: var(--ad-text-secondary); background: var(--ad-bg-surface); border: 1px solid var(--ad-border-subtle); border-radius: 18px; overflow: hidden; box-shadow: var(--ad-shadow-soft); }
+.modal-header, .modal-footer { color: var(--ad-text-primary); background: var(--ad-bg-surface-elevated) !important; border-color: var(--ad-border-subtle) !important; }
+.modal-title { color: var(--ad-text-primary) !important; font-size: 1.15rem; line-height: 1.5; }
+.schedule-intro { color: var(--ad-text-secondary); line-height: 1.6; margin-bottom: 24px; }
+.form-label, .form-check-label { color: var(--ad-text-primary) !important; }
+.text-muted, .form-text, small { color: var(--ad-text-muted) !important; }
+.form-control, .form-select { background-color: var(--ad-bg-surface-elevated); color: var(--ad-text-primary); border: 1px solid var(--ad-border-subtle); border-radius: 9px; min-height: 42px; padding: 10px 12px; }
+.form-control::placeholder { color: var(--ad-text-muted); opacity: 1; }
+.form-control:focus, .form-select:focus { color: var(--ad-text-primary); background-color: var(--ad-bg-surface-elevated); border-color: var(--ad-primary-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ad-primary-brand) 20%, transparent); outline: 2px solid transparent; }
+.form-select option { color: var(--ad-text-primary); background: var(--ad-bg-surface-elevated); }
+.form-check-input { background-color: var(--ad-bg-surface-elevated); border-color: var(--ad-border-subtle); }
+.form-check-input:checked { background-color: var(--ad-primary-brand); border-color: var(--ad-primary-brand); }
 .btn-close { filter: invert(1) grayscale(1) brightness(2); opacity: .85; }
 .table { --bs-table-bg: #111c2e; --bs-table-color: #e2e8f0; --bs-table-border-color: #334155; color: #e2e8f0; }
 .table thead { --bs-table-bg: #17243a; --bs-table-color: #cbd5e1; }

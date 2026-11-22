@@ -28,9 +28,9 @@ public class MainLayoutTests : BunitTestBase
 
         var styleAttribute = appShell.GetAttribute("style");
         styleAttribute.Should().NotBeNull();
-        styleAttribute.Should().Contain("--tenant-primary: #4E8EFF;");
-        styleAttribute.Should().Contain("--tenant-secondary: #090E19;");
-        styleAttribute.Should().Contain("--tenant-accent: #4BD8EC;");
+        styleAttribute.Should().Contain("--tenant-primary: #0131CD;");
+        styleAttribute.Should().Contain("--tenant-secondary: #060D26;");
+        styleAttribute.Should().Contain("--tenant-accent: #B9FC01;");
     }
 
     /// <summary>

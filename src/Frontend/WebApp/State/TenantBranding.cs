@@ -25,9 +25,9 @@ public record TenantBranding(
     /// Configuração padrão institucional do AdMetricsPro.
     /// </summary>
     public static TenantBranding Default => new(
-        PrimaryColor: "#4E8EFF",
-        SecondaryColor: "#090E19",
-        AccentColor: "#4BD8EC",
+        PrimaryColor: "#0131CD",
+        SecondaryColor: "#060D26",
+        AccentColor: "#B9FC01",
         LogoUrl: "/images/landing/brand-mark.svg",
         DarkLogoUrl: "/images/landing/brand-mark.svg",
         FaviconUrl: "/favicon.ico",

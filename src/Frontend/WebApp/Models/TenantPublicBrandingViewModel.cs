@@ -29,8 +29,8 @@ public sealed record TenantPublicBrandingViewModel(
         CompanyName: "AdMetricsPro",
         Subdomain: "default",
         CustomDomain: null,
-        PrimaryColor: "#4f46e5",
-        SecondaryColor: "#0f172a",
+        PrimaryColor: "#0131CD",
+        SecondaryColor: "#060D26",
         LogoUrl: null,
         IsActive: true);
 
@@ -40,8 +40,8 @@ public sealed record TenantPublicBrandingViewModel(
     /// <returns>Bloco CSS formatado com as variáveis de marca.</returns>
     public string ToCssVariables()
     {
-        var primary = !string.IsNullOrWhiteSpace(PrimaryColor) ? PrimaryColor : "#4f46e5";
-        var secondary = !string.IsNullOrWhiteSpace(SecondaryColor) ? SecondaryColor : "#0f172a";
-        return $"--tenant-primary: {primary}; --tenant-secondary: {secondary};";
+        var primary = !string.IsNullOrWhiteSpace(PrimaryColor) ? PrimaryColor : Default.PrimaryColor;
+        var secondary = !string.IsNullOrWhiteSpace(SecondaryColor) ? SecondaryColor : Default.SecondaryColor;
+        return $"--tenant-primary: {primary}; --tenant-primary-color: {primary}; --tenant-secondary: {secondary}; --tenant-secondary-color: {secondary};";
     }
 }

@@ -111,6 +111,10 @@ public abstract class BunitTestBase : BunitContext
     /// </summary>
     protected BunitTestBase()
     {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        JSInterop.Setup<string>("admetricsTheme.get").SetResult("light");
+        JSInterop.Setup<string>("admetricsTheme.toggle").SetResult("dark");
+
         TenantStateProvider = new TenantStateProvider();
         BrowserStorageService = NSubstitute.Substitute.For<IBrowserStorageService>();
         TenantSessionStateProvider = new TenantSessionStateProvider(TenantStateProvider, BrowserStorageService);

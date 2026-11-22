@@ -32,8 +32,8 @@ public sealed class TenantMainLayoutTests : BunitTestBase
 
         var styleAttribute = appShell.GetAttribute("style");
         styleAttribute.Should().NotBeNull();
-        styleAttribute.Should().Contain("--tenant-primary-color: #4E8EFF;");
-        styleAttribute.Should().Contain("--tenant-secondary-color: #090E19;");
+        styleAttribute.Should().Contain("--tenant-primary-color: #0131CD;");
+        styleAttribute.Should().Contain("--tenant-secondary-color: #060D26;");
     }
 
     /// <summary>

@@ -78,14 +78,29 @@ public interface ITenantStateProvider
 
 ---
 
-## 3. Customização White-Label e CSS Dinâmico
+## 3. Tema claro/escuro e tokens `--ad-*`
 
-A injeção de estilo customizado ocorre em tempo real via variáveis CSS declaradas no método `TenantBranding.ToCssVariables()`:
+O design system do produto vive em `wwwroot/css/theme.css`:
+
+| Token | Uso (proporção 60/30/10) |
+| --- | --- |
+| `--ad-bg-canvas`, `--ad-bg-surface` | Fundo da página e superfícies (60%) |
+| `--ad-primary-brand`, `--ad-primary-tint` | Links, foco, navegação ativa (30%) |
+| `--ad-accent-volt`, `--ad-on-accent` | CTAs de destaque e badges de ênfase (10%) |
+| `--ad-text-primary`, `--ad-text-secondary`, `--ad-border-subtle` | Tipografia e contornos |
+
+- Tema claro: `:root` (padrão). Tema escuro: `[data-theme="dark"]` no `<html>`.
+- Preferência: `localStorage["admetrics-theme"]` (`light` \| `dark`); fallback `prefers-color-scheme`; ausência de ambos → claro (`ThemePreferenceResolver`).
+- Componente `ThemeToggle` chama `admetricsTheme.toggle` em `wwwroot/js/theme.js`.
+
+## 4. Customização White-Label e CSS Dinâmico
+
+A injeção de estilo customizado ocorre em tempo real via variáveis CSS declaradas no método `TenantBranding.ToCssVariables()`. **Somente primária e acento do tenant** substituem `--ad-primary-brand` e `--ad-accent-volt` no shell; canvas e texto seguem o tema ativo.
 
 ```css
---tenant-primary: #2563eb;
---tenant-secondary: #0f172a;
---tenant-accent: #38bdf8;
+--tenant-primary: #0131CD;
+--tenant-secondary: #060D26;
+--tenant-accent: #B9FC01;
 ```
 
 ### Slots de Customização Suportados:
@@ -96,11 +111,11 @@ A injeção de estilo customizado ocorre em tempo real via variáveis CSS declar
 
 ---
 
-## 4. Testes de Componentes com bUnit
+## 5. Testes de Componentes com bUnit
 
 A suíte de testes do frontend reside em `tests/UnitTests/Frontend/` e utiliza o framework **bUnit** integrado com **xUnit** e **FluentAssertions**, assegurando testes atômicos e isolados de renderização e estado no Blazor Server (.NET 10).
 
-### 4.1 Estrutura de Testes
+### 5.1 Estrutura de Testes
 
 ```text
 tests/UnitTests/Frontend/
@@ -117,7 +132,7 @@ tests/UnitTests/Frontend/
     └── TenantStateProviderTests.cs         # Testes unitários do container de estado e eventos
 ```
 
-### 4.2 Práticas de Teste de Componentes
+### 5.2 Práticas de Teste de Componentes
 1. **Base de Teste Centralizada (`BunitTestBase`):** Herda de `BunitContext` e registra automaticamente uma instância de `ITenantStateProvider` no container de injeção de dependência (`Services`).
 2. **Validação de Reatividade White-Label:** Testa se o disparo de eventos de alteração de tenant (`SetTenant`) propaga a re-renderização imediata de estilos (`style="--tenant-primary: ..."`) e logos sem necessidade de recarregar a página.
 3. **Asserções Semânticas:** Utiliza o modelo DOM do AngleSharp exposto pelo bUnit (`cut.Find(...)`, `cut.FindAll(...)`, `ClassList`) para validar estrutura HTML e acessibilidade.

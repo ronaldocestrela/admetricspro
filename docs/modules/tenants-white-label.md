@@ -8,6 +8,10 @@ Este documento descreve a arquitetura, regras de negócio, fluxos de persistênc
 
 O módulo White-Label permite que agências de mídia e grandes anunciantes customizem integralmente a experiência visual da plataforma e utilizem seus próprios domínios personalizados (FQDNs), proporcionando uma experiência imersiva e descaracterizada da marca AdMetricsPro.
 
+### 1.0 Cores do produto vs. marca do tenant
+
+O WebApp adota tokens globais `--ad-*` (tema claro/escuro em `theme.css`). O tenant **sobrescreve apenas** `--tenant-primary` e `--tenant-accent`, que alimentam `--ad-primary-brand` e `--ad-accent-volt` no shell autenticado e no login. Fundo, texto e bordas permanecem no tema escolhido pelo usuário (claro ou escuro). Padrão institucional: primária `#0131CD`, acento `#B9FC01`.
+
 ### 1.1 Persistência Híbrida e Bounded Contexts
 1. **Identidade Visual no Banco Dedicado (`TenantDbContext`):**
    - Cores institucionais (primária e secundária).

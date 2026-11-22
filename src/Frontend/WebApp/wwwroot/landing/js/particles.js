@@ -1,3 +1,16 @@
+function readThemeRgb(cssVar, fallback) {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
+    if (raw.startsWith('#')) {
+        const hex = raw.slice(1);
+        const normalized = hex.length === 3
+            ? hex.split('').map((c) => c + c).join('')
+            : hex.padEnd(6, '0').slice(0, 6);
+        const value = Number.parseInt(normalized, 16);
+        return { r: (value >> 16) & 255, g: (value >> 8) & 255, b: value & 255 };
+    }
+    return { r: 1, g: 49, b: 205 };
+}
+
 export function initialize(canvas) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return { dispose() {} };
@@ -18,10 +31,14 @@ export function initialize(canvas) {
             }
         } else {
             const count = Math.min(65, Math.max(20, Math.round(width * height / 18000)));
+            const brand = readThemeRgb('--ad-primary-brand', '#0131CD');
+            const accent = readThemeRgb('--ad-accent-volt', '#B9FC01');
             particles = Array.from({ length: count }, () => {
                 const x = Math.random() * width, y = Math.random() * height;
+                const useBrand = Math.random() > 0.4;
+                const rgb = useBrand ? brand : accent;
                 return { x, y, baseX: x, baseY: y, radius: (0.8 + Math.random() * 1.2) * 3,
-                    color: Math.random() > 0.4 ? 'rgba(67,133,245,0.65)' : 'rgba(12,184,204,0.65)' };
+                    color: `rgba(${rgb.r},${rgb.g},${rgb.b},0.65)` };
             });
         }
         draw(0);
@@ -42,20 +59,23 @@ export function initialize(canvas) {
                 p.y += (targetY - p.y) * easing;
             }
         }
+        const brandLine = readThemeRgb('--ad-primary-brand', '#0131CD');
+        const accentLine = readThemeRgb('--ad-accent-volt', '#B9FC01');
         ctx.shadowBlur = 0; ctx.lineWidth = 0.75;
         for (let i = 0; i < particles.length; i++) for (let j = i + 1; j < particles.length; j++) {
             const a = particles[i], b = particles[j];
             const distance = Math.hypot(a.x - b.x, a.y - b.y);
             if (distance >= 150) continue;
-            ctx.strokeStyle = `rgba(75,216,236,${(1 - distance / 150) * 0.18})`;
+            const mix = (1 - distance / 150) * 0.18;
+            ctx.strokeStyle = `rgba(${accentLine.r},${accentLine.g},${accentLine.b},${mix})`;
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
         }
         if (pointer.present && !motion.matches) {
             for (const p of particles) {
                 const alpha = connectionStrength(Math.hypot(pointer.x - p.x, pointer.y - p.y));
                 if (!alpha) continue;
-                ctx.strokeStyle = `rgba(60,170,255,${alpha})`;
-                ctx.shadowColor = `rgba(30,140,255,${alpha})`;
+                ctx.strokeStyle = `rgba(${brandLine.r},${brandLine.g},${brandLine.b},${alpha})`;
+                ctx.shadowColor = `rgba(${brandLine.r},${brandLine.g},${brandLine.b},${alpha})`;
                 ctx.shadowBlur = 18 * alpha; ctx.lineWidth = 1 + alpha;
                 ctx.beginPath(); ctx.moveTo(pointer.x, pointer.y); ctx.lineTo(p.x, p.y); ctx.stroke();
             }

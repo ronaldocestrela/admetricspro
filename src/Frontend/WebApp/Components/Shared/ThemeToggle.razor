@@ -1,0 +1,70 @@
+@namespace WebApp.Components.Shared
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<button type="button"
+        class="theme-toggle-btn @CssClass"
+        @onclick="HandleToggleAsync"
+        title="@_ariaLabel"
+        aria-label="@_ariaLabel">
+    @if (_isDark)
+    {
+        <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+        </svg>
+    }
+    else
+    {
+        <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    }
+</button>
+
+@code {
+    /// <summary>
+    /// Classes CSS adicionais para integração com headers e navbars.
+    /// </summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    private bool _isDark;
+    private string _ariaLabel = "Alternar para tema escuro";
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await SyncFromDomAsync();
+    }
+
+    /// <summary>
+    /// Alterna o tema via API JavaScript e atualiza o estado visual do botão.
+    /// </summary>
+    private async Task HandleToggleAsync()
+    {
+        var next = await JS.InvokeAsync<string>("admetricsTheme.toggle");
+        _isDark = string.Equals(next, "dark", StringComparison.OrdinalIgnoreCase);
+        _ariaLabel = _isDark ? "Alternar para tema claro" : "Alternar para tema escuro";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Sincroniza o ícone com o atributo <c>data-theme</c> do documento.
+    /// </summary>
+    private async Task SyncFromDomAsync()
+    {
+        var current = await JS.InvokeAsync<string>("admetricsTheme.get");
+        _isDark = string.Equals(current, "dark", StringComparison.OrdinalIgnoreCase);
+        _ariaLabel = _isDark ? "Alternar para tema claro" : "Alternar para tema escuro";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

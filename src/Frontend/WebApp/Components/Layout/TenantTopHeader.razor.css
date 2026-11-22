@@ -1,8 +1,16 @@
+html:not([data-theme="dark"]) .tenant-brand-logo--dark {
+    display: none;
+}
+
+html[data-theme="dark"] .tenant-brand-logo--light {
+    display: none;
+}
+
 .tenant-top-header {
     height: 64px;
-    background: rgba(15, 23, 42, 0.85);
+    background: var(--ad-bg-surface-glass, var(--bg-surface-glass));
     backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--ad-border-subtle, var(--border-subtle));
     display: flex;
     align-items: center;
     justify-content: space-between;

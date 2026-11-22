@@ -20,7 +20,7 @@
     width: 2.5rem;
     height: 2.5rem;
     border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top-color: var(--primary-color, #38bdf8);
+    border-top-color: var(--ad-primary-brand);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -377,7 +377,7 @@
 
 .filter-select:focus {
     outline: none;
-    border-color: var(--primary-color, #6366f1);
+    border-color: var(--ad-primary-brand);
 }
 
 .connections-table-wrapper {

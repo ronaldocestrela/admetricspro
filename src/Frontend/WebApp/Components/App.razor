@@ -4,6 +4,21 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+        (function () {
+            var key = 'admetrics-theme';
+            var theme = 'light';
+            try {
+                var saved = localStorage.getItem(key);
+                if (saved === 'light' || saved === 'dark') {
+                    theme = saved;
+                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    theme = 'dark';
+                }
+            } catch (e) { /* noop */ }
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <base href="/" />
     <ResourcePreloader />
     <link rel="stylesheet" href="@Assets["app.css"]" />
@@ -19,6 +34,7 @@
     <Routes @rendermode="InteractiveServer" />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="js/theme.js"></script>
     <script src="js/dashboard-export.js"></script>
     <script src="js/socialCalendar.js"></script>
 </body>

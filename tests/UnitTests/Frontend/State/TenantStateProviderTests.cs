@@ -13,9 +13,9 @@ public class TenantStateProviderTests
     public void TenantBranding_WhenColorsAreBlank_ShouldUseLandingDefaults()
     {
         var branding = new TenantBranding("", " ", "");
-        branding.ToCssVariables().Should().Contain("--tenant-primary-color: #4E8EFF;")
-            .And.Contain("--tenant-secondary-color: #090E19;")
-            .And.Contain("--tenant-accent-color: #4BD8EC;");
+        branding.ToCssVariables().Should().Contain("--tenant-primary-color: #0131CD;")
+            .And.Contain("--tenant-secondary-color: #060D26;")
+            .And.Contain("--tenant-accent-color: #B9FC01;");
     }
 
     [Fact]

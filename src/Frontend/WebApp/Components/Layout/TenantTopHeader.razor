@@ -20,9 +20,15 @@
         <a href="dashboard" class="tenant-brand-wrapper">
             @if (!string.IsNullOrEmpty(TenantStateProvider.CurrentTenant.Branding.LogoUrl))
             {
-                <img src="@TenantStateProvider.CurrentTenant.Branding.LogoUrl" 
-                     alt="@TenantStateProvider.CurrentTenant.Name" 
-                     class="tenant-brand-logo" />
+                <img src="@TenantStateProvider.CurrentTenant.Branding.LogoUrl"
+                     alt="@TenantStateProvider.CurrentTenant.Name"
+                     class="tenant-brand-logo tenant-brand-logo--light" />
+            }
+            @if (!string.IsNullOrEmpty(TenantStateProvider.CurrentTenant.Branding.DarkLogoUrl))
+            {
+                <img src="@TenantStateProvider.CurrentTenant.Branding.DarkLogoUrl"
+                     alt="@TenantStateProvider.CurrentTenant.Name"
+                     class="tenant-brand-logo tenant-brand-logo--dark" />
             }
             else
             {
@@ -58,6 +64,7 @@
     </div>
 
     <div class="header-right-section">
+        <ThemeToggle CssClass="tenant-theme-toggle" />
         <div class="user-identity-widget">
             <div class="user-avatar-circle" title="@UserName">
                 @GetUserInitial()

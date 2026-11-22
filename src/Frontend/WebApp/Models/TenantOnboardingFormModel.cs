@@ -54,17 +54,17 @@ public sealed class TenantOnboardingFormModel
     /// <summary>
     /// Cor primária do tema White-Label em formato hexadecimal.
     /// </summary>
-    public string PrimaryColor { get; set; } = "#4f46e5";
+    public string PrimaryColor { get; set; } = "#0131CD";
 
     /// <summary>
     /// Cor secundária do tema White-Label em formato hexadecimal.
     /// </summary>
-    public string SecondaryColor { get; set; } = "#0f172a";
+    public string SecondaryColor { get; set; } = "#060D26";
 
     /// <summary>
     /// Cor de acento do tema White-Label em formato hexadecimal.
     /// </summary>
-    public string AccentColor { get; set; } = "#38bdf8";
+    public string AccentColor { get; set; } = "#B9FC01";
 
     /// <summary>
     /// Tier de assinatura selecionado.
