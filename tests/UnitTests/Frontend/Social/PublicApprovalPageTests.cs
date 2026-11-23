@@ -57,7 +57,7 @@ public sealed class PublicApprovalPageTests : BunitTestBase
         var cut = Render<PublicApprovalPage>(p => p.Add(x => x.Token, "token"));
 
         cut.Find("[data-testid='public-approval-content']").GetAttribute("style")
-            .Should().Contain("--brand-primary: #ABCDEF");
+            .Should().Contain("--tenant-primary: #ABCDEF");
         cut.Markup.Should().NotContain("TenantLogin");
         cut.Markup.Should().NotContain("AdMetricsPro");
     }
@@ -125,5 +125,66 @@ public sealed class PublicApprovalPageTests : BunitTestBase
 
         cut.Find("[data-testid='public-approval-unavailable']").Should().NotBeNull();
         cut.Markup.Should().Contain("Link indisponível");
+    }
+
+    /// <summary>
+    /// Quadro sem posts exibe estado vazio e oculta ações.
+    /// </summary>
+    [Fact]
+    public void Page_WithEmptyBoard_ShowsEmptyStateAndHidesActions()
+    {
+        _client.GetBoardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Result<PublicApprovalBoardDto>.Success(new PublicApprovalBoardDto(
+                    Array.Empty<PublicApprovalPostDto>(),
+                    "#222222",
+                    null,
+                    "Agência")));
+
+        var cut = Render<PublicApprovalPage>(p => p.Add(x => x.Token, "token"));
+
+        cut.Find("[data-testid='public-approval-empty']").Should().NotBeNull();
+        cut.FindAll("[data-testid='public-approval-approve']").Count.Should().Be(0);
+        cut.FindAll("[data-testid='public-approval-request-changes']").Count.Should().Be(0);
+    }
+
+    /// <summary>
+    /// Primeiro clique em solicitar alterações só revela o comentário; não chama a API.
+    /// </summary>
+    [Fact]
+    public async Task Page_RequestChanges_FirstClick_ShowsCommentOnly()
+    {
+        var postId = Guid.NewGuid();
+        _client.GetBoardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Result<PublicApprovalBoardDto>.Success(new PublicApprovalBoardDto(
+                new[]
+                {
+                    new PublicApprovalPostDto(
+                        postId,
+                        "Legenda",
+                        OrganicPlatform.Instagram,
+                        OrganicPostFormat.FeedImage,
+                        ContentPillar.Authority,
+                        DateTime.UtcNow),
+                },
+                "#111111",
+                null,
+                "Agência")));
+
+        var cut = Render<PublicApprovalPage>(p => p.Add(x => x.Token, "abc"));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='public-approval-request-changes']").Should().NotBeNull());
+
+        await cut.Find("[data-testid='public-approval-request-changes']").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        cut.Find("[data-testid='public-approval-comment']").Should().NotBeNull();
+        await _client.DidNotReceive().SubmitDecisionAsync(
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<PublicApprovalDecision>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 }

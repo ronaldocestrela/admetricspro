@@ -483,22 +483,19 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     }
 
     /// <summary>
-    /// Aprovar rascunho chama submit e approve; o selo do card passa a Aprovado.
+    /// Rascunho: Enviar para aprovação chama só submit; o selo passa a Aguardando aprovação.
     /// </summary>
     [Fact]
-    public async Task Grid_WhenApproveDraft_ShouldSubmitThenApproveAndUpdateCardBadge()
+    public async Task Grid_WhenSubmitDraft_ShouldCallSubmitOnlyAndUpdateCardBadge()
     {
         var workspaceId = Guid.NewGuid();
         var postId = Guid.NewGuid();
         var scheduledUtc = new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc);
         var post = CreatePost(postId, workspaceId, scheduledUtc, OrganicPostStatus.Draft);
         var pending = post with { Status = OrganicPostStatus.PendingApproval };
-        var approved = post with { Status = OrganicPostStatus.Approved };
 
         _socialClient.SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<OrganicPostDto>.Success(pending)));
-        _socialClient.ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(approved)));
 
         var cut = Render<SocialCalendarGrid>(p => p
             .Add(x => x.WorkspaceId, workspaceId)
@@ -508,14 +505,14 @@ public sealed class SocialCalendarGridTests : BunitTestBase
             .Add(x => x.Posts, new[] { post }));
 
         cut.Find($"[data-testid='post-card-{postId}']").Click();
-        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
+        await cut.Find("[data-testid='organic-post-detail-submit-for-approval']").ClickAsync();
 
         await _socialClient.Received(1).SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>());
-        await _socialClient.Received(1).ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+        await _socialClient.DidNotReceive().ApprovePostAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 
         cut.WaitForAssertion(() =>
             cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent
-                .Should().Contain("Aprovado"));
+                .Should().Contain("Aguardando aprovação"));
     }
 
     /// <summary>
@@ -539,56 +536,11 @@ public sealed class SocialCalendarGridTests : BunitTestBase
             .Add(x => x.Posts, new[] { post }));
 
         cut.Find($"[data-testid='post-card-{postId}']").Click();
-        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
+        await cut.Find("[data-testid='organic-post-detail-submit-for-approval']").ClickAsync();
 
         await _socialClient.DidNotReceive().ApprovePostAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         cut.Find("[data-testid='organic-post-detail-error']").Should().NotBeNull();
         cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent.Should().Contain("Rascunho");
-    }
-
-    /// <summary>
-    /// Submit ok e approve falha: status Aguardando aprovação; segundo clique chama só approve.
-    /// </summary>
-    [Fact]
-    public async Task Grid_WhenApproveDraftApproveFails_SecondClickApprovesOnly()
-    {
-        var workspaceId = Guid.NewGuid();
-        var postId = Guid.NewGuid();
-        var post = CreatePost(postId, workspaceId, new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc), OrganicPostStatus.Draft);
-        var pending = post with { Status = OrganicPostStatus.PendingApproval };
-        var approved = post with { Status = OrganicPostStatus.Approved };
-
-        _socialClient.SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(pending)));
-        _socialClient.ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>())
-            .Returns(
-                Task.FromResult(Result<OrganicPostDto>.Failure(SocialPublishing.Domain.SocialErrors.InvalidTransition)),
-                Task.FromResult(Result<OrganicPostDto>.Success(approved)));
-
-        var cut = Render<SocialCalendarGrid>(p => p
-            .Add(x => x.WorkspaceId, workspaceId)
-            .Add(x => x.View, SocialCalendarView.Month)
-            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
-            .Add(x => x.TimeZone, TimeZoneId)
-            .Add(x => x.Posts, new[] { post }));
-
-        cut.Find($"[data-testid='post-card-{postId}']").Click();
-        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
-
-        await _socialClient.Received(1).SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>());
-        await _socialClient.Received(1).ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>());
-        cut.Find("[data-testid='organic-post-detail-error']").Should().NotBeNull();
-        cut.WaitForAssertion(() =>
-            cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent
-                .Should().Contain("Aguardando aprovação"));
-
-        await cut.Find("[data-testid='organic-post-detail-approve']").ClickAsync();
-
-        await _socialClient.Received(1).SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>());
-        await _socialClient.Received(2).ApprovePostAsync(workspaceId, postId, Arg.Any<CancellationToken>());
-        cut.WaitForAssertion(() =>
-            cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent
-                .Should().Contain("Aprovado"));
     }
 
     /// <summary>

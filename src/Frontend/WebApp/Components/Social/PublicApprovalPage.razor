@@ -1,6 +1,7 @@
 @page "/approve/{Token}"
 @page "/t/{TenantSlug}/approve/{Token}"
 @layout WebApp.Components.Layout.EmptyLayout
+@using WebApp.Components.Shared.Components
 @using SocialPublishing.Application.Approvals
 @using SocialPublishing.Application.Approvals.DTOs
 @using WebApp.Services.Social
@@ -11,17 +12,17 @@
 
 @if (_isLoading)
 {
-    <div class="d-flex flex-column align-items-center justify-content-center vh-100 bg-light">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="text-muted mt-3">Carregando pacote de aprovação…</p>
+    <div class="public-approval-state" data-testid="public-approval-loading">
+        <div class="public-approval-spinner" role="status" aria-label="Carregando"></div>
+        <p class="public-approval-state-text">Carregando pacote de aprovação…</p>
     </div>
 }
 else if (_board is null)
 {
-    <div class="d-flex align-items-center justify-content-center vh-100 bg-light px-3" data-testid="public-approval-unavailable">
-        <div class="card border-0 shadow-sm rounded-4 p-5 text-center" style="max-width: 480px;">
-            <h4 class="fw-bold">Link indisponível</h4>
-            <p class="text-muted small mb-0">
+    <div class="public-approval-state" data-testid="public-approval-unavailable">
+        <div class="public-approval-unavailable-card">
+            <h2 class="public-approval-unavailable-title">Link indisponível</h2>
+            <p class="public-approval-unavailable-body">
                 O link que você tentou acessar não está disponível. Solicite um novo link à sua agência.
             </p>
         </div>
@@ -29,73 +30,135 @@ else if (_board is null)
 }
 else
 {
-    <div class="public-approval-page vh-100 bg-light"
+    <div class="public-approval-shell"
          data-testid="public-approval-content"
-         style="--brand-primary: @_board.PrimaryColor;">
-        <header class="border-bottom bg-white py-3 px-4 d-flex align-items-center gap-3">
-            @if (!string.IsNullOrWhiteSpace(_board.LogoUrl))
-            {
-                <img src="@_board.LogoUrl" alt="@_board.AgencyName" style="max-height: 40px;" />
-            }
-            <span class="fw-bold fs-5">@_board.AgencyName</span>
+         style="@GetBrandingStyle()">
+        <header class="public-approval-header">
+            <div class="public-approval-header-inner">
+                @if (!string.IsNullOrWhiteSpace(_board.LogoUrl))
+                {
+                    <img src="@_board.LogoUrl" alt="@_board.AgencyName" class="public-approval-logo" />
+                }
+                <div class="public-approval-agency">@_board.AgencyName</div>
+            </div>
         </header>
 
-        <main class="container py-4" style="max-width: 720px;">
-            <h1 class="h4 mb-3">Revise os posts abaixo</h1>
-            @if (!string.IsNullOrEmpty(_error))
-            {
-                <div class="alert alert-danger" data-testid="public-approval-error">@_error</div>
-            }
+        <main class="public-approval-main">
+            <div class="public-approval-hero">
+                <span class="public-approval-hero-badge">Aprovação de conteúdo</span>
+                <h1 class="public-approval-hero-title">Revise os posts abaixo</h1>
+                <p class="public-approval-hero-subtitle">
+                    Marque os itens desejados, aprove ou solicite alterações com comentário.
+                </p>
+            </div>
 
-            @foreach (var post in _board.Posts)
+            @if (!string.IsNullOrEmpty(_successMessage))
             {
-                <div class="card border-0 shadow-sm mb-3 p-3">
-                    <div class="form-check">
-                        <input class="form-check-input"
-                               type="checkbox"
-                               id="post-@post.Id"
-                               checked="@_selected.Contains(post.Id)"
-                               @onchange="e => TogglePost(post.Id, e.Value is true)"
-                               data-testid="public-approval-post-@post.Id" />
-                        <label class="form-check-label w-100" for="post-@post.Id">
-                            <div class="text-muted small">@post.Platform · @post.ScheduledAtUtc.ToString("dd/MM/yyyy HH:mm") UTC</div>
-                            <div class="mt-1">@post.Caption</div>
-                        </label>
-                    </div>
+                <div class="public-approval-banner public-approval-banner-success" data-testid="public-approval-success" role="status">
+                    @_successMessage
                 </div>
             }
 
-            @if (_showComment)
+            @if (!string.IsNullOrEmpty(_error))
             {
-                <label class="form-label" for="approval-comment">Comentário para alterações</label>
-                <textarea id="approval-comment"
-                          class="form-control mb-3"
-                          rows="3"
-                          @bind="_comment"
-                          data-testid="public-approval-comment"></textarea>
+                <div class="public-approval-banner public-approval-banner-error" data-testid="public-approval-error" role="alert">
+                    @_error
+                </div>
             }
 
-            <div class="d-flex flex-wrap gap-2">
-                <button type="button"
-                        class="btn btn-primary"
-                        disabled="@_isSubmitting"
-                        data-testid="public-approval-approve"
-                        @onclick="async () => await ApproveSelectedAsync()">
-                    Aprovar selecionados
-                </button>
-                <button type="button"
-                        class="btn btn-outline-secondary"
-                        disabled="@_isSubmitting"
-                        data-testid="public-approval-request-changes"
-                        @onclick="async () => await ShowCommentAndRequestChangesAsync()">
-                    Solicitar alterações
-                </button>
-            </div>
+            @if (_board.Posts.Count == 0)
+            {
+                <div class="public-approval-empty" data-testid="public-approval-empty">
+                    <p class="public-approval-empty-title">Nenhum post aguardando aprovação</p>
+                    <p class="public-approval-empty-body">
+                        Todos os itens deste pacote já foram revisados ou ainda não foram enviados para aprovação.
+                    </p>
+                </div>
+            }
+            else
+            {
+                @foreach (var post in _board.Posts)
+                {
+                    var captionParts = OrganicPostCaptionDisplay.Parse(post.Caption);
+                    var scheduledLocal = FormatScheduledLocal(post.ScheduledAtUtc);
+                    <article class="public-approval-post-card">
+                        <label class="public-approval-post-label" for="post-@post.Id">
+                            <input class="public-approval-checkbox"
+                                   type="checkbox"
+                                   id="post-@post.Id"
+                                   checked="@_selected.Contains(post.Id)"
+                                   @onchange="e => TogglePost(post.Id, e.Value is true)"
+                                   data-testid="public-approval-post-@post.Id" />
+                            <div class="public-approval-post-body">
+                                <div class="public-approval-post-meta">
+                                    <span>@OrganicPostDisplayLabels.FormatPlatform(post.Platform)</span>
+                                    <span class="public-approval-meta-dot" aria-hidden="true">·</span>
+                                    <span>@OrganicPostDisplayLabels.FormatPostFormat(post.Format)</span>
+                                    <span class="public-approval-meta-dot" aria-hidden="true">·</span>
+                                    <time datetime="@post.ScheduledAtUtc.ToString("o")">@scheduledLocal</time>
+                                </div>
+                                <div class="public-approval-post-pillar">
+                                    <ContentPillarChip Pillar="post.Pillar" AdditionalCssClass="public-approval-pillar-chip" />
+                                </div>
+                                <p class="public-approval-caption">@captionParts.Body</p>
+                                @if (captionParts.Hashtags.Count > 0)
+                                {
+                                    <div class="public-approval-hashtags" aria-label="Hashtags">
+                                        @foreach (var tag in captionParts.Hashtags)
+                                        {
+                                            <span class="public-approval-hashtag">@tag</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </label>
+                    </article>
+                }
+
+                @if (_showComment)
+                {
+                    <div class="public-approval-comment-block">
+                        <label class="public-approval-comment-label" for="approval-comment">Comentário para alterações</label>
+                        <textarea id="approval-comment"
+                                  class="public-approval-comment"
+                                  rows="4"
+                                  placeholder="Descreva o que deve ser ajustado…"
+                                  @bind="_comment"
+                                  data-testid="public-approval-comment"></textarea>
+                    </div>
+                }
+
+                <div class="public-approval-actions">
+                    <button type="button"
+                            class="public-approval-btn public-approval-btn-primary"
+                            disabled="@_isSubmitting"
+                            data-testid="public-approval-approve"
+                            @onclick="ApproveSelectedAsync">
+                        Aprovar selecionados
+                    </button>
+                    <button type="button"
+                            class="public-approval-btn public-approval-btn-secondary"
+                            disabled="@_isSubmitting"
+                            data-testid="public-approval-request-changes"
+                            @onclick="RequestChangesClickAsync">
+                        @if (_showComment)
+                        {
+                            <span>Enviar solicitação de alterações</span>
+                        }
+                        else
+                        {
+                            <span>Solicitar alterações</span>
+                        }
+                    </button>
+                </div>
+            }
         </main>
     </div>
 }
 
 @code {
+    private const string DefaultTimeZoneId = "America/Sao_Paulo";
+
     [Parameter]
     public string Token { get; set; } = string.Empty;
 
@@ -108,6 +171,7 @@ else
     private bool _isSubmitting;
     private bool _showComment;
     private string? _error;
+    private string? _successMessage;
     private string _comment = string.Empty;
 
     /// <inheritdoc />
@@ -119,11 +183,28 @@ else
         if (result.IsSuccess)
         {
             _board = result.Value;
-            foreach (var post in _board.Posts)
-            {
-                _selected.Add(post.Id);
-            }
+            SelectAllPosts();
         }
+    }
+
+    private void SelectAllPosts()
+    {
+        _selected.Clear();
+        if (_board is null)
+        {
+            return;
+        }
+
+        foreach (var post in _board.Posts)
+        {
+            _selected.Add(post.Id);
+        }
+    }
+
+    private string GetBrandingStyle()
+    {
+        var primary = string.IsNullOrWhiteSpace(_board?.PrimaryColor) ? "#0131CD" : _board.PrimaryColor.Trim();
+        return $"--tenant-primary: {primary}; --ad-primary-brand: {primary};";
     }
 
     private void TogglePost(Guid id, bool selected)
@@ -138,15 +219,18 @@ else
         }
     }
 
-    private async Task ApproveSelectedAsync()
-    {
-        await SubmitAsync(PublicApprovalDecision.Approve, null);
-    }
+    private Task ApproveSelectedAsync() => SubmitAsync(PublicApprovalDecision.Approve, null);
 
-    private Task ShowCommentAndRequestChangesAsync()
+    private async Task RequestChangesClickAsync()
     {
-        _showComment = true;
-        return SubmitAsync(PublicApprovalDecision.RequestChanges, string.IsNullOrWhiteSpace(_comment) ? null : _comment);
+        if (!_showComment)
+        {
+            _showComment = true;
+            _error = null;
+            return;
+        }
+
+        await SubmitAsync(PublicApprovalDecision.RequestChanges, string.IsNullOrWhiteSpace(_comment) ? null : _comment.Trim());
     }
 
     private async Task SubmitAsync(PublicApprovalDecision decision, string? comment)
@@ -154,18 +238,21 @@ else
         if (_selected.Count == 0)
         {
             _error = "Selecione ao menos um post.";
+            _successMessage = null;
             return;
         }
 
-        if (decision == PublicApprovalDecision.RequestChanges && string.IsNullOrWhiteSpace(comment) && !_showComment)
+        if (decision == PublicApprovalDecision.RequestChanges && string.IsNullOrWhiteSpace(comment))
         {
             _showComment = true;
             _error = "Informe um comentário antes de enviar.";
+            _successMessage = null;
             return;
         }
 
         _isSubmitting = true;
         _error = null;
+        _successMessage = null;
         var host = new Uri(Navigation.Uri).Host;
         var result = await PublicApprovalClient.SubmitDecisionAsync(
             Token,
@@ -182,6 +269,12 @@ else
             return;
         }
 
+        _successMessage = decision == PublicApprovalDecision.Approve
+            ? "Posts aprovados com sucesso. Obrigado!"
+            : "Alterações solicitadas. Sua agência foi notificada.";
+        _showComment = false;
+        _comment = string.Empty;
+
         await ReloadBoardAsync(host);
     }
 
@@ -191,11 +284,32 @@ else
         if (result.IsSuccess)
         {
             _board = result.Value;
-            _selected.Clear();
-            foreach (var post in _board.Posts)
-            {
-                _selected.Add(post.Id);
-            }
+            SelectAllPosts();
+        }
+    }
+
+    private static string FormatScheduledLocal(DateTime scheduledAtUtc)
+    {
+        var tz = ResolveTimeZone(DefaultTimeZoneId);
+        var local = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(scheduledAtUtc, DateTimeKind.Utc),
+            tz);
+        return local.ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
+    }
+
+    private static TimeZoneInfo ResolveTimeZone(string timeZoneId)
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
         }
     }
 }

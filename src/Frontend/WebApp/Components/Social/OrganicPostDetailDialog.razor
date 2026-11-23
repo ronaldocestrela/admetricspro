@@ -48,12 +48,12 @@
                     <div class="organic-post-detail-meta-item">
                         <span class="organic-post-detail-meta-label">Rede</span>
                         <span class="organic-post-detail-meta-value"
-                              data-testid="organic-post-detail-meta-platform">@FormatPlatform(Post.Platform)</span>
+                              data-testid="organic-post-detail-meta-platform">@OrganicPostDisplayLabels.FormatPlatform(Post.Platform)</span>
                     </div>
                     <div class="organic-post-detail-meta-item">
                         <span class="organic-post-detail-meta-label">Formato</span>
                         <span class="organic-post-detail-meta-value"
-                              data-testid="organic-post-detail-meta-format">@FormatPostFormat(Post.Format)</span>
+                              data-testid="organic-post-detail-meta-format">@OrganicPostDisplayLabels.FormatPostFormat(Post.Format)</span>
                     </div>
                     <div class="organic-post-detail-meta-item organic-post-detail-meta-item-wide">
                         <span class="organic-post-detail-meta-label">Agendado para</span>
@@ -82,13 +82,30 @@
                 }
             </div>
             <div class="modal-footer">
-                @if (CanApprove)
+                @if (CanSubmitForApproval)
+                {
+                    <button type="button"
+                            class="btn btn-primary me-auto"
+                            data-testid="organic-post-detail-submit-for-approval"
+                            disabled="@_isLifecycleBusy"
+                            @onclick="SubmitForApprovalAsync">
+                        @if (_isSubmitting)
+                        {
+                            <span>Enviando…</span>
+                        }
+                        else
+                        {
+                            <span>Enviar para aprovação</span>
+                        }
+                    </button>
+                }
+                @if (CanApproveInternal)
                 {
                     <button type="button"
                             class="btn btn-success me-auto"
                             data-testid="organic-post-detail-approve"
                             disabled="@_isLifecycleBusy"
-                            @onclick="ApproveAsync">
+                            @onclick="ApproveInternalAsync">
                         @if (_isApproving)
                         {
                             <span>Aprovando…</span>
@@ -155,13 +172,15 @@
 
     private OrganicPostDto _displayedPost = null!;
     private string? _errorMessage;
+    private bool _isSubmitting;
     private bool _isApproving;
     private bool _isScheduling;
 
-    private bool _isLifecycleBusy => _isApproving || _isScheduling;
+    private bool _isLifecycleBusy => _isSubmitting || _isApproving || _isScheduling;
 
-    private bool CanApprove =>
-        _displayedPost.Status is OrganicPostStatus.Draft or OrganicPostStatus.PendingApproval;
+    private bool CanSubmitForApproval => _displayedPost.Status == OrganicPostStatus.Draft;
+
+    private bool CanApproveInternal => _displayedPost.Status == OrganicPostStatus.PendingApproval;
 
     private bool CanSchedule => _displayedPost.Status == OrganicPostStatus.Approved;
 
@@ -177,6 +196,7 @@
         {
             _displayedPost = Post;
             _errorMessage = null;
+            _isSubmitting = false;
             _isApproving = false;
             _isScheduling = false;
         }
@@ -189,31 +209,43 @@
     private async Task RequestClose() => await OnClose.InvokeAsync();
 
     /// <summary>
-    /// Executa envio para aprovação (quando em rascunho) e aprovação interna.
+    /// Envia post em rascunho para o quadro de aprovação (cliente e interno).
     /// </summary>
-    private async Task ApproveAsync()
+    private async Task SubmitForApprovalAsync()
     {
-        if (WorkspaceId == Guid.Empty || !CanApprove)
+        if (WorkspaceId == Guid.Empty || !CanSubmitForApproval)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        var submitResult = await SocialClient.SubmitForApprovalAsync(WorkspaceId, _displayedPost.Id);
+        _isSubmitting = false;
+
+        if (submitResult.IsFailure)
+        {
+            _errorMessage = submitResult.Error.Description;
+            return;
+        }
+
+        _displayedPost = submitResult.Value;
+        await NotifyPostUpdatedAsync(_displayedPost);
+    }
+
+    /// <summary>
+    /// Aprova internamente um post já enviado para aprovação.
+    /// </summary>
+    private async Task ApproveInternalAsync()
+    {
+        if (WorkspaceId == Guid.Empty || !CanApproveInternal)
         {
             return;
         }
 
         _isApproving = true;
         _errorMessage = null;
-
-        if (_displayedPost.Status == OrganicPostStatus.Draft)
-        {
-            var submitResult = await SocialClient.SubmitForApprovalAsync(WorkspaceId, _displayedPost.Id);
-            if (submitResult.IsFailure)
-            {
-                _errorMessage = submitResult.Error.Description;
-                _isApproving = false;
-                return;
-            }
-
-            _displayedPost = submitResult.Value;
-            await NotifyPostUpdatedAsync(_displayedPost);
-        }
 
         var approveResult = await SocialClient.ApprovePostAsync(WorkspaceId, _displayedPost.Id);
         _isApproving = false;
@@ -287,33 +319,6 @@
             tz);
         return local.ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
     }
-
-    /// <summary>
-    /// Rótulo legível da rede de destino.
-    /// </summary>
-    /// <param name="platform">Plataforma do post.</param>
-    /// <returns>Texto para UI.</returns>
-    internal static string FormatPlatform(OrganicPlatform platform) => platform switch
-    {
-        OrganicPlatform.Instagram => "Instagram",
-        OrganicPlatform.FacebookPage => "Facebook Page",
-        OrganicPlatform.TikTok => "TikTok",
-        _ => platform.ToString(),
-    };
-
-    /// <summary>
-    /// Rótulo legível do formato de publicação.
-    /// </summary>
-    /// <param name="format">Formato do post.</param>
-    /// <returns>Texto para UI.</returns>
-    internal static string FormatPostFormat(OrganicPostFormat format) => format switch
-    {
-        OrganicPostFormat.FeedImage => "Imagem no feed",
-        OrganicPostFormat.FeedCarousel => "Carrossel no feed",
-        OrganicPostFormat.Reel => "Reel",
-        OrganicPostFormat.TikTokVideo => "Vídeo TikTok",
-        _ => format.ToString(),
-    };
 
     private static TimeZoneInfo ResolveTimeZone(string timeZoneId)
     {
