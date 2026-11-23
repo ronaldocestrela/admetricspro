@@ -543,6 +543,77 @@ public sealed class SocialPublishingRepositoryTests(SqlServerFixture fixture)
         connection.DomainEvents.Should().BeEmpty();
     }
 
+    /// <summary>
+    /// Reagendamento via repositório deve inserir <see cref="ScheduleRevision"/> sem marcar revisão nova como UPDATE.
+    /// </summary>
+    [Fact]
+    public async Task UpdateAsync_AposReschedule_DevePersistirScheduleRevision()
+    {
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var revisedBy = Guid.NewGuid();
+        var connectionString = await PrepareMigratedDatabaseAsync();
+        var resolver = new FakeTenantConnectionResolver(new Dictionary<Guid, string> { [tenantId] = connectionString });
+        resolver.SetCurrentTenant(tenantId);
+
+        var accessor = new SocialPublishingDbContextAccessor(new SocialPublishingDbContextFactory(resolver));
+        var connectionRepository = new OrganicConnectionRepository(accessor);
+        var postRepository = new OrganicPostRepository(accessor);
+        var unitOfWork = new SocialPublishingUnitOfWork(accessor);
+
+        var connection = OrganicConnection.Create(
+            workspaceId,
+            OrganicPlatform.Instagram,
+            "ig-reschedule",
+            "Conta",
+            "scope",
+            "cipher").Value;
+        await connectionRepository.AddAsync(connection, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var post = OrganicPost.CreateEditorialDraft(
+            workspaceId,
+            connection.Id,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Authority,
+            "Legenda",
+            new DateTime(2026, 7, 1, 14, 0, 0),
+            "America/Sao_Paulo").Value;
+
+        await postRepository.AddAsync(post, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var originalScheduledUtc = (await postRepository.GetByIdAsync(post.Id, CancellationToken.None))!.ScheduledAtUtc;
+        var firstRescheduleUtc = originalScheduledUtc.AddDays(2);
+        var revisedAtUtc = new DateTime(2026, 6, 20, 12, 0, 0, DateTimeKind.Utc);
+
+        var detached = await postRepository.GetByIdAsync(post.Id, CancellationToken.None);
+        detached.Should().NotBeNull();
+        detached!.Reschedule(firstRescheduleUtc, revisedBy, revisedAtUtc).IsSuccess.Should().BeTrue();
+        await postRepository.UpdateAsync(detached, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var afterFirst = await postRepository.GetByIdAsync(post.Id, CancellationToken.None);
+        afterFirst.Should().NotBeNull();
+        afterFirst!.ScheduledAtUtc.Should().Be(firstRescheduleUtc);
+        afterFirst.ScheduleRevisions.Should().ContainSingle();
+        afterFirst.ScheduleRevisions[0].PreviousScheduledAtUtc.Should().Be(originalScheduledUtc);
+        afterFirst.ScheduleRevisions[0].NewScheduledAtUtc.Should().Be(firstRescheduleUtc);
+
+        var secondRescheduleUtc = firstRescheduleUtc.AddDays(3);
+        var secondRevisedAt = revisedAtUtc.AddHours(1);
+        detached = await postRepository.GetByIdAsync(post.Id, CancellationToken.None);
+        detached!.Reschedule(secondRescheduleUtc, revisedBy, secondRevisedAt).IsSuccess.Should().BeTrue();
+        await postRepository.UpdateAsync(detached, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var afterSecond = await postRepository.GetByIdAsync(post.Id, CancellationToken.None);
+        afterSecond!.ScheduledAtUtc.Should().Be(secondRescheduleUtc);
+        afterSecond.ScheduleRevisions.Should().HaveCount(2);
+        afterSecond.ScheduleRevisions.Select(r => r.Id).Should().OnlyHaveUniqueItems();
+    }
+
     private async Task<string> PrepareMigratedDatabaseAsync()
     {
         var databaseName = $"Tenant_SocialRepo_{Guid.NewGuid():N}";

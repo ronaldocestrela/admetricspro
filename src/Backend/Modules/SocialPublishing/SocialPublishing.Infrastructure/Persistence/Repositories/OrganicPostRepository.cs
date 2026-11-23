@@ -103,8 +103,61 @@ public sealed class OrganicPostRepository : IOrganicPostRepository
             throw new InvalidOperationException(contextResult.Error.Code);
         }
 
-        contextResult.Value.OrganicPosts.Update(post);
+        var context = contextResult.Value;
+
+        var existingRevisionIds = (await context.OrganicPosts
+                .AsNoTracking()
+                .Include("_scheduleRevisions")
+                .FirstOrDefaultAsync(p => p.Id == post.Id, cancellationToken))
+            ?.ScheduleRevisions.Select(r => r.Id).ToHashSet()
+            ?? [];
+
+        var trackedPost = context.ChangeTracker.Entries<OrganicPost>()
+            .FirstOrDefault(e => e.Entity.Id == post.Id);
+
+        if (trackedPost is not null && !ReferenceEquals(trackedPost.Entity, post))
+        {
+            trackedPost.State = EntityState.Detached;
+        }
+
+        if (trackedPost is null || !ReferenceEquals(trackedPost.Entity, post))
+        {
+            context.Attach(post);
+        }
+
+        context.Entry(post).State = EntityState.Modified;
+        ApplyScheduleRevisionStates(context, post, existingRevisionIds);
+
+        foreach (var media in post.Media)
+        {
+            var mediaEntry = context.Entry(media);
+            if (mediaEntry.State == EntityState.Detached)
+            {
+                mediaEntry.State = EntityState.Unchanged;
+            }
+        }
+
         await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Define o estado EF das revisões de agendamento (INSERT para novas, sem UPDATE indevido).
+    /// </summary>
+    /// <param name="context">Contexto do módulo.</param>
+    /// <param name="post">Agregado atualizado.</param>
+    /// <param name="existingRevisionIds">Identificadores já persistidos para o post.</param>
+    private static void ApplyScheduleRevisionStates(
+        DbContext context,
+        OrganicPost post,
+        IReadOnlySet<Guid> existingRevisionIds)
+    {
+        foreach (var revision in post.ScheduleRevisions)
+        {
+            var revisionEntry = context.Entry(revision);
+            revisionEntry.State = existingRevisionIds.Contains(revision.Id)
+                ? EntityState.Unchanged
+                : EntityState.Added;
+        }
     }
 
     /// <inheritdoc />
