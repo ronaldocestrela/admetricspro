@@ -7,6 +7,8 @@
 @inject IWorkspaceContextStateProvider WorkspaceContextStateProvider
 @inject ISocialPublishingClient SocialClient
 @inject ITenantStateProvider TenantStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <PageTitle>Calendário orgânico</PageTitle>
@@ -68,9 +70,23 @@
             </button>
         </div>
 
-        @if (!string.IsNullOrEmpty(_approvalLinkMessage))
+        @if (!string.IsNullOrEmpty(_approvalLinkUrl))
         {
-            <div class="alert alert-success" data-testid="calendar-approval-link-result">@_approvalLinkMessage</div>
+            <div class="alert alert-success d-flex flex-wrap align-items-center gap-2"
+                 data-testid="calendar-approval-link-result">
+                <span class="small text-muted">Compartilhe com o cliente:</span>
+                <a href="@_approvalLinkUrl"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="text-break"
+                   data-testid="calendar-approval-link-anchor">@_approvalLinkUrl</a>
+                <button type="button"
+                        class="btn btn-sm btn-outline-success"
+                        data-testid="calendar-approval-link-copy"
+                        @onclick="CopyApprovalLinkAsync">
+                    Copiar link
+                </button>
+            </div>
         }
         else if (!string.IsNullOrEmpty(_approvalLinkError))
         {
@@ -115,7 +131,7 @@
     private string? _loadError;
     private Guid? _loadedWorkspaceId;
     private bool _isCreatingLink;
-    private string? _approvalLinkMessage;
+    private string? _approvalLinkUrl;
     private string? _approvalLinkError;
     private bool _showGeneratePlan;
 
@@ -240,7 +256,7 @@
         }
 
         _isCreatingLink = true;
-        _approvalLinkMessage = null;
+        _approvalLinkUrl = null;
         _approvalLinkError = null;
         StateHasChanged();
 
@@ -255,19 +271,54 @@
             return;
         }
 
+        _approvalLinkUrl = BuildApprovalShareUrl(result.Value.RelativePath);
+    }
+
+    /// <summary>
+    /// Monta a URL absoluta do portal público conforme white-label (CNAME ou slug na rota do WebApp).
+    /// </summary>
+    /// <param name="relativePath">Caminho retornado pela API (<c>/approve/{token}</c>).</param>
+    /// <returns>URL compartilhável com esquema e host.</returns>
+    private string BuildApprovalShareUrl(string relativePath)
+    {
+        var path = string.IsNullOrWhiteSpace(relativePath) ? "/approve" : relativePath;
+        if (!path.StartsWith('/'))
+        {
+            path = "/" + path;
+        }
+
         var tenant = TenantStateProvider.CurrentTenant;
-        var path = result.Value.RelativePath;
         if (!string.IsNullOrWhiteSpace(tenant?.CustomDomain))
         {
-            _approvalLinkMessage = $"https://{tenant.CustomDomain}{path}";
+            return $"https://{tenant.CustomDomain.Trim()}{path}";
         }
-        else if (!string.IsNullOrWhiteSpace(tenant?.Slug) && tenant.Slug != "default")
+
+        var baseUri = NavigationManager.BaseUri.TrimEnd('/');
+        if (!string.IsNullOrWhiteSpace(tenant?.Slug) && tenant.Slug != "default")
         {
-            _approvalLinkMessage = $"/t/{tenant.Slug}{path}";
+            return $"{baseUri}/t/{tenant.Slug}{path}";
         }
-        else
+
+        return $"{baseUri}{path}";
+    }
+
+    /// <summary>
+    /// Copia a URL absoluta do portal para a área de transferência do navegador.
+    /// </summary>
+    private async Task CopyApprovalLinkAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_approvalLinkUrl))
         {
-            _approvalLinkMessage = path;
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _approvalLinkUrl);
+        }
+        catch
+        {
+            // Clipboard indisponível: o link permanece visível no alerta para cópia manual.
         }
     }
 

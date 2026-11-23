@@ -1024,7 +1024,7 @@ Testes: **`SocialCalendarGridTests`**, extensões em **`SocialPublishingClientTe
 
 ## 11. Portal de aprovação compartilhável (Subfase 5.3)
 
-Link canônico: `https://{dominio-da-agencia}/approve/{token}`. Sem CNAME: `/t/{slug}/approve/{token}`. Token opaco (32 bytes, Base64Url) persistido **somente** como SHA-256 hex (64 caracteres). Um link ativo por workspace; nova emissão revoga o anterior.
+Link canônico: `https://{dominio-da-agencia}/approve/{token}`. Sem CNAME, a rota relativa continua sendo `/t/{slug}/approve/{token}`, mas o calendário autenticado **exibe e copia** URL absoluta no host do WebApp: `https://{host-do-webapp}/t/{slug}/approve/{token}` (slug `default` ou vazio: `https://{host-do-webapp}/approve/{token}`). Token opaco (32 bytes, Base64Url) persistido **somente** como SHA-256 hex (64 caracteres). Um link ativo por workspace; nova emissão revoga o anterior.
 
 ### Erros
 
@@ -1119,9 +1119,9 @@ Tenant resolvido antes do banco (`X-Tenant-Id` slug ou `X-Forwarded-Host`). Hand
 | `/approve/{token}` | `EmptyLayout` | `PublicApprovalPage` |
 | `/t/{slug}/approve/{token}` | `EmptyLayout` | `PublicApprovalPage` |
 
-Calendário autenticado: botão **Link de aprovação** em `/social/calendar` (`CreateApprovalLinkAsync`).
+Calendário autenticado: botão **Link de aprovação** em `/social/calendar` (`CreateApprovalLinkAsync`). Após emissão, a UI renderiza **âncora clicável** (`data-testid="calendar-approval-link-anchor"`) com URL absoluta e ação **Copiar link** (`navigator.clipboard`), alinhada ao fluxo de relatórios compartilhados.
 
-Testes: `CreateApprovalLinkCommandTests`, `PublicApprovalQueryAndCommandTests`, `PublicApprovalEndpointTests`, `PublicApprovalPageTests`.
+Testes: `CreateApprovalLinkCommandTests`, `PublicApprovalQueryAndCommandTests`, `PublicApprovalEndpointTests`, `PublicApprovalPageTests`, `SocialCalendarGridTests` (href absoluto com slug e CNAME).
 
 ADR: [0047](../adr/0047-white-label-organic-approval-portal.md).
 

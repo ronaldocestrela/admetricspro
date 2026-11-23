@@ -11,6 +11,7 @@ using SocialPublishing.Domain.Posts;
 using UnitTests.Frontend.Common;
 using WebApp.Components.Social;
 using WebApp.Services.Social;
+using WebApp.State;
 using Xunit;
 
 namespace UnitTests.Frontend.Social;
@@ -415,6 +416,70 @@ public sealed class SocialCalendarGridTests : BunitTestBase
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
         cut.WaitForAssertion(() => cut.Find("[data-testid='calendar-approval-link-result']").Should().NotBeNull());
+    }
+
+    /// <summary>
+    /// Link de aprovação sem CNAME usa URL absoluta com prefixo /t/{slug}.
+    /// </summary>
+    [Fact]
+    public async Task Page_CreateApprovalLink_WithTenantSlug_BuildsAbsoluteHrefWithSlugPrefix()
+    {
+        var workspaceId = Guid.NewGuid();
+        TenantStateProvider.SetTenant(new TenantState(
+            Guid.NewGuid(),
+            "Tenant QA",
+            "test",
+            null,
+            TenantBranding.Default));
+
+        _socialClient.ListPostsAsync(workspaceId, Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<OrganicPostDto>>.Success(Array.Empty<OrganicPostDto>())));
+        _socialClient.CreateApprovalLinkAsync(workspaceId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ApprovalLinkCreatedDto>.Success(
+                new ApprovalLinkCreatedDto("plain-token", DateTime.UtcNow.AddDays(7), "/approve/plain-token")));
+
+        await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(workspaceId, "Cliente");
+        var cut = Render<SocialCalendarPage>();
+        cut.Find("[data-testid='calendar-create-approval-link']").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var anchor = cut.Find("[data-testid='calendar-approval-link-anchor']");
+            var href = anchor.GetAttribute("href");
+            href.Should().StartWith("http");
+            href.Should().EndWith("/t/test/approve/plain-token");
+        });
+    }
+
+    /// <summary>
+    /// Link de aprovação com domínio CNAME usa https no host white-label sem prefixo /t.
+    /// </summary>
+    [Fact]
+    public async Task Page_CreateApprovalLink_WithCustomDomain_BuildsHttpsHrefOnCname()
+    {
+        var workspaceId = Guid.NewGuid();
+        TenantStateProvider.SetTenant(new TenantState(
+            Guid.NewGuid(),
+            "Agência WL",
+            "test",
+            "analytics.cliente.com.br",
+            TenantBranding.Default));
+
+        _socialClient.ListPostsAsync(workspaceId, Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<OrganicPostDto>>.Success(Array.Empty<OrganicPostDto>())));
+        _socialClient.CreateApprovalLinkAsync(workspaceId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Result<ApprovalLinkCreatedDto>.Success(
+                new ApprovalLinkCreatedDto("plain-token", DateTime.UtcNow.AddDays(7), "/approve/plain-token")));
+
+        await WorkspaceContextStateProvider.SetActiveWorkspaceAsync(workspaceId, "Cliente");
+        var cut = Render<SocialCalendarPage>();
+        cut.Find("[data-testid='calendar-create-approval-link']").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var anchor = cut.Find("[data-testid='calendar-approval-link-anchor']");
+            anchor.GetAttribute("href").Should().Be("https://analytics.cliente.com.br/approve/plain-token");
+        });
     }
 
     /// <summary>
