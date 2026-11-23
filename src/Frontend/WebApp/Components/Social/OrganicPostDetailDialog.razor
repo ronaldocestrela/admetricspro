@@ -76,6 +76,12 @@
                         }
                     </div>
                 }
+                @if (!string.IsNullOrWhiteSpace(Post.ClientApprovalComment))
+                {
+                    <h3 class="h6 organic-post-detail-section-title mt-4">Alteração solicitada pelo cliente</h3>
+                    <p class="organic-post-detail-client-change"
+                       data-testid="organic-post-detail-client-change">@Post.ClientApprovalComment</p>
+                }
                 @if (!string.IsNullOrEmpty(_errorMessage))
                 {
                     <div class="alert alert-danger mt-3 mb-0" role="alert" data-testid="organic-post-detail-error">@_errorMessage</div>

@@ -795,10 +795,13 @@ Resposta de sucesso (`Result<OrganicPostDto>`):
     "pillar": "Authority",
     "caption": "Legenda",
     "scheduledAtUtc": "2026-07-01T14:00:00Z",
-    "status": "Draft"
+    "status": "Draft",
+    "clientApprovalComment": null
   }
 }
 ```
+
+`clientApprovalComment` contém o **último** comentário gravado quando o cliente solicita alterações no portal público (`RequestChanges`); ausente ou nunca solicitado → `null`. Não é limpo automaticamente em transições posteriores (permanece visível para revisão na agência).
 
 | Cenário | HTTP | Código |
 | :--- | :---: | :--- |
@@ -986,7 +989,7 @@ Cada post é posicionado no dia civil obtido ao converter **`ScheduledAtUtc`** c
 ### Contrato de clique (detalhe e aprovação interna)
 
 1. **Clique**, **Enter** ou **Espaço** no card abre **`OrganicPostDetailDialog`** com legenda integral, status, pilar, rede, formato e horário local (`data-testid` prefixo `organic-post-detail-*`).
-2. A legenda passa por **`OrganicPostCaptionDisplay`**: sequências literais `\n` vindas da IA viram quebras reais (`white-space: pre-wrap`); linha final só com hashtags é exibida como chips (`organic-post-detail-hashtag`). Status e pilar usam rótulos **Status** / **Pilar** com selos maiores no topo; metadados em blocos (Rede, Formato, Agendado para).
+2. A legenda passa por **`OrganicPostCaptionDisplay`**: sequências literais `\n` vindas da IA viram quebras reais (`white-space: pre-wrap`); linha final só com hashtags é exibida como chips (`organic-post-detail-hashtag`). Status e pilar usam rótulos **Status** / **Pilar** com selos maiores no topo; metadados em blocos (Rede, Formato, Agendado para). Quando `clientApprovalComment` não é vazio, o diálogo exibe a seção **Alteração solicitada pelo cliente** (`data-testid="organic-post-detail-client-change"`) abaixo da legenda — mesmo critério vale para posts já fora de `ChangesRequested` enquanto o comentário persistir no agregado.
 3. Fechar: botão **Fechar**, backdrop ou **Escape** (`OnClose` limpa o post selecionado na grade).
 4. A listagem inicial vem de **`ListPostsAsync`**. No rodapé do diálogo: **Enviar para aprovação** (`organic-post-detail-submit-for-approval`) em **`Draft`**; **Aprovar** (`organic-post-detail-approve`) somente em **`PendingApproval`** (aprovação interna da agência).
 5. **`Draft`**: **`SubmitForApprovalAsync`** (`POST ...:submit`) move o post para **`PendingApproval`** (visível no link público). Falha no submit mantém **`Draft`** e exibe erro; **não** chama approve.

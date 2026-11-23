@@ -23,5 +23,6 @@ public static class OrganicPostMapping
             post.Pillar,
             post.Caption,
             post.ScheduledAtUtc,
-            post.Status);
+            post.Status,
+            post.ClientApprovalComment);
 }

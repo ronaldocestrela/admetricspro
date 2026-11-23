@@ -195,6 +195,60 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     }
 
     /// <summary>
+    /// Ao abrir o detalhe, exibe o comentário de alteração solicitada pelo cliente.
+    /// </summary>
+    [Fact]
+    public void Grid_WhenDetailOpened_WithClientApprovalComment_ShouldShowClientChangeBlock()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var comment = "Trocar a primeira frase e suavizar o CTA.";
+        var post = CreatePost(
+            postId,
+            workspaceId,
+            new DateTime(2026, 11, 8, 14, 0, 0, DateTimeKind.Utc),
+            OrganicPostStatus.ChangesRequested,
+            clientApprovalComment: comment);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+
+        cut.Find("[data-testid='organic-post-detail-client-change']").TextContent.Should().Contain(comment);
+    }
+
+    /// <summary>
+    /// Sem comentário do cliente, o bloco de alteração solicitada não é renderizado.
+    /// </summary>
+    [Fact]
+    public void Grid_WhenDetailOpened_WithoutClientApprovalComment_ShouldNotShowClientChangeBlock()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = CreatePost(
+            postId,
+            workspaceId,
+            new DateTime(2026, 11, 8, 14, 0, 0, DateTimeKind.Utc),
+            OrganicPostStatus.PendingApproval);
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+
+        cut.FindAll("[data-testid='organic-post-detail-client-change']").Count.Should().Be(0);
+    }
+
+    /// <summary>
     /// Legenda com <c>\n</c> literal não exibe o escape e separa hashtags em chips.
     /// </summary>
     [Fact]
@@ -695,7 +749,8 @@ public sealed class SocialCalendarGridTests : BunitTestBase
         Guid workspaceId,
         DateTime scheduledAtUtc,
         OrganicPostStatus status,
-        string? caption = null) =>
+        string? caption = null,
+        string? clientApprovalComment = null) =>
         new(
             id,
             workspaceId,
@@ -705,5 +760,6 @@ public sealed class SocialCalendarGridTests : BunitTestBase
             ContentPillar.Authority,
             caption ?? "Legenda de teste",
             scheduledAtUtc,
-            status);
+            status,
+            clientApprovalComment);
 }

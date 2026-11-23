@@ -356,6 +356,19 @@ h1:focus {
     overflow-wrap: anywhere;
 }
 
+.tenant-app-shell .organic-post-detail-client-change {
+    margin: 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--tenant-warning, #f0ad4e) 35%, var(--tenant-border, #42475370));
+    background: color-mix(in srgb, var(--tenant-warning, #f0ad4e) 8%, var(--tenant-surface-elevated, #1b1f2b));
+    color: var(--tenant-copy, #c2c6d6);
+    font-size: 13px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 .tenant-app-shell .organic-post-detail-hashtags {
     display: flex;
     flex-wrap: wrap;

@@ -16,6 +16,7 @@ namespace SocialPublishing.Application.Posts.DTOs;
 /// <param name="Caption">Legenda persistida.</param>
 /// <param name="ScheduledAtUtc">Horário agendado em UTC.</param>
 /// <param name="Status">Status atual do post.</param>
+/// <param name="ClientApprovalComment">Último comentário do cliente ao solicitar alterações no portal público, se houver.</param>
 public sealed record OrganicPostDto(
     Guid Id,
     Guid WorkspaceId,
@@ -25,4 +26,5 @@ public sealed record OrganicPostDto(
     ContentPillar Pillar,
     string Caption,
     DateTime ScheduledAtUtc,
-    OrganicPostStatus Status);
+    OrganicPostStatus Status,
+    string? ClientApprovalComment = null);
