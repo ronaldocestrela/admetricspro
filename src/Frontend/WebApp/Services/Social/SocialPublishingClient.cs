@@ -262,6 +262,47 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         PostLifecycleMutationAsync(workspaceId, postId, $"/api/v1/social/posts/{postId}:submit?workspaceId={workspaceId}", cancellationToken);
 
     /// <inheritdoc />
+    public async Task<Result<OrganicPostDto>> ReviseCaptionAsync(
+        Guid workspaceId,
+        Guid postId,
+        string caption,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<OrganicPostDto>.Failure(SocialErrors.WorkspaceRequired);
+        }
+
+        if (postId == Guid.Empty)
+        {
+            return Result<OrganicPostDto>.Failure(
+                Error.Validation("Social.PostNotFound", "Post orgânico não encontrado."));
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/api/v1/social/posts/{postId}:revise-caption?workspaceId={workspaceId}")
+            {
+                Content = JsonContent.Create(new { caption }, options: JsonOptions),
+            };
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<OrganicPostDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<OrganicPostDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao revisar legenda do post orgânico."));
+        }
+        catch (Exception ex)
+        {
+            return Result<OrganicPostDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao revisar legenda do post orgânico: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
     public Task<Result<OrganicPostDto>> ApprovePostAsync(
         Guid workspaceId,
         Guid postId,

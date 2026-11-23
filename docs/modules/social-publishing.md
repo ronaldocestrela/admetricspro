@@ -27,7 +27,9 @@ Saídas laterais:
 - `Failed` a partir de `Publishing`.
 - `Cancelled` a partir de `Draft`, `PendingApproval`, `Approved`, `Scheduled` ou `Failed`.
 
-Reagendamento permitido somente em `Draft`, `PendingApproval`, `Approved` e `Scheduled`.
+Reagendamento permitido em `Draft`, `PendingApproval`, `Approved`, `Scheduled` e `ChangesRequested`.
+
+Após o cliente solicitar alterações (`ChangesRequested`), a equipe pode revisar a legenda (`:revise-caption`), reagendar e reenviar para aprovação (`:submit`).
 
 Formatos previstos: `FeedImage`, `FeedCarousel`, `Reel`, `TikTokVideo`.
 
@@ -57,6 +59,7 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.MediaTooLarge` | Arquivo acima do teto configurado (`SocialPublishing:Media:MaxUploadBytes`). |
 | `Social.CarouselItemCountInvalid` | Carrossel com menos de 2 ou mais de 10 itens. |
 | `Social.CaptionTooLong` | Legenda acima do teto da rede. |
+| `Social.CaptionRequired` | Legenda ausente ou só espaços em revisão. |
 | `Social.CopyContainsForbiddenTerm` | Legenda gerada contém termo proibido do Brand Voice. |
 | `Social.CopyGenerationFailed` | Provedor de IA indisponível, timeout ou resposta inválida. |
 | `Social.AiConfigurationMissing` | `SocialAi:BaseUrl`, `Model` ou `ApiKey` ausentes. |
@@ -124,13 +127,14 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 | De | Para (permitido) | Rota HTTP autenticada (Subfase 4.1) |
 | :--- | :--- | :--- |
 | `Draft` | `PendingApproval`, `Cancelled` | `POST /api/v1/social/posts/{id}:submit?workspaceId=` |
+| `ChangesRequested` | `PendingApproval`, `Cancelled` | `:submit` (reenvio após revisão); `POST /api/v1/social/posts/{id}:revise-caption?workspaceId=` (atualizar legenda, permanece em `ChangesRequested`) |
 | `PendingApproval` | `Approved`, `Rejected`, `ChangesRequested`, `Cancelled` | `:approve`, `:reject` |
 | `Approved` | `Scheduled`, `Cancelled` | `POST /api/v1/social/posts/{id}:schedule?workspaceId=` |
 | `Scheduled` | `Publishing`, `Cancelled` | — |
 | `Publishing` | `Published`, `Failed` | — |
 | `Failed` | `Cancelled` | — |
 
-Reagendamento (`Reschedule`): permitido em `Draft`, `PendingApproval`, `Approved`, `Scheduled`. Entrada HTTP: **`scheduledAtUtc`** (UTC). Cada alteração grava `ScheduleRevision` (de/para, `revisedByUserId`, `revisedAtUtc`). Post em `Scheduled` não aceita instante anterior ao relógio da aplicação → `Social.ScheduleInThePast`. Bloqueado em `Publishing`, `Published`, `Cancelled` → `Social.SlotNotReschedulable`. Permissão: `social.copilot.generate` (`SocialCopilotGenerate`).
+Reagendamento (`Reschedule`): permitido em `Draft`, `PendingApproval`, `Approved`, `Scheduled` e `ChangesRequested`. Entrada HTTP: **`scheduledAtUtc`** (UTC). Cada alteração grava `ScheduleRevision` (de/para, `revisedByUserId`, `revisedAtUtc`). Post em `Scheduled` não aceita instante anterior ao relógio da aplicação → `Social.ScheduleInThePast`. Bloqueado em `Publishing`, `Published`, `Cancelled` → `Social.SlotNotReschedulable`. Permissão: `social.copilot.generate` (`SocialCopilotGenerate`).
 
 **Persistência:** colunas `datetime2` do schema `social` não armazenam fuso; o `SocialPublishingDbContext` aplica conversores EF que materializam todos os `DateTime` / `DateTime?` relidos com `DateTimeKind.Utc`, alinhando o domínio (`ScheduleRevision`, `PublicationJob`, etc.) sem alterar o tipo SQL.
 
@@ -991,8 +995,8 @@ Cada post é posicionado no dia civil obtido ao converter **`ScheduledAtUtc`** c
 1. **Clique**, **Enter** ou **Espaço** no card abre **`OrganicPostDetailDialog`** com legenda integral, status, pilar, rede, formato e horário local (`data-testid` prefixo `organic-post-detail-*`).
 2. A legenda passa por **`OrganicPostCaptionDisplay`**: sequências literais `\n` vindas da IA viram quebras reais (`white-space: pre-wrap`); linha final só com hashtags é exibida como chips (`organic-post-detail-hashtag`). Status e pilar usam rótulos **Status** / **Pilar** com selos maiores no topo; metadados em blocos (Rede, Formato, Agendado para). Quando `clientApprovalComment` não é vazio, o diálogo exibe a seção **Alteração solicitada pelo cliente** (`data-testid="organic-post-detail-client-change"`) abaixo da legenda — mesmo critério vale para posts já fora de `ChangesRequested` enquanto o comentário persistir no agregado.
 3. Fechar: botão **Fechar**, backdrop ou **Escape** (`OnClose` limpa o post selecionado na grade).
-4. A listagem inicial vem de **`ListPostsAsync`**. No rodapé do diálogo: **Enviar para aprovação** (`organic-post-detail-submit-for-approval`) em **`Draft`**; **Aprovar** (`organic-post-detail-approve`) somente em **`PendingApproval`** (aprovação interna da agência).
-5. **`Draft`**: **`SubmitForApprovalAsync`** (`POST ...:submit`) move o post para **`PendingApproval`** (visível no link público). Falha no submit mantém **`Draft`** e exibe erro; **não** chama approve.
+4. A listagem inicial vem de **`ListPostsAsync`**. Em **`Draft`** ou **`ChangesRequested`**, o diálogo exibe editor de legenda (`organic-post-detail-caption-editor`) e **Salvar legenda** (`organic-post-detail-save-caption`) via **`ReviseCaptionAsync`** (`POST ...:revise-caption`). No rodapé: **Enviar para aprovação** (`organic-post-detail-submit-for-approval`) nesses status; **Aprovar** (`organic-post-detail-approve`) somente em **`PendingApproval`**.
+5. **`Draft`** ou **`ChangesRequested`**: **`SubmitForApprovalAsync`** (`POST ...:submit`) move o post para **`PendingApproval`**. Em **`ChangesRequested`**, o comentário do cliente permanece visível até nova decisão no portal.
 6. **`PendingApproval`**: **`ApprovePostAsync`** (`POST ...:approve`) termina em **`Approved`**. **`:schedule`** e outbox **não** são acionados por **Aprovar** (use **Agendar publicação** em seguida). O cliente final decide no portal; a agência pode aprovar internamente após revisão.
 7. **`Approved`**: botão **Agendar publicação** (`organic-post-detail-schedule`) chama **`SchedulePostAsync`** (`POST ...:schedule`); sucesso move o post para **`Scheduled`** e cria job **`Pending`** na outbox (horário inalterado — reagendar continua por arraste).
 8. Erros de **`Result`** no diálogo (`organic-post-detail-error`); o selo na grade atualiza via **`OnPostUpdated`** na **`SocialCalendarGrid`**.

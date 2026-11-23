@@ -42,7 +42,7 @@ Estas decisões evitam acoplar o módulo novo ao que já existe e serão registr
 
 `Draft` → `PendingApproval` → `Approved` → `Scheduled` → `Publishing` → `Published`.
 
-Saídas laterais: `Rejected` e `ChangesRequested` a partir de `PendingApproval`; `Failed` a partir de `Publishing`; `Cancelled` a partir de `Draft`, `PendingApproval`, `Approved`, `Scheduled` ou `Failed`. Reagendamento só em `Draft`, `PendingApproval`, `Approved` e `Scheduled`.
+Saídas laterais: `Rejected` e `ChangesRequested` a partir de `PendingApproval`; `Failed` a partir de `Publishing`; `Cancelled` a partir de `Draft`, `PendingApproval`, `Approved`, `Scheduled` ou `Failed`. Em `ChangesRequested`, a equipe revisa a legenda (`:revise-caption`), pode reagendar e reenvia com `:submit` para `PendingApproval`. Reagendamento em `Draft`, `PendingApproval`, `Approved`, `Scheduled` e `ChangesRequested`.
 
 Formatos: `FeedImage`, `FeedCarousel`, `Reel`, `TikTokVideo`. Pilares: `Authority`, `Sale`, `Connection`, `SocialProof`.
 

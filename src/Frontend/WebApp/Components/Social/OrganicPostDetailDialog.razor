@@ -62,19 +62,46 @@
                     </div>
                 </div>
                 <h3 class="h6 organic-post-detail-section-title">Legenda</h3>
-                <p class="organic-post-detail-caption"
-                   data-testid="organic-post-detail-caption-body">@captionParts.Body</p>
-                @if (captionParts.Hashtags.Count > 0)
+                @if (CanReviseCaption)
                 {
-                    <div class="organic-post-detail-hashtags"
-                         data-testid="organic-post-detail-hashtags"
-                         aria-label="Hashtags">
-                        @foreach (var tag in captionParts.Hashtags)
+                    <label class="form-label visually-hidden" for="organic-post-caption-editor">Legenda do post</label>
+                    <textarea id="organic-post-caption-editor"
+                              class="form-control organic-post-detail-caption-editor"
+                              rows="6"
+                              data-testid="organic-post-detail-caption-editor"
+                              disabled="@_isLifecycleBusy"
+                              @bind="_editCaption"></textarea>
+                    <button type="button"
+                            class="btn btn-outline-primary mt-2"
+                            data-testid="organic-post-detail-save-caption"
+                            disabled="@_isLifecycleBusy"
+                            @onclick="SaveCaptionAsync">
+                        @if (_isSavingCaption)
                         {
-                            <span class="organic-post-detail-hashtag"
-                                  data-testid="organic-post-detail-hashtag">@tag</span>
+                            <span>Salvando…</span>
                         }
-                    </div>
+                        else
+                        {
+                            <span>Salvar legenda</span>
+                        }
+                    </button>
+                }
+                else
+                {
+                    <p class="organic-post-detail-caption"
+                       data-testid="organic-post-detail-caption-body">@captionParts.Body</p>
+                    @if (captionParts.Hashtags.Count > 0)
+                    {
+                        <div class="organic-post-detail-hashtags"
+                             data-testid="organic-post-detail-hashtags"
+                             aria-label="Hashtags">
+                            @foreach (var tag in captionParts.Hashtags)
+                            {
+                                <span class="organic-post-detail-hashtag"
+                                      data-testid="organic-post-detail-hashtag">@tag</span>
+                            }
+                        </div>
+                    }
                 }
                 @if (!string.IsNullOrWhiteSpace(Post.ClientApprovalComment))
                 {
@@ -181,10 +208,16 @@
     private bool _isSubmitting;
     private bool _isApproving;
     private bool _isScheduling;
+    private bool _isSavingCaption;
+    private string _editCaption = string.Empty;
 
-    private bool _isLifecycleBusy => _isSubmitting || _isApproving || _isScheduling;
+    private bool _isLifecycleBusy => _isSubmitting || _isApproving || _isScheduling || _isSavingCaption;
 
-    private bool CanSubmitForApproval => _displayedPost.Status == OrganicPostStatus.Draft;
+    private bool CanReviseCaption =>
+        _displayedPost.Status is OrganicPostStatus.Draft or OrganicPostStatus.ChangesRequested;
+
+    private bool CanSubmitForApproval =>
+        _displayedPost.Status is OrganicPostStatus.Draft or OrganicPostStatus.ChangesRequested;
 
     private bool CanApproveInternal => _displayedPost.Status == OrganicPostStatus.PendingApproval;
 
@@ -201,21 +234,51 @@
         if (_displayedPost?.Id != Post.Id)
         {
             _displayedPost = Post;
+            _editCaption = Post.Caption;
             _errorMessage = null;
             _isSubmitting = false;
             _isApproving = false;
             _isScheduling = false;
+            _isSavingCaption = false;
         }
-        else if (_displayedPost.Status != Post.Status)
+        else if (_displayedPost.Status != Post.Status || _displayedPost.Caption != Post.Caption)
         {
             _displayedPost = Post;
+            _editCaption = Post.Caption;
         }
     }
 
     private async Task RequestClose() => await OnClose.InvokeAsync();
 
     /// <summary>
-    /// Envia post em rascunho para o quadro de aprovação (cliente e interno).
+    /// Persiste revisão da legenda via API.
+    /// </summary>
+    private async Task SaveCaptionAsync()
+    {
+        if (WorkspaceId == Guid.Empty || !CanReviseCaption)
+        {
+            return;
+        }
+
+        _isSavingCaption = true;
+        _errorMessage = null;
+
+        var reviseResult = await SocialClient.ReviseCaptionAsync(WorkspaceId, _displayedPost.Id, _editCaption);
+        _isSavingCaption = false;
+
+        if (reviseResult.IsFailure)
+        {
+            _errorMessage = reviseResult.Error.Description;
+            return;
+        }
+
+        _displayedPost = reviseResult.Value;
+        _editCaption = _displayedPost.Caption;
+        await NotifyPostUpdatedAsync(_displayedPost);
+    }
+
+    /// <summary>
+    /// Envia post em rascunho ou com alterações solicitadas para o quadro de aprovação.
     /// </summary>
     private async Task SubmitForApprovalAsync()
     {

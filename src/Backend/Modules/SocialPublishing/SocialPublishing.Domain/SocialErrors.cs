@@ -56,6 +56,12 @@ public static class SocialErrors
         Error.Validation("Social.CaptionTooLong", "A legenda excede o tamanho máximo permitido pela rede.");
 
     /// <summary>
+    /// Erro quando a legenda está ausente ou contém apenas espaços.
+    /// </summary>
+    public static Error CaptionRequired { get; } =
+        Error.Validation("Social.CaptionRequired", "A legenda do post é obrigatória.");
+
+    /// <summary>
     /// Erro quando as hashtags violam a política configurada.
     /// </summary>
     public static Error HashtagPolicyViolated { get; } =

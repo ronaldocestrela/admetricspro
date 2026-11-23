@@ -45,6 +45,32 @@ public sealed class SubmitPostForApprovalCommandTests
     }
 
     /// <summary>
+    /// ChangesRequested deve ir para PendingApproval com commit.
+    /// </summary>
+    [Fact]
+    public async Task Handle_EmChangesRequested_DeveTransicionarEPersistir()
+    {
+        var host = new OrganicPostLifecycleCommandTestHost();
+        var post = host.SeedDraftPost();
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.RequestChanges("Revisar tom").IsSuccess.Should().BeTrue();
+        var handler = new SubmitPostForApprovalCommandHandler(
+            host.PostRepository,
+            host.UnitOfWork,
+            host.TenantContextAccessor,
+            host.CurrentUserContext);
+
+        var result = await handler.Handle(
+            new SubmitPostForApprovalCommand(host.WorkspaceId, post.Id),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(OrganicPostStatus.PendingApproval);
+        result.Value.ClientApprovalComment.Should().Be("Revisar tom");
+        await host.UnitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
     /// Transição ilegal não commita.
     /// </summary>
     [Fact]

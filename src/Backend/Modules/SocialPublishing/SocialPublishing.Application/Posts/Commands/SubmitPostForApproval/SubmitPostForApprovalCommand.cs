@@ -6,7 +6,7 @@ using Tenants.Application.Rbac.Attributes;
 namespace SocialPublishing.Application.Posts.Commands.SubmitPostForApproval;
 
 /// <summary>
-/// Envia um post orgânico de Draft para aprovação interna.
+/// Envia um post orgânico de <see cref="SocialPublishing.Domain.Posts.OrganicPostStatus.Draft"/> ou <see cref="SocialPublishing.Domain.Posts.OrganicPostStatus.ChangesRequested"/> para aprovação interna.
 /// </summary>
 /// <param name="WorkspaceId">Workspace proprietário.</param>
 /// <param name="PostId">Identificador do post.</param>

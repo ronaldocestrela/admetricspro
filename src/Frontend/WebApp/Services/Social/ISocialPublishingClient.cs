@@ -101,7 +101,7 @@ public interface ISocialPublishingClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Envia um post orgânico em rascunho para aprovação interna.
+    /// Envia um post orgânico em rascunho ou com alterações solicitadas para aprovação interna.
     /// </summary>
     /// <param name="workspaceId">Workspace proprietário.</param>
     /// <param name="postId">Identificador do post.</param>
@@ -110,6 +110,20 @@ public interface ISocialPublishingClient
     Task<Result<OrganicPostDto>> SubmitForApprovalAsync(
         Guid workspaceId,
         Guid postId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atualiza a legenda de um post em <see cref="OrganicPostStatus.Draft"/> ou <see cref="OrganicPostStatus.ChangesRequested"/>.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="postId">Identificador do post.</param>
+    /// <param name="caption">Nova legenda.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado ou falha de negócio.</returns>
+    Task<Result<OrganicPostDto>> ReviseCaptionAsync(
+        Guid workspaceId,
+        Guid postId,
+        string caption,
         CancellationToken cancellationToken = default);
 
     /// <summary>

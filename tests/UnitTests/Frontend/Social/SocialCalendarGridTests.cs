@@ -220,6 +220,54 @@ public sealed class SocialCalendarGridTests : BunitTestBase
         cut.Find($"[data-testid='post-card-{postId}']").Click();
 
         cut.Find("[data-testid='organic-post-detail-client-change']").TextContent.Should().Contain(comment);
+        cut.Find("[data-testid='organic-post-detail-caption-editor']").Should().NotBeNull();
+        cut.Find("[data-testid='organic-post-detail-submit-for-approval']").Should().NotBeNull();
+        cut.Find($"[data-testid='post-card-{postId}']").GetAttribute("draggable").Should().Be("true");
+    }
+
+    /// <summary>
+    /// Salvar legenda em ChangesRequested chama a API e atualiza o editor.
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenSaveCaptionInChangesRequested_ShouldCallReviseAndUpdateEditor()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var comment = "Suavizar CTA.";
+        var caption = "Legenda original";
+        var post = CreatePost(
+            postId,
+            workspaceId,
+            new DateTime(2026, 11, 8, 14, 0, 0, DateTimeKind.Utc),
+            OrganicPostStatus.ChangesRequested,
+            caption,
+            clientApprovalComment: comment);
+        var revised = post with { Caption = "Legenda revisada pelo gestor" };
+
+        _socialClient.ReviseCaptionAsync(workspaceId, postId, "Legenda revisada pelo gestor", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(revised)));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        var editor = cut.Find("[data-testid='organic-post-detail-caption-editor']");
+        editor.Change("Legenda revisada pelo gestor");
+        await cut.Find("[data-testid='organic-post-detail-save-caption']").ClickAsync();
+
+        await _socialClient.Received(1).ReviseCaptionAsync(
+            workspaceId,
+            postId,
+            "Legenda revisada pelo gestor",
+            Arg.Any<CancellationToken>());
+
+        cut.WaitForAssertion(() =>
+            cut.Find("[data-testid='organic-post-detail-caption-editor']").GetAttribute("value")
+                .Should().Be("Legenda revisada pelo gestor"));
     }
 
     /// <summary>
@@ -269,10 +317,10 @@ public sealed class SocialCalendarGridTests : BunitTestBase
 
         cut.Find($"[data-testid='post-card-{postId}']").Click();
 
-        cut.Find("[data-testid='organic-post-detail-caption-body']").TextContent.Should().NotContain("\\n");
-        cut.Find("[data-testid='organic-post-detail-caption-body']").TextContent.Should().Contain("Linha um");
-        cut.Find("[data-testid='organic-post-detail-caption-body']").TextContent.Should().Contain("Linha dois");
-        cut.FindAll("[data-testid='organic-post-detail-hashtag']").Count.Should().Be(2);
+        var editor = cut.Find("[data-testid='organic-post-detail-caption-editor']");
+        editor.GetAttribute("value").Should().Contain("Linha um");
+        editor.GetAttribute("value").Should().Contain("Linha dois");
+        editor.GetAttribute("value").Should().Contain("#Marca");
 
         cut.Find("[data-testid='organic-post-detail-status-row']").Should().NotBeNull();
         cut.Find("[data-testid='organic-post-detail-pillar-row']").Should().NotBeNull();
@@ -534,6 +582,43 @@ public sealed class SocialCalendarGridTests : BunitTestBase
             var anchor = cut.Find("[data-testid='calendar-approval-link-anchor']");
             anchor.GetAttribute("href").Should().Be("https://analytics.cliente.com.br/approve/plain-token");
         });
+    }
+
+    /// <summary>
+    /// ChangesRequested: reenvio chama submit e atualiza selo para Aguardando aprovação.
+    /// </summary>
+    [Fact]
+    public async Task Grid_WhenSubmitChangesRequested_ShouldCallSubmitAndUpdateCardBadge()
+    {
+        var workspaceId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var scheduledUtc = new DateTime(2026, 11, 19, 13, 0, 0, DateTimeKind.Utc);
+        var post = CreatePost(
+            postId,
+            workspaceId,
+            scheduledUtc,
+            OrganicPostStatus.ChangesRequested,
+            clientApprovalComment: "Ajustar hashtags");
+        var pending = post with { Status = OrganicPostStatus.PendingApproval };
+
+        _socialClient.SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostDto>.Success(pending)));
+
+        var cut = Render<SocialCalendarGrid>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.View, SocialCalendarView.Month)
+            .Add(x => x.AnchorDate, new DateOnly(2026, 11, 1))
+            .Add(x => x.TimeZone, TimeZoneId)
+            .Add(x => x.Posts, new[] { post }));
+
+        cut.Find($"[data-testid='post-card-{postId}']").Click();
+        await cut.Find("[data-testid='organic-post-detail-submit-for-approval']").ClickAsync();
+
+        await _socialClient.Received(1).SubmitForApprovalAsync(workspaceId, postId, Arg.Any<CancellationToken>());
+
+        cut.WaitForAssertion(() =>
+            cut.Find($"[data-testid='post-card-{postId}'] [data-testid='organic-post-status-badge']").TextContent
+                .Should().Contain("Aguardando aprovação"));
     }
 
     /// <summary>

@@ -351,6 +351,106 @@ public sealed class OrganicPostTests
     }
 
     /// <summary>
+    /// Em ChangesRequested, revisão de legenda atualiza o texto sem alterar status nem comentário do cliente.
+    /// </summary>
+    [Fact]
+    public void ReviseCaption_EmChangesRequested_DeveAtualizarLegendaSemMudarStatus()
+    {
+        var post = CreateDraftPost().Value;
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.RequestChanges("Ajustar CTA").IsSuccess.Should().BeTrue();
+        post.Status.Should().Be(OrganicPostStatus.ChangesRequested);
+        var comment = post.ClientApprovalComment;
+
+        var result = post.ReviseCaption("Nova legenda revisada");
+
+        result.IsSuccess.Should().BeTrue();
+        post.Caption.Should().Be("Nova legenda revisada");
+        post.Status.Should().Be(OrganicPostStatus.ChangesRequested);
+        post.ClientApprovalComment.Should().Be(comment);
+    }
+
+    /// <summary>
+    /// Revisão de legenda fora de Draft ou ChangesRequested retorna InvalidTransition.
+    /// </summary>
+    [Theory]
+    [InlineData(OrganicPostStatus.Approved)]
+    [InlineData(OrganicPostStatus.Scheduled)]
+    [InlineData(OrganicPostStatus.Published)]
+    public void ReviseCaption_ForaDeDraftOuChangesRequested_DeveRetornarInvalidTransition(OrganicPostStatus status)
+    {
+        var post = CreateDraftPost().Value;
+        switch (status)
+        {
+            case OrganicPostStatus.Approved:
+                post.SubmitForApproval().IsSuccess.Should().BeTrue();
+                post.Approve().IsSuccess.Should().BeTrue();
+                break;
+            case OrganicPostStatus.Scheduled:
+                post.SubmitForApproval().IsSuccess.Should().BeTrue();
+                post.Approve().IsSuccess.Should().BeTrue();
+                post.Schedule().IsSuccess.Should().BeTrue();
+                break;
+            case OrganicPostStatus.Published:
+                post.SubmitForApproval().IsSuccess.Should().BeTrue();
+                post.Approve().IsSuccess.Should().BeTrue();
+                post.Schedule().IsSuccess.Should().BeTrue();
+                post.MarkPublishing().IsSuccess.Should().BeTrue();
+                post.MarkPublished("17841400000000000").IsSuccess.Should().BeTrue();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(status), status, null);
+        }
+
+        post.ReviseCaption("Texto").Error.Code.Should().Be(SocialErrors.InvalidTransition.Code);
+    }
+
+    /// <summary>
+    /// Legenda vazia na revisão retorna CaptionRequired.
+    /// </summary>
+    [Fact]
+    public void ReviseCaption_ComTextoVazio_DeveRetornarCaptionRequired()
+    {
+        var post = CreateDraftPost().Value;
+
+        post.ReviseCaption("   ").Error.Code.Should().Be(SocialErrors.CaptionRequired.Code);
+    }
+
+    /// <summary>
+    /// Reenvio a partir de ChangesRequested volta para PendingApproval mantendo comentário do cliente.
+    /// </summary>
+    [Fact]
+    public void SubmitForApproval_EmChangesRequested_DeveVoltarParaPendingApproval()
+    {
+        var post = CreateDraftPost().Value;
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.RequestChanges("Trocar headline").IsSuccess.Should().BeTrue();
+        post.ReviseCaption("Legenda ajustada").IsSuccess.Should().BeTrue();
+
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+
+        post.Status.Should().Be(OrganicPostStatus.PendingApproval);
+        post.ClientApprovalComment.Should().Be("Trocar headline");
+    }
+
+    /// <summary>
+    /// ChangesRequested permite reagendamento como Draft.
+    /// </summary>
+    [Fact]
+    public void Reschedule_EmChangesRequested_DeveRegistrarRevisao()
+    {
+        var post = CreateDraftPost().Value;
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.RequestChanges("Mover para outro dia").IsSuccess.Should().BeTrue();
+        var newUtc = new DateTime(2026, 6, 20, 15, 0, 0, DateTimeKind.Utc);
+
+        post.Reschedule(newUtc, Guid.NewGuid(), new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc))
+            .IsSuccess.Should().BeTrue();
+        post.ScheduledAtUtc.Should().Be(newUtc);
+        post.ScheduleRevisions.Should().ContainSingle();
+    }
+
+    /// <summary>
     /// Valida instantes não UTC são rejeitados.
     /// </summary>
     [Fact]

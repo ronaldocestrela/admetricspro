@@ -251,8 +251,43 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     /// Envia o post para aprovação.
     /// </summary>
     /// <returns>Resultado da transição.</returns>
-    public Result SubmitForApproval() =>
-        Transition(OrganicPostStatus.Draft, OrganicPostStatus.PendingApproval);
+    public Result SubmitForApproval()
+    {
+        return Status switch
+        {
+            OrganicPostStatus.Draft => Transition(OrganicPostStatus.Draft, OrganicPostStatus.PendingApproval),
+            OrganicPostStatus.ChangesRequested => Transition(OrganicPostStatus.ChangesRequested, OrganicPostStatus.PendingApproval),
+            _ => Result.Failure(SocialErrors.InvalidTransition),
+        };
+    }
+
+    /// <summary>
+    /// Atualiza a legenda do post em rascunho ou após solicitação de alterações pelo cliente.
+    /// </summary>
+    /// <param name="caption">Nova legenda.</param>
+    /// <returns>Resultado da operação.</returns>
+    public Result ReviseCaption(string caption)
+    {
+        if (Status is not (OrganicPostStatus.Draft or OrganicPostStatus.ChangesRequested))
+        {
+            return Result.Failure(SocialErrors.InvalidTransition);
+        }
+
+        var trimmed = caption?.Trim() ?? string.Empty;
+        if (trimmed.Length == 0)
+        {
+            return Result.Failure(SocialErrors.CaptionRequired);
+        }
+
+        var captionValidation = ValidateCaption(Platform, trimmed);
+        if (captionValidation.IsFailure)
+        {
+            return captionValidation;
+        }
+
+        Caption = trimmed;
+        return Result.Success();
+    }
 
     /// <summary>
     /// Aprova o post após revisão.
@@ -397,7 +432,12 @@ public sealed class OrganicPost : AggregateRoot<Guid>
             return Result.Failure(SocialErrors.SlotNotReschedulable);
         }
 
-        if (Status is not (OrganicPostStatus.Draft or OrganicPostStatus.PendingApproval or OrganicPostStatus.Approved or OrganicPostStatus.Scheduled))
+        if (Status is not (
+            OrganicPostStatus.Draft
+            or OrganicPostStatus.PendingApproval
+            or OrganicPostStatus.Approved
+            or OrganicPostStatus.Scheduled
+            or OrganicPostStatus.ChangesRequested))
         {
             return Result.Failure(SocialErrors.InvalidTransition);
         }

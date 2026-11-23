@@ -23,6 +23,7 @@ using SocialPublishing.Application.Posts.Commands.ApprovePost;
 using SocialPublishing.Application.Posts.Commands.SchedulePost;
 using SocialPublishing.Application.Posts.Commands.RejectPost;
 using SocialPublishing.Application.Posts.Commands.ReschedulePost;
+using SocialPublishing.Application.Posts.Commands.ReviseOrganicPostCaption;
 using SocialPublishing.Application.Posts.Commands.SubmitPostForApproval;
 using SocialPublishing.Application.Posts.DTOs;
 using SocialPublishing.Application.Posts.Queries.ListOrganicPosts;
@@ -686,6 +687,51 @@ public sealed class SocialController : ControllerBase
     }
 
     /// <summary>
+    /// Atualiza a legenda de um post orgânico editável (rascunho ou alterações solicitadas).
+    /// </summary>
+    /// <param name="id">Identificador do post.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="request">Nova legenda.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado ou falha de negócio.</returns>
+    [HttpPost("posts/{id:guid}:revise-caption")]
+    [EndpointSummary("Atualiza legenda de post orgânico em rascunho ou com alterações solicitadas")]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<OrganicPostDto>>> ReviseOrganicPostCaption(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        [FromBody] ReviseOrganicPostCaptionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<OrganicPostDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<OrganicPostDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<OrganicPostDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<OrganicPostDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(
+            new ReviseOrganicPostCaptionCommand(workspaceId, id, request.Caption),
+            cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
     /// Emite um link compartilhável de aprovação orgânica para o workspace (token em claro só nesta resposta).
     /// </summary>
     /// <param name="request">Workspace e expiração UTC.</param>
@@ -1004,6 +1050,12 @@ public sealed record UpsertBrandVoiceRequest(
 /// </summary>
 /// <param name="ScheduledAtUtc">Novo horário agendado em UTC.</param>
 public sealed record ReschedulePostRequest(DateTime ScheduledAtUtc);
+
+/// <summary>
+/// Corpo da requisição para revisão da legenda de um post orgânico.
+/// </summary>
+/// <param name="Caption">Nova legenda.</param>
+public sealed record ReviseOrganicPostCaptionRequest(string Caption);
 
 /// <summary>
 /// Corpo da requisição para materializar um plano editorial.

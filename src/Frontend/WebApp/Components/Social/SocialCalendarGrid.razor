@@ -132,7 +132,8 @@
         post.Status is OrganicPostStatus.Draft
             or OrganicPostStatus.PendingApproval
             or OrganicPostStatus.Approved
-            or OrganicPostStatus.Scheduled;
+            or OrganicPostStatus.Scheduled
+            or OrganicPostStatus.ChangesRequested;
 
     private void HandleDragStart(OrganicPostDto post)
     {
