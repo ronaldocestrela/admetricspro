@@ -1,13 +1,9 @@
-using System.Security.Cryptography;
-using System.Text;
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.MultiTenancy;
-using BuildingBlocks.Domain.Campaigns;
-using BuildingBlocks.Domain.Integrations;
 using BuildingBlocks.Infrastructure.MultiTenancy;
-using Integrations.Application.Campaigns.Commands.SyncCampaignHierarchy;
-using Integrations.Application.Campaigns.Commands.SyncCampaignMetrics;
+using Integrations.Application.Messaging;
 using Integrations.Application.Persistence;
-using Integrations.Domain.Meta;
 using Master.Application.Tenants.Queries.GetTenants;
 using MediatR;
 using Microsoft.Extensions.Options;
@@ -31,14 +27,14 @@ public sealed class MetaSynchronizationOptions
 /// <summary>Sincroniza contas reais vinculadas, em escopos novos por tenant/conta, sem mutações publicitárias.</summary>
 /// <param name="scopeFactory">Fábrica de escopos independentes.</param>
 /// <param name="options">Configurações validadas da operação.</param>
+/// <param name="messagingFeatureGate">Feature flag de mensageria durável.</param>
 /// <param name="logger">Logger estruturado sem credenciais.</param>
-public sealed class MetaSynchronizationWorker(IServiceScopeFactory scopeFactory, IOptions<MetaSynchronizationOptions> options,
+public sealed class MetaSynchronizationWorker(
+    IServiceScopeFactory scopeFactory,
+    IOptions<MetaSynchronizationOptions> options,
+    IMessagingFeatureGate messagingFeatureGate,
     ILogger<MetaSynchronizationWorker> logger) : BackgroundService
 {
-    private static readonly Guid SystemActorId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-    private static readonly System.Diagnostics.Metrics.Meter Meter = new("AdMetricsPro.MetaSynchronization");
-    private static readonly System.Diagnostics.Metrics.Counter<long> Runs = Meter.CreateCounter<long>("admetrics.meta.sync.runs");
-
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -85,41 +81,69 @@ public sealed class MetaSynchronizationWorker(IServiceScopeFactory scopeFactory,
         }
     }
 
-    /// <summary>Cria o contexto antes de resolver mediador/repositórios e registra a execução sem segredos.</summary>
+    /// <summary>Enfileira outbox ou executa sync in-process conforme mensageria.</summary>
     /// <param name="tenantId">Tenant já confirmado como elegível no catálogo.</param>
     /// <param name="account">Conta confirmada pelo módulo Tenants no workspace ativo.</param>
     /// <param name="cancellationToken">Cancelamento.</param>
-    /// <returns>Tarefa de sincronização de leitura.</returns>
+    /// <returns>Tarefa de sincronização de leitura ou gravação de outbox.</returns>
     public async Task RunAccountAsync(Guid tenantId, ConnectedAdAccountDto account, CancellationToken cancellationToken)
     {
         if (tenantId == Guid.Empty || account.IsDemo || account.Platform != "MetaAds" || account.Status != "Connected") return;
         using var scope = scopeFactory.CreateScope();
         scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>().TenantContext = TenantContext.Create(tenantId, null, TenantResolutionSource.None);
-        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
-        var journal = scope.ServiceProvider.GetRequiredService<IMetaOperationRepository>();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IIntegrationsUnitOfWork>();
-        var operationId = Guid.NewGuid();
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{tenantId}:{account.WorkspaceId}:{account.Id}:{operationId}")));
-        var entry = MetaApiOperation.Create(operationId, account.WorkspaceId, account.Id, SystemActorId, "sync", hash).Value;
-        var claim = await journal.TryBeginAsync(entry, cancellationToken);
-        if (claim.IsFailure || !claim.Value) return;
-        var hierarchy = await sender.Send(new SyncCampaignHierarchyCommand(account.WorkspaceId, account.Id, "MetaAds"), cancellationToken);
-        string? failure = hierarchy.IsFailure ? hierarchy.Error.Code : null;
-        if (failure is null)
+
+        if (messagingFeatureGate.IsEnabled)
         {
-            // Intervalo cobre dias de conta em fusos distintos e reprocessa atribuição recente.
-            var timeZone = TimeZoneInfo.Utc;
-            if (account.TimeZone is { } name && TimeZoneInfo.TryFindSystemTimeZoneById(name, out var knownTimeZone)) timeZone = knownTimeZone;
-            var until = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone).Date, DateTimeKind.Utc);
-            var metrics = await sender.Send(new SyncCampaignMetricsCommand(account.WorkspaceId, account.Id, "MetaAds",
-                until.AddDays(-Math.Clamp(options.Value.LookbackDays, 1, 90)), until, MetricGranularity.Daily), cancellationToken);
-            if (metrics.IsFailure) failure = metrics.Error.Code;
+            await EnqueueAccountSyncAsync(scope, tenantId, account, cancellationToken);
+            return;
         }
-        entry.Complete(account.ExternalAccountId, failure);
-        journal.Update(entry);
+
+        var executor = scope.ServiceProvider.GetRequiredService<IConnectedAdAccountMetaSyncExecutor>();
+        await executor.ExecuteAsync(tenantId, account, cancellationToken);
+    }
+
+    private async Task EnqueueAccountSyncAsync(
+        IServiceScope scope,
+        Guid tenantId,
+        ConnectedAdAccountDto account,
+        CancellationToken cancellationToken)
+    {
+        var outboxWriter = scope.ServiceProvider.GetRequiredService<IIntegrationOutboxWriter>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IIntegrationsUnitOfWork>();
+        var occurredAtUtc = DateTime.UtcNow;
+        var outboxResult = AdAccountSyncOutboxFactory.Create(
+            tenantId,
+            account.WorkspaceId,
+            account.Id,
+            account.Platform,
+            occurredAtUtc);
+        if (outboxResult.IsFailure)
+        {
+            logger.LogWarning(
+                "Outbox Meta não criada: tenant {TenantId}, conta {AccountId}, {Code}",
+                tenantId,
+                account.Id,
+                outboxResult.Error.Code);
+            return;
+        }
+
+        var addResult = await outboxWriter.AddAsync(outboxResult.Value, cancellationToken);
+        if (addResult.IsFailure)
+        {
+            logger.LogWarning(
+                "Falha ao gravar outbox Meta: tenant {TenantId}, conta {AccountId}, {Code}",
+                tenantId,
+                account.Id,
+                addResult.Error.Code);
+            return;
+        }
+
         await unitOfWork.CommitAsync(cancellationToken);
-        Runs.Add(1, new KeyValuePair<string, object?>("state", entry.State));
-        logger.LogInformation("Sincronização Meta {OperationId}: tenant {TenantId}, workspace {WorkspaceId}, conta {AccountId}, estado {State}",
-            operationId, tenantId, account.WorkspaceId, account.Id, entry.State);
+        logger.LogInformation(
+            "Outbox Meta enfileirada: tenant {TenantId}, workspace {WorkspaceId}, conta {AccountId}, event {EventId}",
+            tenantId,
+            account.WorkspaceId,
+            account.Id,
+            outboxResult.Value.EventId);
     }
 }

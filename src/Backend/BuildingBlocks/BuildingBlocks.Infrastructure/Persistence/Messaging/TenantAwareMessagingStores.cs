@@ -57,6 +57,30 @@ public sealed class TenantAwareIntegrationOutboxStore(ITenantDbContextAccessor a
         return await store.ReclaimStaleAsync(utcNow, inProgressTimeout, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IntegrationOutboxMessage?> GetByEventIdAsync(Guid eventId, CancellationToken cancellationToken = default)
+    {
+        var store = await CreateStoreAsync(cancellationToken);
+        if (store is null)
+        {
+            return null;
+        }
+
+        return await store.GetByEventIdAsync(eventId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<Result> UpdateAsync(IntegrationOutboxMessage message, CancellationToken cancellationToken = default)
+    {
+        var store = await CreateStoreAsync(cancellationToken);
+        if (store is null)
+        {
+            return Result.Failure(Error.Failure("Tenant.ContextMissing", "Contexto de tenant indisponível."));
+        }
+
+        return await store.UpdateAsync(message, cancellationToken);
+    }
+
     private async Task<DbIntegrationOutboxStore?> CreateStoreAsync(CancellationToken cancellationToken)
     {
         var contextResult = await accessor.GetDbContextAsync(cancellationToken);

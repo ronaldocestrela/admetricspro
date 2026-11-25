@@ -1,4 +1,5 @@
 using BuildingBlocks.Domain.Messaging;
+using BuildingBlocks.Domain.Primitives;
 
 namespace BuildingBlocks.Application.Messaging.Persistence;
 
@@ -39,4 +40,20 @@ public interface IIntegrationOutboxStore
     /// <param name="cancellationToken">Token de cancelamento.</param>
     /// <returns>Quantidade de linhas reclaimadas.</returns>
     Task<int> ReclaimStaleAsync(DateTime utcNow, TimeSpan inProgressTimeout, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém a linha de outbox pelo <see cref="IntegrationOutboxMessage.EventId"/>.
+    /// </summary>
+    /// <param name="eventId">Identificador do evento.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Linha encontrada ou <see langword="null"/>.</returns>
+    Task<IntegrationOutboxMessage?> GetByEventIdAsync(Guid eventId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persiste alterações em uma linha já rastreada ou atualizada.
+    /// </summary>
+    /// <param name="message">Linha de outbox.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Resultado da operação.</returns>
+    Task<Result> UpdateAsync(IntegrationOutboxMessage message, CancellationToken cancellationToken = default);
 }

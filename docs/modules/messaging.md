@@ -1,6 +1,6 @@
 # Mensageria durável (eventos de integração)
 
-> **Fases 0–4:** outbox, dispatcher, inbox, transporte MassTransit, consumidor de laboratório (testes) e **consumidor de e-mail de catálogo** (boas-vindas e confirmação de assinatura) quando `Messaging__Enabled=true`. Sem endpoint HTTP de mensageria. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
+> **Fases 0–5:** outbox, dispatcher, inbox, transporte MassTransit, consumidor de laboratório (testes), **e-mail de catálogo** (Fase 4) e **sync Meta por conta** (Fase 5) quando `Messaging__Enabled=true`. Sem endpoint HTTP de mensageria. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
 
 ## 1. Fase 1 — broker no ambiente (entregue)
 
@@ -119,6 +119,23 @@ Portas (`BuildingBlocks.Application`): `IIntegrationOutboxStore`, `IIntegrationI
 | Gravação outbox | `ICatalogIntegrationOutboxWriter` (provisionamento e checkout/webhook pagos no mesmo `CommitAsync` do Master) |
 | `Messaging__Enabled=false` | Boas-vindas via `TenantProvisionedEvent` + `SendTenantWelcomeEmailCommand` in-process; confirmação de assinatura **não** enfileirada (comportamento legado de checkout) |
 | Retry SMTP longo | `Email.TransientSendFailed` (`ITransientIntegrationFailure`); teto `Messaging:Consumers:CatalogEmail:MaxAttempts` (padrão 5) |
+
+### 4.3 Fase 5 — Sincronização de conta de mídia (tenant)
+
+| Item | Valor |
+| :--- | :--- |
+| Routing key | `integrations.ad-account-sync.v1` |
+| Fila | `admetricspro.integrations.media-sync` |
+| Consumidor | `MediaSyncIntegrationConsumer` (`WebApi/Messaging`) |
+| Agendador | `MetaSynchronizationWorker` grava outbox no `IIntegrationsUnitOfWork.CommitAsync` do tenant |
+| Executor | `ConnectedAdAccountMetaSyncExecutor` — hierarquia depois métricas (lookback `Integrations:MetaSynchronization:LookbackDays`) |
+| Payload | `workspaceId`, `connectedAdAccountId`, `platform` — sem token OAuth |
+| `Messaging__Enabled=false` | Worker chama Meta in-process (comportamento legado) |
+| Prefetch | `Messaging:Consumers:MediaSync:Prefetch` (padrão 2, máx. 4) |
+| Retry 429 | `MediaSyncTransientFailure` → `ScheduleForConsumerRetry` na outbox do tenant; teto `Messaging:Consumers:MediaSync:MaxAttempts` |
+| Métrica | `admetrics.messaging.dispatch` (meter `AdMetricsPro.Messaging`, tag `message-type`) no `OutboxDispatchWorker` |
+
+Eventos `CampaignHierarchySynced` / `CampaignMetricsSynced` seguem **in-process** até a Fase 6.
 
 ## 5. Fluxo alvo (referência)
 

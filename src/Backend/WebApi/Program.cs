@@ -61,11 +61,21 @@ builder.Services.Configure<WebApi.Configuration.MessagingOptions>(
     builder.Configuration.GetSection(WebApi.Configuration.MessagingOptions.SectionName));
 builder.Services.Configure<WebApi.Configuration.CatalogEmailConsumerOptions>(
     builder.Configuration.GetSection(WebApi.Configuration.CatalogEmailConsumerOptions.SectionName));
+builder.Services.Configure<WebApi.Configuration.MediaSyncConsumerOptions>(
+    builder.Configuration.GetSection(WebApi.Configuration.MediaSyncConsumerOptions.SectionName));
+builder.Services.AddScoped<WebApi.Background.IConnectedAdAccountMetaSyncExecutor, WebApi.Background.ConnectedAdAccountMetaSyncExecutor>();
 builder.Services.AddAdMetricsMessaging(
     builder.Configuration,
-    bus => bus.AddConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>(),
+    bus =>
+    {
+        bus.AddConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>();
+        bus.AddConsumer<WebApi.Messaging.MediaSyncIntegrationConsumer, WebApi.Messaging.MediaSyncConsumerDefinition>();
+    },
     (context, cfg) =>
     {
+        var mediaSyncOptions = context.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebApi.Configuration.MediaSyncConsumerOptions>>().Value;
+        var mediaPrefetch = (ushort)Math.Clamp((int)mediaSyncOptions.Prefetch, 1, 4);
+
         cfg.ReceiveEndpoint(WebApi.Messaging.CatalogEmailIntegrationConsumer.ConsumerName, endpoint =>
         {
             endpoint.ConfigureConsumeTopology = false;
@@ -80,6 +90,18 @@ builder.Services.AddAdMetricsMessaging(
                 bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.SubscriptionConfirmationEmail;
             });
             endpoint.ConfigureConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.MediaSyncIntegrationConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = mediaPrefetch;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.AdAccountSync;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.MediaSyncIntegrationConsumer>(context);
         });
     });
 builder.Services.AddOptions<WebApi.Background.OutboxDispatchOptions>()

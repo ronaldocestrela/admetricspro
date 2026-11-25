@@ -28,6 +28,10 @@ public sealed class OutboxDispatchWorker(
     IOptions<OutboxDispatchOptions> dispatchOptions,
     ILogger<OutboxDispatchWorker> logger) : BackgroundService
 {
+    private static readonly System.Diagnostics.Metrics.Meter MessagingMeter = new("AdMetricsPro.Messaging");
+    private static readonly System.Diagnostics.Metrics.Counter<long> DispatchPublished =
+        MessagingMeter.CreateCounter<long>("admetrics.messaging.dispatch");
+
     private readonly string _instanceId = $"{Environment.MachineName}:{Guid.NewGuid():N}";
 
     /// <inheritdoc />
@@ -225,6 +229,7 @@ public sealed class OutboxDispatchWorker(
         if (line.MarkPublished().IsSuccess)
         {
             await markPublishedAsync(line, cancellationToken);
+            DispatchPublished.Add(1, new KeyValuePair<string, object?>("message-type", line.MessageType));
         }
         return true;
     }

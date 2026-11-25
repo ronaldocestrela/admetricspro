@@ -17,6 +17,9 @@ $$\text{Chave Composta} = (\text{ConnectedAdAccountId}, \text{ExternalCampaignId
 
 Se a rede atualizar dados retroativos (como conversões tardias que chegam em até 72 horas), a rotina atualiza os campos (`Spend`, `Impressions`, `Clicks`, `Conversions`, `ConversionValue`) e recalcula os KPIs derivados automaticamente.
 
+### Ingestão periódica Meta e mensageria (Fase 5)
+Após hierarquia, o consumidor da fila `admetricspro.integrations.media-sync` dispara `SyncCampaignMetricsCommand` com o lookback de `Integrations:MetaSynchronization:LookbackDays`. O `POST /api/v1/integrations/campaigns/metrics/sync` permanece síncrono; a chave composta de idempotência não muda. `CampaignMetricsSyncedEvent` continua in-memory até a Fase 6. HTTP 429 no consumidor reagenda a mesma linha de outbox (`MediaSyncTransientFailure`), sem duplicar `CampaignMetric`.
+
 ---
 
 ## 2. Modelo de Dados e KPIs Derivados

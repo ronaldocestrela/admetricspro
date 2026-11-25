@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Domain.Messaging;
+using BuildingBlocks.Domain.Primitives;
 using Microsoft.EntityFrameworkCore;
 
 namespace BuildingBlocks.Infrastructure.Persistence.Messaging;
@@ -82,5 +83,23 @@ public sealed class DbIntegrationOutboxStore(DbContext context) : IIntegrationOu
         }
 
         return reclaimed;
+    }
+
+    /// <inheritdoc />
+    public async Task<IntegrationOutboxMessage?> GetByEventIdAsync(Guid eventId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await context.Set<IntegrationOutboxMessage>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.EventId == eventId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<Result> UpdateAsync(IntegrationOutboxMessage message, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        context.Set<IntegrationOutboxMessage>().Update(message);
+        await context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
     }
 }

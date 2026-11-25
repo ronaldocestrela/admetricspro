@@ -17,6 +17,9 @@ $$\text{Conta Conectada (ConnectedAdAccount)} \longrightarrow \text{Campanha (Ca
 4. **Comunicação Inter-Módulos In-Memory:** Ao concluir a sincronização de cada conta, o manipulador CQRS emite o evento in-memory `CampaignHierarchySyncedEvent` via `MediatR` / `IDomainEvent`.
 5. **Aceleração FTUX com Modo Demonstração:** Para contas com `IsDemo == true`, o adaptador `DemoHierarchySyncAdapter` sintetiza uma hierarquia completa (Topo, Meio e Fundo de Funil) com criativos e URLs de destino realistas, dispensando credenciais ativas.
 
+### Sincronização periódica Meta e mensageria (Fase 5)
+Com `Messaging__Enabled=true`, o `MetaSynchronizationWorker` **enfileira** uma outbox por conta Meta elegível (`integrations.ad-account-sync.v1`); o consumidor `MediaSyncIntegrationConsumer` executa o mesmo `SyncCampaignHierarchyCommand` usado pelo `POST /api/v1/integrations/campaigns/sync`. Com `Messaging__Enabled=false`, o worker continua síncrono in-process. O evento `CampaignHierarchySyncedEvent` permanece in-memory até a Fase 6 ([messaging.md](messaging.md), [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md)).
+
 ---
 
 ## 2. Modelo Universal de Dados
