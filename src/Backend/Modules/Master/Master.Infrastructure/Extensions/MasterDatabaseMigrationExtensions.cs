@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Domain.Primitives;
+using BuildingBlocks.Infrastructure.DependencyInjection;
 using BuildingBlocks.Infrastructure.Security;
 using Master.Application.Abstractions;
 using Master.Application.Billing.Payments;
@@ -50,6 +51,8 @@ public static class MasterDatabaseMigrationExtensions
             });
             options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
+
+        services.AddMasterMessagingStores<MasterDbContext>();
 
         services.AddSingleton<IEncryptionService>(_ => new AesEncryptionService(encryptionKey ?? DefaultEncryptionKey));
         services.AddScoped<IMasterDatabaseMigrationRunner, MasterDatabaseMigrationRunner>();

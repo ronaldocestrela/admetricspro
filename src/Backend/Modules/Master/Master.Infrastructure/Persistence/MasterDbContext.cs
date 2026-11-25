@@ -1,3 +1,5 @@
+using BuildingBlocks.Domain.Messaging;
+using BuildingBlocks.Infrastructure.Persistence.Messaging;
 using Master.Domain.Auditing;
 using Master.Domain.Billing;
 using Master.Domain.FeatureFlags;
@@ -69,6 +71,21 @@ public sealed class MasterDbContext : IdentityDbContext<MasterUser, MasterRole, 
     /// </summary>
     public DbSet<TenantPaymentTransaction> PaymentTransactions => Set<TenantPaymentTransaction>();
 
+    /// <summary>
+    /// Outbox transacional de eventos de catálogo.
+    /// </summary>
+    public DbSet<IntegrationOutboxMessage> IntegrationOutboxMessages => Set<IntegrationOutboxMessage>();
+
+    /// <summary>
+    /// Inbox de idempotência de transporte no catálogo.
+    /// </summary>
+    public DbSet<IntegrationInboxMessage> IntegrationInboxMessages => Set<IntegrationInboxMessage>();
+
+    /// <summary>
+    /// Leases de schedulers de mensageria no catálogo.
+    /// </summary>
+    public DbSet<MessagingSchedulerLease> MessagingSchedulerLeases => Set<MessagingSchedulerLease>();
+
     /// <inheritdoc />
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -82,5 +99,6 @@ public sealed class MasterDbContext : IdentityDbContext<MasterUser, MasterRole, 
         base.OnModelCreating(modelBuilder);
         modelBuilder.Ignore<Microsoft.AspNetCore.Identity.IdentityPasskeyData>();
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MasterDbContext).Assembly);
+        modelBuilder.ApplyMessagingModel(includeSchedulerLease: true);
     }
 }

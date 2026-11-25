@@ -13,6 +13,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageReference Include="Testcontainers.MsSql" Version="4.14.0" />
+    <PackageReference Include="Testcontainers.RabbitMq" Version="4.14.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -31,6 +32,8 @@
     <ProjectReference Include="..\..\src\Backend\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Backend\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\src\Backend\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Backend\BuildingBlocks\BuildingBlocks.Messaging\BuildingBlocks.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\Backend\WebApi\WebApi.csproj" />
     <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Domain\SocialPublishing.Domain.csproj" />
     <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Contracts\SocialPublishing.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Backend\Modules\SocialPublishing\SocialPublishing.Application\SocialPublishing.Application.csproj" />

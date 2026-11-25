@@ -1,8 +1,10 @@
 using BuildingBlocks.Infrastructure.Configuration;
+using BuildingBlocks.Infrastructure.DependencyInjection;
 using BuildingBlocks.Infrastructure.Emails;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Security;
+using BuildingBlocks.Messaging.DependencyInjection;
 using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
 using Tenants.Application.DependencyInjection;
@@ -50,6 +52,18 @@ builder.Services.AddMasterApplication();
 builder.Services.AddSecurityServices();
 builder.Services.AddMultiTenancy();
 builder.Services.AddTenantPersistence<TenantDbContext>();
+builder.Services.AddTenantMessagingStores();
+builder.Services.Configure<WebApi.Configuration.MessagingOptions>(
+    builder.Configuration.GetSection(WebApi.Configuration.MessagingOptions.SectionName));
+builder.Services.AddAdMetricsMessaging(builder.Configuration);
+builder.Services.AddOptions<WebApi.Background.OutboxDispatchOptions>()
+    .BindConfiguration(WebApi.Background.OutboxDispatchOptions.SectionName)
+    .Validate(o => o.IntervalSeconds >= 5, "Intervalo de despacho de outbox deve ser >= 5 segundos.");
+if (builder.Configuration.GetValue<bool>("Messaging:Enabled"))
+{
+    builder.Services.AddHostedService<WebApi.Background.OutboxDispatchWorker>();
+}
+
 builder.Services.AddTenantsApplication();
 builder.Services.AddTenantsInfrastructure(builder.Configuration);
 builder.Services.AddIntegrationsApplication();

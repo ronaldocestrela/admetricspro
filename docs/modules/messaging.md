@@ -1,6 +1,6 @@
 # Mensageria durável (eventos de integração)
 
-> **Fase 0** (decisão), **Fase 1** (broker no ambiente) e **Fase 2** (contratos sem broker) entregues. Ainda **sem** MassTransit, dispatcher, EF de outbox/inbox nem publicação de mensagens de negócio. **Sem endpoint HTTP de mensageria.** Decisão formal: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem de construção: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
+> **Fases 0–3** entregues até outbox transacional, dispatcher, inbox, transporte MassTransit e circuito de laboratório SQL → RabbitMQ → consumidor ping (apenas testes). **Sem endpoint HTTP de mensageria** nem consumidores de negócio em produção (Fase 4+). Decisão formal: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
 
 ## 1. Fase 1 — broker no ambiente (entregue)
 
@@ -9,9 +9,11 @@
 | Compose (dev) | Serviço `rabbitmq:4-management`; portas `5672` e `15672` apenas em `127.0.0.1`. |
 | Compose (prod) | `rabbitmq:4` sem management; **nenhuma** porta AMQP publicada no host. |
 | `Messaging__Enabled=false` (padrão) | Health check `rabbitmq` **não** registrado; `GET /health` segue 200; nenhum handler publica mensagem. |
-| `Messaging__Enabled=true` | Health check nomeado `rabbitmq` no `GET /health`; broker inacessível → agregado Unhealthy (503). |
+| `Messaging__Enabled=true` | Health check nomeado `rabbitmq` no `GET /health`; broker inacessível → agregado Unhealthy (503); registra `AddAdMetricsMessaging` e opcionalmente `OutboxDispatchWorker`. |
+| `Messaging__Dispatch__Enabled=false` (padrão implícito) | Com `Messaging__Enabled=true`, o worker existe mas não publica sem dispatch ligado (`Messaging.Disabled` no ciclo). |
+| `Messaging__Dispatch__IntervalSeconds` | Intervalo do `BackgroundService` (mínimo **5**). |
 | `GET /api/v1/health` | Inalterado (contrato de negócio sempre `Healthy`). |
-| Variáveis | `RabbitMQ__*`, `Messaging__HostRole` (lido; papel efetivo na Fase 10), ver [.env.example](../../.env.example). |
+| Variáveis | `RabbitMQ__*`, `Messaging__HostRole` (lido; papel efetivo na Fase 10), `Messaging__Dispatch__*`, ver [.env.example](../../.env.example). |
 
 ## 2. Diagnóstico do estado atual
 
@@ -51,7 +53,10 @@ Tipos em código (sem pacote MassTransit / `RabbitMQ.Client`):
 | `IntegrationEventEnvelope` | `BuildingBlocks.Application` | Envelope validado via `Result<IntegrationEventEnvelope>`; falhas usam `Messaging.PayloadInvalid` / `Messaging.TenantRequired`. |
 | `IntegrationEventScope` | `BuildingBlocks.Application` | `Catalog` (Master; `tenantId` opcional) ou `Operational` (`tenantId` obrigatório na validação). |
 | `IntegrationEventEnvelopeSerializer` | `BuildingBlocks.Application` | JSON com nomes fixos em camelCase (`eventId`, `messageType`, …); `payload` é objeto JSON, não string escapada. |
-| `IntegrationOutboxMessage` | `BuildingBlocks.Domain` | Entidade outbox (`Pending`, `InProgress`, `Published`, `DeadLetter`); fábrica `Create` retorna `Result`; claim/dispatcher na Fase 3. |
+| `IntegrationOutboxMessage` | `BuildingBlocks.Domain` | Entidade outbox (`Pending`, `InProgress`, `Published`, `DeadLetter`); transições `MarkInProgress`, `MarkPublished`, `Requeue`, `MarkDeadLetter`, `Reclaim`. |
+| `IntegrationInboxMessage` | `BuildingBlocks.Domain` | Idempotência de transporte (`EventId` + `ConsumerName`). |
+| `MessagingSchedulerLease` | `BuildingBlocks.Domain` | Lease única `outbox-dispatch` no `MasterDb`. |
+| `BuildingBlocks.Messaging` | Transporte | MassTransit + `IIntegrationEventPublisher`; filtro de payload/tenant; **não** referenciado por Domain/Application/UI. |
 | `ITransientIntegrationFailure` | `BuildingBlocks.Domain` | Marca falha transitória (429, SMTP temporário) para reagendamento via outbox. |
 | `IntegrationResultDisposition` | `BuildingBlocks.Application` | Política pura de ack a partir de `Result` (ver seção 6). |
 
@@ -66,7 +71,7 @@ Representação do payload publicado no exchange `admetricspro.integration` (Fas
 - Escopo **catálogo:** `tenantId` nulo permitido; informar `tenantId` (ex.: e-mail de boas-vindas) também é aceito.
 - **Proibido** no JSON: tokens OAuth, connection strings, senhas, corpo HTML de e-mail.
 
-**Outbox em memória (entidade):** `IntegrationOutboxMessage.Create` exige `eventId` e `messageType` válidos; status inicial `Pending`, `attemptCount` 0, `nextAttemptAtUtc` nulo, `RowVersion` vazio. Índice único de `EventId` e schema SQL ficam na Fase 3 (nomes físicos de tabela ainda abertos no ADR 0052).
+**Outbox (entidade):** `IntegrationOutboxMessage.Create` exige `eventId` e `messageType` válidos; status inicial `Pending`, `attemptCount` 0, `nextAttemptAtUtc` nulo. Reagendamento transitório **atualiza a mesma linha** (`Pending` + `NextAttemptAtUtc` + `AttemptCount`); não há segunda linha com o mesmo `EventId`.
 
 **Exemplo de envelope (ilustrativo):**
 
@@ -86,7 +91,21 @@ Representação do payload publicado no exchange `admetricspro.integration` (Fas
 }
 ```
 
-Persistência: duas tabelas de **outbox** (nomes físicos e schema **a definir na Fase 3**) — uma no `MasterDb`, outra no banco do tenant — mais **inbox** por consumidor para idempotência de transporte.
+## 4.1 Fase 3 — Persistência SQL (entregue)
+
+Schema **`messaging`** no `MasterDb` e no banco operacional do tenant (`TenantDbContext` / `TenantOperationalDbContext`):
+
+| Objeto | Master | Tenant | Observação |
+| :--- | :---: | :---: | :--- |
+| `messaging.IntegrationOutboxMessages` | ✓ | ✓ | Índice único em `EventId`; índice de despacho `(Status, NextAttemptAtUtc)`; claim com `RowVersion`. |
+| `messaging.IntegrationInboxMessages` | ✓ | ✓ | Índice único `(EventId, ConsumerName)`. |
+| `messaging.MessagingSchedulerLeases` | ✓ | — | Linha `outbox-dispatch`; lease com expiração e renovação. |
+
+Portas (`BuildingBlocks.Application`): `IIntegrationOutboxStore`, `IIntegrationInboxStore`, `IMessagingSchedulerLeaseStore`, `IIntegrationEventPublisher`. Implementação EF em `BuildingBlocks.Infrastructure`. O dispatcher (`OutboxDispatchWorker`, `WebApi/Background`) só roda com `Messaging:Enabled=true`; cada ciclo respeita `Messaging:Dispatch:Enabled`, kill switch `killswitch.messaging.dispatch`, lease no Master, claim no catálogo e nos tenants `Active`/`Trial`, publicação e só então `MarkPublished`. Falha de publicação → `Requeue` na mesma linha. `InProgress` expirado → `Reclaim` → `Pending`.
+
+**Consumidor e inbox:** ack terminal (sucesso ou erro permanente coberto por política) grava inbox na mesma transação do efeito; reentrega com mesmo `EventId` não repete o handler (`IntegrationResultDisposition` + `ExistsAsync`). Reagendar publicação **não** grava inbox.
+
+**Laboratório:** tipo `messaging.ping.v1` e consumidor `PingIntegrationMessageConsumer` existem apenas em `tests/IntegrationTests` (não há rota HTTP de ping). Produção com mensageria ligada sobe o barramento sem consumidor de negócio até a Fase 4.
 
 ## 5. Fluxo alvo (referência)
 
@@ -119,7 +138,7 @@ Implementação: `IntegrationResultDisposition.ForResult` / `ForUnexpectedFailur
 1. `EventId` já na inbox → **Acknowledge** (idempotência de reentrega).
 2. `Result` sucesso → **Acknowledge**.
 3. `ErrorType` `Validation`, `NotFound`, `Conflict`, `Unauthorized` ou `Forbidden` → **Acknowledge** (sem retry de transporte).
-4. `Error` que implementa `ITransientIntegrationFailure` → **Reschedule** com `NextAttemptAtUtc` (nova linha ou mesma linha com backoff na Fase 3).
+4. `Error` que implementa `ITransientIntegrationFailure` → **Reschedule** com `NextAttemptAtUtc` (mesma linha de outbox, backoff).
 5. `ErrorType.Failure` sem marcador transitório → **Acknowledge** (falha de negócio explícita, ex. regra violada).
 6. Exceção inesperada no consumidor → **RetryTransport** (retry curto MassTransit na Fase 3; depois dead-letter).
 

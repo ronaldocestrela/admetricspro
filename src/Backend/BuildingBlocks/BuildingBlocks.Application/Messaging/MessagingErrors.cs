@@ -18,4 +18,22 @@ public static class MessagingErrors
     /// </summary>
     public static Error TenantRequired { get; } =
         Error.Validation("Messaging.TenantRequired", "Eventos operacionais exigem TenantId no envelope.");
+
+    /// <summary>
+    /// Mensageria ou despacho desligado por configuração.
+    /// </summary>
+    public static Error Disabled { get; } =
+        Error.Failure("Messaging.Disabled", "O despacho de outbox está desabilitado por configuração.");
+
+    /// <summary>
+    /// Outra instância detém o lease do scheduler de despacho.
+    /// </summary>
+    public static Error LeaseNotAcquired { get; } =
+        Error.Conflict("Messaging.LeaseNotAcquired", "O lease de despacho de outbox não foi adquirido nesta instância.");
+
+    /// <summary>
+    /// Falha ao publicar no broker após claim da linha.
+    /// </summary>
+    public static Error PublishFailed { get; } =
+        Error.Failure("Messaging.PublishFailed", "O broker recusou ou falhou ao publicar a mensagem de integração.");
 }

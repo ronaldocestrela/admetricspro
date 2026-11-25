@@ -4,7 +4,9 @@
 
 Aceito em 2026-11-25.
 
-O broker RabbitMQ, as tabelas de outbox/inbox, os consumidores e o projeto `BuildingBlocks.Messaging` **ainda não existem**. A implementação começa na Fase 1 do [roadmap de mensageria](../roadmaps/rabbitmq-messaging-roadmap.md). Os nomes físicos das tabelas e filas ficam em aberto até a Fase 3; este ADR não revoga o [ADR 0009](0009-in-memory-messaging-and-validation-pipeline.md) nem o [ADR 0046](0046-organic-publication-outbox-and-dispatch-worker.md).
+As **Fases 1–3** do [roadmap de mensageria](../roadmaps/rabbitmq-messaging-roadmap.md) estão implementadas: broker opcional, contratos, schema SQL, dispatcher com lease, transporte MassTransit em `BuildingBlocks.Messaging` e circuito de laboratório (ping só em testes). Consumidores de negócio e papéis de host efetivos seguem nas fases 4+. Este ADR não revoga o [ADR 0009](0009-in-memory-messaging-and-validation-pipeline.md) nem o [ADR 0046](0046-organic-publication-outbox-and-dispatch-worker.md).
+
+**Nomes físicos (Fase 3):** schema `messaging`; tabelas `IntegrationOutboxMessages` e `IntegrationInboxMessages` no `MasterDb` e no banco do tenant; `MessagingSchedulerLeases` apenas no `MasterDb`; inbox única em `(EventId, ConsumerName)`. Exchange topic `admetricspro.integration`; dead-letter `admetricspro.dead-letter`. Detalhes em [módulo messaging](../modules/messaging.md).
 
 ## Contexto
 
@@ -43,7 +45,7 @@ Introduzir **mensageria durável** com **outbox transacional** em SQL e transpor
 
 - O consumidor **traduz** a mensagem no comando MediatR já existente; não reimplementa regra de negócio.
 - **`ErrorType.Validation`, `NotFound`, `Conflict`, `Unauthorized`:** ack; sem retry; log/auditoria.
-- **Falha transitória explícita** (429, timeout, SMTP temporário): reagenda via **nova linha de outbox** com `NextAttemptAtUtc` (não segura o canal AMQP).
+- **Falha transitória explícita** (429, timeout, SMTP temporário): reagenda na **mesma linha** de outbox (`Pending` + `NextAttemptAtUtc` + `AttemptCount`; índice único em `EventId` impede duplicata).
 - **Exceção inesperada:** retry curto no transporte; esgotado → dead-letter.
 - **`EventId` já na inbox:** ack idempotente (reentrega).
 

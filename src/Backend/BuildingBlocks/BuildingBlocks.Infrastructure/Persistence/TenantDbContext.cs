@@ -1,4 +1,6 @@
+using BuildingBlocks.Domain.Messaging;
 using BuildingBlocks.Domain.Tenants;
+using BuildingBlocks.Infrastructure.Persistence.Messaging;
 using Microsoft.EntityFrameworkCore;
 
 namespace BuildingBlocks.Infrastructure.Persistence;
@@ -127,6 +129,16 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<BuildingBlocks.Domain.Reports.ReportDispatchLog> ReportDispatchLogs => Set<BuildingBlocks.Domain.Reports.ReportDispatchLog>();
 
+    /// <summary>
+    /// Outbox transacional de eventos operacionais do tenant.
+    /// </summary>
+    public DbSet<IntegrationOutboxMessage> IntegrationOutboxMessages => Set<IntegrationOutboxMessage>();
+
+    /// <summary>
+    /// Inbox de idempotência de transporte no banco do tenant.
+    /// </summary>
+    public DbSet<IntegrationInboxMessage> IntegrationInboxMessages => Set<IntegrationInboxMessage>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -177,5 +189,6 @@ public class TenantDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ReportScheduleEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new GeneratedReportEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new ReportDispatchLogEntityTypeConfiguration());
+        modelBuilder.ApplyMessagingModel(includeSchedulerLease: false);
     }
 }

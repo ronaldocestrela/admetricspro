@@ -41,6 +41,11 @@ public static class MasterCatalogFeatureFlagKeys
     public const string SocialPublishingDispatch = "killswitch.social-publishing.dispatch";
 
     /// <summary>
+    /// Kill switch do dispatcher de outbox para RabbitMQ.
+    /// </summary>
+    public const string MessagingDispatch = "killswitch.messaging.dispatch";
+
+    /// <summary>
     /// Feature flag do motor MER v2.
     /// </summary>
     public const string AnalyticsMerV2 = "feature.analytics.mer-v2";
@@ -57,6 +62,7 @@ public static class MasterCatalogFeatureFlagKeys
         AutomationBing,
         DataSyncGlobal,
         SocialPublishingDispatch,
+        MessagingDispatch,
         AnalyticsMerV2,
     ];
 }
