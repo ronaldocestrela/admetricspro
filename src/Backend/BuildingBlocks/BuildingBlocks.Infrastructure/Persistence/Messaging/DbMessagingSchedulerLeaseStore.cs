@@ -40,7 +40,16 @@ public sealed class DbMessagingSchedulerLeaseStore(DbContext context) : IMessagi
             }
 
             await context.Set<MessagingSchedulerLease>().AddAsync(create.Value, cancellationToken);
-            await context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                context.Entry(create.Value).State = EntityState.Detached;
+                return Result.Failure(MessagingErrors.LeaseNotAcquired);
+            }
+
             return Result.Success();
         }
 

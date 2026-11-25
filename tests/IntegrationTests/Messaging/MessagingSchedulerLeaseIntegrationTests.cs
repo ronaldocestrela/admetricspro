@@ -5,6 +5,7 @@ using BuildingBlocks.Infrastructure.Persistence.Messaging;
 using FluentAssertions;
 using IntegrationTests.Infrastructure;
 using Master.Infrastructure.Persistence;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace IntegrationTests.Messaging;
@@ -48,6 +49,44 @@ public sealed class MessagingSchedulerLeaseIntegrationTests(SqlServerFixture fix
             afterExpiry,
             duration);
         takeover.IsSuccess.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Duas aquisições simultâneas da mesma chave não lançam exceção: só uma vence.
+    /// </summary>
+    [Fact]
+    public async Task TryAcquireOrRenew_ConcurrentInsert_OnlyOneHolderSucceeds()
+    {
+        var databaseName = $"Master_Lease_{Guid.NewGuid():N}";
+        var connectionString = new SqlConnectionStringBuilder(fixture.ConnectionString)
+        {
+            InitialCatalog = databaseName,
+        }.ConnectionString;
+
+        var options = new DbContextOptionsBuilder<MasterDbContext>().UseSqlServer(connectionString).Options;
+        await using (var migrate = new MasterDbContext(options))
+        {
+            await migrate.Database.MigrateAsync();
+        }
+
+        var utcNow = DateTime.UtcNow;
+        var duration = TimeSpan.FromSeconds(30);
+
+        async Task<Result> AcquireAsync(string holder)
+        {
+            await using var context = new MasterDbContext(options);
+            var store = new DbMessagingSchedulerLeaseStore(context);
+            return await store.TryAcquireOrRenewAsync(
+                MessagingSchedulerLease.OutboxDispatchLeaseKey,
+                holder,
+                utcNow,
+                duration);
+        }
+
+        var results = await Task.WhenAll(AcquireAsync("holder-a"), AcquireAsync("holder-b"));
+
+        results.Count(result => result.IsSuccess).Should().Be(1);
+        results.Single(result => result.IsFailure).Error.Code.Should().Be("Messaging.LeaseNotAcquired");
     }
 
     private async Task<MasterDbContext> CreateMigratedContextAsync()

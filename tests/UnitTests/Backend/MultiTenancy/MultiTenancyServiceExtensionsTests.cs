@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Infrastructure.MultiTenancy;
+using BuildingBlocks.Infrastructure.MultiTenancy.Strategies;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,6 +38,13 @@ public sealed class MultiTenancyServiceExtensionsTests
         context!.IsResolved.Should().BeFalse();
 
         var strategies = provider.GetServices<ITenantIdentificationStrategy>().ToList();
-        strategies.Should().HaveCount(4);
+        strategies.Select(strategy => strategy.GetType()).Should().BeEquivalentTo(
+        [
+            typeof(HeaderTenantIdentificationStrategy),
+            typeof(ForwardedHostTenantIdentificationStrategy),
+            typeof(JwtClaimTenantIdentificationStrategy),
+            typeof(SubdomainTenantIdentificationStrategy),
+            typeof(CustomDomainTenantIdentificationStrategy)
+        ]);
     }
 }

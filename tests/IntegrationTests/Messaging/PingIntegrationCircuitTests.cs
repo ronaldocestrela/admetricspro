@@ -104,6 +104,7 @@ public sealed class PingIntegrationCircuitTests(SqlServerFixture sqlFixture, Rab
                 services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(PingIntegrationCommand).Assembly));
                 services.AddTenantPersistence<BuildingBlocks.Infrastructure.Persistence.TenantDbContext>();
                 services.AddTenantMessagingStores();
+                services.AddMessagingSchedulerLeadership(configuration);
                 services.AddSingleton<IPingIntegrationEffectStore>(effectStore);
                 services.Configure<MessagingOptions>(configuration.GetSection(MessagingOptions.SectionName));
                 services.Configure<OutboxDispatchOptions>(configuration.GetSection(OutboxDispatchOptions.SectionName));
@@ -125,7 +126,6 @@ public sealed class PingIntegrationCircuitTests(SqlServerFixture sqlFixture, Rab
                         });
                     });
                 services.AddSingleton<OutboxDispatchWorker>();
-                services.AddHostedService(sp => sp.GetRequiredService<OutboxDispatchWorker>());
             })
             .Build();
 

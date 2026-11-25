@@ -247,7 +247,7 @@ Implementação: `IntegrationResultDisposition.ForResult` / `ForUnexpectedFailur
 | `Messaging.Disabled` | `Messaging__Enabled=false` | Dispatcher não publica; linha outbox permanece `Pending`. |
 | `Messaging.TenantRequired` | Evento operacional sem `TenantId` no envelope | Dead-letter; consumidor não abre `DbContext` de tenant. |
 | `Messaging.PayloadInvalid` | `EventId` ausente, tipo desconhecido ou JSON incompatível com a versão | Dead-letter. |
-| `Messaging.LeaseNotAcquired` | Outra instância detém lease do scheduler | Esta instância não varre outbox; sem publicação neste ciclo. |
+| `Messaging.LeaseNotAcquired` | Outra instância detém o lease, inclusive em inserção concorrente da mesma chave | Esta instância não varre outbox; sem publicação neste ciclo. |
 | `Messaging.PublishFailed` | Broker recusa publicação | Linha volta a `Pending` com backoff. |
 | `Messaging.ReprocessPending` | Reprocessamento administrativo duplicado | HTTP 409; já existe fila `Pending`/`InProgress` com o mesmo `correlationId`. |
 

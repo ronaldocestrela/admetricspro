@@ -221,10 +221,10 @@ public sealed class SmtpEmailSenderTests
     }
 
     /// <summary>
-    /// Duas falhas transitórias consecutivas devem resultar em Email.SendFailed.
+    /// Duas falhas transitórias consecutivas esgotam o retry curto e devolvem Email.TransientSendFailed para reagendamento.
     /// </summary>
     [Fact]
-    public async Task SendEmailAsync_WhenTransientFailuresExhaustRetries_ShouldReturnSendFailed()
+    public async Task SendEmailAsync_WhenTransientFailuresExhaustRetries_ShouldReturnTransientSendFailed()
     {
         var options = ValidOptions();
         var sender = CreateSender(options);
@@ -237,7 +237,8 @@ public sealed class SmtpEmailSenderTests
         var result = await sender.SendEmailAsync(message, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Email.SendFailed");
+        result.Error.Should().BeOfType<EmailTransientSendFailure>();
+        result.Error.Code.Should().Be("Email.TransientSendFailed");
         await _transport.Received(2).SendAsync(Arg.Any<SmtpMailSendRequest>(), Arg.Any<CancellationToken>());
     }
 }

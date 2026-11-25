@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.Json;
+using BuildingBlocks.Application.Emails;
 using BuildingBlocks.Domain.Primitives;
+using BuildingBlocks.Infrastructure.Emails;
 using FluentAssertions;
 using Master.Application.Repositories;
 using Master.Domain.Tenants;
@@ -48,6 +50,7 @@ public sealed class ResendWelcomeEmailEndpointTests : IClassFixture<WebApplicati
                 services.AddScoped<ITenantRepository>(_ => new FakeTenantRepository(tenant));
                 services.AddScoped<ITenantNotificationLogRepository, FakeTenantNotificationLogRepository>();
                 services.AddScoped<BuildingBlocks.Application.Persistence.IUnitOfWork, FakeUnitOfWork>();
+                services.AddSingleton<IEmailSender, InMemoryEmailSender>();
             });
         }).CreateClient();
 

@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Application.Messaging.Persistence;
+using BuildingBlocks.Application.Messaging.Scheduling;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Domain.Messaging;
 using BuildingBlocks.Domain.Primitives;
@@ -125,11 +126,15 @@ public sealed class MetaSynchronizationWorkerTests
                 return Result<IReadOnlyList<ConnectedAdAccountDto>>.Success(Array.Empty<ConnectedAdAccountDto>());
             });
 
+        var leader = Substitute.For<IMessagingSchedulerLeader>();
+        leader.TryLeadCycleAsync(Arg.Any<CancellationToken>()).Returns(Result.Success());
+
         var services = new ServiceCollection();
         services.AddScoped<ITenantContextAccessor, TenantContextAccessor>();
         services.AddScoped(_ => sender);
         services.AddScoped(_ => outboxWriter);
         services.AddScoped(_ => Substitute.For<IIntegrationsUnitOfWork>());
+        services.AddScoped(_ => leader);
         services.AddSingleton(Options.Create(new MetaSynchronizationOptions()));
         services.AddSingleton<IMessagingFeatureGate>(_ => new FixedMessagingFeatureGate(enabled: true));
         services.AddScoped<IConnectedAdAccountMetaSyncExecutor>(_ => throw new InvalidOperationException("Sync não deve ser chamado no ciclo enfileirado."));

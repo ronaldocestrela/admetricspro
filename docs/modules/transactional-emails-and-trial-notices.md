@@ -218,5 +218,6 @@ Email__MaxRetryAttempts=1
 | Código | Situação |
 |---|---|
 | `Email.InvalidConfiguration` | Host, porta, remetente ou credencial incompleta |
-| `Email.SendFailed` | Falha no provedor SMTP após esgotar tentativas |
+| `Email.SendFailed` | Falha permanente no provedor SMTP (autenticação, rejeição ou erro inesperado) |
+| `Email.TransientSendFailed` | Falha transitória após esgotar o retry curto; elegível a reagendamento pela outbox |
 | `Email.InvalidRecipient` | Destinatário ausente ou formato inválido (modelo `EmailMessage`) |

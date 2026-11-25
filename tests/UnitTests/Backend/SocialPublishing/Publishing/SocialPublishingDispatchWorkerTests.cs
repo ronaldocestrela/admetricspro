@@ -283,6 +283,7 @@ public sealed class SocialPublishingDispatchWorkerTests
                 var catalog = new ServiceCollection();
                 catalog.AddScoped(_ => _catalogSender);
                 catalog.AddScoped(_ => _featureFlags);
+                catalog.AddSingleton<IMessagingFeatureGate>(new AlwaysDisabledMessagingFeatureGate());
                 return catalog.BuildServiceProvider().CreateScope();
             }
 
