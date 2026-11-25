@@ -351,6 +351,94 @@ public sealed class AgentsArchitectureComplianceTests
     }
 
     /// <summary>
+    /// ADR 0052 Fase 2: Domain, Application e frontends não podem referenciar MassTransit, RabbitMQ.Client ou BuildingBlocks.Messaging.
+    /// </summary>
+    [Fact]
+    public void MessagingContractsLayer_MustNotReferenceBrokerPackagesOrMessagingTransportProject()
+    {
+        var forbiddenPackages = new[] { "MassTransit", "RabbitMQ.Client" };
+        var projectPaths = MessagingBrokerComplianceScanner
+            .EnumerateGuardedProjectPaths()
+            .ToList();
+
+        projectPaths.Should().NotBeEmpty("Deve existir ao menos um projeto Domain/Application ou frontend na solution.");
+
+        var violations = new List<string>();
+
+        foreach (var csprojPath in projectPaths)
+        {
+            var doc = XDocument.Load(csprojPath);
+            var packageRefs = doc.Descendants()
+                .Where(e => e.Name.LocalName == "PackageReference")
+                .Select(e => e.Attribute("Include")?.Value ?? string.Empty)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .ToList();
+
+            foreach (var package in packageRefs)
+            {
+                if (forbiddenPackages.Any(f => package.StartsWith(f, StringComparison.OrdinalIgnoreCase)))
+                {
+                    violations.Add($"{csprojPath}: PackageReference '{package}' proibido nesta fase.");
+                }
+            }
+
+            var projectRefs = doc.Descendants()
+                .Where(e => e.Name.LocalName == "ProjectReference")
+                .Select(e => e.Attribute("Include")?.Value ?? string.Empty)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .ToList();
+
+            foreach (var projectRef in projectRefs)
+            {
+                if (projectRef.Contains("BuildingBlocks.Messaging", StringComparison.OrdinalIgnoreCase))
+                {
+                    violations.Add($"{csprojPath}: ProjectReference '{projectRef}' proibido em Domain/Application/frontend.");
+                }
+            }
+        }
+
+        foreach (var assemblyName in new[]
+                 {
+                     "BuildingBlocks.Domain",
+                     "BuildingBlocks.Application",
+                     "Master.Domain",
+                     "Master.Application",
+                     "Tenants.Application",
+                     "Integrations.Domain",
+                     "Integrations.Application",
+                     "Analytics.Domain",
+                     "Analytics.Application",
+                     "Automations.Domain",
+                     "Automations.Application",
+                     "SocialPublishing.Domain",
+                     "SocialPublishing.Application",
+                 })
+        {
+            var assembly = SocialPublishingComplianceAssemblyLoader.TryLoad(assemblyName);
+            if (assembly is null)
+            {
+                continue;
+            }
+
+            var referenced = assembly.GetReferencedAssemblies()
+                .Select(a => a.Name)
+                .Where(n => n is not null)
+                .ToList();
+
+            foreach (var forbidden in forbiddenPackages)
+            {
+                if (referenced.Any(r => r!.StartsWith(forbidden, StringComparison.OrdinalIgnoreCase)))
+                {
+                    violations.Add($"Assembly {assemblyName} referencia '{forbidden}' em tempo de compilação.");
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            $"MassTransit e RabbitMQ.Client ficam restritos a BuildingBlocks.Messaging (Fase 3+):{Environment.NewLine}{string.Join(Environment.NewLine, violations)}");
+    }
+
+    /// <summary>
     /// Roadmap SocialPublishing Subfase 1.1: AddSocialPublishingModule registra MediatR via AddMessaging (ValidationBehavior).
     /// </summary>
     [Fact]
@@ -478,8 +566,65 @@ internal static class SocialPublishingComplianceAssemblyLoader
             var slnPath = Path.Combine(directory.FullName, "AdMetricsPro.sln");
             if (File.Exists(slnPath))
             {
-                var candidate = Path.Combine([directory.FullName, .. relativeSegments]);
+                var candidate = Path.Combine([directory.FullName, ..relativeSegments]);
                 return File.Exists(candidate) ? candidate : null;
+            }
+
+            directory = directory.Parent;
+        }
+
+        return null;
+    }
+}
+
+/// <summary>
+/// Localiza projetos que não podem referenciar o transporte RabbitMQ na Fase 2 do ADR 0052.
+/// </summary>
+internal static class MessagingBrokerComplianceScanner
+{
+    /// <summary>
+    /// Enumera caminhos absolutos de .csproj de Domain, Application, WebApp e BackofficeApp.
+    /// </summary>
+    /// <returns>Caminhos de projetos sob guarda arquitetural.</returns>
+    public static IEnumerable<string> EnumerateGuardedProjectPaths()
+    {
+        var solutionRoot = ResolveSolutionRoot();
+        solutionRoot.Should().NotBeNull("AdMetricsPro.sln deve ser encontrado.");
+
+        var backendSrc = Path.Combine(solutionRoot!, "src", "Backend");
+        var frontendSrc = Path.Combine(solutionRoot!, "src", "Frontend");
+
+        var paths = new List<string>();
+        if (Directory.Exists(backendSrc))
+        {
+            paths.AddRange(Directory.EnumerateFiles(backendSrc, "*.Domain.csproj", SearchOption.AllDirectories));
+            paths.AddRange(Directory.EnumerateFiles(backendSrc, "*.Application.csproj", SearchOption.AllDirectories));
+        }
+
+        var webApp = Path.Combine(frontendSrc, "WebApp", "WebApp.csproj");
+        if (File.Exists(webApp))
+        {
+            paths.Add(webApp);
+        }
+
+        var backoffice = Path.Combine(frontendSrc, "BackofficeApp", "BackofficeApp.csproj");
+        if (File.Exists(backoffice))
+        {
+            paths.Add(backoffice);
+        }
+
+        return paths.OrderBy(p => p, StringComparer.Ordinal);
+    }
+
+    private static string? ResolveSolutionRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var slnPath = Path.Combine(directory.FullName, "AdMetricsPro.sln");
+            if (File.Exists(slnPath))
+            {
+                return directory.FullName;
             }
 
             directory = directory.Parent;
