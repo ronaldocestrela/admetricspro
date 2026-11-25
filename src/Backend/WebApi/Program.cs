@@ -79,6 +79,10 @@ builder.Services.AddAdMetricsMessaging(
         bus.AddConsumer<WebApi.Messaging.AnalyticsCampaignMetricsSyncedConsumer>();
         bus.AddConsumer<WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer>();
         bus.AddConsumer<WebApi.Messaging.PublishOrganicSlotIntegrationConsumer>();
+        bus.AddConsumer<WebApi.Messaging.SocialEditorialPlanJobConsumer>();
+        bus.AddConsumer<WebApi.Messaging.SocialPostImageJobConsumer>();
+        bus.AddConsumer<WebApi.Messaging.AnalyticsReportJobConsumer>();
+        bus.AddConsumer<WebApi.Messaging.BulkCampaignJobConsumer>();
     },
     (context, cfg) =>
     {
@@ -175,6 +179,59 @@ builder.Services.AddAdMetricsMessaging(
                 bind.RoutingKey = SocialPublishing.Application.Messaging.SocialPublishingIntegrationMessageTypes.PublishOrganicSlot;
             });
             endpoint.ConfigureConsumer<WebApi.Messaging.PublishOrganicSlotIntegrationConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.SocialEditorialPlanJobConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = 1;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.EditorialPlanGenerate;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.SocialEditorialPlanJobConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.SocialPostImageJobConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = 1;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.PostImageGenerate;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.SocialPostImageJobConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.AnalyticsReportJobConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = 1;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.ReportGenerate;
+            });
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.ReportDispatch;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.AnalyticsReportJobConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.BulkCampaignJobConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = 1;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.BulkCampaignMutation;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.BulkCampaignJobConsumer>(context);
         });
     });
 builder.Services.AddOptions<WebApi.Background.OutboxDispatchOptions>()

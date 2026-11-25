@@ -1,7 +1,10 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using BuildingBlocks.Application.Campaigns.Commands;
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Domain.Messaging;
 using BuildingBlocks.Domain.Primitives;
+using WebApp.Services.Jobs;
 using Integrations.Application.Campaigns.DTOs;
 using WebApp.State;
 
@@ -15,18 +18,25 @@ public sealed class BulkCampaignClientService : IBulkCampaignClientService
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
     private readonly ITenantSessionStateProvider? _session;
+    private readonly IUserInitiatedJobClient _jobClient;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="BulkCampaignClientService"/>.
     /// </summary>
     /// <param name="httpClient">Cliente HTTP configurado.</param>
-    /// <param name="session">Sessão autenticada para chamadas de integração.</param>
     /// <param name="tenantStateProvider">Provedor de estado do inquilino na sessão.</param>
-    public BulkCampaignClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
+    /// <param name="jobClient">Cliente para polling de jobs iniciados pelo usuário (Fase 8).</param>
+    /// <param name="session">Sessão autenticada para chamadas de integração.</param>
+    public BulkCampaignClientService(
+        HttpClient httpClient,
+        ITenantStateProvider tenantStateProvider,
+        IUserInitiatedJobClient jobClient,
+        ITenantSessionStateProvider? session = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _jobClient = jobClient ?? throw new ArgumentNullException(nameof(jobClient));
         _session = session;
     }
 
@@ -108,7 +118,35 @@ public sealed class BulkCampaignClientService : IBulkCampaignClientService
             AppendTenantHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var result = await response.Content.ReadFromJsonAsync<Result<BulkCampaignOperationResultDto>>(JsonOptions, cancellationToken);
+            var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+            var jobEnvelope = JsonSerializer.Deserialize<Result<UserInitiatedJobDto>>(raw, JsonOptions);
+            if (jobEnvelope is { IsSuccess: true, Value.Status: UserInitiatedJobStatus.Accepted })
+            {
+                var terminal = await _jobClient.WaitForTerminalAsync(
+                    workspaceId,
+                    jobEnvelope.Value.JobId,
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromMinutes(15),
+                    cancellationToken);
+
+                if (terminal.IsFailure)
+                {
+                    return Result<BulkCampaignOperationResultDto>.Failure(terminal.Error);
+                }
+
+                if (terminal.Value.Status == UserInitiatedJobStatus.Failed)
+                {
+                    return Result<BulkCampaignOperationResultDto>.Failure(
+                        Error.Failure(terminal.Value.ErrorCode ?? "UserJob.Failed", terminal.Value.ErrorDescription ?? "Falha no lote."));
+                }
+
+                var bulk = JsonSerializer.Deserialize<BulkCampaignOperationResultDto>(terminal.Value.ResultJson ?? "{}", JsonOptions);
+                return bulk is null
+                    ? Result<BulkCampaignOperationResultDto>.Failure(Error.Failure("BulkCampaign.InvalidJobResult", "Resultado do job inválido."))
+                    : Result<BulkCampaignOperationResultDto>.Success(bulk);
+            }
+
+            var result = JsonSerializer.Deserialize<Result<BulkCampaignOperationResultDto>>(raw, JsonOptions);
 
             return result ?? Result<BulkCampaignOperationResultDto>.Failure(
                 Error.Failure("Http.EmptyResponse", "A resposta da API retornou vazia."));

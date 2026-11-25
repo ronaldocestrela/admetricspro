@@ -70,7 +70,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.ListConnectionsAsync(workspaceId);
 
         result.IsSuccess.Should().BeTrue();
@@ -98,7 +98,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.StartAuthorizationAsync(workspaceId, OrganicPlatform.TikTok, "https://app.test/social/connections");
 
         result.IsSuccess.Should().BeTrue();
@@ -141,7 +141,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.ListPostsAsync(workspaceId, fromUtc, toUtc);
 
         result.IsSuccess.Should().BeTrue();
@@ -181,7 +181,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.RescheduleAsync(workspaceId, postId, scheduledAtUtc);
 
         result.IsSuccess.Should().BeTrue();
@@ -220,7 +220,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.SubmitForApprovalAsync(workspaceId, postId);
 
         result.IsSuccess.Should().BeTrue();
@@ -257,7 +257,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.ApprovePostAsync(workspaceId, postId);
 
         result.IsSuccess.Should().BeTrue();
@@ -295,7 +295,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.SchedulePostAsync(workspaceId, postId);
 
         result.IsSuccess.Should().BeTrue();
@@ -346,7 +346,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.GetBrandVoiceAsync(workspaceId);
 
         result.IsSuccess.Should().BeTrue();
@@ -396,7 +396,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.UpsertBrandVoiceAsync(
             workspaceId,
             "Tom",
@@ -443,7 +443,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.GeneratePlanAsync(workspaceId, rangeStart, rangeEnd, "America/Sao_Paulo", 5, 0);
 
         result.IsSuccess.Should().BeTrue();
@@ -458,7 +458,7 @@ public sealed class SocialPublishingClientTests
     public async Task GeneratePlanAsync_WhenNetworkFails_ShouldReturnNetworkError()
     {
         var handler = new TestHttpMessageHandler((_, _) => throw new HttpRequestException("timeout"));
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
 
         var result = await client.GeneratePlanAsync(Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateOnly.FromDateTime(DateTime.UtcNow), "America/Sao_Paulo", 3, 0);
 
@@ -497,7 +497,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.ListBoostSuggestionsAsync(workspaceId);
 
         result.IsSuccess.Should().BeTrue();
@@ -535,7 +535,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.AcceptBoostSuggestionAsync(workspaceId, suggestionId);
 
         result.IsSuccess.Should().BeTrue();
@@ -572,7 +572,7 @@ public sealed class SocialPublishingClientTests
             };
         });
 
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
         var result = await client.DismissBoostSuggestionAsync(workspaceId, suggestionId);
 
         result.IsSuccess.Should().BeTrue();
@@ -586,7 +586,7 @@ public sealed class SocialPublishingClientTests
     public async Task ListBoostSuggestionsAsync_WhenWorkspaceEmpty_ShouldReturnWorkspaceRequired()
     {
         var handler = new TestHttpMessageHandler((_, _) => throw new InvalidOperationException("Should not call HTTP"));
-        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider);
+        var client = new SocialPublishingClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.test") }, _tenantStateProvider, _sessionStateProvider, NSubstitute.Substitute.For<WebApp.Services.Jobs.IUserInitiatedJobClient>());
 
         var result = await client.ListBoostSuggestionsAsync(Guid.Empty);
 

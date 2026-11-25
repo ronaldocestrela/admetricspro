@@ -1,6 +1,9 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Domain.Messaging;
 using BuildingBlocks.Domain.Primitives;
+using WebApp.Services.Jobs;
 using System.Globalization;
 using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Brand.DTOs;
@@ -25,6 +28,7 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
     private readonly ITenantSessionStateProvider _session;
+    private readonly IUserInitiatedJobClient _jobClient;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
@@ -33,14 +37,17 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
     /// <param name="httpClient">Cliente HTTP injetado.</param>
     /// <param name="tenantStateProvider">Provedor de estado do inquilino.</param>
     /// <param name="session">Sessão autenticada do circuito Blazor.</param>
+    /// <param name="jobClient">Cliente para polling de jobs iniciados pelo usuário (Fase 8).</param>
     public SocialPublishingClient(
         HttpClient httpClient,
         ITenantStateProvider tenantStateProvider,
-        ITenantSessionStateProvider session)
+        ITenantSessionStateProvider session,
+        IUserInitiatedJobClient jobClient)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        _jobClient = jobClient ?? throw new ArgumentNullException(nameof(jobClient));
     }
 
     /// <inheritdoc />
@@ -341,7 +348,43 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
             AppendTenantHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var result = await response.Content.ReadFromJsonAsync<Result<OrganicPostDto>>(JsonOptions, cancellationToken);
+            var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+            var jobEnvelope = JsonSerializer.Deserialize<Result<UserInitiatedJobDto>>(raw, JsonOptions);
+            if (jobEnvelope is { IsSuccess: true, Value.Status: UserInitiatedJobStatus.Accepted })
+            {
+                var terminal = await _jobClient.WaitForTerminalAsync(
+                    workspaceId,
+                    jobEnvelope.Value.JobId,
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromMinutes(10),
+                    cancellationToken);
+
+                if (terminal.IsFailure)
+                {
+                    return Result<OrganicPostDto>.Failure(terminal.Error);
+                }
+
+                if (terminal.Value.Status == UserInitiatedJobStatus.Failed)
+                {
+                    return Result<OrganicPostDto>.Failure(
+                        Error.Failure(terminal.Value.ErrorCode ?? "UserJob.Failed", terminal.Value.ErrorDescription ?? "Falha ao gerar imagem."));
+                }
+
+                using var doc = JsonDocument.Parse(terminal.Value.ResultJson ?? "{}");
+                var generatedPostId = doc.RootElement.GetProperty("postId").GetGuid();
+                var posts = await ListPostsAsync(workspaceId, DateTime.UtcNow.AddYears(-1), DateTime.UtcNow.AddYears(1), cancellationToken);
+                if (posts.IsFailure)
+                {
+                    return Result<OrganicPostDto>.Failure(posts.Error);
+                }
+
+                var post = posts.Value.FirstOrDefault(p => p.Id == generatedPostId);
+                return post is null
+                    ? Result<OrganicPostDto>.Failure(Error.NotFound("Social.PostNotFound", "Post não encontrado após geração."))
+                    : Result<OrganicPostDto>.Success(post);
+            }
+
+            var result = JsonSerializer.Deserialize<Result<OrganicPostDto>>(raw, JsonOptions);
 
             return result ?? Result<OrganicPostDto>.Failure(
                 Error.Failure("Social.InvalidResponse", "Resposta inválida ao gerar imagem do post."));
@@ -520,7 +563,35 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
             AppendTenantHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var result = await response.Content.ReadFromJsonAsync<Result<GeneratedPlanDto>>(JsonOptions, cancellationToken);
+            var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+            var jobEnvelope = JsonSerializer.Deserialize<Result<UserInitiatedJobDto>>(raw, JsonOptions);
+            if (jobEnvelope is { IsSuccess: true, Value.Status: UserInitiatedJobStatus.Accepted })
+            {
+                var terminal = await _jobClient.WaitForTerminalAsync(
+                    workspaceId,
+                    jobEnvelope.Value.JobId,
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromMinutes(15),
+                    cancellationToken);
+
+                if (terminal.IsFailure)
+                {
+                    return Result<GeneratedPlanDto>.Failure(terminal.Error);
+                }
+
+                if (terminal.Value.Status == UserInitiatedJobStatus.Failed)
+                {
+                    return Result<GeneratedPlanDto>.Failure(
+                        Error.Failure(terminal.Value.ErrorCode ?? "UserJob.Failed", terminal.Value.ErrorDescription ?? "Falha ao gerar plano."));
+                }
+
+                var plan = JsonSerializer.Deserialize<GeneratedPlanDto>(terminal.Value.ResultJson ?? "{}", JsonOptions);
+                return plan is null
+                    ? Result<GeneratedPlanDto>.Failure(Error.Failure("Social.InvalidJobResult", "Resultado do job inválido."))
+                    : Result<GeneratedPlanDto>.Success(plan);
+            }
+
+            var result = JsonSerializer.Deserialize<Result<GeneratedPlanDto>>(raw, JsonOptions);
 
             return result ?? Result<GeneratedPlanDto>.Failure(
                 Error.Failure("Social.InvalidResponse", "Resposta inválida ao gerar cronograma."));

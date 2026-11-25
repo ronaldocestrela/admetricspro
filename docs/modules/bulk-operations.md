@@ -27,6 +27,8 @@ A funcionalidade segue o padrão de **Tolerância a Falhas Parciais**, onde iten
 
 ### Rota: `POST /api/v1/integrations/campaigns/bulk`
 
+Com **`Messaging:Enabled=true`** e mais de **cinco** operações no corpo, o endpoint retorna **`Result<UserInitiatedJobDto>`** (`status: Accepted`); a mutação nas redes ocorre no consumidor `integrations.bulk-campaign-mutation.v1`. O cliente consulta `GET /api/v1/workspaces/{workspaceId}/jobs/{jobId}` até `Succeeded` ou `Failed` (o `ResultJson` contém o mesmo `BulkCampaignOperationResultDto` do fluxo síncrono). Lotes de até cinco itens e a prévia de impacto orçamentário permanecem síncronos (ADR 0052, Fase 8).
+
 #### Cabeçalhos Obrigatórios
 * `X-Tenant-Id`: GUID do inquilino contextual.
 

@@ -8,6 +8,7 @@ using Integrations.Application.Campaigns.DTOs;
 using NSubstitute;
 using UnitTests.Frontend.Common;
 using WebApp.Services;
+using WebApp.Services.Jobs;
 using WebApp.State;
 using Xunit;
 
@@ -76,7 +77,7 @@ public sealed class BulkCampaignClientServiceTests
         });
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:5000") };
-        var service = new BulkCampaignClientService(httpClient, _tenantStateProvider);
+        var service = new BulkCampaignClientService(httpClient, _tenantStateProvider, Substitute.For<IUserInitiatedJobClient>());
 
         // Act
         var result = await service.GetCampaignsForBulkAsync(workspaceId, "MetaAds");
@@ -128,7 +129,7 @@ public sealed class BulkCampaignClientServiceTests
         });
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:5000") };
-        var service = new BulkCampaignClientService(httpClient, _tenantStateProvider);
+        var service = new BulkCampaignClientService(httpClient, _tenantStateProvider, Substitute.For<IUserInitiatedJobClient>());
 
         // Act
         var result = await service.ExecuteBulkOperationsAsync(workspaceId, operations);
@@ -148,7 +149,7 @@ public sealed class BulkCampaignClientServiceTests
     public async Task ExecuteBulkOperationsAsync_WhenWorkspaceIdEmpty_ShouldReturnValidationFailure()
     {
         var httpClient = new HttpClient();
-        var service = new BulkCampaignClientService(httpClient, _tenantStateProvider);
+        var service = new BulkCampaignClientService(httpClient, _tenantStateProvider, Substitute.For<IUserInitiatedJobClient>());
 
         var result = await service.ExecuteBulkOperationsAsync(Guid.Empty, new[]
         {
@@ -167,7 +168,7 @@ public sealed class BulkCampaignClientServiceTests
     public async Task ExecuteBulkOperationsAsync_WhenOperationsEmpty_ShouldReturnValidationFailure()
     {
         var httpClient = new HttpClient();
-        var service = new BulkCampaignClientService(httpClient, _tenantStateProvider);
+        var service = new BulkCampaignClientService(httpClient, _tenantStateProvider, Substitute.For<IUserInitiatedJobClient>());
 
         var result = await service.ExecuteBulkOperationsAsync(Guid.NewGuid(), Array.Empty<BulkCampaignOperationItem>());
 

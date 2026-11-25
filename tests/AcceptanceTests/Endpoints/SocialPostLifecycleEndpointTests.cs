@@ -369,6 +369,9 @@ public sealed class SocialPostLifecycleEndpointTests : IClassFixture<WebApplicat
         public Task<PublicationJob?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default) =>
             Task.FromResult(_jobs.FirstOrDefault(j => j.IdempotencyKey == idempotencyKey));
 
+        public Task<PublicationJob?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_jobs.FirstOrDefault(j => j.Id == jobId));
+
         public Task<PublicationJob?> GetActiveByPostIdAsync(Guid postId, CancellationToken cancellationToken = default) =>
             Task.FromResult(
                 _jobs.FirstOrDefault(j =>

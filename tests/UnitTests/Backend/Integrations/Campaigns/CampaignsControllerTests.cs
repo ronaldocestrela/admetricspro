@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Domain.Primitives;
 using FluentAssertions;
 using Integrations.Application.Campaigns.Commands.SyncCampaignHierarchy;
@@ -17,6 +18,7 @@ namespace UnitTests.Backend.Integrations.Campaigns;
 public sealed class CampaignsControllerTests
 {
     private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly IMessagingFeatureGate _messagingFeatureGate = Substitute.For<IMessagingFeatureGate>();
     private readonly CampaignsController _controller;
 
     /// <summary>
@@ -24,7 +26,8 @@ public sealed class CampaignsControllerTests
     /// </summary>
     public CampaignsControllerTests()
     {
-        _controller = new CampaignsController(_sender);
+        _messagingFeatureGate.IsEnabled.Returns(false);
+        _controller = new CampaignsController(_sender, _messagingFeatureGate);
     }
 
     /// <summary>
@@ -114,7 +117,7 @@ public sealed class CampaignsControllerTests
         var result = await _controller.ExecuteBulkOperations(null!);
 
         // Assert
-        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 
     /// <summary>
@@ -144,10 +147,10 @@ public sealed class CampaignsControllerTests
             .Returns(Task.FromResult(Result<BuildingBlocks.Application.Campaigns.Commands.BulkCampaignOperationResultDto>.Success(resultDto)));
 
         // Act
-        var result = await _controller.ExecuteBulkOperations(request);
+        var action = await _controller.ExecuteBulkOperations(request);
 
         // Assert
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        var okResult = action.Should().BeOfType<OkObjectResult>().Subject;
         var val = okResult.Value.Should().BeOfType<Result<BuildingBlocks.Application.Campaigns.Commands.BulkCampaignOperationResultDto>>().Subject;
         val.IsSuccess.Should().BeTrue();
         val.Value.TotalSucceeded.Should().Be(1);
@@ -170,9 +173,9 @@ public sealed class CampaignsControllerTests
                 Error.Validation("BulkCampaign.EmptyList", "A lista de operações não pode ser vazia."))));
 
         // Act
-        var result = await _controller.ExecuteBulkOperations(request);
+        var action = await _controller.ExecuteBulkOperations(request);
 
         // Assert
-        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        action.Should().BeOfType<BadRequestObjectResult>();
     }
 }

@@ -48,3 +48,7 @@ Decidimos implementar o subsistema de **Gerador de Relatórios Automatizados em 
 ### Negativas / Mitigações
 - **Volume de Armazenamento de PDFs:** A persistência binária de dezenas de relatórios por tenant pode onerar o banco ou storage.
   - *Mitigação:* O relatório armazena seu modelo de dados consolidado em JSON (`RenderModelJson`). O PDF pode ser sintetizado sob demanda e sob cache temporário, mantendo o consumo de disco mínimo.
+
+## Adendo (Fase 8 — mensageria, ADR 0052)
+
+`POST .../reports/generate` e `POST .../reports/{id}:dispatch` com `Messaging:Enabled=true` gravam job + outbox (`analytics.report-generate.v1` / `analytics.report-dispatch.v1`). Schedules disparados por Quartz permanecem no pipeline da Fase 6; geração sob demanda e dispatch manual passam pelos consumidores da Fase 8.

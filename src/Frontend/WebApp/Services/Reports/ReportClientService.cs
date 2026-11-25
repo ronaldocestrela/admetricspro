@@ -1,7 +1,10 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Analytics.Application.Reports.DTOs;
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Domain.Messaging;
 using BuildingBlocks.Domain.Primitives;
+using WebApp.Services.Jobs;
 using WebApp.State;
 
 namespace WebApp.Services.Reports;
@@ -14,15 +17,21 @@ public sealed class ReportClientService : IReportClientService
     private readonly HttpClient _httpClient;
     private readonly ITenantStateProvider _tenantStateProvider;
     private readonly ITenantSessionStateProvider? _session;
+    private readonly IUserInitiatedJobClient _jobClient;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="ReportClientService"/>.
     /// </summary>
-    public ReportClientService(HttpClient httpClient, ITenantStateProvider tenantStateProvider, ITenantSessionStateProvider? session = null)
+    public ReportClientService(
+        HttpClient httpClient,
+        ITenantStateProvider tenantStateProvider,
+        IUserInitiatedJobClient jobClient,
+        ITenantSessionStateProvider? session = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _tenantStateProvider = tenantStateProvider ?? throw new ArgumentNullException(nameof(tenantStateProvider));
+        _jobClient = jobClient ?? throw new ArgumentNullException(nameof(jobClient));
         _session = session;
     }
 
@@ -121,7 +130,34 @@ public sealed class ReportClientService : IReportClientService
             AppendTenantHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var result = await response.Content.ReadFromJsonAsync<Result<Guid>>(JsonOptions, cancellationToken);
+            var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+            var jobEnvelope = JsonSerializer.Deserialize<Result<UserInitiatedJobDto>>(raw, JsonOptions);
+            if (jobEnvelope is { IsSuccess: true, Value.Status: UserInitiatedJobStatus.Accepted })
+            {
+                var terminal = await _jobClient.WaitForTerminalAsync(
+                    workspaceId,
+                    jobEnvelope.Value.JobId,
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromMinutes(20),
+                    cancellationToken);
+
+                if (terminal.IsFailure)
+                {
+                    return Result<Guid>.Failure(terminal.Error);
+                }
+
+                if (terminal.Value.Status == UserInitiatedJobStatus.Failed)
+                {
+                    return Result<Guid>.Failure(
+                        Error.Failure(terminal.Value.ErrorCode ?? "UserJob.Failed", terminal.Value.ErrorDescription ?? "Falha ao gerar relatório."));
+                }
+
+                using var doc = JsonDocument.Parse(terminal.Value.ResultJson ?? "{}");
+                var reportId = doc.RootElement.GetProperty("reportId").GetGuid();
+                return Result<Guid>.Success(reportId);
+            }
+
+            var result = JsonSerializer.Deserialize<Result<Guid>>(raw, JsonOptions);
             return result ?? Result<Guid>.Failure(Error.Failure("Http.EmptyResponse", "Resposta vazia da API."));
         }
         catch (Exception ex)
@@ -140,7 +176,32 @@ public sealed class ReportClientService : IReportClientService
             AppendTenantHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var result = await response.Content.ReadFromJsonAsync<Result<Guid>>(JsonOptions, cancellationToken);
+            var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+            var jobEnvelope = JsonSerializer.Deserialize<Result<UserInitiatedJobDto>>(raw, JsonOptions);
+            if (jobEnvelope is { IsSuccess: true, Value.Status: UserInitiatedJobStatus.Accepted })
+            {
+                var terminal = await _jobClient.WaitForTerminalAsync(
+                    workspaceId,
+                    jobEnvelope.Value.JobId,
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromMinutes(10),
+                    cancellationToken);
+
+                if (terminal.IsFailure)
+                {
+                    return Result<Guid>.Failure(terminal.Error);
+                }
+
+                if (terminal.Value.Status == UserInitiatedJobStatus.Failed)
+                {
+                    return Result<Guid>.Failure(
+                        Error.Failure(terminal.Value.ErrorCode ?? "UserJob.Failed", terminal.Value.ErrorDescription ?? "Falha ao disparar relatório."));
+                }
+
+                return Result<Guid>.Success(scheduleId);
+            }
+
+            var result = JsonSerializer.Deserialize<Result<Guid>>(raw, JsonOptions);
             return result ?? Result<Guid>.Failure(Error.Failure("Http.EmptyResponse", "Resposta vazia da API."));
         }
         catch (Exception ex)

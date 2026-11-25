@@ -127,7 +127,7 @@ Retorna as regras de agendamento ativas e configuradas para o Workspace.
 ---
 
 ### 3.3 Gerar Relatório Sob Demanda: `POST /api/v1/workspaces/{workspaceId}/reports/generate`
-Compila imediatamente um relatório executivo com intervalo de datas personalizado e gera o token de compartilhamento.
+Compila um relatório executivo com intervalo de datas personalizado e gera o token de compartilhamento. Com **`Messaging:Enabled=true`** (ADR 0052, Fase 8), a compilação PDF e a persistência ocorrem via job (`analytics.report-generate.v1`); o POST devolve `UserInitiatedJobDto` e o cliente consulta `GET /api/v1/workspaces/{workspaceId}/jobs/{jobId}`. Com mensageria desligada, a resposta continua síncrona com `Result<Guid>` do relatório criado.
 
 #### Payload de Entrada (JSON)
 ```json

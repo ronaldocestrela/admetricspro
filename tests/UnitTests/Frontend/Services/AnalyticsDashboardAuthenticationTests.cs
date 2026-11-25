@@ -5,7 +5,9 @@ using FluentAssertions;
 using Tenants.Application.Auth.DTOs;
 using UnitTests.Frontend.Common;
 using WebApp.Models;
+using NSubstitute;
 using WebApp.Services;
+using WebApp.Services.Jobs;
 using WebApp.State;
 
 namespace UnitTests.Frontend.Services;
@@ -34,7 +36,7 @@ public sealed class AnalyticsDashboardAuthenticationTests
         });
         using var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:5000") };
         var client = new AnalyticsDashboardClientService(http, tenant, session);
-        var campaignClient = new BulkCampaignClientService(http, tenant, session);
+        var campaignClient = new BulkCampaignClientService(http, tenant, Substitute.For<IUserInitiatedJobClient>(), session);
         foreach (var token in new[] { "first-session-token", "new-session-token" })
         {
             session.SetSession(new AuthenticatedTenantUserDto(token, "Bearer", 3600, Guid.NewGuid(),

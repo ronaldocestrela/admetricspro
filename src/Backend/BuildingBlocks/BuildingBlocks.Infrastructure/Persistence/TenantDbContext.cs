@@ -139,6 +139,11 @@ public class TenantDbContext : DbContext
     /// </summary>
     public DbSet<IntegrationInboxMessage> IntegrationInboxMessages => Set<IntegrationInboxMessage>();
 
+    /// <summary>
+    /// Jobs iniciados pelo usuário com execução assíncrona.
+    /// </summary>
+    public DbSet<UserInitiatedJob> UserInitiatedJobs => Set<UserInitiatedJob>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -21,6 +21,8 @@ public static class MessagingPersistenceServiceCollectionExtensions
         services.AddScoped<IIntegrationOutboxStore, TenantAwareIntegrationOutboxStore>();
         services.AddScoped<IIntegrationOutboxWriter, TenantAwareIntegrationOutboxWriter>();
         services.AddScoped<IIntegrationInboxStore, TenantAwareIntegrationInboxStore>();
+        services.AddScoped<IUserInitiatedJobStore, TenantAwareUserInitiatedJobStore>();
+        services.AddScoped<ITenantUserInitiatedJobCommitter, TenantUserInitiatedJobCommitter>();
         return services;
     }
 

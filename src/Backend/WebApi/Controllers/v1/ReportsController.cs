@@ -1,4 +1,7 @@
+using Analytics.Application.Jobs.Commands.AcceptDispatchReport;
+using Analytics.Application.Jobs.Commands.AcceptGenerateReport;
 using Analytics.Application.Reports.Commands.CreateReportSchedule;
+using BuildingBlocks.Application.Messaging;
 using Analytics.Application.Reports.Commands.DispatchReportSchedule;
 using Analytics.Application.Reports.Commands.GenerateReport;
 using Analytics.Application.Reports.Commands.UpdateReportSchedule;
@@ -20,13 +23,15 @@ namespace WebApi.Controllers.v1;
 public sealed class ReportsController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly IMessagingFeatureGate _messagingFeatureGate;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="ReportsController"/>.
     /// </summary>
-    public ReportsController(ISender sender)
+  public ReportsController(ISender sender, IMessagingFeatureGate messagingFeatureGate)
     {
         _sender = sender ?? throw new ArgumentNullException(nameof(sender));
+        _messagingFeatureGate = messagingFeatureGate ?? throw new ArgumentNullException(nameof(messagingFeatureGate));
     }
 
     /// <summary>
@@ -140,12 +145,32 @@ public sealed class ReportsController : ControllerBase
     [HttpPost("generate")]
     [EndpointSummary("Gera um relatório executivo sob demanda com link web e PDF")]
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<UserInitiatedJobDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Result<Guid>>> GenerateReport(
+    public async Task<ActionResult> GenerateReport(
         [FromRoute] Guid workspaceId,
         [FromBody] GenerateReportRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (_messagingFeatureGate.IsEnabled)
+        {
+            var accept = await _sender.Send(
+                new AcceptGenerateReportCommand(
+                    workspaceId,
+                    request.Title,
+                    request.StartDateUtc,
+                    request.EndDateUtc,
+                    request.CustomNotes,
+                    request.IncludeCopilotInsights,
+                    request.IncludeTopCreatives,
+                    request.IncludeChannelBreakdown,
+                    request.IncludePacingSummary,
+                    request.ExpirationDays),
+                cancellationToken);
+
+            return accept.IsFailure ? BadRequest(accept) : Ok(accept);
+        }
+
         var command = new GenerateReportCommand(
             workspaceId,
             request.Title,
@@ -169,12 +194,19 @@ public sealed class ReportsController : ControllerBase
     [HttpPost("schedules/{scheduleId:guid}/dispatch")]
     [EndpointSummary("Dispara manualmente um agendamento para seus destinatários")]
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<UserInitiatedJobDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Result<Guid>), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Result<Guid>>> DispatchSchedule(
+    public async Task<ActionResult> DispatchSchedule(
         [FromRoute] Guid workspaceId,
         [FromRoute] Guid scheduleId,
         CancellationToken cancellationToken = default)
     {
+        if (_messagingFeatureGate.IsEnabled)
+        {
+            var accept = await _sender.Send(new AcceptDispatchReportCommand(workspaceId, scheduleId), cancellationToken);
+            return accept.IsFailure ? BadRequest(accept) : Ok(accept);
+        }
+
         var result = await _sender.Send(new DispatchReportScheduleCommand(scheduleId), cancellationToken);
         if (result.IsFailure) return BadRequest(result);
         return Ok(result);

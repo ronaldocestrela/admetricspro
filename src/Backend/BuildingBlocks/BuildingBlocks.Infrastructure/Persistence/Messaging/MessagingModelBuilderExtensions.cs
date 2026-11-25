@@ -16,6 +16,7 @@ public static class MessagingModelBuilderExtensions
     {
         modelBuilder.ApplyConfiguration(new IntegrationOutboxMessageEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new IntegrationInboxMessageEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new UserInitiatedJobEntityTypeConfiguration());
 
         if (includeSchedulerLease)
         {

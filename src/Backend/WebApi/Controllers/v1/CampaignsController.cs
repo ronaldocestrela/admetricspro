@@ -1,5 +1,7 @@
 using BuildingBlocks.Application.Campaigns.Commands;
+using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Domain.Primitives;
+using Integrations.Application.Jobs.Commands.AcceptBulkCampaignOperation;
 using Integrations.Application.Campaigns.Commands.SyncCampaignHierarchy;
 using Integrations.Application.Campaigns.DTOs;
 using Integrations.Application.Campaigns.Queries.GetCampaignHierarchy;
@@ -20,14 +22,17 @@ namespace WebApi.Controllers.v1;
 public sealed class CampaignsController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly IMessagingFeatureGate _messagingFeatureGate;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="CampaignsController"/>.
     /// </summary>
     /// <param name="sender">Mediador in-memory.</param>
-    public CampaignsController(ISender sender)
+    /// <param name="messagingFeatureGate">Feature flag de mensageria durável.</param>
+    public CampaignsController(ISender sender, IMessagingFeatureGate messagingFeatureGate)
     {
         _sender = sender ?? throw new ArgumentNullException(nameof(sender));
+        _messagingFeatureGate = messagingFeatureGate ?? throw new ArgumentNullException(nameof(messagingFeatureGate));
     }
 
     /// <summary>
@@ -120,8 +125,9 @@ public sealed class CampaignsController : ControllerBase
     [HttpPost("bulk")]
     [EndpointSummary("Executa operações em lote (ativar, pausar, alterar budget) em múltiplas campanhas")]
     [ProducesResponseType(typeof(Result<BulkCampaignOperationResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<UserInitiatedJobDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Result<BulkCampaignOperationResultDto>), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Result<BulkCampaignOperationResultDto>>> ExecuteBulkOperations(
+    public async Task<ActionResult> ExecuteBulkOperations(
         [FromBody] BulkCampaignOperationApiRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -140,8 +146,16 @@ public sealed class CampaignsController : ControllerBase
                 o.Reason))
             .ToList() ?? [];
 
-        var command = new BulkCampaignOperationCommand(request.WorkspaceId, operations);
+        if (_messagingFeatureGate.IsEnabled && operations.Count > 5)
+        {
+            var accept = await _sender.Send(
+                new AcceptBulkCampaignOperationCommand(request.WorkspaceId, operations),
+                cancellationToken);
 
+            return accept.IsFailure ? BadRequest(accept) : Ok(accept);
+        }
+
+        var command = new BulkCampaignOperationCommand(request.WorkspaceId, operations);
         var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)

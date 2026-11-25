@@ -5,7 +5,9 @@ using FluentAssertions;
 using Integrations.Application.Campaigns.DTOs;
 using Tenants.Application.Auth.DTOs;
 using UnitTests.Frontend.Common;
+using NSubstitute;
 using WebApp.Services;
+using WebApp.Services.Jobs;
 using WebApp.State;
 
 namespace UnitTests.Frontend.Services;
@@ -33,7 +35,7 @@ public sealed class BulkCampaignSynchronizationTests
                 : JsonContent.Create(Result<SyncCampaignMetricsSummaryDto>.Success(new(1, 1, 10, 100, 2, 0, 0, DateTime.UtcNow, "Daily", ["GoogleAds"]))) };
         });
         using var http = new HttpClient(handler) { BaseAddress = new("http://localhost:5000") };
-        var client = new BulkCampaignClientService(http, tenant, session);
+        var client = new BulkCampaignClientService(http, tenant, Substitute.For<IUserInitiatedJobClient>(), session);
         var result = await client.SynchronizeAccountAsync(workspace, account, "GoogleAds", new(2026, 10, 1), new(2026, 10, 22));
         result.IsSuccess.Should().BeTrue();
         paths.Should().Equal("/api/v1/integrations/campaigns/sync", "/api/v1/integrations/campaigns/metrics/sync");

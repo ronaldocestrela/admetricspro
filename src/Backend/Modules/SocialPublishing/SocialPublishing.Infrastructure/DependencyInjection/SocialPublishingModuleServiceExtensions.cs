@@ -56,6 +56,7 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddScoped<IApprovalLinkRepository, ApprovalLinkRepository>();
         services.AddScoped<IPaidBoostSuggestionRepository, PaidBoostSuggestionRepository>();
         services.AddScoped<ISocialPublishingUnitOfWork, SocialPublishingUnitOfWork>();
+        services.AddScoped<ISocialUserInitiatedJobCommitter, SocialUserInitiatedJobCommitter>();
         services.AddScoped<ISocialPublishingSchemaMigrator, SocialPublishingSchemaMigrator>();
 
         ConfigureOrganicOAuth(services, configuration);

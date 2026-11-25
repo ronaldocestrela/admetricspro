@@ -696,7 +696,7 @@ Orquestra **`EditorialCalendarPlanner.Plan`**, **`GenerateSlotCopyCommand`** (vi
 
 | Método | Rota | Descrição |
 | :--- | :--- | :--- |
-| `POST` | `/api/v1/social/plans:generate` | Materializa o plano (corpo JSON abaixo). |
+| `POST` | `/api/v1/social/plans:generate` | Materializa o plano (corpo JSON abaixo). Com `Messaging:Enabled=true`, aceita o job assíncrono (`social.editorial-plan-generate.v1`) e retorna `UserInitiatedJobDto`; consulta em `GET /api/v1/workspaces/{workspaceId}/jobs/{jobId}`. |
 | `GET` | `/api/v1/social/posts?workspaceId=&from=&to=` | Lista posts no intervalo UTC inclusivo de `ScheduledAtUtc`. |
 
 ### Entrada (`GenerateEditorialPlanRequest`)
@@ -774,6 +774,8 @@ Transição `PendingApproval` → `Approved` (não abre job outbox; use `:schedu
 ### `POST /api/v1/social/posts/{id}:generate-image`
 
 Gera imagem de feed para post já **`Approved`** e formato **`FeedImage`**, via **Gemini Nano Banana** (`ISocialImageGenerator`). Permissão **`social.copilot.generate`**. O brief é montado no servidor (Brand Voice + legenda sem hashtags); corpo HTTP opcional:
+
+Com **`Messaging:Enabled=true`** (ADR 0052, Fase 8), o POST retorna **`Result<UserInitiatedJobDto>`** em `200` com `status: Accepted` e a execução ocorre no consumidor `social.post-image-generate.v1`. Status: `GET /api/v1/workspaces/{workspaceId}/jobs/{jobId}`. Com mensageria desligada, o comportamento síncrono anterior permanece.
 
 ```json
 {

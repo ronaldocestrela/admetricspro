@@ -30,6 +30,7 @@ public sealed class SocialCalendarGridTests : BunitTestBase
     public SocialCalendarGridTests()
     {
         Services.AddSingleton(_socialClient);
+        Services.AddSingleton<ISocialMediaPreviewCache, SocialMediaPreviewCache>();
         _socialClient.ListBoostSuggestionsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<IReadOnlyList<PaidBoostSuggestionDto>>.Success(Array.Empty<PaidBoostSuggestionDto>())));
     }

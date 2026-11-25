@@ -71,6 +71,11 @@ public sealed class SocialPublishingDbContext : DbContext
     public DbSet<IntegrationOutboxMessage> IntegrationOutboxMessages => Set<IntegrationOutboxMessage>();
 
     /// <summary>
+    /// Jobs de usuário gravados na mesma transação da outbox social.
+    /// </summary>
+    public DbSet<UserInitiatedJob> UserInitiatedJobs => Set<UserInitiatedJob>();
+
+    /// <summary>
     /// Cria opções SQL Server com schema padrão <c>social</c> e histórico de migrações isolado.
     /// </summary>
     /// <param name="connectionString">Connection string do banco do tenant.</param>
@@ -102,5 +107,6 @@ public sealed class SocialPublishingDbContext : DbContext
         modelBuilder.HasDefaultSchema("social");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SocialPublishingDbContext).Assembly);
         modelBuilder.ApplyConfiguration(new Configurations.SocialPublishingIntegrationOutboxEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.SocialPublishingUserInitiatedJobEntityTypeConfiguration());
     }
 }

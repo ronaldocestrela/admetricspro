@@ -167,6 +167,20 @@ Portas (`BuildingBlocks.Application`): `IIntegrationOutboxStore`, `IIntegrationI
 | Kill switch | `killswitch.social-publishing.dispatch` avaliado no **consumidor** antes da rede; libera claim via `ReleasePublicationClaimCommand` e ack + inbox |
 | Reclaim | `SocialPublishing:Dispatch:InProgressTimeoutSeconds` (mín. 60, padrão 600): `InProgress` com `ClaimedAtUtc` expirado volta a `RetryScheduled` sem incrementar tentativas |
 
+### 4.6 Fase 8 — Trabalho iniciado pelo usuário (tenant)
+
+HTTP **200** com `Result<UserInitiatedJobDto>` e `Status = Accepted` nos POSTs assíncronos. Consulta: `GET /api/v1/workspaces/{workspaceId}/jobs/{jobId}`. Tabela `messaging.UserInitiatedJobs` (status `Accepted`, `Running`, `Succeeded`, `Failed`). `Messaging:Enabled=false` mantém handlers síncronos legados.
+
+| Tipo | Routing key | Fila | Consumidor |
+| :--- | :--- | :--- | :--- |
+| Plano editorial | `social.editorial-plan-generate.v1` | `admetricspro.social.generate-plan` | `SocialEditorialPlanJobConsumer` → `GenerateEditorialPlanCommand` |
+| Imagem Nano Banana | `social.post-image-generate.v1` | `admetricspro.social.generate-image` | `SocialPostImageJobConsumer` → `GeneratePostImageCommand` |
+| Relatório sob demanda | `analytics.report-generate.v1` | `admetricspro.analytics.report-job` | `AnalyticsReportJobConsumer` → `GenerateReportCommand` |
+| Disparo de agendamento | `analytics.report-dispatch.v1` | `admetricspro.analytics.report-job` | `AnalyticsReportJobConsumer` → `DispatchReportScheduleCommand` |
+| Lote (>5 itens) | `integrations.bulk-campaign-mutation.v1` | `admetricspro.integrations.bulk-campaign-mutation` | `BulkCampaignJobConsumer` → `BulkCampaignOperationCommand` |
+
+Payload da mensagem: apenas `tenantId` e `jobId`. Parâmetros mínimos ficam em `ParametersJson` no SQL. Inbox por `EventId` impede reexecução do provedor em reentrega.
+
 ## 5. Fluxo alvo (referência)
 
 ```mermaid

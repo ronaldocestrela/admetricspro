@@ -1,4 +1,7 @@
+using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Domain.Primitives;
+using SocialPublishing.Application.Jobs.Commands.AcceptEditorialPlanGeneration;
+using SocialPublishing.Application.Jobs.Commands.AcceptGeneratePostImage;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -53,16 +56,22 @@ public sealed class SocialController : ControllerBase
 {
     private readonly ISender _sender;
     private readonly OrganicMediaOptions _mediaOptions;
+    private readonly IMessagingFeatureGate _messagingFeatureGate;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="SocialController"/>.
     /// </summary>
     /// <param name="sender">Mediador in-memory MediatR.</param>
     /// <param name="mediaOptions">Limites de upload de mídia orgânica.</param>
-    public SocialController(ISender sender, IOptions<OrganicMediaOptions> mediaOptions)
+    /// <param name="messagingFeatureGate">Feature flag de mensageria durável.</param>
+    public SocialController(
+        ISender sender,
+        IOptions<OrganicMediaOptions> mediaOptions,
+        IMessagingFeatureGate messagingFeatureGate)
     {
         _sender = sender ?? throw new ArgumentNullException(nameof(sender));
         _mediaOptions = mediaOptions?.Value ?? throw new ArgumentNullException(nameof(mediaOptions));
+        _messagingFeatureGate = messagingFeatureGate ?? throw new ArgumentNullException(nameof(messagingFeatureGate));
     }
 
     /// <summary>
@@ -451,13 +460,14 @@ public sealed class SocialController : ControllerBase
     [HttpPost("plans:generate")]
     [EndpointSummary("Materializa cronograma editorial em rascunhos de posts orgânicos")]
     [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<UserInitiatedJobDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(Result<GeneratedPlanDto>), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult<Result<GeneratedPlanDto>>> GenerateEditorialPlan(
+    public async Task<ActionResult> GenerateEditorialPlan(
         [FromBody] GenerateEditorialPlanRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -477,7 +487,22 @@ public sealed class SocialController : ControllerBase
             };
         }
 
-        var result = await _sender.Send(
+        if (_messagingFeatureGate.IsEnabled)
+        {
+            var accept = await _sender.Send(
+                new AcceptEditorialPlanGenerationCommand(
+                    request.WorkspaceId,
+                    request.RangeStart,
+                    request.RangeEnd,
+                    request.TimeZoneId,
+                    request.PostsPerWeek,
+                    request.Seed),
+                cancellationToken);
+
+            return MapUserInitiatedJobResult(accept);
+        }
+
+        var planResult = await _sender.Send(
             new GenerateEditorialPlanCommand(
                 request.WorkspaceId,
                 request.RangeStart,
@@ -487,7 +512,7 @@ public sealed class SocialController : ControllerBase
                 request.Seed),
             cancellationToken);
 
-        return MapSocialConnectionResult(result);
+        return MapEnvelopeToActionResult(planResult);
     }
 
     /// <summary>
@@ -570,22 +595,53 @@ public sealed class SocialController : ControllerBase
     [HttpPost("posts/{id:guid}:generate-image")]
     [EndpointSummary("Gera imagem de feed para post aprovado (Nano Banana)")]
     [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<UserInitiatedJobDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult<Result<OrganicPostDto>>> GeneratePostImage(
+    public async Task<ActionResult> GeneratePostImage(
         Guid id,
         [FromQuery] Guid workspaceId,
         [FromBody] GeneratePostImageRequest? body,
         CancellationToken cancellationToken = default)
     {
-        return await ExecutePostLifecycleCommandAsync(
-            workspaceId,
-            id,
-            wsId => new GeneratePostImageCommand(wsId, id, body?.Direction),
+        if (_messagingFeatureGate.IsEnabled)
+        {
+            if (workspaceId == Guid.Empty)
+            {
+                return BadRequest(Result<UserInitiatedJobDto>.Failure(SocialErrors.WorkspaceRequired));
+            }
+
+            var accept = await _sender.Send(
+                new AcceptGeneratePostImageCommand(workspaceId, id, body?.Direction),
+                cancellationToken);
+
+            return MapUserInitiatedJobResult(accept);
+        }
+
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<OrganicPostDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<OrganicPostDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<OrganicPostDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<OrganicPostDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var imageCommandResult = await _sender.Send(
+            new GeneratePostImageCommand(workspaceId, id, body?.Direction),
             cancellationToken);
+
+        return MapEnvelopeToActionResult(imageCommandResult);
     }
 
     /// <summary>
@@ -999,6 +1055,27 @@ public sealed class SocialController : ControllerBase
     }
 
     private ActionResult<Result<T>> MapSocialConnectionResult<T>(Result<T> result)
+    {
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.Unauthorized => Unauthorized(result),
+                ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, result),
+                ErrorType.NotFound => NotFound(result),
+                ErrorType.Validation => UnprocessableEntity(result),
+                ErrorType.Conflict => Conflict(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        return Ok(result);
+    }
+
+    private ActionResult MapUserInitiatedJobResult(Result<UserInitiatedJobDto> result) =>
+        MapEnvelopeToActionResult(result);
+
+    private ActionResult MapEnvelopeToActionResult<T>(Result<T> result)
     {
         if (result.IsFailure)
         {

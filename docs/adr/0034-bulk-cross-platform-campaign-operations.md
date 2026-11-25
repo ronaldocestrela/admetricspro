@@ -39,3 +39,7 @@ Decidimos implementar o padrão de **Tolerância a Falhas Parciais (Partial-Succ
 
 ### Negativas / Mitigações
 - **Complexidade no Cliente:** O frontend precisa renderizar relatórios que contemplam cenários de sucesso parcial. Mitigado através do componente `BulkCampaignEditorMatrix` com relatório visual embutido (`execution-report-card`).
+
+## Adendo (Fase 8 — mensageria, ADR 0052)
+
+Lotes com mais de cinco itens e `Messaging:Enabled=true` retornam `UserInitiatedJobDto`; a execução do `BulkCampaignOperationCommand` ocorre no consumidor `integrations.bulk-campaign-mutation.v1`. Lotes menores e prévia de impacto orçamentário permanecem síncronos no request.

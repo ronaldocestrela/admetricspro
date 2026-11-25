@@ -45,3 +45,7 @@ Requisitos:
 - Custo por imagem e dependência do Google — mitigado por geração explícita (não automática) e configuração opcional.
 - SintID obrigatório nas imagens — aviso na UI e na spec do módulo.
 - Carrossel, Reel e TikTok ficam fora desta entrega — código `Social.ImageGenerationFormatUnsupported`.
+
+## Adendo (Fase 8 — mensageria, ADR 0052)
+
+Com `Messaging:Enabled=true`, `POST ...:generate-image` grava `UserInitiatedJob` + outbox e o `GeneratePostImageCommand` executa no consumidor `social.post-image-generate.v1`. O contrato HTTP passa a `Result<UserInitiatedJobDto>` até a conclusão consultada via `GET .../jobs/{jobId}`.
