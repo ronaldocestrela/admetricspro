@@ -62,6 +62,7 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0050](0050-dual-theme-admetrics-design-tokens.md) | Tema claro/escuro e tokens de cor AdMetricsPro (`--ad-*`) | Aceito | 2026-11-22 |
 | [0051](0051-nano-banana-post-image-generation.md) | Imagem de feed pós-aprovação com Gemini Nano Banana | Aceito | 2026-11-25 |
 | [0052](0052-rabbitmq-integration-events-and-transactional-outbox.md) | Eventos de integração duráveis com RabbitMQ e outbox transacional | Aceito | 2026-11-25 |
+| [0053](0053-minio-object-storage.md) | Armazenamento de objetos com MinIO e fronteira SQL × byte | Aceito | 2026-11-25 |
 
 ---
 

@@ -52,3 +52,7 @@ Decidimos implementar o subsistema de **Gerador de Relatórios Automatizados em 
 ## Adendo (Fase 8 — mensageria, ADR 0052)
 
 `POST .../reports/generate` e `POST .../reports/{id}:dispatch` com `Messaging:Enabled=true` gravam job + outbox (`analytics.report-generate.v1` / `analytics.report-dispatch.v1`). Schedules disparados por Quartz permanecem no pipeline da Fase 6; geração sob demanda e dispatch manual passam pelos consumidores da Fase 8.
+
+## Adendo (object storage — ADR 0053)
+
+O destino definitivo do binário do PDF deixa de ser `GeneratedReport.PdfContent` (`varbinary` no banco do tenant). Os bytes passam para object storage no bucket de relatórios; `RenderModelJson` permanece no SQL como fonte de recomposição. Geração vetorial, portal público e disparo multi-canal deste ADR não são revogados. Detalhes de chave, migração e fases de implementação: [ADR 0053](0053-minio-object-storage.md) e [roadmap MinIO](../roadmaps/minio-object-storage-roadmap.md).
