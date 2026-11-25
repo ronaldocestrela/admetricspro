@@ -40,6 +40,7 @@ public sealed class SchedulePostCommandTests
             .Handle(new SubmitPostForApprovalCommand(host.WorkspaceId, post.Id), CancellationToken.None);
         await new ApprovePostCommandHandler(
             host.PostRepository,
+            NSubstitute.Substitute.For<global::SocialPublishing.Application.Abstractions.IOrganicMediaPublicUrlResolver>(),
             host.UnitOfWork,
             host.TenantContextAccessor,
             host.CurrentUserContext)

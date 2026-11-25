@@ -13,6 +13,7 @@ namespace SocialPublishing.Application.Posts.Commands.ApprovePost;
 public sealed class ApprovePostCommandHandler : ICommandHandler<ApprovePostCommand, OrganicPostDto>
 {
     private readonly IOrganicPostRepository _postRepository;
+    private readonly IOrganicMediaPublicUrlResolver _mediaPublicUrlResolver;
     private readonly ISocialPublishingUnitOfWork _unitOfWork;
     private readonly ITenantContextAccessor _tenantContextAccessor;
     private readonly ICurrentUserContext _currentUserContext;
@@ -21,16 +22,19 @@ public sealed class ApprovePostCommandHandler : ICommandHandler<ApprovePostComma
     /// Inicializa uma nova instância de <see cref="ApprovePostCommandHandler"/>.
     /// </summary>
     /// <param name="postRepository">Repositório de posts.</param>
+    /// <param name="mediaPublicUrlResolver">Resolvedor de URL pública de mídia.</param>
     /// <param name="unitOfWork">Unit of work do módulo.</param>
     /// <param name="tenantContextAccessor">Contexto de tenant.</param>
     /// <param name="currentUserContext">Usuário autenticado.</param>
     public ApprovePostCommandHandler(
         IOrganicPostRepository postRepository,
+        IOrganicMediaPublicUrlResolver mediaPublicUrlResolver,
         ISocialPublishingUnitOfWork unitOfWork,
         ITenantContextAccessor tenantContextAccessor,
         ICurrentUserContext currentUserContext)
     {
         _postRepository = postRepository ?? throw new ArgumentNullException(nameof(postRepository));
+        _mediaPublicUrlResolver = mediaPublicUrlResolver ?? throw new ArgumentNullException(nameof(mediaPublicUrlResolver));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContextAccessor = tenantContextAccessor ?? throw new ArgumentNullException(nameof(tenantContextAccessor));
         _currentUserContext = currentUserContext ?? throw new ArgumentNullException(nameof(currentUserContext));
@@ -60,6 +64,6 @@ public sealed class ApprovePostCommandHandler : ICommandHandler<ApprovePostComma
 
         await _postRepository.UpdateAsync(post, cancellationToken);
         await _unitOfWork.CommitAsync(cancellationToken);
-        return Result<OrganicPostDto>.Success(OrganicPostMapping.ToDto(post));
+        return Result<OrganicPostDto>.Success(OrganicPostMapping.ToDto(post, _mediaPublicUrlResolver));
     }
 }

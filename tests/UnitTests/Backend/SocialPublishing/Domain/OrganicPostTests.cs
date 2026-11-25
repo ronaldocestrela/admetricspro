@@ -207,6 +207,63 @@ public sealed class OrganicPostTests
     }
 
     /// <summary>
+    /// Post aprovado em FeedImage aceita substituição de mídia gerada.
+    /// </summary>
+    [Fact]
+    public void ReplaceGeneratedImage_EmApprovedFeedImage_DeveAnexarMidiaUnica()
+    {
+        var post = CreateDraftPost().Value;
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.Approve().IsSuccess.Should().BeTrue();
+
+        var replace = post.ReplaceGeneratedImage(
+            "organic-media/durable/key.png",
+            "image/png",
+            1080,
+            1350);
+
+        replace.IsSuccess.Should().BeTrue();
+        post.Media.Should().ContainSingle();
+        post.Media[0].ObjectKey.Should().Be("organic-media/durable/key.png");
+        post.Media[0].AspectLabel.Should().Be(AspectRatioRules.Label45);
+    }
+
+    /// <summary>
+    /// Substituição de mídia fora de Approved retorna InvalidTransition.
+    /// </summary>
+    [Fact]
+    public void ReplaceGeneratedImage_ForaDeApproved_DeveRetornarInvalidTransition()
+    {
+        var post = CreateDraftPost().Value;
+
+        post.ReplaceGeneratedImage("key.png", "image/png", 1080, 1080)
+            .Error.Code.Should().Be(SocialErrors.InvalidTransition.Code);
+    }
+
+    /// <summary>
+    /// Substituição de mídia em formato não suportado retorna erro dedicado.
+    /// </summary>
+    [Fact]
+    public void ReplaceGeneratedImage_EmReel_DeveRetornarImageGenerationFormatUnsupported()
+    {
+        var post = OrganicPost.CreateEditorialDraft(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.Reel,
+            ContentPillar.Authority,
+            "Legenda",
+            new DateTime(2026, 6, 2, 10, 0, 0),
+            SaoPauloTimeZone).Value;
+
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.Approve().IsSuccess.Should().BeTrue();
+
+        post.ReplaceGeneratedImage("key.png", "image/png", 1080, 1920)
+            .Error.Code.Should().Be(SocialErrors.ImageGenerationFormatUnsupported.Code);
+    }
+
+    /// <summary>
     /// Valida transições ilegais retornam InvalidTransition.
     /// </summary>
     [Fact]

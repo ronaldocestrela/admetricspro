@@ -92,6 +92,14 @@ services:
       - SocialAi__Temperature=${SocialAi__Temperature:-0.7}
       - SocialAi__MaxTokens=${SocialAi__MaxTokens:-800}
       - SocialAi__TimeoutSeconds=${SocialAi__TimeoutSeconds:-60}
+      - SocialImageAi__BaseUrl=${SocialImageAi__BaseUrl:-https://generativelanguage.googleapis.com}
+      - SocialImageAi__Model=${SocialImageAi__Model:-gemini-nano-banana-2.1}
+      - SocialImageAi__ApiKey=${SocialImageAi__ApiKey:-}
+      - SocialImageAi__ImageSize=${SocialImageAi__ImageSize:-1K}
+      - SocialImageAi__TimeoutSeconds=${SocialImageAi__TimeoutSeconds:-90}
+      - SocialPublishing__Media__LocalRoot=/app/data/social-media
+    volumes:
+      - social-media-data:/app/data/social-media
     ports:
       - "${WEBAPI_PORT:-7001}:8080"
     networks:
@@ -161,6 +169,7 @@ services:
 
 volumes:
   sqlserver-data-admetricspro:
+  social-media-data:
 
 networks:
   admetricspro-net:

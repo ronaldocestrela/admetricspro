@@ -59,6 +59,7 @@ public static class SocialPublishingModuleServiceExtensions
         ConfigureOrganicPublish(services, configuration);
         ConfigureOrganicMedia(services, configuration);
         ConfigureSocialAi(services, configuration);
+        ConfigureSocialImageAi(services, configuration);
 
         return services;
     }
@@ -101,11 +102,38 @@ public static class SocialPublishingModuleServiceExtensions
         }).RemoveAllLoggers();
     }
 
+    private static void ConfigureSocialImageAi(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<SocialImageAiOptions>(options =>
+        {
+            configuration.GetSection(SocialImageAiOptions.SectionName).Bind(options);
+            options.ApiKey = configuration["SOCIAL_IMAGE_AI_API_KEY"] ?? options.ApiKey;
+            options.BaseUrl = configuration["SOCIAL_IMAGE_AI_BASE_URL"] ?? options.BaseUrl;
+            options.Model = configuration["SOCIAL_IMAGE_AI_MODEL"] ?? options.Model;
+            options.ImageSize = configuration["SOCIAL_IMAGE_AI_IMAGE_SIZE"] ?? options.ImageSize;
+        });
+
+        services.AddHttpClient<ISocialImageGenerator, HttpGeminiImageGenerator>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<SocialImageAiOptions>>().Value;
+            if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+            {
+                client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+            }
+
+            if (options.TimeoutSeconds > 0)
+            {
+                client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+            }
+        }).RemoveAllLoggers();
+    }
+
     private static void ConfigureOrganicMedia(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<OrganicMediaOptions>(configuration.GetSection(OrganicMediaOptions.SectionName));
 
         services.AddSingleton<IOrganicMediaMetadataReader, OrganicMediaHeaderInspector>();
+        services.AddSingleton<IGeneratedFeedImageNormalizer, ImageSharpFeedImageNormalizer>();
 
         var provider = configuration[$"{OrganicMediaOptions.SectionName}:Provider"] ?? "Local";
         if (string.Equals(provider, "S3", StringComparison.OrdinalIgnoreCase))

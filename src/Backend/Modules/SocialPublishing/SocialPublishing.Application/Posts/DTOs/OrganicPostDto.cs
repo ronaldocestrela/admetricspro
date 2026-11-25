@@ -17,6 +17,7 @@ namespace SocialPublishing.Application.Posts.DTOs;
 /// <param name="ScheduledAtUtc">Horário agendado em UTC.</param>
 /// <param name="Status">Status atual do post.</param>
 /// <param name="ClientApprovalComment">Último comentário do cliente ao solicitar alterações no portal público, se houver.</param>
+/// <param name="Media">Itens de mídia anexados ao post, quando houver.</param>
 public sealed record OrganicPostDto(
     Guid Id,
     Guid WorkspaceId,
@@ -27,4 +28,5 @@ public sealed record OrganicPostDto(
     string Caption,
     DateTime ScheduledAtUtc,
     OrganicPostStatus Status,
-    string? ClientApprovalComment = null);
+    string? ClientApprovalComment = null,
+    IReadOnlyList<OrganicPostMediaItemDto>? Media = null);

@@ -63,6 +63,10 @@ Pilares de conteúdo: `Authority`, `Sale`, `Connection`, `SocialProof`.
 | `Social.CopyContainsForbiddenTerm` | Legenda gerada contém termo proibido do Brand Voice. |
 | `Social.CopyGenerationFailed` | Provedor de IA indisponível, timeout ou resposta inválida. |
 | `Social.AiConfigurationMissing` | `SocialAi:BaseUrl`, `Model` ou `ApiKey` ausentes. |
+| `Social.ImageGenerationFailed` | Falha de rede ou resposta inválida do Gemini (imagem). |
+| `Social.ImageAiConfigurationMissing` | `SocialImageAi:BaseUrl`, `Model` ou `ApiKey` ausentes. |
+| `Social.ImageGenerationFormatUnsupported` | Geração de imagem só para `FeedImage` aprovado. |
+| `Social.ImageGenerationDirectionTooLong` | Campo `direction` acima de 500 caracteres. |
 | `Social.HashtagPolicyViolated` | Hashtag duplicada, com espaço ou acima do teto configurado. |
 | `Social.PillarWeightsInvalid` | Pesos dos pilares somam valor diferente de 100 ou algum peso é negativo. |
 | `Social.BrandVoiceNotFound` | Workspace sem DNA de marca persistido. |
@@ -766,6 +770,34 @@ Transição `Draft` → `PendingApproval`.
 ### `POST /api/v1/social/posts/{id}:approve`
 
 Transição `PendingApproval` → `Approved` (não abre job outbox; use `:schedule` em seguida).
+
+### `POST /api/v1/social/posts/{id}:generate-image`
+
+Gera imagem de feed para post já **`Approved`** e formato **`FeedImage`**, via **Gemini Nano Banana** (`ISocialImageGenerator`). Permissão **`social.copilot.generate`**. O brief é montado no servidor (Brand Voice + legenda sem hashtags); corpo HTTP opcional:
+
+```json
+{
+  "direction": "Foco em produto com fundo minimalista"
+}
+```
+
+| Campo | Regra |
+| :--- | :--- |
+| `direction` | Opcional; até **500** caracteres → `Social.ImageGenerationDirectionTooLong` |
+
+Configuração: seção **`SocialImageAi`** / variáveis `SOCIAL_IMAGE_AI_*` (ADR 0051, ADR 0018). Modelo padrão `gemini-nano-banana-2.1`, resolução `1K`.
+
+A resposta `200` (`Result<OrganicPostDto>`) inclui `media[]`. O PNG retornado pelo modelo é **recortado e redimensionado** no servidor para **1080×1350** (Instagram) ou **1080×1080** (Facebook) antes de `ReplaceGeneratedImage`. A prévia no calendário usa `publicUrl` quando `OrganicMedia:PublicBaseUrl` está definido; sem URL pública, o WebApp lê `GET /api/v1/social/posts/{id}/media/{assetId}` e serve bytes via ticket curto `GET /social/media-preview/{ticket}` (evita data URLs grandes no circuito Blazor Server). Em Docker, montar volume em `SocialPublishing__Media__LocalRoot` (`/app/data/social-media`).
+
+| Código | HTTP | Quando |
+| :--- | :--- | :--- |
+| `Social.ImageGenerationFormatUnsupported` | 422 | Formato diferente de `FeedImage` |
+| `Social.InvalidTransition` | 422 | Status diferente de `Approved` |
+| `Social.BrandVoiceNotFound` | 404 | Workspace sem DNA de marca |
+| `Social.ImageAiConfigurationMissing` | 422 | `SocialImageAi` incompleto |
+| `Social.ImageGenerationFailed` | 400 | Falha de rede ou resposta inválida do Gemini |
+
+A imagem gerada pode incluir marca d'água **SynthID** (política Google). Carrossel, Reel e TikTok não são suportados nesta entrega.
 
 ### `POST /api/v1/social/posts/{id}:schedule`
 

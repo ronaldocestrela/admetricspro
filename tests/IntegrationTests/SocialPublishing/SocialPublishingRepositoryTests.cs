@@ -614,6 +614,74 @@ public sealed class SocialPublishingRepositoryTests(SqlServerFixture fixture)
         afterSecond.ScheduleRevisions.Select(r => r.Id).Should().OnlyHaveUniqueItems();
     }
 
+    /// <summary>
+    /// Mídia substituída via <see cref="OrganicPost.ReplaceGeneratedImage"/> deve recarregar ligada ao post.
+    /// </summary>
+    [Fact]
+    public async Task ReplaceGeneratedMedia_OnUpdate_ShouldReloadWithSameObjectKey()
+    {
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var connectionString = await PrepareMigratedDatabaseAsync();
+        var resolver = new FakeTenantConnectionResolver(new Dictionary<Guid, string> { [tenantId] = connectionString });
+        resolver.SetCurrentTenant(tenantId);
+
+        var accessor = new SocialPublishingDbContextAccessor(new SocialPublishingDbContextFactory(resolver));
+        var connectionRepository = new OrganicConnectionRepository(accessor);
+        var postRepository = new OrganicPostRepository(accessor);
+        var unitOfWork = new SocialPublishingUnitOfWork(accessor);
+
+        var connection = OrganicConnection.Create(
+            workspaceId,
+            OrganicPlatform.Instagram,
+            "ig-gen-img",
+            "Instagram",
+            "scope",
+            "cipher").Value;
+        await connectionRepository.AddAsync(connection, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var post = OrganicPost.Create(
+            workspaceId,
+            connection.Id,
+            OrganicPlatform.Instagram,
+            OrganicPostFormat.FeedImage,
+            ContentPillar.Authority,
+            "Post aprovado",
+            new DateTime(2026, 7, 1, 14, 0, 0, DateTimeKind.Utc),
+            "America/Sao_Paulo",
+            new List<(int Width, int Height, int SortOrder)> { (1080, 1350, 0) }).Value;
+
+        post.SubmitForApproval().IsSuccess.Should().BeTrue();
+        post.Approve().IsSuccess.Should().BeTrue();
+
+        await postRepository.AddAsync(post, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var loaded = await postRepository.GetByIdAsync(post.Id, CancellationToken.None);
+        loaded.Should().NotBeNull();
+
+        const string generatedKey = "organic-media/durable/test/workspace/generated.png";
+        var assetId = Guid.NewGuid();
+        loaded!.ReplaceGeneratedImage(
+            generatedKey,
+            OrganicMediaMimeTypes.Png,
+            1080,
+            1350,
+            assetId).IsSuccess.Should().BeTrue();
+
+        await postRepository.UpdateAsync(loaded, CancellationToken.None);
+        await unitOfWork.CommitAsync(CancellationToken.None);
+
+        var reloaded = await postRepository.GetByIdAsync(post.Id, CancellationToken.None);
+        reloaded.Should().NotBeNull();
+        reloaded!.Media.Should().ContainSingle();
+        reloaded.Media[0].ObjectKey.Should().Be(generatedKey);
+        reloaded.Media[0].Id.Should().Be(assetId);
+        reloaded.Media[0].Width.Should().Be(1080);
+        reloaded.Media[0].Height.Should().Be(1350);
+    }
+
     private async Task<string> PrepareMigratedDatabaseAsync()
     {
         var databaseName = $"Tenant_SocialRepo_{Guid.NewGuid():N}";

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Posts.Commands.ApprovePost;
 using SocialPublishing.Application.Posts.Commands.RejectPost;
 using SocialPublishing.Domain;
@@ -33,6 +34,7 @@ public sealed class ApprovePostCommandTests
         OrganicPostLifecycleCommandTestHost.AdvanceTo(post, OrganicPostStatus.PendingApproval);
         var handler = new ApprovePostCommandHandler(
             host.PostRepository,
+            Substitute.For<IOrganicMediaPublicUrlResolver>(),
             host.UnitOfWork,
             host.TenantContextAccessor,
             host.CurrentUserContext);
@@ -57,6 +59,7 @@ public sealed class ApprovePostCommandTests
         var post = host.SeedDraftPost();
         var handler = new ApprovePostCommandHandler(
             host.PostRepository,
+            Substitute.For<IOrganicMediaPublicUrlResolver>(),
             host.UnitOfWork,
             host.TenantContextAccessor,
             host.CurrentUserContext);
@@ -79,6 +82,7 @@ public sealed class ApprovePostCommandTests
         OrganicPostLifecycleCommandTestHost.AdvanceTo(post, OrganicPostStatus.Approved);
         var handler = new ApprovePostCommandHandler(
             host.PostRepository,
+            Substitute.For<IOrganicMediaPublicUrlResolver>(),
             host.UnitOfWork,
             host.TenantContextAccessor,
             host.CurrentUserContext);

@@ -338,6 +338,53 @@ public sealed class OrganicPost : AggregateRoot<Guid>
     }
 
     /// <summary>
+    /// Substitui a mídia do post por uma imagem gerada, somente em <see cref="OrganicPostStatus.Approved"/> e <see cref="OrganicPostFormat.FeedImage"/>.
+    /// </summary>
+    /// <param name="objectKey">Chave do objeto no armazenamento externo.</param>
+    /// <param name="mimeType">Tipo MIME da imagem (ex.: <c>image/png</c>).</param>
+    /// <param name="width">Largura em pixels.</param>
+    /// <param name="height">Altura em pixels.</param>
+    /// <param name="assetId">Identificador opcional do ativo; quando omitido, um novo GUID é usado.</param>
+    /// <returns>Resultado da operação ou falha de transição/validação.</returns>
+    public Result ReplaceGeneratedImage(
+        string objectKey,
+        string mimeType,
+        int width,
+        int height,
+        Guid? assetId = null)
+    {
+        if (Status != OrganicPostStatus.Approved)
+        {
+            return Result.Failure(SocialErrors.InvalidTransition);
+        }
+
+        if (Format != OrganicPostFormat.FeedImage)
+        {
+            return Result.Failure(SocialErrors.ImageGenerationFormatUnsupported);
+        }
+
+        var assetResult = OrganicMediaAsset.Register(
+            WorkspaceId,
+            Format,
+            mimeType,
+            durationMilliseconds: null,
+            width,
+            height,
+            objectKey,
+            carouselAnchorAspectLabel: null,
+            assetId: assetId);
+
+        if (assetResult.IsFailure)
+        {
+            return Result.Failure(assetResult.Error);
+        }
+
+        _media.Clear();
+        _media.Add(assetResult.Value);
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Agenda o post para publicação no horário já definido.
     /// </summary>
     /// <returns>Resultado da transição.</returns>

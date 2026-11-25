@@ -20,12 +20,14 @@ using SocialPublishing.Application.Planning.DTOs;
 using SocialPublishing.Application.Approvals.Commands.CreateApprovalLink;
 using SocialPublishing.Application.Approvals.DTOs;
 using SocialPublishing.Application.Posts.Commands.ApprovePost;
+using SocialPublishing.Application.Posts.Commands.GeneratePostImage;
 using SocialPublishing.Application.Posts.Commands.SchedulePost;
 using SocialPublishing.Application.Posts.Commands.RejectPost;
 using SocialPublishing.Application.Posts.Commands.ReschedulePost;
 using SocialPublishing.Application.Posts.Commands.ReviseOrganicPostCaption;
 using SocialPublishing.Application.Posts.Commands.SubmitPostForApproval;
 using SocialPublishing.Application.Posts.DTOs;
+using SocialPublishing.Application.Posts.Queries.GetOrganicPostMediaContent;
 using SocialPublishing.Application.Posts.Queries.ListOrganicPosts;
 using SocialPublishing.Application.Status.DTOs;
 using SocialPublishing.Application.Status.Queries.GetSocialModuleStatus;
@@ -555,6 +557,78 @@ public sealed class SocialController : ControllerBase
             id,
             wsId => new SubmitPostForApprovalCommand(wsId, id),
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Gera imagem de feed para post aprovado via Gemini Nano Banana.
+    /// </summary>
+    /// <param name="id">Identificador do post.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="body">Direcionamento visual opcional.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post atualizado com mídia anexada ou falha de negócio.</returns>
+    [HttpPost("posts/{id:guid}:generate-image")]
+    [EndpointSummary("Gera imagem de feed para post aprovado (Nano Banana)")]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<OrganicPostDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<OrganicPostDto>>> GeneratePostImage(
+        Guid id,
+        [FromQuery] Guid workspaceId,
+        [FromBody] GeneratePostImageRequest? body,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecutePostLifecycleCommandAsync(
+            workspaceId,
+            id,
+            wsId => new GeneratePostImageCommand(wsId, id, body?.Direction),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Devolve o binário da mídia anexada ao post para prévia autenticada.
+    /// </summary>
+    /// <param name="id">Identificador do post.</param>
+    /// <param name="assetId">Identificador do ativo.</param>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Conteúdo em Base64 ou falha de negócio.</returns>
+    [HttpGet("posts/{id:guid}/media/{assetId:guid}")]
+    [EndpointSummary("Lê o conteúdo da mídia de um post orgânico")]
+    [ProducesResponseType(typeof(Result<OrganicPostMediaContentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<OrganicPostMediaContentDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<OrganicPostMediaContentDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<OrganicPostMediaContentDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<OrganicPostMediaContentDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result<OrganicPostMediaContentDto>>> GetPostMediaContent(
+        Guid id,
+        Guid assetId,
+        [FromQuery] Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<OrganicPostMediaContentDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<OrganicPostMediaContentDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<OrganicPostMediaContentDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<OrganicPostMediaContentDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(
+            new GetOrganicPostMediaContentQuery(workspaceId, id, assetId),
+            cancellationToken);
+        return MapSocialConnectionResult(result);
     }
 
     /// <summary>

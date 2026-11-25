@@ -317,6 +317,75 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
         PostLifecycleMutationAsync(workspaceId, postId, $"/api/v1/social/posts/{postId}:schedule?workspaceId={workspaceId}", cancellationToken);
 
     /// <inheritdoc />
+    public async Task<Result<OrganicPostDto>> GeneratePostImageAsync(
+        Guid workspaceId,
+        Guid postId,
+        string? direction = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<OrganicPostDto>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/api/v1/social/posts/{postId}:generate-image?workspaceId={workspaceId}")
+            {
+                Content = JsonContent.Create(
+                    new { direction = string.IsNullOrWhiteSpace(direction) ? null : direction.Trim() },
+                    options: JsonOptions),
+            };
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<OrganicPostDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<OrganicPostDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao gerar imagem do post."));
+        }
+        catch (Exception ex)
+        {
+            return Result<OrganicPostDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao gerar imagem do post: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<OrganicPostMediaContentDto>> GetPostMediaContentAsync(
+        Guid workspaceId,
+        Guid postId,
+        Guid assetId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<OrganicPostMediaContentDto>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"/api/v1/social/posts/{postId}/media/{assetId}?workspaceId={workspaceId}");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<OrganicPostMediaContentDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<OrganicPostMediaContentDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao carregar a imagem do post."));
+        }
+        catch (Exception ex)
+        {
+            return Result<OrganicPostMediaContentDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao carregar a imagem do post: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<Result<BrandVoiceDto>> GetBrandVoiceAsync(
         Guid workspaceId,
         CancellationToken cancellationToken = default)

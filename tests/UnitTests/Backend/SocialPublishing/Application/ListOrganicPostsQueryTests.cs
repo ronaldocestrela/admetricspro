@@ -1,5 +1,6 @@
 using BuildingBlocks.Domain.Tenants;
 using FluentAssertions;
+using NSubstitute;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Traction;
 using SocialPublishing.Application.Posts.Queries.ListOrganicPosts;
@@ -43,7 +44,7 @@ public sealed class ListOrganicPostsQueryTests
         var outside = CreatePost(workspaceId, connectionId, new DateTime(2026, 12, 1, 10, 0, 0));
 
         var repository = new FakePostRepository([inside, outside]);
-        var handler = new ListOrganicPostsQueryHandler(repository);
+        var handler = new ListOrganicPostsQueryHandler(repository, Substitute.For<IOrganicMediaPublicUrlResolver>());
 
         var from = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
         var to = new DateTime(2026, 11, 30, 23, 59, 59, DateTimeKind.Utc);
@@ -61,7 +62,9 @@ public sealed class ListOrganicPostsQueryTests
     [Fact]
     public async Task Handle_ComToAnteriorAoFrom_DeveRetornarPostsRangeInvalid()
     {
-        var handler = new ListOrganicPostsQueryHandler(new FakePostRepository([]));
+        var handler = new ListOrganicPostsQueryHandler(
+            new FakePostRepository([]),
+            Substitute.For<IOrganicMediaPublicUrlResolver>());
         var from = new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc);
         var to = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
 

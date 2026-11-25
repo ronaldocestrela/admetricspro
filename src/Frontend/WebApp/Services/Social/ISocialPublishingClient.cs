@@ -151,6 +151,34 @@ public interface ISocialPublishingClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gera imagem de feed para post aprovado via Gemini Nano Banana.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="postId">Identificador do post.</param>
+    /// <param name="direction">Direcionamento visual opcional.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Post com mídia anexada ou falha de negócio.</returns>
+    Task<Result<OrganicPostDto>> GeneratePostImageAsync(
+        Guid workspaceId,
+        Guid postId,
+        string? direction = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém o binário de uma mídia do post para prévia na interface.
+    /// </summary>
+    /// <param name="workspaceId">Workspace proprietário.</param>
+    /// <param name="postId">Identificador do post.</param>
+    /// <param name="assetId">Identificador do ativo.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>MIME e conteúdo Base64, ou falha de negócio.</returns>
+    Task<Result<OrganicPostMediaContentDto>> GetPostMediaContentAsync(
+        Guid workspaceId,
+        Guid postId,
+        Guid assetId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Emite link compartilhável de aprovação orgânica (token em claro só nesta resposta).
     /// </summary>
     /// <param name="workspaceId">Workspace do pacote.</param>

@@ -200,6 +200,30 @@ public static class SocialErrors
         Error.Validation("Social.AiConfigurationMissing", "A configuração SocialAi (BaseUrl, Model ou ApiKey) está incompleta.");
 
     /// <summary>
+    /// Erro quando o provedor de imagens falha ou retorna resposta inválida.
+    /// </summary>
+    public static Error ImageGenerationFailed { get; } =
+        Error.Failure("Social.ImageGenerationFailed", "Não foi possível gerar a imagem com o provedor de IA. Tente novamente.");
+
+    /// <summary>
+    /// Erro quando a configuração do provedor de imagens sociais está incompleta.
+    /// </summary>
+    public static Error ImageAiConfigurationMissing { get; } =
+        Error.Validation("Social.ImageAiConfigurationMissing", "A configuração SocialImageAi (BaseUrl, Model ou ApiKey) está incompleta.");
+
+    /// <summary>
+    /// Erro quando a geração de imagem não é suportada para o formato do post.
+    /// </summary>
+    public static Error ImageGenerationFormatUnsupported { get; } =
+        Error.Validation("Social.ImageGenerationFormatUnsupported", "A geração de imagem por IA está disponível apenas para posts de imagem única no feed.");
+
+    /// <summary>
+    /// Erro quando o direcionamento visual opcional excede o tamanho permitido.
+    /// </summary>
+    public static Error ImageGenerationDirectionTooLong { get; } =
+        Error.Validation("Social.ImageGenerationDirectionTooLong", "O direcionamento visual não pode exceder 500 caracteres.");
+
+    /// <summary>
     /// Erro quando não há conexão orgânica ativa para a rede do slot.
     /// </summary>
     public static Error ConnectionRequired { get; } =

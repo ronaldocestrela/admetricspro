@@ -60,6 +60,7 @@ Este repositório registra todas as decisões arquiteturais fundamentais adotada
 | [0048](0048-organic-traction-boost-and-creative-hub.md) | Tração orgânica, notificação via Contracts e Creative Hub | Aceito | 2026-11-04 |
 | [0049](0049-mailkit-platform-smtp.md) | Transporte SMTP da plataforma com MailKit e retry transitório | Aceito | 2026-11-17 |
 | [0050](0050-dual-theme-admetrics-design-tokens.md) | Tema claro/escuro e tokens de cor AdMetricsPro (`--ad-*`) | Aceito | 2026-11-22 |
+| [0051](0051-nano-banana-post-image-generation.md) | Imagem de feed pós-aprovação com Gemini Nano Banana | Aceito | 2026-11-25 |
 
 ---
 

@@ -12,14 +12,19 @@ namespace SocialPublishing.Application.Posts.Queries.ListOrganicPosts;
 public sealed class ListOrganicPostsQueryHandler : IQueryHandler<ListOrganicPostsQuery, IReadOnlyList<OrganicPostDto>>
 {
     private readonly IOrganicPostRepository _postRepository;
+    private readonly IOrganicMediaPublicUrlResolver _mediaPublicUrlResolver;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="ListOrganicPostsQueryHandler"/>.
     /// </summary>
     /// <param name="postRepository">Repositório de posts orgânicos.</param>
-    public ListOrganicPostsQueryHandler(IOrganicPostRepository postRepository)
+    /// <param name="mediaPublicUrlResolver">Resolvedor de URL pública de mídia.</param>
+    public ListOrganicPostsQueryHandler(
+        IOrganicPostRepository postRepository,
+        IOrganicMediaPublicUrlResolver mediaPublicUrlResolver)
     {
         _postRepository = postRepository ?? throw new ArgumentNullException(nameof(postRepository));
+        _mediaPublicUrlResolver = mediaPublicUrlResolver ?? throw new ArgumentNullException(nameof(mediaPublicUrlResolver));
     }
 
     /// <inheritdoc />
@@ -46,7 +51,7 @@ public sealed class ListOrganicPostsQueryHandler : IQueryHandler<ListOrganicPost
             toUtc,
             cancellationToken);
 
-        var dtos = posts.Select(OrganicPostMapping.ToDto).ToList();
+        var dtos = posts.Select(p => OrganicPostMapping.ToDto(p, _mediaPublicUrlResolver)).ToList();
         return Result<IReadOnlyList<OrganicPostDto>>.Success(dtos);
     }
 }

@@ -112,6 +112,13 @@ public sealed class OrganicPostRepository : IOrganicPostRepository
             ?.ScheduleRevisions.Select(r => r.Id).ToHashSet()
             ?? [];
 
+        var existingMediaIds = (await context.OrganicPosts
+                .AsNoTracking()
+                .Include("_media")
+                .FirstOrDefaultAsync(p => p.Id == post.Id, cancellationToken))
+            ?.Media.Select(m => m.Id).ToHashSet()
+            ?? [];
+
         var trackedPost = context.ChangeTracker.Entries<OrganicPost>()
             .FirstOrDefault(e => e.Entity.Id == post.Id);
 
@@ -127,17 +134,52 @@ public sealed class OrganicPostRepository : IOrganicPostRepository
 
         context.Entry(post).State = EntityState.Modified;
         ApplyScheduleRevisionStates(context, post, existingRevisionIds);
+        await ApplyMediaStatesAsync(context, post, existingMediaIds, cancellationToken);
+
+        await Task.CompletedTask;
+    }
+
+    private static async Task ApplyMediaStatesAsync(
+        DbContext context,
+        OrganicPost post,
+        IReadOnlySet<Guid> existingMediaIds,
+        CancellationToken cancellationToken)
+    {
+        var currentIds = post.Media.Select(m => m.Id).ToHashSet();
+
+        if (existingMediaIds.Count > 0)
+        {
+            var removedIds = existingMediaIds.Where(id => !currentIds.Contains(id)).ToList();
+            if (removedIds.Count > 0)
+            {
+                var toRemove = await context.Set<OrganicMediaAsset>()
+                    .Where(m => removedIds.Contains(m.Id))
+                    .ToListAsync(cancellationToken);
+                context.RemoveRange(toRemove);
+            }
+        }
 
         foreach (var media in post.Media)
         {
             var mediaEntry = context.Entry(media);
-            if (mediaEntry.State == EntityState.Detached)
+            if (!existingMediaIds.Contains(media.Id))
             {
-                mediaEntry.State = EntityState.Unchanged;
+                mediaEntry.Property("OrganicPostId").CurrentValue = post.Id;
+
+                if (mediaEntry.State == EntityState.Detached)
+                {
+                    context.Add(media);
+                }
+                else
+                {
+                    mediaEntry.State = EntityState.Added;
+                }
+            }
+            else if (mediaEntry.State == EntityState.Detached)
+            {
+                mediaEntry.State = EntityState.Modified;
             }
         }
-
-        await Task.CompletedTask;
     }
 
     /// <summary>

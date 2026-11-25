@@ -5,6 +5,7 @@
 @using SocialPublishing.Domain.Connections
 @using SocialPublishing.Domain.Posts
 @inject ISocialPublishingClient SocialClient
+@inject ISocialMediaPreviewCache MediaPreviewCache
 
 @if (Post is not null)
 {
@@ -109,6 +110,28 @@
                     <p class="organic-post-detail-client-change"
                        data-testid="organic-post-detail-client-change">@Post.ClientApprovalComment</p>
                 }
+                @if (!string.IsNullOrWhiteSpace(_previewSrc))
+                {
+                    <h3 class="h6 organic-post-detail-section-title mt-4">Imagem</h3>
+                    <img class="organic-post-detail-image-preview img-fluid rounded"
+                         data-testid="organic-post-detail-image-preview"
+                         src="@_previewSrc"
+                         alt="Prévia da imagem do post" />
+                }
+                else if (_isLoadingPreview)
+                {
+                    <p class="small text-muted mt-3 mb-0" data-testid="organic-post-detail-image-loading">Carregando prévia…</p>
+                }
+                @if (!string.IsNullOrEmpty(_successMessage))
+                {
+                    <div class="alert alert-success mt-3 mb-0" role="status" data-testid="organic-post-detail-success">@_successMessage</div>
+                }
+                @if (CanGenerateImage)
+                {
+                    <p class="small text-muted mt-3 mb-0" data-testid="organic-post-detail-ai-disclaimer">
+                        Imagem gerada por IA (Gemini Nano Banana). Pode conter marca d&apos;água SynthID.
+                    </p>
+                }
                 @if (!string.IsNullOrEmpty(_errorMessage))
                 {
                     <div class="alert alert-danger mt-3 mb-0" role="alert" data-testid="organic-post-detail-error">@_errorMessage</div>
@@ -146,6 +169,27 @@
                         else
                         {
                             <span>Aprovar</span>
+                        }
+                    </button>
+                }
+                @if (CanGenerateImage)
+                {
+                    <button type="button"
+                            class="btn btn-outline-primary me-auto"
+                            data-testid="organic-post-detail-generate-image"
+                            disabled="@_isLifecycleBusy"
+                            @onclick="GenerateImageAsync">
+                        @if (_isGeneratingImage)
+                        {
+                            <span>Gerando…</span>
+                        }
+                        else if (_displayedPost.Media is { Count: > 0 })
+                        {
+                            <span>Gerar outra imagem</span>
+                        }
+                        else
+                        {
+                            <span>Gerar imagem</span>
                         }
                     </button>
                 }
@@ -209,9 +253,15 @@
     private bool _isApproving;
     private bool _isScheduling;
     private bool _isSavingCaption;
+    private bool _isGeneratingImage;
+    private bool _isLoadingPreview;
     private string _editCaption = string.Empty;
+    private string? _successMessage;
+    private string? _previewSrc;
+    private Guid? _loadedPreviewAssetId;
 
-    private bool _isLifecycleBusy => _isSubmitting || _isApproving || _isScheduling || _isSavingCaption;
+    private bool _isLifecycleBusy =>
+        _isSubmitting || _isApproving || _isScheduling || _isSavingCaption || _isGeneratingImage;
 
     private bool CanReviseCaption =>
         _displayedPost.Status is OrganicPostStatus.Draft or OrganicPostStatus.ChangesRequested;
@@ -223,8 +273,12 @@
 
     private bool CanSchedule => _displayedPost.Status == OrganicPostStatus.Approved;
 
+    private bool CanGenerateImage =>
+        _displayedPost.Status == OrganicPostStatus.Approved
+        && _displayedPost.Format == OrganicPostFormat.FeedImage;
+
     /// <inheritdoc />
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (Post is null)
         {
@@ -236,16 +290,126 @@
             _displayedPost = Post;
             _editCaption = Post.Caption;
             _errorMessage = null;
+            _successMessage = null;
+            _previewSrc = null;
+            _loadedPreviewAssetId = null;
             _isSubmitting = false;
             _isApproving = false;
             _isScheduling = false;
             _isSavingCaption = false;
+            _isGeneratingImage = false;
         }
-        else if (_displayedPost.Status != Post.Status || _displayedPost.Caption != Post.Caption)
+        else if (HasPostContentChanged(Post, _displayedPost))
         {
             _displayedPost = Post;
             _editCaption = Post.Caption;
         }
+
+        await RefreshPreviewAsync();
+    }
+
+    private static bool HasPostContentChanged(OrganicPostDto incoming, OrganicPostDto current) =>
+        current.Status != incoming.Status
+        || current.Caption != incoming.Caption
+        || MediaSignature(current) != MediaSignature(incoming);
+
+    private static string MediaSignature(OrganicPostDto post) =>
+        post.Media is null || post.Media.Count == 0
+            ? string.Empty
+            : string.Join(
+                '|',
+                post.Media.Select(m => $"{m.Id}:{m.PublicUrl}:{m.Width}:{m.Height}"));
+
+    /// <summary>
+    /// Solicita geração de imagem via Gemini Nano Banana para post aprovado.
+    /// </summary>
+    private async Task GenerateImageAsync()
+    {
+        if (WorkspaceId == Guid.Empty || !CanGenerateImage)
+        {
+            return;
+        }
+
+        _isGeneratingImage = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var generateResult = await SocialClient.GeneratePostImageAsync(WorkspaceId, _displayedPost.Id);
+        _isGeneratingImage = false;
+
+        if (generateResult is null || generateResult.IsFailure)
+        {
+            _errorMessage = generateResult?.Error.Description
+                ?? "Não foi possível gerar a imagem. Tente novamente.";
+            return;
+        }
+
+        _displayedPost = generateResult.Value;
+        _successMessage = "Imagem gerada e anexada ao post.";
+        _loadedPreviewAssetId = null;
+        await RefreshPreviewAsync();
+        await NotifyPostUpdatedAsync(_displayedPost);
+    }
+
+    private async Task RefreshPreviewAsync()
+    {
+        var post = _displayedPost;
+        var asset = post?.Media?.FirstOrDefault();
+        if (post is null || asset is null)
+        {
+            _previewSrc = null;
+            _loadedPreviewAssetId = null;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(asset.PublicUrl))
+        {
+            _previewSrc = asset.PublicUrl;
+            _loadedPreviewAssetId = asset.Id;
+            return;
+        }
+
+        if (_loadedPreviewAssetId == asset.Id && !string.IsNullOrWhiteSpace(_previewSrc))
+        {
+            return;
+        }
+
+        if (WorkspaceId == Guid.Empty)
+        {
+            return;
+        }
+
+        var postId = post.Id;
+        _isLoadingPreview = true;
+        var content = await SocialClient.GetPostMediaContentAsync(WorkspaceId, postId, asset.Id);
+        _isLoadingPreview = false;
+
+        if (content is null || content.IsFailure)
+        {
+            _errorMessage ??= content?.Error.Description ?? "Não foi possível carregar a prévia da imagem.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(content.Value.ContentBase64))
+        {
+            _errorMessage ??= "Não foi possível carregar a prévia da imagem.";
+            return;
+        }
+
+        byte[] previewBytes;
+        try
+        {
+            previewBytes = Convert.FromBase64String(content.Value.ContentBase64);
+        }
+        catch (FormatException)
+        {
+            _errorMessage ??= "Não foi possível carregar a prévia da imagem.";
+            return;
+        }
+
+        var ticket = MediaPreviewCache.Store(previewBytes, content.Value.MimeType);
+        _previewSrc = $"/social/media-preview/{ticket}";
+        _loadedPreviewAssetId = asset.Id;
     }
 
     private async Task RequestClose() => await OnClose.InvokeAsync();

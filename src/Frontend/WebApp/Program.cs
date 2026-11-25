@@ -2,6 +2,7 @@ using BuildingBlocks.Infrastructure.Configuration;
 using WebApp.Components;
 using WebApp.Extensions;
 using WebApp.Services;
+using WebApp.Services.Social;
 using WebApp.State;
 
 // Carrega variáveis do arquivo .env no ambiente de processo e no pipeline de configuração
@@ -79,10 +80,17 @@ builder.Services.AddHttpClient<WebApp.Services.Reports.IReportClientService, Web
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<WebApp.Services.Reports.IPublicReportClientService, WebApp.Services.Reports.PublicReportClientService>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
-builder.Services.AddHttpClient<WebApp.Services.Social.ISocialPublishingClient, WebApp.Services.Social.SocialPublishingClient>(client => client.BaseAddress = apiUri)
+builder.Services.AddHttpClient<WebApp.Services.Social.ISocialPublishingClient, WebApp.Services.Social.SocialPublishingClient>(client =>
+{
+    client.BaseAddress = apiUri;
+    client.Timeout = TimeSpan.FromMinutes(3);
+})
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
 builder.Services.AddHttpClient<WebApp.Services.Social.IPublicSocialApprovalClient, WebApp.Services.Social.PublicSocialApprovalClient>(client => client.BaseAddress = apiUri)
     .ConfigureDevelopmentCertificateBypass(builder.Environment.IsDevelopment());
+
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ISocialMediaPreviewCache, SocialMediaPreviewCache>();
 
 var app = builder.Build();
 
@@ -96,6 +104,16 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 app.UseHttpsRedirection();
 
 app.UseAntiforgery();
+
+app.MapGet("/social/media-preview/{ticket}", (string ticket, ISocialMediaPreviewCache cache) =>
+{
+    if (!cache.TryGet(ticket, out var content, out var contentType) || content is null || contentType is null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.File(content, contentType);
+});
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
