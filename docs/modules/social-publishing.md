@@ -404,7 +404,7 @@ O SQL Server do tenant guarda **somente metadados** (`ObjectKey`, MIME, dimensõ
 | `OpenReadAsync` | Retorna `Stream` legível para inspeção de cabeçalho ou publicação futura. |
 | `DeleteAsync` | Remove objeto por chave (limpeza de staging ou rollback). |
 
-Implementações: **`LocalOrganicMediaStore`** (`SocialPublishing:Media:Provider=Local`, `LocalRoot`) e **`S3OrganicMediaStore`** (`Provider=S3`, `Bucket`, `ServiceUrl`, credenciais via ambiente ADR 0018).
+Implementação atual: **`LocalOrganicMediaStore`** (`SocialPublishing:Media:Provider=Local`, `LocalRoot`). O antigo `S3OrganicMediaStore` foi removido na **Fase 2** do [roadmap MinIO](roadmaps/minio-object-storage-roadmap.md); valores diferentes de `Local` em `SocialPublishing:Media:Provider` falham na composição do módulo. A mídia orgânica passará a usar **`IObjectStore`** (`ObjectStorage:Provider=MinIO`) na **Fase 4** — ver [object-storage.md](object-storage.md).
 
 ### `POST /api/v1/social/media`
 

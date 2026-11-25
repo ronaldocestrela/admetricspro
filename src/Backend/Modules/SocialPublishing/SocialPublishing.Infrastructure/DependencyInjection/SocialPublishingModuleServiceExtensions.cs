@@ -7,8 +7,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Options;
-using Amazon.Runtime;
-using Amazon.S3;
 using SocialPublishing.Infrastructure.Ai;
 using SocialPublishing.Infrastructure.Media;
 using SocialPublishing.Infrastructure.Publishing;
@@ -140,33 +138,14 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddSingleton<IGeneratedFeedImageNormalizer, ImageSharpFeedImageNormalizer>();
 
         var provider = configuration[$"{OrganicMediaOptions.SectionName}:Provider"] ?? "Local";
-        if (string.Equals(provider, "S3", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase))
         {
-            services.AddSingleton<IAmazonS3>(sp =>
-            {
-                var options = sp.GetRequiredService<IOptions<OrganicMediaOptions>>().Value;
-                var config = new AmazonS3Config();
-                if (!string.IsNullOrWhiteSpace(options.ServiceUrl))
-                {
-                    config.ServiceURL = options.ServiceUrl;
-                    config.ForcePathStyle = true;
-                }
-
-                var accessKey = configuration["AWS_ACCESS_KEY_ID"];
-                var secretKey = configuration["AWS_SECRET_ACCESS_KEY"];
-                if (!string.IsNullOrWhiteSpace(accessKey) && !string.IsNullOrWhiteSpace(secretKey))
-                {
-                    return new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), config);
-                }
-
-                return new AmazonS3Client(config);
-            });
-            services.AddSingleton<IOrganicMediaStore, S3OrganicMediaStore>();
+            throw new InvalidOperationException(
+                "SocialPublishing:Media:Provider deve ser Local nesta versão. O cliente S3 do módulo foi removido na Fase 2 do MinIO; " +
+                "ObjectStorage:Provider=MinIO e IObjectStore entram na Fase 4.");
         }
-        else
-        {
-            services.AddSingleton<IOrganicMediaStore, LocalOrganicMediaStore>();
-        }
+
+        services.AddSingleton<IOrganicMediaStore, LocalOrganicMediaStore>();
 
         services.AddSingleton<IOrganicMediaPublicUrlResolver, ConfigurableOrganicMediaPublicUrlResolver>();
         services.AddSingleton<IOrganicPublishJitterProvider, RandomOrganicPublishJitterProvider>();

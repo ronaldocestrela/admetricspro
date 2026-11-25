@@ -11,7 +11,7 @@ public sealed class OrganicMediaOptions
     public const string SectionName = "SocialPublishing:Media";
 
     /// <summary>
-    /// Provedor de armazenamento: Local ou S3.
+    /// Provedor de armazenamento: somente <c>Local</c> até a Fase 4 do MinIO (<c>ObjectStorage:Provider</c>).
     /// </summary>
     public string Provider { get; set; } = "Local";
 

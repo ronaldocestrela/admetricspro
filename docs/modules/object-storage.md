@@ -4,14 +4,21 @@ Contrato e diagnóstico do armazenamento de objetos gerados pelo AdMetricsPro. A
 
 **sem endpoint HTTP de negócio nesta fase**
 
-Não existem rotas versionadas de produto, `[EndpointSummary]` de mídia/PDF/marca nem implementação de `IObjectStore` em produção. O endpoint público de stream de mídia (`GET /api/v1/public/media/{token}`) é entrega da **Fase 4** do roadmap.
+Não existem rotas versionadas de produto, `[EndpointSummary]` de mídia/PDF/marca nem registro de `IObjectStore` na Web API. O endpoint público de stream de mídia (`GET /api/v1/public/media/{token}`) é entrega da **Fase 4** do roadmap.
 
 ### Fase 1 — cluster no ambiente (entregue)
 
 - Serviços `minio` e `minio-init` em `docker-compose.yml` / `docker-compose.prod.yml`: três buckets privados (`admetricspro-organic`, `admetricspro-reports`, `admetricspro-branding`), regra ILM de 24 h no prefixo `organic-media/staging/` do bucket orgânico (script idempotente em `deploy/minio/init-buckets.sh`).
 - Dev: API S3 e console em `127.0.0.1:9000` e `127.0.0.1:9001`. Produção: **nenhuma** porta MinIO publicada no host ([guia Docker produção](../devops/docker-production.md)).
 - Health check nomeado `minio` em `GET /health` somente quando `ObjectStorage__Provider=MinIO`; com `Local` (padrão), o agregado permanece como antes.
-- Nenhum handler grava ou lê objetos no cluster até as Fases 2–4.
+- Nenhum handler grava ou lê objetos no cluster até as Fases 3–4.
+
+### Fase 2 — porta sem rede (entregue)
+
+- **`BuildingBlocks.Application.Storage`:** `IObjectStore`, `ObjectKey.Create`, `StorageErrors` (códigos estáveis do catálogo da seção 3).
+- **Regra de chave:** validação pura por `Guid tenantId` — chaves orgânicas `organic-media/staging|durable/{tenant:N}/{workspace:N}/{asset:N}` ou prefixo `{tenant:N}/…` com ao menos um segmento após o tenant; rejeição de `\`, `..` e segmentos vazios.
+- **Fake:** `InMemoryObjectStore` apenas em testes unitários (`UnitTests.Backend.ObjectStorage`); não há `AddObjectStorage` nem cliente `AWSSDK` em produção nesta fase.
+- **Compliance:** `AgentsArchitectureComplianceTests.ObjectStorageSdk_MustNotBeReferencedOutsideBuildingBlocksInfrastructure` — `AWSSDK.S3` / `AWSSDK.Core` removidos de `SocialPublishing.Infrastructure` (`S3OrganicMediaStore` eliminado); `SocialPublishing:Media:Provider` aceita somente `Local` até a Fase 4.
 
 ---
 
@@ -30,7 +37,7 @@ A porta é `IOrganicMediaStore` (`SaveAsync`, `OpenReadAsync`, `DeleteAsync`), c
 | Staging | `organic-media/staging/{tenantId:N}/{workspaceId:N}/{assetId:N}` |
 | Durable | `organic-media/durable/{tenantId:N}/{workspaceId:N}/{assetId:N}` |
 
-Hoje o padrão é `LocalOrganicMediaStore` (volume da API). Existe `S3OrganicMediaStore` no módulo social, mas Compose não sobe MinIO. Duas réplicas da Web API não compartilham o mesmo disco; backup do volume não acompanha o banco do tenant.
+Hoje o padrão é `LocalOrganicMediaStore` (volume da API). O cliente S3 que existia no módulo social foi removido na Fase 2; o bucket compartilhado via `IObjectStore` entra na Fase 4. Duas réplicas da Web API não compartilham o mesmo disco; backup do volume não acompanha o banco do tenant.
 
 ### 1.2 PDF de relatório white-label — `varbinary(max)` no banco do tenant
 
@@ -75,25 +82,53 @@ Erros de storage seguem o envelope descrito em [building-blocks.md](building-blo
 | `Storage.KeyInvalid` | Chave vazia, com `..` ou `\`, ou fora do prefixo do tenant atual. |
 | `Social.MediaPublicBaseUrlMissing` | Já existe no módulo social. Falha ao publicar quando `PublicBaseUrl` está vazio. |
 
-`Storage.KeyInvalid` é defesa da implementação: a chave montada pelo módulo inclui o tenant do contexto. `OpenRead` cujo primeiro segmento não é esse tenant retorna falha sem chamar o SDK.
+`Storage.KeyInvalid` é defesa da implementação: `ObjectKey.Create` valida em relação ao tenant informado; a implementação de `IObjectStore` na Fase 3 usará `ITenantContextAccessor` antes de chamar o SDK.
 
 ---
 
-## 4. Regras de chave (contrato futuro)
+## 4. Contrato `IObjectStore` e `ObjectKey`
 
-Antes de qualquer chamada ao provedor, a implementação de `IObjectStore` (Fase 2–3) deve rejeitar:
+Namespace: `BuildingBlocks.Application.Storage`.
+
+### `ObjectKey.Create(string? key, Guid tenantId)` → `Result<ObjectKey>`
+
+Rejeita (código `Storage.KeyInvalid`):
 
 - chave nula ou em branco;
-- segmentos `..` ou barra invertida `\`;
-- chave cujo prefixo de tenant não coincide com o `TenantId` do `ITenantContextAccessor`.
+- barra invertida `\` ou segmento `..`;
+- segmento vazio (barra dupla, barra inicial/final);
+- chave orgânica válida em formato mas com tenant diferente no terceiro segmento;
+- qualquer outra chave cujo primeiro segmento não seja `{tenantId:N}` ou que tenha só o segmento do tenant.
 
-Chaves orgânicas já persistidas no formato `organic-media/durable/{tenant}/{workspace}/{asset}` permanecem válidas dentro do bucket `admetricspro-organic`.
+Aceita:
 
-A interface prevista em `BuildingBlocks.Application.Storage` (Fase 2): `PutAsync`, `OpenReadAsync`, `DeleteAsync`, `ExistsAsync` — argumentos bucket, chave, stream, content type, `CancellationToken`; retorno `Result` ou `Result<Stream>`; sem tipos AWS nas assinaturas públicas.
+- `organic-media/staging|durable/{tenantId:N}/{workspaceId:N}/{assetId:N}` (workspace e asset em formato `N`);
+- `{tenantId:N}/light`, `{tenantId:N}/{workspaceId:N}/{reportId:N}.pdf`, etc.
+
+### `IObjectStore`
+
+| Método | Retorno |
+| :--- | :--- |
+| `PutAsync(bucket, key, content, contentType, cancellationToken)` | `Task<Result>` |
+| `OpenReadAsync(bucket, key, cancellationToken)` | `Task<Result<Stream>>` |
+| `DeleteAsync(bucket, key, cancellationToken)` | `Task<Result>` (delete idempotente se ausente) |
+| `ExistsAsync(bucket, key, cancellationToken)` | `Task<Result<bool>>` |
+
+Nenhum tipo `Amazon.*` nas assinaturas públicas.
+
+Exemplo de validação (testes / chamadores):
+
+```csharp
+var keyResult = ObjectKey.Create(rawKey, tenantId);
+if (keyResult.IsFailure)
+    return keyResult.Error; // Storage.KeyInvalid
+
+// Fase 3+: await _objectStore.OpenReadAsync(bucket, keyResult.Value.Value, cancellationToken);
+```
 
 ---
 
-## 5. Configuração (referência, sem implementação nesta fase)
+## 5. Configuração (referência; DI na Fase 3)
 
 | Variável | Papel |
 | :--- | :--- |
@@ -112,7 +147,7 @@ A interface prevista em `BuildingBlocks.Application.Storage` (Fase 2): `PutAsync
 
 | Fase | Documentação adicional |
 | :--- | :--- |
-| 2–3 | Contratos C# e exemplos de uso de `IObjectStore` neste arquivo. |
+| 3 | `MinioObjectStore`, `AddObjectStorage` e integração Testcontainers neste arquivo. |
 | 4 | `GET /api/v1/public/media/{token}` em [social-publishing.md](social-publishing.md). |
 | 6 | Download/anexo de PDF em [reports-generator.md](reports-generator.md). |
 | 7 | Upload de logo em [tenants-white-label.md](tenants-white-label.md). |

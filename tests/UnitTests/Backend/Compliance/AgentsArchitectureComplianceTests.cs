@@ -439,6 +439,84 @@ public sealed class AgentsArchitectureComplianceTests
     }
 
     /// <summary>
+    /// ADR 0053 Fase 2: AWSSDK.S3 e AWSSDK.Core só em BuildingBlocks.Infrastructure (cliente real na Fase 3).
+    /// </summary>
+    [Fact]
+    public void ObjectStorageSdk_MustNotBeReferencedOutsideBuildingBlocksInfrastructure()
+    {
+        var forbiddenPackages = new[] { "AWSSDK.S3", "AWSSDK.Core" };
+        var allowedSdkProject = Path.Combine(
+            ObjectStorageSdkComplianceScanner.ResolveSolutionRoot() ?? string.Empty,
+            "src",
+            "Backend",
+            "BuildingBlocks",
+            "BuildingBlocks.Infrastructure",
+            "BuildingBlocks.Infrastructure.csproj");
+
+        var violations = new List<string>();
+
+        foreach (var csprojPath in ObjectStorageSdkComplianceScanner.EnumerateGuardedProjectPaths())
+        {
+            if (string.Equals(csprojPath, allowedSdkProject, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var doc = XDocument.Load(csprojPath);
+            var packageRefs = doc.Descendants()
+                .Where(e => e.Name.LocalName == "PackageReference")
+                .Select(e => e.Attribute("Include")?.Value ?? string.Empty)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .ToList();
+
+            foreach (var package in packageRefs)
+            {
+                if (forbiddenPackages.Any(f => package.StartsWith(f, StringComparison.OrdinalIgnoreCase)))
+                {
+                    violations.Add($"{csprojPath}: PackageReference '{package}' proibido fora de BuildingBlocks.Infrastructure.");
+                }
+            }
+        }
+
+        foreach (var assemblyName in new[]
+                 {
+                     "BuildingBlocks.Domain",
+                     "BuildingBlocks.Application",
+                     "Master.Domain",
+                     "Master.Application",
+                     "Tenants.Application",
+                     "Integrations.Domain",
+                     "Integrations.Application",
+                     "Analytics.Domain",
+                     "Analytics.Application",
+                     "Automations.Domain",
+                     "Automations.Application",
+                     "SocialPublishing.Domain",
+                     "SocialPublishing.Application",
+                     "SocialPublishing.Infrastructure",
+                 })
+        {
+            var assembly = SocialPublishingComplianceAssemblyLoader.TryLoad(assemblyName);
+            if (assembly is null)
+            {
+                continue;
+            }
+
+            foreach (var referenced in assembly.GetReferencedAssemblies())
+            {
+                var name = referenced.Name ?? string.Empty;
+                if (forbiddenPackages.Any(f => name.StartsWith(f, StringComparison.OrdinalIgnoreCase)))
+                {
+                    violations.Add($"Assembly {assemblyName} referencia '{name}' em tempo de compilação.");
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            $"AWSSDK fica restrito a BuildingBlocks.Infrastructure (roadmap MinIO Fase 2):{Environment.NewLine}{string.Join(Environment.NewLine, violations)}");
+    }
+
+    /// <summary>
     /// Roadmap SocialPublishing Subfase 1.1: AddSocialPublishingModule registra MediatR via AddMessaging (ValidationBehavior).
     /// </summary>
     [Fact]
@@ -574,6 +652,77 @@ internal static class SocialPublishingComplianceAssemblyLoader
         }
 
         return null;
+    }
+}
+
+/// <summary>
+/// Localiza projetos que não podem referenciar AWSSDK fora de BuildingBlocks.Infrastructure (ADR 0053 Fase 2).
+/// </summary>
+internal static class ObjectStorageSdkComplianceScanner
+{
+    /// <summary>
+    /// Raiz da solution AdMetricsPro.
+    /// </summary>
+    /// <returns>Caminho da pasta que contém AdMetricsPro.sln ou null.</returns>
+    public static string? ResolveSolutionRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var slnPath = Path.Combine(directory.FullName, "AdMetricsPro.sln");
+            if (File.Exists(slnPath))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Enumera Domain, Application, frontends e SocialPublishing.Infrastructure.
+    /// </summary>
+    /// <returns>Caminhos absolutos de .csproj sob guarda.</returns>
+    public static IEnumerable<string> EnumerateGuardedProjectPaths()
+    {
+        var solutionRoot = ResolveSolutionRoot();
+        solutionRoot.Should().NotBeNull("AdMetricsPro.sln deve ser encontrado.");
+
+        var backendSrc = Path.Combine(solutionRoot!, "src", "Backend");
+        var frontendSrc = Path.Combine(solutionRoot!, "src", "Frontend");
+
+        var paths = new List<string>();
+        if (Directory.Exists(backendSrc))
+        {
+            paths.AddRange(Directory.EnumerateFiles(backendSrc, "*.Domain.csproj", SearchOption.AllDirectories));
+            paths.AddRange(Directory.EnumerateFiles(backendSrc, "*.Application.csproj", SearchOption.AllDirectories));
+            var socialInfra = Path.Combine(
+                backendSrc,
+                "Modules",
+                "SocialPublishing",
+                "SocialPublishing.Infrastructure",
+                "SocialPublishing.Infrastructure.csproj");
+            if (File.Exists(socialInfra))
+            {
+                paths.Add(socialInfra);
+            }
+        }
+
+        var webApp = Path.Combine(frontendSrc, "WebApp", "WebApp.csproj");
+        if (File.Exists(webApp))
+        {
+            paths.Add(webApp);
+        }
+
+        var backoffice = Path.Combine(frontendSrc, "BackofficeApp", "BackofficeApp.csproj");
+        if (File.Exists(backoffice))
+        {
+            paths.Add(backoffice);
+        }
+
+        return paths.OrderBy(p => p, StringComparer.Ordinal);
     }
 }
 
