@@ -63,6 +63,8 @@ builder.Services.Configure<WebApi.Configuration.CatalogEmailConsumerOptions>(
     builder.Configuration.GetSection(WebApi.Configuration.CatalogEmailConsumerOptions.SectionName));
 builder.Services.Configure<WebApi.Configuration.MediaSyncConsumerOptions>(
     builder.Configuration.GetSection(WebApi.Configuration.MediaSyncConsumerOptions.SectionName));
+builder.Services.Configure<WebApi.Configuration.IngestionReactionsConsumerOptions>(
+    builder.Configuration.GetSection(WebApi.Configuration.IngestionReactionsConsumerOptions.SectionName));
 builder.Services.AddScoped<WebApi.Background.IConnectedAdAccountMetaSyncExecutor, WebApi.Background.ConnectedAdAccountMetaSyncExecutor>();
 builder.Services.AddAdMetricsMessaging(
     builder.Configuration,
@@ -70,11 +72,17 @@ builder.Services.AddAdMetricsMessaging(
     {
         bus.AddConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>();
         bus.AddConsumer<WebApi.Messaging.MediaSyncIntegrationConsumer, WebApi.Messaging.MediaSyncConsumerDefinition>();
+        bus.AddConsumer<WebApi.Messaging.AutomationsCampaignMetricsSyncedConsumer>();
+        bus.AddConsumer<WebApi.Messaging.AutomationsCampaignHierarchySyncedConsumer>();
+        bus.AddConsumer<WebApi.Messaging.AnalyticsCampaignMetricsSyncedConsumer>();
+        bus.AddConsumer<WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer>();
     },
     (context, cfg) =>
     {
         var mediaSyncOptions = context.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebApi.Configuration.MediaSyncConsumerOptions>>().Value;
         var mediaPrefetch = (ushort)Math.Clamp((int)mediaSyncOptions.Prefetch, 1, 4);
+        var ingestionOptions = context.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebApi.Configuration.IngestionReactionsConsumerOptions>>().Value;
+        var ingestionPrefetch = (ushort)Math.Clamp((int)ingestionOptions.Prefetch, 1, 4);
 
         cfg.ReceiveEndpoint(WebApi.Messaging.CatalogEmailIntegrationConsumer.ConsumerName, endpoint =>
         {
@@ -102,6 +110,54 @@ builder.Services.AddAdMetricsMessaging(
                 bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.AdAccountSync;
             });
             endpoint.ConfigureConsumer<WebApi.Messaging.MediaSyncIntegrationConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.AutomationsCampaignMetricsSyncedConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = ingestionPrefetch;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.CampaignMetricsSynced;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.AutomationsCampaignMetricsSyncedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.AutomationsCampaignHierarchySyncedConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = ingestionPrefetch;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.CampaignHierarchySynced;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.AutomationsCampaignHierarchySyncedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.AnalyticsCampaignMetricsSyncedConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = ingestionPrefetch;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.CampaignMetricsSynced;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.AnalyticsCampaignMetricsSyncedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = ingestionPrefetch;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.CampaignHierarchySynced;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer>(context);
         });
     });
 builder.Services.AddOptions<WebApi.Background.OutboxDispatchOptions>()

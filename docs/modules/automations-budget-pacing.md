@@ -4,6 +4,8 @@
 
 A funcionalidade de **Pacing e Previsão de Fim de Mês** monitora a velocidade de consumo da verba publicitária contratada em relação ao tempo decorrido do ciclo mensal, permitindo que gestores de tráfego identifiquem antecipadamente desvios de subinvestimento ou sobreaquecimento.
 
+**Gatilho durável (Fase 6):** Após `integrations.campaign-metrics-synced.v1`, o mesmo consumidor de automações invoca `GetWorkspaceBudgetPacingQuery` para recalcular pacing com métricas recém-persistidas. Consultas `GET /api/v1/automations/pacing/...` permanecem somente leitura.
+
 ---
 
 ## 2. Fórmulas Matemáticas & Métricas de Pacing

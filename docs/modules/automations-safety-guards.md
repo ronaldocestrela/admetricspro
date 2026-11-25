@@ -18,6 +18,8 @@ Em operações de tráfego pago de alto volume, falhas técnicas e desvios orça
 
 ### 2.1 Desacoplamento Inter-Módulos via MediatR
 O módulo `Automations` **não** acessa repositórios nem `DbContext` de `Integrations`. As mutações de pausa são despachadas exclusivamente via comandos in-memory padronizados do Kernel Compartilhado:
+
+**Gatilho durável (Fase 6):** `integrations.campaign-metrics-synced.v1` → `CheckOverspendingCommand`; `integrations.campaign-hierarchy-synced.v1` → `CheckLandingPagesCommand`, via consumidores MassTransit com inbox no tenant ([messaging.md](messaging.md)). Endpoints `POST /api/v1/automations/guards/...` continuam disponíveis para execução manual.
 - `BuildingBlocks.Application.Campaigns.Commands.PauseCampaignCommand`
 - `BuildingBlocks.Application.Campaigns.Commands.PauseAdCommand`
 

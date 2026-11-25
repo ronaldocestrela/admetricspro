@@ -1,3 +1,5 @@
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Domain.Integrations;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Tenants;
@@ -35,9 +37,13 @@ public sealed class MetaSyncSecurityTests
         var vaults = Substitute.For<IOAuthTokenVaultRepository>();
         vaults.GetByWorkspaceAndPlatformAsync(workspaceId, "MetaAds", Arg.Any<CancellationToken>()).Returns(vault);
         var dispatcher = Substitute.For<ICampaignHierarchySyncDispatcher>();
+        var messagingGate = Substitute.For<IMessagingFeatureGate>();
+        messagingGate.IsEnabled.Returns(false);
         var handler = new SyncCampaignHierarchyCommandHandler(repository, vaults,
             Substitute.For<IOAuthEncryptionService>(), dispatcher, Substitute.For<IIntegrationsUnitOfWork>(), Substitute.For<IPublisher>(),
-            Substitute.For<BuildingBlocks.Application.MultiTenancy.ITenantContextAccessor>());
+            Substitute.For<BuildingBlocks.Application.MultiTenancy.ITenantContextAccessor>(),
+            messagingGate,
+            Substitute.For<IIntegrationOutboxWriter>());
         var result = await handler.Handle(new(requestedWorkspace, account.Id), default);
         result.IsFailure.Should().BeTrue();
         dispatcher.ReceivedCalls().Should().BeEmpty();

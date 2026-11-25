@@ -1,8 +1,11 @@
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Domain.Campaigns;
 using BuildingBlocks.Domain.Campaigns.Events;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Tenants;
+using BuildingBlocks.Infrastructure.MultiTenancy;
 using FluentAssertions;
 using Integrations.Application.Campaigns.Commands.SyncCampaignMetrics;
 using Integrations.Application.Campaigns.Queries.GetCampaignMetrics;
@@ -30,6 +33,8 @@ public sealed class SyncCampaignMetricsCommandHandlerTests
     private readonly IIntegrationsUnitOfWork _unitOfWork = Substitute.For<IIntegrationsUnitOfWork>();
     private readonly IPublisher _publisher = Substitute.For<IPublisher>();
     private readonly ITenantContextAccessor _tenantContextAccessor = Substitute.For<ITenantContextAccessor>();
+    private readonly IMessagingFeatureGate _messagingFeatureGate = Substitute.For<IMessagingFeatureGate>();
+    private readonly IIntegrationOutboxWriter _outboxWriter = Substitute.For<IIntegrationOutboxWriter>();
 
     private readonly SyncCampaignMetricsCommandHandler _handler;
 
@@ -38,6 +43,7 @@ public sealed class SyncCampaignMetricsCommandHandlerTests
     /// </summary>
     public SyncCampaignMetricsCommandHandlerTests()
     {
+        _messagingFeatureGate.IsEnabled.Returns(false);
         _handler = new SyncCampaignMetricsCommandHandler(
             _metricsRepository,
             _hierarchyRepository,
@@ -46,7 +52,9 @@ public sealed class SyncCampaignMetricsCommandHandlerTests
             _syncDispatcher,
             _unitOfWork,
             _publisher,
-            _tenantContextAccessor);
+            _tenantContextAccessor,
+            _messagingFeatureGate,
+            _outboxWriter);
     }
 
     /// <summary>
@@ -246,5 +254,83 @@ public sealed class SyncCampaignMetricsCommandHandlerTests
         dto.Cpm.Should().Be(25.00m);
         dto.Cpa.Should().Be(10.00m);
         dto.Roas.Should().Be(5.00m);
+    }
+
+    /// <summary>
+    /// Com mensageria ligada, grava outbox e não publica in-memory.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenMessagingEnabled_EnqueuesOutboxAndDoesNotPublish()
+    {
+        _messagingFeatureGate.IsEnabled.Returns(true);
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var accountId = Guid.NewGuid();
+        _tenantContextAccessor.TenantContext = TenantContext.Create(tenantId, null, TenantResolutionSource.None);
+
+        var account = ConnectedAdAccount.Create(accountId, workspaceId, "MetaAds", "act_1", "Conta", "BRL", isDemo: true).Value;
+        var start = DateTime.UtcNow.AddDays(-2).Date;
+        var end = DateTime.UtcNow.Date;
+
+        _hierarchyRepository.GetAccountsForSyncAsync(workspaceId, accountId, null, Arg.Any<CancellationToken>())
+            .Returns(new[] { account });
+
+        var fetchedMetrics = new List<UnifiedMetricItem>
+        {
+            new("cmp_1", null, null, start, null, 100m, 1000, 50, 1m, 10m, "BRL"),
+        };
+
+        _syncDispatcher.DispatchAsync(account, null, start, end, MetricGranularity.Daily, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<UnifiedMetricItem>>.Success(fetchedMetrics));
+
+        _hierarchyRepository.GetCampaignsByWorkspaceAsync(workspaceId, accountId, "MetaAds", null, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Campaign>());
+
+        _metricsRepository.UpsertMetricsBatchAsync(workspaceId, Arg.Any<IReadOnlyList<CampaignMetric>>(), Arg.Any<CancellationToken>())
+            .Returns(Result<int>.Success(1));
+
+        _outboxWriter.AddAsync(Arg.Any<BuildingBlocks.Domain.Messaging.IntegrationOutboxMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+
+        var command = new SyncCampaignMetricsCommand(workspaceId, accountId, null, start, end, MetricGranularity.Daily);
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _outboxWriter.Received(1).AddAsync(Arg.Any<BuildingBlocks.Domain.Messaging.IntegrationOutboxMessage>(), Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceive().Publish(Arg.Any<CampaignMetricsSyncedEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Tenant ausente com mensageria ligada falha antes de persistir métricas.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenMessagingEnabledWithoutTenant_ReturnsTenantRequired()
+    {
+        _messagingFeatureGate.IsEnabled.Returns(true);
+        _tenantContextAccessor.TenantContext.Returns((TenantContext?)null);
+
+        var workspaceId = Guid.NewGuid();
+        var accountId = Guid.NewGuid();
+        var account = ConnectedAdAccount.Create(accountId, workspaceId, "MetaAds", "act_1", "Conta", "BRL", isDemo: true).Value;
+        var start = DateTime.UtcNow.AddDays(-2).Date;
+        var end = DateTime.UtcNow.Date;
+
+        _hierarchyRepository.GetAccountsForSyncAsync(workspaceId, accountId, null, Arg.Any<CancellationToken>())
+            .Returns(new[] { account });
+
+        _syncDispatcher.DispatchAsync(account, null, start, end, MetricGranularity.Daily, Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<UnifiedMetricItem>>.Success(
+                [new UnifiedMetricItem("cmp_1", null, null, start, null, 100m, 1000, 50, 1m, 10m, "BRL")]));
+
+        _hierarchyRepository.GetCampaignsByWorkspaceAsync(workspaceId, accountId, "MetaAds", null, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Campaign>());
+
+        var command = new SyncCampaignMetricsCommand(workspaceId, accountId, null, start, end, MetricGranularity.Daily);
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Messaging.TenantRequired");
+        await _metricsRepository.DidNotReceive()
+            .UpsertMetricsBatchAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<CampaignMetric>>(), Arg.Any<CancellationToken>());
     }
 }

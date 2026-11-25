@@ -1,6 +1,6 @@
 # Mensageria durável (eventos de integração)
 
-> **Fases 0–5:** outbox, dispatcher, inbox, transporte MassTransit, consumidor de laboratório (testes), **e-mail de catálogo** (Fase 4) e **sync Meta por conta** (Fase 5) quando `Messaging__Enabled=true`. Sem endpoint HTTP de mensageria. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
+> **Fases 0–6:** outbox, dispatcher, inbox, transporte MassTransit, consumidor de laboratório (testes), **e-mail de catálogo** (Fase 4), **sync Meta por conta** (Fase 5) e **eventos de ingestão** (Fase 6) quando `Messaging__Enabled=true`. Sem endpoint HTTP de mensageria. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
 
 ## 1. Fase 1 — broker no ambiente (entregue)
 
@@ -135,7 +135,20 @@ Portas (`BuildingBlocks.Application`): `IIntegrationOutboxStore`, `IIntegrationI
 | Retry 429 | `MediaSyncTransientFailure` → `ScheduleForConsumerRetry` na outbox do tenant; teto `Messaging:Consumers:MediaSync:MaxAttempts` |
 | Métrica | `admetrics.messaging.dispatch` (meter `AdMetricsPro.Messaging`, tag `message-type`) no `OutboxDispatchWorker` |
 
-Eventos `CampaignHierarchySynced` / `CampaignMetricsSynced` seguem **in-process** até a Fase 6.
+### 4.4 Fase 6 — Eventos duráveis depois da ingestão (tenant)
+
+| Item | Valor |
+| :--- | :--- |
+| Routing keys | `integrations.campaign-metrics-synced.v1`, `integrations.campaign-hierarchy-synced.v1` |
+| Gravação | `CampaignIngestionOutboxFactory` no mesmo `SaveChanges` da ingestão (métricas: antes de `UpsertMetricsBatchAsync`; hierarquia: antes do `CommitAsync` do handler) |
+| Exclusão mútua | `Messaging__Enabled=true` → outbox, **sem** `IPublisher.Publish`; `false` → publish in-memory legado, **sem** outbox |
+| Fila Automations (métricas) | `admetricspro.automations.campaign-metrics-synced` → `ReactToCampaignMetricsSyncedCommand` |
+| Fila Automations (hierarquia) | `admetricspro.automations.campaign-hierarchy-synced` → `ReactToCampaignHierarchySyncedCommand` |
+| Fila Analytics (métricas) | `admetricspro.analytics.campaign-metrics-synced` → `ProcessCampaignMetricsSyncedCommand` |
+| Fila Analytics (hierarquia) | `admetricspro.analytics.campaign-hierarchy-synced` → `ProcessCampaignHierarchySyncedCommand` |
+| Payload | `workspaceId`, `connectedAdAccountId`, `platform`, `syncedAtUtc`; métricas incluem `granularity`, `windowStartUtc`, `windowEndUtc` — sem segredos |
+| Prefetch / retry | `Messaging:Consumers:IngestionReactions` (`Prefetch` 1–4, `MaxAttempts`, `RetryAfterSeconds`) |
+| Inbox | Uma linha por `(EventId, ConsumerName)`; quatro consumidores = quatro filas isoladas |
 
 ## 5. Fluxo alvo (referência)
 

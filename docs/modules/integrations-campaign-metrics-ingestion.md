@@ -18,7 +18,10 @@ $$\text{Chave Composta} = (\text{ConnectedAdAccountId}, \text{ExternalCampaignId
 Se a rede atualizar dados retroativos (como conversões tardias que chegam em até 72 horas), a rotina atualiza os campos (`Spend`, `Impressions`, `Clicks`, `Conversions`, `ConversionValue`) e recalcula os KPIs derivados automaticamente.
 
 ### Ingestão periódica Meta e mensageria (Fase 5)
-Após hierarquia, o consumidor da fila `admetricspro.integrations.media-sync` dispara `SyncCampaignMetricsCommand` com o lookback de `Integrations:MetaSynchronization:LookbackDays`. O `POST /api/v1/integrations/campaigns/metrics/sync` permanece síncrono; a chave composta de idempotência não muda. `CampaignMetricsSyncedEvent` continua in-memory até a Fase 6. HTTP 429 no consumidor reagenda a mesma linha de outbox (`MediaSyncTransientFailure`), sem duplicar `CampaignMetric`.
+Após hierarquia, o consumidor da fila `admetricspro.integrations.media-sync` dispara `SyncCampaignMetricsCommand` com o lookback de `Integrations:MetaSynchronization:LookbackDays`. O `POST /api/v1/integrations/campaigns/metrics/sync` permanece síncrono; a chave composta de idempotência não muda. HTTP 429 no consumidor reagenda a mesma linha de outbox (`MediaSyncTransientFailure`), sem duplicar `CampaignMetric`.
+
+### Evento pós-ingestão (Fase 6)
+Com `Messaging__Enabled=true`, cada conta com métricas ingeridas grava `integrations.campaign-metrics-synced.v1` na outbox do tenant no mesmo commit dos dados (`CampaignIngestionOutboxFactory`). O consumidor `admetricspro.automations.campaign-metrics-synced` avalia regras, overspending e pacing; o consumidor `admetricspro.analytics.campaign-metrics-synced` relê métricas e aplica conversão cambial em memória. Com `Messaging__Enabled=false`, permanece o `CampaignMetricsSyncedEvent` in-memory (sem outbox). Ver [messaging.md](messaging.md).
 
 ---
 

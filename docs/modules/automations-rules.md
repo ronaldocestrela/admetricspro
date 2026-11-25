@@ -14,6 +14,8 @@ O motor de automação permite aos gestores de tráfego configurar regras progra
 - **Comunicação Inter-Módulos via MediatR:** O módulo `Automations` não acessa repositórios nem DbContext de `Integrations`. O despacho de mutações ocorre via comandos in-memory desacoplados (`PauseCampaignCommand`, `PauseAdCommand`, `AdjustCampaignBudgetCommand`, `ReallocateBudgetCommand`).
 - **Persistência Isolada por Tenant:** Regras e estatísticas de execução são gravadas no `TenantDbContext` dedicado.
 
+**Gatilho durável (Fase 6):** Com `Messaging__Enabled=true`, após ingestão de métricas o consumidor `admetricspro.automations.campaign-metrics-synced` despacha `ReactToCampaignMetricsSyncedCommand`, que reutiliza `EvaluateRuleCommand` e o `RuleConditionEvaluator` existentes (a DSL não muda). Avaliação manual via `POST /api/v1/automations/rules/{id}/evaluate` permanece síncrona.
+
 ---
 
 ## 2. Especificação da DSL

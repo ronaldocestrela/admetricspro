@@ -1,9 +1,11 @@
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Domain.Campaigns.Events;
 using BuildingBlocks.Domain.Integrations;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Tenants;
+using BuildingBlocks.Infrastructure.MultiTenancy;
 using FluentAssertions;
 using Integrations.Application.Campaigns.Commands.SyncCampaignHierarchy;
 using Integrations.Application.Persistence;
@@ -28,6 +30,8 @@ public sealed class SyncCampaignHierarchyCommandHandlerTests
     private readonly IIntegrationsUnitOfWork _unitOfWork = Substitute.For<IIntegrationsUnitOfWork>();
     private readonly IPublisher _publisher = Substitute.For<IPublisher>();
     private readonly ITenantContextAccessor _tenantContextAccessor = Substitute.For<ITenantContextAccessor>();
+    private readonly IMessagingFeatureGate _messagingFeatureGate = Substitute.For<IMessagingFeatureGate>();
+    private readonly IIntegrationOutboxWriter _outboxWriter = Substitute.For<IIntegrationOutboxWriter>();
 
     private readonly SyncCampaignHierarchyCommandHandler _handler;
 
@@ -36,6 +40,7 @@ public sealed class SyncCampaignHierarchyCommandHandlerTests
     /// </summary>
     public SyncCampaignHierarchyCommandHandlerTests()
     {
+        _messagingFeatureGate.IsEnabled.Returns(false);
         _handler = new SyncCampaignHierarchyCommandHandler(
             _hierarchyRepository,
             _tokenVaultRepository,
@@ -43,7 +48,9 @@ public sealed class SyncCampaignHierarchyCommandHandlerTests
             _syncDispatcher,
             _unitOfWork,
             _publisher,
-            _tenantContextAccessor);
+            _tenantContextAccessor,
+            _messagingFeatureGate,
+            _outboxWriter);
     }
 
     /// <summary>
@@ -178,5 +185,44 @@ public sealed class SyncCampaignHierarchyCommandHandlerTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("SyncCampaignHierarchy.CredentialsNotFound");
+    }
+
+    /// <summary>
+    /// Com mensageria ligada, grava outbox na mesma transação e não publica.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenMessagingEnabled_EnqueuesOutboxAndDoesNotPublish()
+    {
+        _messagingFeatureGate.IsEnabled.Returns(true);
+        var tenantId = Guid.NewGuid();
+        var workspaceId = Guid.NewGuid();
+        var accountId = Guid.NewGuid();
+        _tenantContextAccessor.TenantContext = TenantContext.Create(tenantId, null, TenantResolutionSource.None);
+
+        var demoAccount = ConnectedAdAccount.Create(accountId, workspaceId, "MetaAds", "demo_123", "Demo", "BRL", isDemo: true).Value;
+        _hierarchyRepository.GetAccountsForSyncAsync(workspaceId, accountId, null, Arg.Any<CancellationToken>())
+            .Returns(new[] { demoAccount });
+
+        var sampleHierarchy = new UnifiedCampaignHierarchy(
+            [new("cmp_1", "Cmp 1", BuildingBlocks.Domain.Campaigns.CampaignStatus.Active, "SALES", 100m, null, "BRL", null, null)],
+            [],
+            []);
+
+        _syncDispatcher.DispatchAsync(demoAccount, null, Arg.Any<CancellationToken>())
+            .Returns(Result<UnifiedCampaignHierarchy>.Success(sampleHierarchy));
+
+        _hierarchyRepository.UpsertHierarchyBatchAsync(workspaceId, accountId, "MetaAds", sampleHierarchy, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Result<int>.Success(1));
+
+        _outboxWriter.AddAsync(Arg.Any<BuildingBlocks.Domain.Messaging.IntegrationOutboxMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
+
+        _unitOfWork.CommitAsync(Arg.Any<CancellationToken>()).Returns(1);
+
+        var result = await _handler.Handle(new SyncCampaignHierarchyCommand(workspaceId, accountId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        await _outboxWriter.Received(1).AddAsync(Arg.Any<BuildingBlocks.Domain.Messaging.IntegrationOutboxMessage>(), Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceive().Publish(Arg.Any<DomainEventNotification<CampaignHierarchySyncedEvent>>(), Arg.Any<CancellationToken>());
     }
 }

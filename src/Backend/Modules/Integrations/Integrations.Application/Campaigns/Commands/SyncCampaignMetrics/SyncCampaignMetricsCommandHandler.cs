@@ -1,9 +1,11 @@
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Domain.Campaigns;
 using BuildingBlocks.Domain.Campaigns.Events;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Application.Campaigns.DTOs;
+using Integrations.Application.Messaging;
 using Integrations.Application.Persistence;
 using Integrations.Domain.Campaigns;
 using Integrations.Domain.Campaigns.Sync;
@@ -27,6 +29,8 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
     private readonly IIntegrationsUnitOfWork _unitOfWork;
     private readonly IPublisher _publisher;
     private readonly ITenantContextAccessor _tenantContextAccessor;
+    private readonly IMessagingFeatureGate _messagingFeatureGate;
+    private readonly IIntegrationOutboxWriter _integrationOutboxWriter;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="SyncCampaignMetricsCommandHandler"/>.
@@ -39,7 +43,9 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
         ICampaignMetricsSyncDispatcher syncDispatcher,
         IIntegrationsUnitOfWork unitOfWork,
         IPublisher publisher,
-        ITenantContextAccessor tenantContextAccessor)
+        ITenantContextAccessor tenantContextAccessor,
+        IMessagingFeatureGate messagingFeatureGate,
+        IIntegrationOutboxWriter integrationOutboxWriter)
     {
         _metricsRepository = metricsRepository ?? throw new ArgumentNullException(nameof(metricsRepository));
         _hierarchyRepository = hierarchyRepository ?? throw new ArgumentNullException(nameof(hierarchyRepository));
@@ -49,6 +55,8 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _tenantContextAccessor = tenantContextAccessor ?? throw new ArgumentNullException(nameof(tenantContextAccessor));
+        _messagingFeatureGate = messagingFeatureGate ?? throw new ArgumentNullException(nameof(messagingFeatureGate));
+        _integrationOutboxWriter = integrationOutboxWriter ?? throw new ArgumentNullException(nameof(integrationOutboxWriter));
     }
 
     /// <inheritdoc />
@@ -227,6 +235,51 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
 
             if (metricEntities.Count > 0)
             {
+                if (_messagingFeatureGate.IsEnabled)
+                {
+                    var tenantId = _tenantContextAccessor.TenantContext?.TenantId ?? Guid.Empty;
+                    if (tenantId == Guid.Empty)
+                    {
+                        if (request.ConnectedAdAccountId.HasValue)
+                        {
+                            return Result<SyncCampaignMetricsSummaryDto>.Failure(MessagingErrors.TenantRequired);
+                        }
+
+                        continue;
+                    }
+
+                    var outboxResult = CampaignIngestionOutboxFactory.CreateMetricsSynced(
+                        tenantId,
+                        request.WorkspaceId,
+                        account.Id,
+                        account.Platform,
+                        request.Granularity,
+                        request.StartDateUtc,
+                        request.EndDateUtc,
+                        syncTimeUtc);
+
+                    if (outboxResult.IsFailure)
+                    {
+                        if (request.ConnectedAdAccountId.HasValue)
+                        {
+                            return Result<SyncCampaignMetricsSummaryDto>.Failure(outboxResult.Error);
+                        }
+
+                        continue;
+                    }
+
+                    var addOutbox = await _integrationOutboxWriter.AddAsync(outboxResult.Value, cancellationToken);
+                    if (addOutbox.IsFailure)
+                    {
+                        if (request.ConnectedAdAccountId.HasValue)
+                        {
+                            return Result<SyncCampaignMetricsSummaryDto>.Failure(addOutbox.Error);
+                        }
+
+                        continue;
+                    }
+                }
+
                 var upsertResult = await _metricsRepository.UpsertMetricsBatchAsync(
                     request.WorkspaceId,
                     metricEntities,
@@ -250,19 +303,21 @@ public sealed class SyncCampaignMetricsCommandHandler : ICommandHandler<SyncCamp
             totalAccounts++;
             syncedPlatforms.Add(account.Platform);
 
-            // Emite evento de domínio in-memory para integração reativa entre módulos
-            var tenantId = _tenantContextAccessor.TenantContext?.TenantId ?? Guid.Empty;
-            var domainEvent = new CampaignMetricsSyncedEvent(
-                tenantId,
-                request.WorkspaceId,
-                account.Id,
-                account.Platform,
-                metricEntities.Count,
-                request.Granularity,
-                accountSpend,
-                syncTimeUtc);
+            if (!_messagingFeatureGate.IsEnabled && metricEntities.Count > 0)
+            {
+                var tenantId = _tenantContextAccessor.TenantContext?.TenantId ?? Guid.Empty;
+                var domainEvent = new CampaignMetricsSyncedEvent(
+                    tenantId,
+                    request.WorkspaceId,
+                    account.Id,
+                    account.Platform,
+                    metricEntities.Count,
+                    request.Granularity,
+                    accountSpend,
+                    syncTimeUtc);
 
-            await _publisher.Publish(domainEvent, cancellationToken);
+                await _publisher.Publish(domainEvent, cancellationToken);
+            }
         }
 
         var summary = new SyncCampaignMetricsSummaryDto(

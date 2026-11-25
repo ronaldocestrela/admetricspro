@@ -1,8 +1,10 @@
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Domain.Campaigns.Events;
 using BuildingBlocks.Domain.Primitives;
 using Integrations.Application.Campaigns.DTOs;
+using Integrations.Application.Messaging;
 using Integrations.Application.Persistence;
 using Integrations.Domain.Campaigns;
 using Integrations.Domain.Campaigns.Sync;
@@ -25,6 +27,8 @@ public sealed class SyncCampaignHierarchyCommandHandler : ICommandHandler<SyncCa
     private readonly IIntegrationsUnitOfWork _unitOfWork;
     private readonly IPublisher _publisher;
     private readonly ITenantContextAccessor _tenantContextAccessor;
+    private readonly IMessagingFeatureGate _messagingFeatureGate;
+    private readonly IIntegrationOutboxWriter _integrationOutboxWriter;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="SyncCampaignHierarchyCommandHandler"/>.
@@ -36,7 +40,9 @@ public sealed class SyncCampaignHierarchyCommandHandler : ICommandHandler<SyncCa
         ICampaignHierarchySyncDispatcher syncDispatcher,
         IIntegrationsUnitOfWork unitOfWork,
         IPublisher publisher,
-        ITenantContextAccessor tenantContextAccessor)
+        ITenantContextAccessor tenantContextAccessor,
+        IMessagingFeatureGate messagingFeatureGate,
+        IIntegrationOutboxWriter integrationOutboxWriter)
     {
         _hierarchyRepository = hierarchyRepository ?? throw new ArgumentNullException(nameof(hierarchyRepository));
         _tokenVaultRepository = tokenVaultRepository ?? throw new ArgumentNullException(nameof(tokenVaultRepository));
@@ -45,6 +51,8 @@ public sealed class SyncCampaignHierarchyCommandHandler : ICommandHandler<SyncCa
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _tenantContextAccessor = tenantContextAccessor ?? throw new ArgumentNullException(nameof(tenantContextAccessor));
+        _messagingFeatureGate = messagingFeatureGate ?? throw new ArgumentNullException(nameof(messagingFeatureGate));
+        _integrationOutboxWriter = integrationOutboxWriter ?? throw new ArgumentNullException(nameof(integrationOutboxWriter));
     }
 
     /// <inheritdoc />
@@ -160,25 +168,68 @@ public sealed class SyncCampaignHierarchyCommandHandler : ICommandHandler<SyncCa
                 continue;
             }
 
-            // Consolida a transação
+            if (_messagingFeatureGate.IsEnabled)
+            {
+                var tenantId = _tenantContextAccessor.TenantContext?.TenantId ?? Guid.Empty;
+                if (tenantId == Guid.Empty)
+                {
+                    if (request.ConnectedAdAccountId.HasValue)
+                    {
+                        return Result<SyncCampaignHierarchySummaryDto>.Failure(MessagingErrors.TenantRequired);
+                    }
+
+                    continue;
+                }
+
+                var outboxResult = CampaignIngestionOutboxFactory.CreateHierarchySynced(
+                    tenantId,
+                    account.WorkspaceId,
+                    account.Id,
+                    account.Platform,
+                    syncTimeUtc);
+
+                if (outboxResult.IsFailure)
+                {
+                    if (request.ConnectedAdAccountId.HasValue)
+                    {
+                        return Result<SyncCampaignHierarchySummaryDto>.Failure(outboxResult.Error);
+                    }
+
+                    continue;
+                }
+
+                var addOutbox = await _integrationOutboxWriter.AddAsync(outboxResult.Value, cancellationToken);
+                if (addOutbox.IsFailure)
+                {
+                    if (request.ConnectedAdAccountId.HasValue)
+                    {
+                        return Result<SyncCampaignHierarchySummaryDto>.Failure(addOutbox.Error);
+                    }
+
+                    continue;
+                }
+            }
+
             account.MarkSynced(syncTimeUtc);
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            // Emite o evento in-memory CampaignHierarchySyncedEvent
-            var tenantId = _tenantContextAccessor.TenantContext?.TenantId ?? Guid.Empty;
-            var domainEvent = new CampaignHierarchySyncedEvent(
-                tenantId,
-                account.WorkspaceId,
-                account.Id,
-                account.Platform,
-                hierarchy.Campaigns.Count,
-                hierarchy.AdSets.Count,
-                hierarchy.Ads.Count,
-                syncTimeUtc);
+            if (!_messagingFeatureGate.IsEnabled)
+            {
+                var tenantId = _tenantContextAccessor.TenantContext?.TenantId ?? Guid.Empty;
+                var domainEvent = new CampaignHierarchySyncedEvent(
+                    tenantId,
+                    account.WorkspaceId,
+                    account.Id,
+                    account.Platform,
+                    hierarchy.Campaigns.Count,
+                    hierarchy.AdSets.Count,
+                    hierarchy.Ads.Count,
+                    syncTimeUtc);
 
-            await _publisher.Publish(
-                new DomainEventNotification<CampaignHierarchySyncedEvent>(domainEvent),
-                cancellationToken);
+                await _publisher.Publish(
+                    new DomainEventNotification<CampaignHierarchySyncedEvent>(domainEvent),
+                    cancellationToken);
+            }
 
             totalAccounts++;
             totalCampaigns += hierarchy.Campaigns.Count;
