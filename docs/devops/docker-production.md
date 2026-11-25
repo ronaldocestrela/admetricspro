@@ -56,6 +56,8 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 | :--- | :--- | :--- | :--- | :--- |
 | **`sqlserver`** | `mssql/server:2022-latest` | `1433` | `127.0.0.1:1433` | Banco de dados `MasterCatalog` e bancos isolados de inquilinos. |
 | **`rabbitmq`** | `rabbitmq:4` | `5672` (AMQP) | **Nenhuma** | Broker de mensageria; tráfego somente na rede `admetricspro-prod-net`. Não exponha `5672` nem `15672` na internet. |
+| **`minio`** | `minio/minio` | `9000` (API S3), `9001` (console) | **Nenhuma** | Object storage S3-compatível; tráfego somente na rede `admetricspro-prod-net`. Não exponha `9000` nem `9001` na internet. |
+| **`minio-init`** | `minio/mc` | — | — | Job único: cria buckets privados e regra ILM de staging; idempotente. |
 | **`webapi`** | `src/Backend/WebApi/Dockerfile` | `8080` | `7001` | Backend Monólito Modular ASP.NET Core .NET 10. |
 | **`webapp`** | `src/Frontend/WebApp/Dockerfile` | `8080` | `7000` | Painel do Cliente / Inquilinos (Blazor Server). |
 | **`backoffice`** | `src/Frontend/BackofficeApp/Dockerfile` | `8080` | `7002` | Painel do Administrador Global (Blazor Server). |
@@ -64,9 +66,10 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 
 ## 4. Ordem de Inicialização e Health Checks
 
-1. **SQL Server e RabbitMQ iniciam em paralelo:** Ambos executam health checks nativos (`sqlcmd` e `rabbitmq-diagnostics -q ping`).
-2. **WebApi aguarda SQL Server e RabbitMQ:** O container `webapi` possui `depends_on` com `service_healthy` em `sqlserver` e `rabbitmq`. Ao iniciar, executa as migrações automáticas do banco `MasterCatalog` quando configurado (`DatabaseMigrations__ApplyMasterMigrationsOnStartup=true`).
-3. **WebApps aguardam a WebApi:** Os portais Blazor Server (`webapp` e `backoffice`) iniciam somente após a `webapi` reportar status saudável em `GET /health`.
+1. **SQL Server, RabbitMQ e MinIO iniciam em paralelo:** Health checks nativos (`sqlcmd`, `rabbitmq-diagnostics -q ping`, `GET /minio/health/live` no container `minio`).
+2. **`minio-init` após MinIO saudável:** Cria os três buckets se não existirem e aplica expiração no prefixo de staging orgânico. Reexecutar é seguro: `docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm minio-init`.
+3. **WebApi aguarda SQL Server e RabbitMQ:** O container `webapi` possui `depends_on` com `service_healthy` em `sqlserver` e `rabbitmq` (não aguarda MinIO enquanto `ObjectStorage__Provider=Local`). Ao iniciar, executa as migrações automáticas do banco `MasterCatalog` quando configurado (`DatabaseMigrations__ApplyMasterMigrationsOnStartup=true`).
+4. **WebApps aguardam a WebApi:** Os portais Blazor Server (`webapp` e `backoffice`) iniciam somente após a `webapi` reportar status saudável em `GET /health`.
 
 ### RabbitMQ em produção (Fase 1)
 
@@ -77,6 +80,17 @@ No arquivo `.env.prod` do operador, defina credenciais fortes (nunca versionadas
 - Com `Messaging__Enabled=true`, a Web API exige broker acessível em `rabbitmq:5672` na rede interna; falha de conexão deixa o check `rabbitmq` **Unhealthy** e o agregado `/health` retorna 503.
 
 O plugin de management **não** é publicado em produção (`rabbitmq:4` sem UI). Diagnóstico operacional do broker ocorre via logs do container ou ferramentas na rede interna, não pela internet.
+
+### MinIO em produção (Fase 1 object storage)
+
+No `.env.prod` do operador, defina credenciais fortes (nunca versionadas):
+
+- `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` — usuário dedicado; **não** use `minioadmin`.
+- `ObjectStorage__Provider=Local` (padrão no Compose) mantém o comportamento legado: nenhum health check `minio`, nenhum tráfego S3 na API e a mídia orgânica continua no volume `social-media-prod-data`.
+- Com `ObjectStorage__Provider=MinIO`, a Web API registra o check nomeado `minio` em `GET /health`; cluster inacessível em `http://minio:9000` deixa o agregado **Unhealthy** (503). A gravação de objetos pelos módulos só entra na **Fase 4**; até lá o cluster pode subir vazio para validação operacional.
+- Console MinIO (`9001`) e API S3 (`9000`) **não** são publicados no host. Diagnóstico via logs do container ou `mc` na rede interna.
+
+Variáveis de referência (ADR 0018): `ObjectStorage__ServiceUrl`, `ObjectStorage__OrganicBucket`, `ObjectStorage__ReportsBucket`, `ObjectStorage__BrandingBucket`, `ObjectStorage__Region`, `ObjectStorage__PublicBaseUrl`, `ObjectStorage__PublishUrlTtlMinutes`.
 
 ### Mensageria multi-instância (Fase 10)
 

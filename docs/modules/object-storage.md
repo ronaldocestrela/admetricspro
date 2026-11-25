@@ -2,9 +2,16 @@
 
 Contrato e diagnóstico do armazenamento de objetos gerados pelo AdMetricsPro. A decisão arquitetural está no [ADR 0053](../adr/0053-minio-object-storage.md). A ordem de implementação está no [roadmap MinIO](../roadmaps/minio-object-storage-roadmap.md).
 
-**sem endpoint HTTP nesta fase**
+**sem endpoint HTTP de negócio nesta fase**
 
-Nesta fase (Fase 0) não existem rotas versionadas, `[EndpointSummary]`, payloads JSON de API nem implementação de `IObjectStore` em produção. O endpoint público de stream de mídia (`GET /api/v1/public/media/{token}`) é entrega da **Fase 4** do roadmap, não deste documento inicial.
+Não existem rotas versionadas de produto, `[EndpointSummary]` de mídia/PDF/marca nem implementação de `IObjectStore` em produção. O endpoint público de stream de mídia (`GET /api/v1/public/media/{token}`) é entrega da **Fase 4** do roadmap.
+
+### Fase 1 — cluster no ambiente (entregue)
+
+- Serviços `minio` e `minio-init` em `docker-compose.yml` / `docker-compose.prod.yml`: três buckets privados (`admetricspro-organic`, `admetricspro-reports`, `admetricspro-branding`), regra ILM de 24 h no prefixo `organic-media/staging/` do bucket orgânico (script idempotente em `deploy/minio/init-buckets.sh`).
+- Dev: API S3 e console em `127.0.0.1:9000` e `127.0.0.1:9001`. Produção: **nenhuma** porta MinIO publicada no host ([guia Docker produção](../devops/docker-production.md)).
+- Health check nomeado `minio` em `GET /health` somente quando `ObjectStorage__Provider=MinIO`; com `Local` (padrão), o agregado permanece como antes.
+- Nenhum handler grava ou lê objetos no cluster até as Fases 2–4.
 
 ---
 

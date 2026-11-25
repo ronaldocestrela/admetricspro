@@ -49,7 +49,8 @@ var messagingRegistrationMode = MessagingHostRoleExtensions.ResolveMessagingRegi
 var messagingEnabled = builder.Configuration.GetValue<bool>("Messaging:Enabled");
 
 builder.Services.AddHealthChecks()
-    .AddRabbitMqHealthCheck(builder.Configuration);
+    .AddRabbitMqHealthCheck(builder.Configuration)
+    .AddMinioHealthCheck(builder.Configuration);
 
 var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb")
     ?? "Server=localhost;Database=MasterCatalog;Trusted_Connection=True;TrustServerCertificate=True;";
