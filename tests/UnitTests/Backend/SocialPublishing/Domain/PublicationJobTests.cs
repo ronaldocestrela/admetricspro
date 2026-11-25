@@ -56,11 +56,13 @@ public sealed class PublicationJobTests
     public void Succeeded_NaoDeveSerReivindicavel()
     {
         var job = PublicationJob.Open(Guid.NewGuid(), Guid.NewGuid(), SlotUtc, CreatedAt).Value;
-        job.MarkInProgress().IsSuccess.Should().BeTrue();
+        job.MarkInProgress(CreatedAt).IsSuccess.Should().BeTrue();
+        job.ClaimedAtUtc.Should().Be(CreatedAt);
         job.MarkSucceeded().IsSuccess.Should().BeTrue();
+        job.ClaimedAtUtc.Should().BeNull();
 
         job.CanBeClaimed.Should().BeFalse();
-        job.MarkInProgress().Error.Code.Should().Be(SocialErrors.PublicationJobNotClaimable.Code);
+        job.MarkInProgress(CreatedAt).Error.Code.Should().Be(SocialErrors.PublicationJobNotClaimable.Code);
     }
 
     /// <summary>
@@ -72,5 +74,22 @@ public sealed class PublicationJobTests
         var job = PublicationJob.Open(Guid.NewGuid(), Guid.NewGuid(), SlotUtc, CreatedAt).Value;
 
         job.MarkDeadLetter().Error.Code.Should().Be(SocialErrors.PublicationJobInvalidTransition.Code);
+    }
+
+    /// <summary>
+    /// ReleaseClaim devolve InProgress para RetryScheduled sem incrementar tentativas.
+    /// </summary>
+    [Fact]
+    public void ReleaseClaim_DeveVoltarParaRetrySemIncrementarTentativas()
+    {
+        var job = PublicationJob.Open(Guid.NewGuid(), Guid.NewGuid(), SlotUtc, CreatedAt).Value;
+        job.MarkInProgress(CreatedAt).IsSuccess.Should().BeTrue();
+
+        var next = CreatedAt.AddMinutes(1);
+        job.ReleaseClaim(next).IsSuccess.Should().BeTrue();
+        job.Status.Should().Be(PublicationJobStatus.RetryScheduled);
+        job.AttemptCount.Should().Be(0);
+        job.NextAttemptAtUtc.Should().Be(next);
+        job.ClaimedAtUtc.Should().BeNull();
     }
 }

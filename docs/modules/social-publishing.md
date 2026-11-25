@@ -110,7 +110,7 @@ Implementação em `SocialPublishing.Domain`, sem Entity Framework. Fábricas es
 | :--- | :--- |
 | `OrganicConnection` | Conexão OAuth orgânica por workspace; tokens apenas como `EncryptedAccessToken` / `EncryptedRefreshToken`; `Revoke` idempotente emite `OrganicConnectionRevoked`. |
 | `OrganicPost` | Post agendado com máquina de estados, legenda, mídia (dimensões), `ScheduledAtUtc` e histórico `ScheduleRevision`. |
-| `PublicationJob` | Job outbox por slot agendado: status, chave de idempotência, tentativas e claim otimista via `RowVersion`. |
+| `PublicationJob` | Job outbox por slot agendado: status, chave de idempotência, tentativas, `ClaimedAtUtc` (correlação com mensagem) e claim otimista via `RowVersion`. |
 | `BrandVoiceProfile` | DNA de marca: tom, persona, contexto de negócio, cores da identidade visual, links absolutos, termos proibidos, `EmojiPolicy`, teto de hashtags e pesos dos pilares. |
 
 ### Value objects e constantes
@@ -912,7 +912,13 @@ Fluxo por tenant (`Active` / `Trial`):
 | `Social.PublishRateLimited` | Retentativa com backoff + `Retry-After` quando presente |
 | `Social.PublishFailed` | Mesma régua de retentativa, sem `Retry-After` |
 | Teto de tentativas | `DeadLetter` + post `Failed`; adaptador não é chamado |
-| Cancelamento do host durante publicação | Job pode permanecer `InProgress` (sem reclaim nesta subfase) |
+| Cancelamento do host durante publicação | Reclaim por `InProgressTimeoutSeconds` devolve a `RetryScheduled`; exceção inesperada no consumidor pode manter `InProgress` até o próximo ciclo |
+
+#### Fase 7 — mensageria (`Messaging__Enabled=true`)
+
+`PublicationJob` permanece a fonte da verdade do horário e da idempotência. O worker **não** chama o adaptador: para cada job devido, `IOrganicSlotForwarder` grava `InProgress` com `ClaimedAtUtc` e uma linha `messaging.IntegrationOutboxMessages` (`social.publish-organic-slot.v1`) no mesmo commit do contexto social (tabela `messaging` mapeada com `ExcludeFromMigrations`). O `OutboxDispatchWorker` publica no RabbitMQ; o consumidor restaura o tenant, checa inbox e kill switch, e envia `DispatchDuePublicationsCommand` com `PublicationJobId` e o token de claim.
+
+`Messaging__Enabled=false`: fluxo da Subfase 4.4 inalterado (`DispatchDuePublicationsCommand` em lote no worker). Em ambos os modos, `IOrganicPublicationClaimReclaimer` executa antes do disparo/encaminhamento.
 
 ---
 

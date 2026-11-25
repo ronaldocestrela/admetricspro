@@ -1,6 +1,6 @@
 # Mensageria durável (eventos de integração)
 
-> **Fases 0–6:** outbox, dispatcher, inbox, transporte MassTransit, consumidor de laboratório (testes), **e-mail de catálogo** (Fase 4), **sync Meta por conta** (Fase 5) e **eventos de ingestão** (Fase 6) quando `Messaging__Enabled=true`. Sem endpoint HTTP de mensageria. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
+> **Fases 0–7:** outbox, dispatcher, inbox, transporte MassTransit, consumidor de laboratório (testes), **e-mail de catálogo** (Fase 4), **sync Meta por conta** (Fase 5), **eventos de ingestão** (Fase 6) e **publicação orgânica por job** (Fase 7) quando `Messaging__Enabled=true`. Sem endpoint HTTP de mensageria. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
 
 ## 1. Fase 1 — broker no ambiente (entregue)
 
@@ -149,6 +149,23 @@ Portas (`BuildingBlocks.Application`): `IIntegrationOutboxStore`, `IIntegrationI
 | Payload | `workspaceId`, `connectedAdAccountId`, `platform`, `syncedAtUtc`; métricas incluem `granularity`, `windowStartUtc`, `windowEndUtc` — sem segredos |
 | Prefetch / retry | `Messaging:Consumers:IngestionReactions` (`Prefetch` 1–4, `MaxAttempts`, `RetryAfterSeconds`) |
 | Inbox | Uma linha por `(EventId, ConsumerName)`; quatro consumidores = quatro filas isoladas |
+
+### 4.5 Fase 7 — Publicação orgânica por job (tenant)
+
+| Item | Valor |
+| :--- | :--- |
+| Routing key | `social.publish-organic-slot.v1` |
+| Fila | `admetricspro.social.publish-organic-slot` |
+| Consumidor | `PublishOrganicSlotIntegrationConsumer` (`WebApi/Messaging`) |
+| Agendador | `SocialPublishingDispatchWorker` encaminha jobs devidos (claim + outbox no mesmo `SaveChanges` do `SocialPublishingDbContext`) |
+| Comando | `DispatchDuePublicationsCommand(PublicationJobId, ClaimTokenUtc)` — um job por mensagem |
+| Payload | `tenantId`, `publicationJobId`, `idempotencyKey`, `claimedAtUtc` — sem token OAuth, legenda ou URL de mídia |
+| Agenda / idempotência | Continua em `social.PublicationJobs` (ADR 0046); a fila **não** substitui o agendador |
+| `Messaging__Enabled=false` | Worker chama `DispatchDuePublicationsCommand` in-process (comportamento legado); reclaim de `InProgress` roda nos dois modos |
+| Prefetch | `Messaging:Consumers:OrganicPublish:Prefetch` (padrão 1, máx. 4) |
+| Retry rate limit / 429 | `PublicationJob.RetryScheduled` + `OrganicPublishRateLimitPolicy` no SQL; **sem** `ScheduleForConsumerRetry` na outbox de integração |
+| Kill switch | `killswitch.social-publishing.dispatch` avaliado no **consumidor** antes da rede; libera claim via `ReleasePublicationClaimCommand` e ack + inbox |
+| Reclaim | `SocialPublishing:Dispatch:InProgressTimeoutSeconds` (mín. 60, padrão 600): `InProgress` com `ClaimedAtUtc` expirado volta a `RetryScheduled` sem incrementar tentativas |
 
 ## 5. Fluxo alvo (referência)
 

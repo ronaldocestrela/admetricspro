@@ -23,6 +23,19 @@ public sealed class PublicationJobRepository : IPublicationJobRepository
     }
 
     /// <inheritdoc />
+    public async Task<PublicationJob?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return null;
+        }
+
+        return await contextResult.Value.PublicationJobs.FirstOrDefaultAsync(j => j.Id == jobId, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<PublicationJob?> GetByIdempotencyKeyAsync(
         string idempotencyKey,
         CancellationToken cancellationToken = default)
@@ -111,7 +124,8 @@ public sealed class PublicationJobRepository : IPublicationJobRepository
             return null;
         }
 
-        var claim = job.MarkInProgress();
+        var claimedAt = DateTime.UtcNow;
+        var claim = job.MarkInProgress(claimedAt);
         if (claim.IsFailure)
         {
             return null;

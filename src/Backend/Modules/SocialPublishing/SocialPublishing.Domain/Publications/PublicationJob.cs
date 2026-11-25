@@ -17,7 +17,8 @@ public sealed class PublicationJob : AggregateRoot<Guid>
         PublicationJobStatus status,
         int attemptCount,
         DateTime? nextAttemptAtUtc,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        DateTime? claimedAtUtc)
         : base(id)
     {
         PostId = postId;
@@ -28,6 +29,7 @@ public sealed class PublicationJob : AggregateRoot<Guid>
         AttemptCount = attemptCount;
         NextAttemptAtUtc = nextAttemptAtUtc;
         CreatedAtUtc = createdAtUtc;
+        ClaimedAtUtc = claimedAtUtc;
     }
 
     private PublicationJob()
@@ -76,6 +78,11 @@ public sealed class PublicationJob : AggregateRoot<Guid>
     /// Obtém o carimbo UTC de criação do job.
     /// </summary>
     public DateTime CreatedAtUtc { get; private set; }
+
+    /// <summary>
+    /// Obtém o instante UTC em que o worker ou consumidor reivindicou o job pela última vez.
+    /// </summary>
+    public DateTime? ClaimedAtUtc { get; private set; }
 
     /// <summary>
     /// Obtém o token de concorrência otimista para claim exclusivo.
@@ -128,7 +135,8 @@ public sealed class PublicationJob : AggregateRoot<Guid>
                 PublicationJobStatus.Pending,
                 attemptCount: 0,
                 nextAttemptAtUtc: null,
-                createdAtUtc));
+                createdAtUtc,
+                claimedAtUtc: null));
     }
 
     /// <summary>
@@ -149,21 +157,52 @@ public sealed class PublicationJob : AggregateRoot<Guid>
 
         Status = PublicationJobStatus.Cancelled;
         NextAttemptAtUtc = null;
+        ClaimedAtUtc = null;
         return Result.Success();
     }
 
     /// <summary>
     /// Marca o job como reivindicado para processamento exclusivo.
     /// </summary>
+    /// <param name="claimedAtUtc">Instante UTC do claim para correlacionar mensagens e reclaim.</param>
     /// <returns>Resultado da transição.</returns>
-    public Result MarkInProgress()
+    public Result MarkInProgress(DateTime claimedAtUtc)
     {
         if (!CanBeClaimed)
         {
             return Result.Failure(SocialErrors.PublicationJobNotClaimable);
         }
 
+        if (claimedAtUtc.Kind != DateTimeKind.Utc)
+        {
+            return Result.Failure(SocialErrors.ScheduleInstantNotUtc);
+        }
+
         Status = PublicationJobStatus.InProgress;
+        ClaimedAtUtc = claimedAtUtc;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Libera o claim sem incrementar tentativas, voltando o job para retentativa agendada.
+    /// </summary>
+    /// <param name="nextAttemptAtUtc">Próximo instante UTC elegível para claim.</param>
+    /// <returns>Resultado da transição.</returns>
+    public Result ReleaseClaim(DateTime nextAttemptAtUtc)
+    {
+        if (Status != PublicationJobStatus.InProgress)
+        {
+            return Result.Failure(SocialErrors.PublicationJobInvalidTransition);
+        }
+
+        if (nextAttemptAtUtc.Kind != DateTimeKind.Utc)
+        {
+            return Result.Failure(SocialErrors.ScheduleInstantNotUtc);
+        }
+
+        Status = PublicationJobStatus.RetryScheduled;
+        NextAttemptAtUtc = nextAttemptAtUtc;
+        ClaimedAtUtc = null;
         return Result.Success();
     }
 
@@ -180,6 +219,7 @@ public sealed class PublicationJob : AggregateRoot<Guid>
 
         Status = PublicationJobStatus.Succeeded;
         NextAttemptAtUtc = null;
+        ClaimedAtUtc = null;
         return Result.Success();
     }
 
@@ -204,6 +244,7 @@ public sealed class PublicationJob : AggregateRoot<Guid>
         Status = PublicationJobStatus.RetryScheduled;
         NextAttemptAtUtc = nextAttemptAtUtc;
         AttemptCount = attemptCount;
+        ClaimedAtUtc = null;
         return Result.Success();
     }
 
@@ -220,6 +261,7 @@ public sealed class PublicationJob : AggregateRoot<Guid>
 
         Status = PublicationJobStatus.DeadLetter;
         NextAttemptAtUtc = null;
+        ClaimedAtUtc = null;
         return Result.Success();
     }
 }

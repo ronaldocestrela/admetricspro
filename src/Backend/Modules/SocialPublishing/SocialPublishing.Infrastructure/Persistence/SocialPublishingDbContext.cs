@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using SocialPublishing.Domain.Approvals;
@@ -65,6 +66,11 @@ public sealed class SocialPublishingDbContext : DbContext
     public DbSet<PaidBoostSuggestion> PaidBoostSuggestions => Set<PaidBoostSuggestion>();
 
     /// <summary>
+    /// Obtém linhas de outbox compartilhadas gravadas na mesma transação do claim do job orgânico.
+    /// </summary>
+    public DbSet<IntegrationOutboxMessage> IntegrationOutboxMessages => Set<IntegrationOutboxMessage>();
+
+    /// <summary>
     /// Cria opções SQL Server com schema padrão <c>social</c> e histórico de migrações isolado.
     /// </summary>
     /// <param name="connectionString">Connection string do banco do tenant.</param>
@@ -95,5 +101,6 @@ public sealed class SocialPublishingDbContext : DbContext
     {
         modelBuilder.HasDefaultSchema("social");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SocialPublishingDbContext).Assembly);
+        modelBuilder.ApplyConfiguration(new Configurations.SocialPublishingIntegrationOutboxEntityTypeConfiguration());
     }
 }

@@ -287,6 +287,10 @@ internal sealed class InMemoryPublicationJobRepository : IPublicationJobReposito
     public List<PublicationJob> AllJobs { get; } = new();
 
     /// <inheritdoc />
+    public Task<PublicationJob?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(AllJobs.FirstOrDefault(j => j.Id == jobId));
+
+    /// <inheritdoc />
     public Task<PublicationJob?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default) =>
         Task.FromResult(AllJobs.FirstOrDefault(j => j.IdempotencyKey == idempotencyKey));
 
@@ -323,7 +327,7 @@ internal sealed class InMemoryPublicationJobRepository : IPublicationJobReposito
                 return Task.FromResult<PublicationJob?>(null);
             }
 
-            job.MarkInProgress().IsSuccess.Should().BeTrue();
+            job.MarkInProgress(DateTime.UtcNow).IsSuccess.Should().BeTrue();
             return Task.FromResult<PublicationJob?>(job);
         }
     }

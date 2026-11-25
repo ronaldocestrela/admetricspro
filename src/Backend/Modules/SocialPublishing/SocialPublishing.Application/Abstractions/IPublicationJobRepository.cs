@@ -9,6 +9,14 @@ namespace SocialPublishing.Application.Abstractions;
 public interface IPublicationJobRepository
 {
     /// <summary>
+    /// Obtém um job pelo identificador.
+    /// </summary>
+    /// <param name="jobId">Identificador do job.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Job rastreado ou null.</returns>
+    Task<PublicationJob?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém um job pela chave de idempotência.
     /// </summary>
     /// <param name="idempotencyKey">Chave do slot.</param>

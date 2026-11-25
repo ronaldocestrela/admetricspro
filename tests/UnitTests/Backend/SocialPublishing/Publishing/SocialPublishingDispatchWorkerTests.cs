@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Infrastructure.MultiTenancy;
@@ -11,6 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Options;
 using SocialPublishing.Application.Publishing.Commands.DispatchDuePublications;
 using SocialPublishing.Application.Traction.Commands.ScanOrganicTraction;
 using WebApi.Background;
@@ -73,6 +76,39 @@ public sealed class SocialPublishingDispatchWorkerTests
     }
 
     /// <summary>
+    /// Com mensageria ligada, encaminha slots e não envia DispatchDuePublicationsCommand.
+    /// </summary>
+    [Fact]
+    public async Task RunTenantAsync_MessagingEnabled_EncaminhaSemDispatchCommand()
+    {
+        var forwarder = Substitute.For<IOrganicSlotForwarder>();
+        forwarder.ForwardAllDueAsync(Arg.Any<CancellationToken>()).Returns(1);
+        var reclaimer = Substitute.For<IOrganicPublicationClaimReclaimer>();
+        reclaimer.ReclaimStaleClaimsAsync(Arg.Any<CancellationToken>()).Returns(0);
+        var sender = Substitute.For<ISender>();
+
+        var services = new ServiceCollection();
+        services.AddScoped<ITenantContextAccessor, TenantContextAccessor>();
+        services.AddSingleton<IMessagingFeatureGate>(new AlwaysEnabledMessagingFeatureGate());
+        services.AddScoped(_ => forwarder);
+        services.AddScoped(_ => reclaimer);
+        services.AddScoped(_ => sender);
+        using var provider = services.BuildServiceProvider();
+
+        var worker = new SocialPublishingDispatchWorker(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            Options.Create(new SocialPublishingDispatchOptions()),
+            NullLogger<SocialPublishingDispatchWorker>.Instance);
+
+        await worker.RunTenantAsync(Guid.NewGuid(), "acme", CancellationToken.None);
+
+        await forwarder.Received(1).ForwardAllDueAsync(Arg.Any<CancellationToken>());
+        await reclaimer.Received(1).ReclaimStaleClaimsAsync(Arg.Any<CancellationToken>());
+        await sender.DidNotReceive().Send(Arg.Any<DispatchDuePublicationsCommand>(), Arg.Any<CancellationToken>());
+        await sender.Received(1).Send(Arg.Any<ScanOrganicTractionCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
     /// Contexto de tenant é definido antes do comando MediatR.
     /// </summary>
     [Fact]
@@ -86,6 +122,8 @@ public sealed class SocialPublishingDispatchWorkerTests
 
         var services = new ServiceCollection();
         services.AddScoped<ITenantContextAccessor, TenantContextAccessor>();
+        services.AddSingleton<IMessagingFeatureGate>(new AlwaysDisabledMessagingFeatureGate());
+        services.AddScoped<IOrganicPublicationClaimReclaimer>(_ => Substitute.For<IOrganicPublicationClaimReclaimer>());
         services.AddScoped<ISender>(_ =>
         {
             captured = _.GetRequiredService<ITenantContextAccessor>();
@@ -145,6 +183,13 @@ public sealed class SocialPublishingDispatchWorkerTests
         var dispatched = new List<Guid>();
         var tenantServices = new ServiceCollection();
         tenantServices.AddScoped<ITenantContextAccessor, TenantContextAccessor>();
+        tenantServices.AddSingleton<IMessagingFeatureGate>(new AlwaysDisabledMessagingFeatureGate());
+        tenantServices.AddScoped<IOrganicPublicationClaimReclaimer>(_ =>
+        {
+            var r = Substitute.For<IOrganicPublicationClaimReclaimer>();
+            r.ReclaimStaleClaimsAsync(Arg.Any<CancellationToken>()).Returns(0);
+            return r;
+        });
         tenantServices.AddScoped<ISender>(sp =>
         {
             var accessor = sp.GetRequiredService<ITenantContextAccessor>();
@@ -169,6 +214,13 @@ public sealed class SocialPublishingDispatchWorkerTests
     {
         var tenantServices = new ServiceCollection();
         tenantServices.AddScoped<ITenantContextAccessor, TenantContextAccessor>();
+        tenantServices.AddSingleton<IMessagingFeatureGate>(new AlwaysDisabledMessagingFeatureGate());
+        tenantServices.AddScoped<IOrganicPublicationClaimReclaimer>(_ =>
+        {
+            var r = Substitute.For<IOrganicPublicationClaimReclaimer>();
+            r.ReclaimStaleClaimsAsync(Arg.Any<CancellationToken>()).Returns(0);
+            return r;
+        });
         tenantServices.AddScoped<ISender>(sp =>
         {
             var accessor = sp.GetRequiredService<ITenantContextAccessor>();
@@ -197,6 +249,18 @@ public sealed class SocialPublishingDispatchWorkerTests
 
     private static TenantDetailsResponse CreateTenant(Guid id, string status) =>
         new(id, "Co", "00000000000000", "sub", status, "Pro", null, DateTime.UtcNow);
+
+    private sealed class AlwaysEnabledMessagingFeatureGate : IMessagingFeatureGate
+    {
+        /// <inheritdoc />
+        public bool IsEnabled => true;
+    }
+
+    private sealed class AlwaysDisabledMessagingFeatureGate : IMessagingFeatureGate
+    {
+        /// <inheritdoc />
+        public bool IsEnabled => false;
+    }
 
     private sealed class WorkerTestScopeFactory : IServiceScopeFactory
     {

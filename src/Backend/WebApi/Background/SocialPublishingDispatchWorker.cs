@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using Master.Application.FeatureFlags.Services;
@@ -5,31 +6,12 @@ using Master.Application.Tenants.Queries.GetTenants;
 using Master.Domain.FeatureFlags;
 using MediatR;
 using Microsoft.Extensions.Options;
+using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Options;
 using SocialPublishing.Application.Publishing.Commands.DispatchDuePublications;
 using SocialPublishing.Application.Traction.Commands.ScanOrganicTraction;
 
 namespace WebApi.Background;
-
-/// <summary>
-/// Opções do worker de disparo de publicação orgânica agendada.
-/// </summary>
-public sealed class SocialPublishingDispatchOptions
-{
-    /// <summary>
-    /// Nome da seção de configuração.
-    /// </summary>
-    public const string SectionName = "SocialPublishing:Dispatch";
-
-    /// <summary>
-    /// Habilita o ciclo de disparo; desligado por padrão.
-    /// </summary>
-    public bool Enabled { get; set; }
-
-    /// <summary>
-    /// Intervalo mínimo entre ciclos completos, em segundos.
-    /// </summary>
-    public int IntervalSeconds { get; set; } = 30;
-}
 
 /// <summary>
 /// Worker que percorre tenants elegíveis e despacha publicações orgânicas devidas via MediatR.
@@ -39,7 +21,7 @@ public sealed class SocialPublishingDispatchOptions
 /// <param name="logger">Logger estruturado sem credenciais.</param>
 public sealed class SocialPublishingDispatchWorker(
     IServiceScopeFactory scopeFactory,
-    IOptions<SocialPublishingDispatchOptions> options,
+    IOptions<SocialPublishing.Application.Options.SocialPublishingDispatchOptions> options,
     ILogger<SocialPublishingDispatchWorker> logger) : BackgroundService
 {
     /// <inheritdoc />
@@ -132,8 +114,23 @@ public sealed class SocialPublishingDispatchWorker(
         using var tenantScope = scopeFactory.CreateScope();
         tenantScope.ServiceProvider.GetRequiredService<ITenantContextAccessor>().TenantContext =
             TenantContext.Create(tenantId, subdomain, TenantResolutionSource.None);
-        var sender = tenantScope.ServiceProvider.GetRequiredService<ISender>();
-        await sender.Send(new DispatchDuePublicationsCommand(), cancellationToken);
-        await sender.Send(new ScanOrganicTractionCommand(), cancellationToken);
+        var services = tenantScope.ServiceProvider;
+        var reclaimer = services.GetRequiredService<IOrganicPublicationClaimReclaimer>();
+        await reclaimer.ReclaimStaleClaimsAsync(cancellationToken);
+
+        var messagingGate = services.GetRequiredService<IMessagingFeatureGate>();
+        if (messagingGate.IsEnabled)
+        {
+            var forwarder = services.GetRequiredService<IOrganicSlotForwarder>();
+            await forwarder.ForwardAllDueAsync(cancellationToken);
+        }
+        else
+        {
+            var sender = services.GetRequiredService<ISender>();
+            await sender.Send(new DispatchDuePublicationsCommand(), cancellationToken);
+        }
+
+        var tractionSender = services.GetRequiredService<ISender>();
+        await tractionSender.Send(new ScanOrganicTractionCommand(), cancellationToken);
     }
 }

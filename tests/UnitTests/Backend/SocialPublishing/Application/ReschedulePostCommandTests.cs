@@ -193,7 +193,7 @@ public sealed class ReschedulePostCommandTests
             post.WorkspaceId,
             post.ScheduledAtUtc,
             host.FixedTime.UtcDateTime).Value;
-        job.MarkInProgress().IsSuccess.Should().BeTrue();
+        job.MarkInProgress(DateTime.UtcNow).IsSuccess.Should().BeTrue();
         await host.PublicationJobRepository.AddAsync(job, CancellationToken.None);
 
         var handler = CreateHandler(host);

@@ -65,43 +65,79 @@ public sealed class DispatchDuePublicationsCommandHandler
         CancellationToken cancellationToken)
     {
         var utcNow = _timeProvider.GetUtcNow().UtcDateTime;
-        var due = await _publicationJobRepository.ListDueAsync(utcNow, cancellationToken);
         var succeeded = 0;
         var retried = 0;
         var dead = 0;
         var skipped = 0;
 
+        if (request.PublicationJobId is Guid singleJobId)
+        {
+            var singleOutcome = await ProcessJobAsync(singleJobId, utcNow, cancellationToken, request.ClaimTokenUtc);
+            ApplyOutcome(singleOutcome, ref succeeded, ref retried, ref dead, ref skipped);
+            return Result<DispatchDuePublicationsSummary>.Success(
+                new DispatchDuePublicationsSummary(succeeded, retried, dead, skipped));
+        }
+
+        var due = await _publicationJobRepository.ListDueAsync(utcNow, cancellationToken);
         foreach (var candidate in due)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var outcome = await ProcessJobAsync(candidate.Id, utcNow, cancellationToken);
-            switch (outcome)
-            {
-                case JobProcessOutcome.Succeeded:
-                    succeeded++;
-                    break;
-                case JobProcessOutcome.RetryScheduled:
-                    retried++;
-                    break;
-                case JobProcessOutcome.DeadLetter:
-                    dead++;
-                    break;
-                case JobProcessOutcome.Skipped:
-                    skipped++;
-                    break;
-            }
+            ApplyOutcome(outcome, ref succeeded, ref retried, ref dead, ref skipped);
         }
 
         return Result<DispatchDuePublicationsSummary>.Success(
             new DispatchDuePublicationsSummary(succeeded, retried, dead, skipped));
     }
 
-    private async Task<JobProcessOutcome> ProcessJobAsync(Guid jobId, DateTime utcNow, CancellationToken cancellationToken)
+    private static void ApplyOutcome(
+        JobProcessOutcome outcome,
+        ref int succeeded,
+        ref int retried,
+        ref int dead,
+        ref int skipped)
     {
-        var claimed = await _publicationJobRepository.TryClaimAsync(jobId, cancellationToken);
-        if (claimed is null)
+        switch (outcome)
         {
-            return JobProcessOutcome.Skipped;
+            case JobProcessOutcome.Succeeded:
+                succeeded++;
+                break;
+            case JobProcessOutcome.RetryScheduled:
+                retried++;
+                break;
+            case JobProcessOutcome.DeadLetter:
+                dead++;
+                break;
+            case JobProcessOutcome.Skipped:
+                skipped++;
+                break;
+        }
+    }
+
+    private async Task<JobProcessOutcome> ProcessJobAsync(
+        Guid jobId,
+        DateTime utcNow,
+        CancellationToken cancellationToken,
+        DateTime? claimTokenUtc = null)
+    {
+        PublicationJob? claimed;
+        if (claimTokenUtc is { } expectedClaim)
+        {
+            claimed = await _publicationJobRepository.GetByIdAsync(jobId, cancellationToken);
+            if (claimed is null
+                || claimed.Status != PublicationJobStatus.InProgress
+                || claimed.ClaimedAtUtc != expectedClaim)
+            {
+                return JobProcessOutcome.Skipped;
+            }
+        }
+        else
+        {
+            claimed = await _publicationJobRepository.TryClaimAsync(jobId, cancellationToken);
+            if (claimed is null)
+            {
+                return JobProcessOutcome.Skipped;
+            }
         }
 
         try

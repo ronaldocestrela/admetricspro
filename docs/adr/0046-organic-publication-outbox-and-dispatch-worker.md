@@ -49,6 +49,16 @@ Requisitos da outbox:
 
 5. **Suposição operacional**: instância única do host **ou** claim `RowVersion` como proteção extra em multi-instância. Job que permanece `InProgress` após cancelamento abrupto do host **não** tem reclaim automático nesta subfase.
 
+### Adendo Fase 7 — RabbitMQ sem revogar a agenda (ADR 0052)
+
+Aceito em alinhamento ao [roadmap de mensageria](../roadmaps/rabbitmq-messaging-roadmap.md) Fase 7:
+
+1. **`PublicationJob` continua** sendo agenda, idempotência de slot e store de tentativas (`AttemptCount`, `NextAttemptAtUtc`). Não há status extra de “encaminhado”; o claim `InProgress` com `ClaimedAtUtc` correlaciona worker, outbox e consumidor.
+2. **Encaminhamento atômico**: com `Messaging:Enabled=true`, `OrganicSlotForwarder` persiste claim + linha `IntegrationOutboxMessages` no mesmo `SaveChanges` do `SocialPublishingDbContext` (schema `messaging` excluído das migrações sociais). O dispatcher global publica no broker.
+3. **Consumidor**: `PublishOrganicSlotIntegrationConsumer` chama `DispatchDuePublicationsCommand` por job (token de claim obrigatório). Rate limit e dead-letter seguem no SQL, não em delayed exchange. Kill switch `killswitch.social-publishing.dispatch` é checado no consumidor; quando armado, `ReleasePublicationClaimCommand` devolve o job a `RetryScheduled` e a mensagem recebe ack + inbox.
+4. **Reclaim**: `SocialPublishing:Dispatch:InProgressTimeoutSeconds` devolve jobs `InProgress` órfãos a `RetryScheduled` antes de novo encaminhamento (também com mensageria desligada).
+5. **Limite conhecido**: falha após esgotar retentativas de transporte MassTransit com o handler no meio de `PublishAsync` pode manter `InProgress` até o reclaim — mesmo furo documentado na Subfase 4.4, agora com mitigação de timeout.
+
 ## Consequências
 
 ### Positivas

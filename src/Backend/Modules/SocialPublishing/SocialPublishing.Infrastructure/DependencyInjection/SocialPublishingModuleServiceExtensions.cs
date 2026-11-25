@@ -50,6 +50,9 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddScoped<IBrandVoiceRepository, BrandVoiceRepository>();
         services.AddScoped<IEditorialPlanGenerationRepository, EditorialPlanGenerationRepository>();
         services.AddScoped<IPublicationJobRepository, PublicationJobRepository>();
+        services.AddScoped<IOrganicSlotForwarder, OrganicSlotForwarder>();
+        services.AddScoped<IOrganicPublicationClaimReclaimer, OrganicPublicationClaimReclaimer>();
+        services.Configure<SocialPublishingDispatchOptions>(configuration.GetSection(SocialPublishingDispatchOptions.SectionName));
         services.AddScoped<IApprovalLinkRepository, ApprovalLinkRepository>();
         services.AddScoped<IPaidBoostSuggestionRepository, PaidBoostSuggestionRepository>();
         services.AddScoped<ISocialPublishingUnitOfWork, SocialPublishingUnitOfWork>();

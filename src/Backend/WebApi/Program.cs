@@ -65,6 +65,8 @@ builder.Services.Configure<WebApi.Configuration.MediaSyncConsumerOptions>(
     builder.Configuration.GetSection(WebApi.Configuration.MediaSyncConsumerOptions.SectionName));
 builder.Services.Configure<WebApi.Configuration.IngestionReactionsConsumerOptions>(
     builder.Configuration.GetSection(WebApi.Configuration.IngestionReactionsConsumerOptions.SectionName));
+builder.Services.Configure<WebApi.Configuration.OrganicPublishConsumerOptions>(
+    builder.Configuration.GetSection(WebApi.Configuration.OrganicPublishConsumerOptions.SectionName));
 builder.Services.AddScoped<WebApi.Background.IConnectedAdAccountMetaSyncExecutor, WebApi.Background.ConnectedAdAccountMetaSyncExecutor>();
 builder.Services.AddAdMetricsMessaging(
     builder.Configuration,
@@ -76,6 +78,7 @@ builder.Services.AddAdMetricsMessaging(
         bus.AddConsumer<WebApi.Messaging.AutomationsCampaignHierarchySyncedConsumer>();
         bus.AddConsumer<WebApi.Messaging.AnalyticsCampaignMetricsSyncedConsumer>();
         bus.AddConsumer<WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer>();
+        bus.AddConsumer<WebApi.Messaging.PublishOrganicSlotIntegrationConsumer>();
     },
     (context, cfg) =>
     {
@@ -83,6 +86,8 @@ builder.Services.AddAdMetricsMessaging(
         var mediaPrefetch = (ushort)Math.Clamp((int)mediaSyncOptions.Prefetch, 1, 4);
         var ingestionOptions = context.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebApi.Configuration.IngestionReactionsConsumerOptions>>().Value;
         var ingestionPrefetch = (ushort)Math.Clamp((int)ingestionOptions.Prefetch, 1, 4);
+        var organicPublishOptions = context.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebApi.Configuration.OrganicPublishConsumerOptions>>().Value;
+        var organicPrefetch = (ushort)Math.Clamp((int)organicPublishOptions.Prefetch, 1, 4);
 
         cfg.ReceiveEndpoint(WebApi.Messaging.CatalogEmailIntegrationConsumer.ConsumerName, endpoint =>
         {
@@ -159,6 +164,18 @@ builder.Services.AddAdMetricsMessaging(
             });
             endpoint.ConfigureConsumer<WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer>(context);
         });
+
+        cfg.ReceiveEndpoint(WebApi.Messaging.PublishOrganicSlotIntegrationConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.PrefetchCount = organicPrefetch;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = SocialPublishing.Application.Messaging.SocialPublishingIntegrationMessageTypes.PublishOrganicSlot;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.PublishOrganicSlotIntegrationConsumer>(context);
+        });
     });
 builder.Services.AddOptions<WebApi.Background.OutboxDispatchOptions>()
     .BindConfiguration(WebApi.Background.OutboxDispatchOptions.SectionName)
@@ -183,9 +200,11 @@ builder.Services.AddOptions<WebApi.Background.MetaSynchronizationOptions>()
     .BindConfiguration("Integrations:MetaSynchronization")
     .Validate(o => o.IntervalMinutes >= 5 && o.LookbackDays is >= 1 and <= 90, "Intervalo Meta deve ser >= 5 minutos e lookback entre 1 e 90 dias.");
 builder.Services.AddHostedService<WebApi.Background.MetaSynchronizationWorker>();
-builder.Services.AddOptions<WebApi.Background.SocialPublishingDispatchOptions>()
-    .BindConfiguration(WebApi.Background.SocialPublishingDispatchOptions.SectionName)
-    .Validate(o => o.IntervalSeconds >= 5, "Intervalo de disparo orgânico deve ser >= 5 segundos.");
+builder.Services.AddOptions<SocialPublishing.Application.Options.SocialPublishingDispatchOptions>()
+    .BindConfiguration(SocialPublishing.Application.Options.SocialPublishingDispatchOptions.SectionName)
+    .Validate(
+        o => o.IntervalSeconds >= 5 && o.InProgressTimeoutSeconds >= 60,
+        "Intervalo de disparo orgânico deve ser >= 5 segundos e timeout InProgress >= 60 segundos.");
 builder.Services.AddHostedService<WebApi.Background.SocialPublishingDispatchWorker>();
 builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
 {

@@ -24,6 +24,28 @@ public sealed class DispatchDuePublicationsCommandTests
     private static readonly DateTime FixedUtc = new(2026, 7, 1, 14, 0, 0, DateTimeKind.Utc);
 
     /// <summary>
+    /// Job já reivindicado pelo encaminhamento publica sem segundo claim.
+    /// </summary>
+    [Fact]
+    public async Task Handle_JobPreClaimedComToken_PublicaSemTryClaim()
+    {
+        var host = CreateHost();
+        var (post, job) = await SeedScheduledJobAsync(host, FixedUtc.AddMinutes(-1));
+        job.MarkInProgress(FixedUtc).IsSuccess.Should().BeTrue();
+        host.Adapter.PublishAsync(Arg.Any<OrganicPublishRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Result<OrganicPublishReceipt>.Success(new OrganicPublishReceipt("ext-777")));
+
+        var result = await host.Handler.Handle(
+            new DispatchDuePublicationsCommand(job.Id, FixedUtc),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.SucceededCount.Should().Be(1);
+        post.Status.Should().Be(OrganicPostStatus.Published);
+        job.Status.Should().Be(PublicationJobStatus.Succeeded);
+    }
+
+    /// <summary>
     /// Job devido publica com sucesso e persiste id externo.
     /// </summary>
     [Fact]

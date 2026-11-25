@@ -25,6 +25,7 @@ public sealed class PublicationJobEntityTypeConfiguration : IEntityTypeConfigura
             .HasMaxLength(32)
             .IsRequired();
         builder.Property(j => j.AttemptCount).IsRequired();
+        builder.Property(j => j.ClaimedAtUtc);
         builder.Property(j => j.CreatedAtUtc).IsRequired();
         builder.Property(j => j.RowVersion).IsRowVersion();
 
