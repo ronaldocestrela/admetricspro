@@ -109,6 +109,7 @@ public sealed class PingIntegrationCircuitTests(SqlServerFixture sqlFixture, Rab
                 services.Configure<OutboxDispatchOptions>(configuration.GetSection(OutboxDispatchOptions.SectionName));
                 services.AddAdMetricsMessaging(
                     configuration,
+                    BuildingBlocks.Messaging.DependencyInjection.AdMetricsMessagingRegistrationMode.Full,
                     bus => bus.AddConsumer<PingIntegrationMessageConsumer>(),
                     (context, cfg) =>
                     {

@@ -1,6 +1,6 @@
 # Mensageria durável (eventos de integração)
 
-> **Fases 0–7:** outbox, dispatcher, inbox, transporte MassTransit, consumidor de laboratório (testes), **e-mail de catálogo** (Fase 4), **sync Meta por conta** (Fase 5), **eventos de ingestão** (Fase 6) e **publicação orgânica por job** (Fase 7) quando `Messaging__Enabled=true`. Sem endpoint HTTP de mensageria. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
+> **Fases 0–10:** outbox, dispatcher, inbox, transporte MassTransit, fatias verticais 4–9 e **operação multi-instância** (Fase 10) quando `Messaging__Enabled=true`. Admin: dead-letters em `GET /api/v1/admin/messaging/dead-letters` e Backoffice. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
 
 ## 1. Fase 1 — broker no ambiente (entregue)
 
@@ -13,7 +13,7 @@
 | `Messaging__Dispatch__Enabled=false` (padrão implícito) | Com `Messaging__Enabled=true`, o worker existe mas não publica sem dispatch ligado (`Messaging.Disabled` no ciclo). |
 | `Messaging__Dispatch__IntervalSeconds` | Intervalo do `BackgroundService` (mínimo **5**). |
 | `GET /api/v1/health` | Inalterado (contrato de negócio sempre `Healthy`). |
-| Variáveis | `RabbitMQ__*`, `Messaging__HostRole` (lido; papel efetivo na Fase 10), `Messaging__Dispatch__*`, ver [.env.example](../../.env.example). |
+| Variáveis | `RabbitMQ__*`, `Messaging__HostRole` (`All`, `Api`, `Scheduler`, `Consumer`), `Messaging__Dispatch__*`, ver [.env.example](../../.env.example). |
 
 ## 2. Diagnóstico do estado atual
 
@@ -249,18 +249,34 @@ Implementação: `IntegrationResultDisposition.ForResult` / `ForUnexpectedFailur
 | `Messaging.PayloadInvalid` | `EventId` ausente, tipo desconhecido ou JSON incompatível com a versão | Dead-letter. |
 | `Messaging.LeaseNotAcquired` | Outra instância detém lease do scheduler | Esta instância não varre outbox; sem publicação neste ciclo. |
 | `Messaging.PublishFailed` | Broker recusa publicação | Linha volta a `Pending` com backoff. |
+| `Messaging.ReprocessPending` | Reprocessamento administrativo duplicado | HTTP 409; já existe fila `Pending`/`InProgress` com o mesmo `correlationId`. |
 
 Consumidor **não** usa exceção para forçar retry em falha de negócio coberta por `Result`.
 
-## 8. Fora de escopo (fronteira protegida)
+## 8. Fase 10 — operação multi-instância (entregue)
+
+| Papel (`Messaging__HostRole`) | MassTransit | Laços + dispatcher | Health `rabbitmq` | Migração Master no startup |
+| :--- | :--- | :--- | :--- | :--- |
+| `All` (padrão) | Publicação + consumidores | Sim | Sim | Sim |
+| `Api` | Não (`NoOp` publicador) | Não | Não | Sim |
+| `Scheduler` | Publicação apenas | Sim (lease `outbox-dispatch` compartilhado) | Sim | Não |
+| `Consumer` | Consumidores | Não | Sim | Não |
+
+Lease único `MessagingSchedulerLeases.outbox-dispatch` via `IMessagingSchedulerLeader` — Meta, orgânico, dunning, trial e `OutboxDispatchWorker` competem pelo mesmo líder.
+
+**Dead-letter (Backoffice):** `GET /api/v1/admin/messaging/dead-letters`, `POST /api/v1/admin/messaging/dead-letters/{eventId}/reprocess` com corpo opcional `{ "tenantId": "..." }`. Detalhes em [backoffice-messaging-dead-letters.md](backoffice-messaging-dead-letters.md).
+
+**Métricas:** `admetrics.messaging.dispatch`, `admetrics.messaging.acknowledged`, `admetrics.messaging.rescheduled`, `admetrics.messaging.dead_letter` no meter `AdMetricsPro.Messaging`.
+
+## 9. Fora de escopo (fronteira protegida)
 
 - Substituir MediatR por fila em comando ou consulta síncrona.
 - Colocar segredos ou credenciais no corpo da mensagem.
 - Revogar `PublicationJob` como agenda ou reescrever `TenantNotificationLog` / chave de `CampaignMetric`.
 - Cliente RabbitMQ no Blazor, Backoffice ou browser.
-- Endpoints HTTP de mensageria **nesta fase** (consulta de dead-letter e status de job entram em fases posteriores).
+- UI do RabbitMQ Management exposta na internet.
 
-## 9. Referências
+## 10. Referências
 
 - [ADR 0052 — RabbitMQ e outbox transacional](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md)
 - [Roadmap de implementação](../roadmaps/rabbitmq-messaging-roadmap.md)

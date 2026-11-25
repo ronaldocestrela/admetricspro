@@ -19,19 +19,18 @@ public static class AdMetricsMessagingExtensions
     /// </summary>
     /// <param name="services">Coleção de serviços.</param>
     /// <param name="configuration">Configuração do host.</param>
+    /// <param name="registrationMode">Modo de registro conforme o papel do host.</param>
     /// <param name="configureConsumers">Callback opcional para consumidores de laboratório/teste.</param>
     /// <param name="configureRabbit">Callback opcional para ajustes finos do host RabbitMQ.</param>
     /// <returns>Coleção para encadeamento.</returns>
     public static IServiceCollection AddAdMetricsMessaging(
         this IServiceCollection services,
         IConfiguration configuration,
+        AdMetricsMessagingRegistrationMode registrationMode,
         Action<IRegistrationConfigurator>? configureConsumers = null,
         Action<IBusRegistrationContext, IRabbitMqBusFactoryConfigurator>? configureRabbit = null)
     {
-        var messaging = configuration.GetSection(MessagingFeatureOptions.SectionName).Get<MessagingFeatureOptions>()
-            ?? new MessagingFeatureOptions();
-
-        if (!messaging.Enabled)
+        if (registrationMode is AdMetricsMessagingRegistrationMode.None)
         {
             services.AddSingleton<IIntegrationEventPublisher, NoOpIntegrationEventPublisher>();
             return services;
@@ -40,15 +39,26 @@ public static class AdMetricsMessagingExtensions
         var rabbit = configuration.GetSection(RabbitMqConnectionOptions.SectionName).Get<RabbitMqConnectionOptions>()
             ?? new RabbitMqConnectionOptions();
 
+        var registerConsumers = registrationMode is AdMetricsMessagingRegistrationMode.ConsumersOnly
+            or AdMetricsMessagingRegistrationMode.Full;
+        var registerPublisher = registrationMode is AdMetricsMessagingRegistrationMode.PublisherOnly
+            or AdMetricsMessagingRegistrationMode.Full;
+
         services.AddMassTransit(bus =>
         {
-            configureConsumers?.Invoke(bus);
-
-            bus.AddConfigureEndpointsCallback((_, _, cfg) =>
+            if (registerConsumers)
             {
-                cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(2)));
-                cfg.PrefetchCount = 4;
-            });
+                configureConsumers?.Invoke(bus);
+            }
+
+            if (registerConsumers)
+            {
+                bus.AddConfigureEndpointsCallback((_, _, cfg) =>
+                {
+                    cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(2)));
+                    cfg.PrefetchCount = 4;
+                });
+            }
 
             bus.UsingRabbitMq((context, cfg) =>
             {
@@ -73,18 +83,22 @@ public static class AdMetricsMessagingExtensions
                     s.UseRoutingKeyFormatter(ctx => ctx.Message.MessageType);
                 });
 
-                if (configureRabbit is not null)
+                if (registerConsumers && configureRabbit is not null)
                 {
                     configureRabbit(context, cfg);
-                }
-                else
-                {
-                    cfg.ConfigureEndpoints(context);
                 }
             });
         });
 
-        services.AddScoped<IIntegrationEventPublisher, IntegrationEventPublisher>();
+        if (registerPublisher)
+        {
+            services.AddScoped<IIntegrationEventPublisher, IntegrationEventPublisher>();
+        }
+        else
+        {
+            services.AddSingleton<IIntegrationEventPublisher, NoOpIntegrationEventPublisher>();
+        }
+
         return services;
     }
 }

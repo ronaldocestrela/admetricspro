@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Application.Messaging.Persistence;
+using BuildingBlocks.Application.Messaging.Scheduling;
 using BuildingBlocks.Application.Messaging.Transport;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Domain.Messaging;
@@ -31,8 +32,6 @@ public sealed class OutboxDispatchWorker(
     private static readonly System.Diagnostics.Metrics.Meter MessagingMeter = new("AdMetricsPro.Messaging");
     private static readonly System.Diagnostics.Metrics.Counter<long> DispatchPublished =
         MessagingMeter.CreateCounter<long>("admetrics.messaging.dispatch");
-
-    private readonly string _instanceId = $"{Environment.MachineName}:{Guid.NewGuid():N}";
 
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -98,13 +97,8 @@ public sealed class OutboxDispatchWorker(
         var utcNow = DateTime.UtcNow;
         var dispatch = dispatchOptions.Value;
 
-        var leaseStore = catalog.GetRequiredService<IMessagingSchedulerLeaseStore>();
-        var leaseResult = await leaseStore.TryAcquireOrRenewAsync(
-            MessagingSchedulerLease.OutboxDispatchLeaseKey,
-            _instanceId,
-            utcNow,
-            dispatch.LeaseDuration,
-            cancellationToken);
+        var leader = catalog.GetRequiredService<IMessagingSchedulerLeader>();
+        var leaseResult = await leader.TryLeadCycleAsync(cancellationToken);
 
         if (leaseResult.IsFailure)
         {

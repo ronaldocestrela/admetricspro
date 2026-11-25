@@ -81,6 +81,26 @@ public sealed class TenantAwareIntegrationOutboxStore(ITenantDbContextAccessor a
         return await store.UpdateAsync(message, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<IntegrationOutboxMessage>> ListDeadLettersAsync(
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var store = await CreateStoreAsync(cancellationToken);
+        return store is null
+            ? Array.Empty<IntegrationOutboxMessage>()
+            : await store.ListDeadLettersAsync(limit, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ExistsPendingReprocessForOriginalEventAsync(
+        Guid originalEventId,
+        CancellationToken cancellationToken = default)
+    {
+        var store = await CreateStoreAsync(cancellationToken);
+        return store is not null && await store.ExistsPendingReprocessForOriginalEventAsync(originalEventId, cancellationToken);
+    }
+
     private async Task<DbIntegrationOutboxStore?> CreateStoreAsync(CancellationToken cancellationToken)
     {
         var contextResult = await accessor.GetDbContextAsync(cancellationToken);

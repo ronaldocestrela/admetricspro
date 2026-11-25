@@ -47,6 +47,7 @@ public static class MessagingPersistenceServiceCollectionExtensions
             new MasterIntegrationInboxStore(new DbIntegrationInboxStore(sp.GetRequiredService<TMasterContext>())));
         services.AddScoped<IMessagingSchedulerLeaseStore>(sp =>
             new DbMessagingSchedulerLeaseStore(sp.GetRequiredService<TMasterContext>()));
+        services.AddSingleton<ITenantIntegrationOutboxAdministration, TenantIntegrationOutboxAdministration>();
         return services;
     }
 }

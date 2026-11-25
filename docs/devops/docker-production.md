@@ -78,6 +78,41 @@ No arquivo `.env.prod` do operador, defina credenciais fortes (nunca versionadas
 
 O plugin de management **não** é publicado em produção (`rabbitmq:4` sem UI). Diagnóstico operacional do broker ocorre via logs do container ou ferramentas na rede interna, não pela internet.
 
+### Mensageria multi-instância (Fase 10)
+
+Com `Messaging__Enabled=true`, use `Messaging__HostRole` para separar responsabilidades:
+
+| Papel | Variável | HTTP público | Broker no `/health` | Laços (Meta, orgânico, dunning, trial, dispatch) | Consumidores |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| Instância única (padrão) | `All` | Sim | Sim | Sim | Sim |
+| API HTTP | `Api` | Sim | **Não** | Não | Não |
+| Scheduler | `Scheduler` | Opcional | Sim | Sim (lease único) | Não |
+| Worker | `Consumer` | Não | Sim | Não | Sim (N réplicas) |
+
+**Runbook rápido**
+
+1. **Broker fora:** réplicas `Api` continuam gravando outbox em SQL e respondendo HTTP; `Scheduler`/`Consumer` ficam Unhealthy em `/health` até o RabbitMQ voltar.
+2. **Kill switch:** `killswitch.messaging.dispatch` no Backoffice congela publicação; linhas permanecem `Pending` no SQL.
+3. **Reclaim:** linhas `InProgress` expiradas voltam a `Pending` via `Messaging:Dispatch:InProgressTimeoutSeconds` (dispatcher).
+4. **Drenar fila sem perder dados:** pare consumidores (`Consumer`), resolva a causa; a fonte da verdade é a outbox SQL até `Published`. Não apague filas sem consultar dead-letters no Backoffice (`/messaging-dead-letters`).
+5. **Dead-letter:** consulte `GET /api/v1/admin/messaging/dead-letters` ou o Backoffice; reprocessar cria nova linha `Pending` com novo `EventId` e `correlationId` apontando para o evento original.
+6. **Métricas:** contadores `admetrics.messaging.dispatch`, `admetrics.messaging.acknowledged`, `admetrics.messaging.rescheduled`, `admetrics.messaging.dead_letter` (meter `AdMetricsPro.Messaging`).
+
+Exemplo de réplicas em produção (mesma imagem `webapi`, variáveis diferentes):
+
+```bash
+# Edge HTTP (pode escalar)
+Messaging__HostRole=Api
+
+# Um scheduler com lease no MasterDb
+Messaging__HostRole=Scheduler
+
+# Consumidores horizontais
+Messaging__HostRole=Consumer
+```
+
+O serviço `webapi` padrão no compose continua `Messaging__HostRole=All` para instalações de nó único.
+
 ---
 
 ## 5. Comandos Úteis de Operação e Monitoramento

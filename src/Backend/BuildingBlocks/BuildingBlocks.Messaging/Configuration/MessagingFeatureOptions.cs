@@ -14,4 +14,9 @@ public sealed class MessagingFeatureOptions
     /// Indica se o transporte está habilitado.
     /// </summary>
     public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Papel do processo: <c>All</c>, <c>Api</c>, <c>Scheduler</c> ou <c>Consumer</c>.
+    /// </summary>
+    public string HostRole { get; set; } = "All";
 }

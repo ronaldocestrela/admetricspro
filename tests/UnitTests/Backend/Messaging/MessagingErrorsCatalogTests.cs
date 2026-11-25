@@ -17,6 +17,7 @@ public sealed class MessagingErrorsCatalogTests
     {
         MessagingErrors.Disabled.Code.Should().Be("Messaging.Disabled");
         MessagingErrors.LeaseNotAcquired.Code.Should().Be("Messaging.LeaseNotAcquired");
+        MessagingErrors.ReprocessPending.Code.Should().Be("Messaging.ReprocessPending");
         MessagingErrors.PublishFailed.Code.Should().Be("Messaging.PublishFailed");
         MessagingErrors.PayloadInvalid.Code.Should().Be("Messaging.PayloadInvalid");
         MessagingErrors.TenantRequired.Code.Should().Be("Messaging.TenantRequired");

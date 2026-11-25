@@ -36,4 +36,12 @@ public static class MessagingErrors
     /// </summary>
     public static Error PublishFailed { get; } =
         Error.Failure("Messaging.PublishFailed", "O broker recusou ou falhou ao publicar a mensagem de integração.");
+
+    /// <summary>
+    /// Já existe reprocessamento pendente para o mesmo evento original.
+    /// </summary>
+    public static Error ReprocessPending { get; } =
+        Error.Conflict(
+            "Messaging.ReprocessPending",
+            "Já existe uma linha de reprocessamento pendente para este evento.");
 }

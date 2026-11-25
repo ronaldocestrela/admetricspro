@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Application.Messaging.Persistence;
+using BuildingBlocks.Application.Messaging.Scheduling;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using Integrations.Application.Messaging;
@@ -57,6 +58,17 @@ public sealed class MetaSynchronizationWorker(
     public async Task RunCycleAsync(CancellationToken cancellationToken)
     {
         using var catalog = scopeFactory.CreateScope();
+        if (messagingFeatureGate.IsEnabled)
+        {
+            var lead = await catalog.ServiceProvider.GetRequiredService<IMessagingSchedulerLeader>()
+                .TryLeadCycleAsync(cancellationToken);
+            if (lead.IsFailure)
+            {
+                logger.LogDebug("{Code}: ciclo Meta ignorado.", MessagingErrors.LeaseNotAcquired.Code);
+                return;
+            }
+        }
+
         var tenants = await catalog.ServiceProvider.GetRequiredService<ISender>().Send(new GetTenantsQuery(), cancellationToken);
         if (tenants.IsFailure) { logger.LogWarning("Catálogo Meta indisponível: {Code}", tenants.Error.Code); return; }
         foreach (var tenant in tenants.Value.Where(t => t.Status is "Active" or "Trial"))

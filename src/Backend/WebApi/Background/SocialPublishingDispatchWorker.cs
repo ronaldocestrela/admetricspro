@@ -1,4 +1,5 @@
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Scheduling;
 using BuildingBlocks.Application.MultiTenancy;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using Master.Application.FeatureFlags.Services;
@@ -66,6 +67,17 @@ public sealed class SocialPublishingDispatchWorker(
     {
         using var catalogScope = scopeFactory.CreateScope();
         var catalog = catalogScope.ServiceProvider;
+        var messagingGate = catalog.GetRequiredService<IMessagingFeatureGate>();
+        if (messagingGate.IsEnabled)
+        {
+            var lead = await catalog.GetRequiredService<IMessagingSchedulerLeader>().TryLeadCycleAsync(cancellationToken);
+            if (lead.IsFailure)
+            {
+                logger.LogDebug("{Code}: ciclo orgânico ignorado.", MessagingErrors.LeaseNotAcquired.Code);
+                return;
+            }
+        }
+
         var featureFlags = catalog.GetRequiredService<IFeatureFlagService>();
         if (await featureFlags.IsFeatureEnabledAsync(MasterCatalogFeatureFlagKeys.SocialPublishingDispatch, cancellationToken: cancellationToken))
         {

@@ -4,7 +4,7 @@
 
 Aceito em 2026-11-25.
 
-As **Fases 1–3** do [roadmap de mensageria](../roadmaps/rabbitmq-messaging-roadmap.md) estão implementadas: broker opcional, contratos, schema SQL, dispatcher com lease, transporte MassTransit em `BuildingBlocks.Messaging` e circuito de laboratório (ping só em testes). Consumidores de negócio e papéis de host efetivos seguem nas fases 4+. Este ADR não revoga o [ADR 0009](0009-in-memory-messaging-and-validation-pipeline.md) nem o [ADR 0046](0046-organic-publication-outbox-and-dispatch-worker.md).
+As **Fases 1–10** do [roadmap de mensageria](../roadmaps/rabbitmq-messaging-roadmap.md) estão implementadas, incluindo papéis `Messaging__HostRole`, lease de liderança compartilhado, dead-letter administrativo no Backoffice e runbook de produção. Este ADR não revoga o [ADR 0009](0009-in-memory-messaging-and-validation-pipeline.md) nem o [ADR 0046](0046-organic-publication-outbox-and-dispatch-worker.md).
 
 **Nomes físicos (Fase 3):** schema `messaging`; tabelas `IntegrationOutboxMessages` e `IntegrationInboxMessages` no `MasterDb` e no banco do tenant; `MessagingSchedulerLeases` apenas no `MasterDb`; inbox única em `(EventId, ConsumerName)`. Exchange topic `admetricspro.integration`; dead-letter `admetricspro.dead-letter`. Detalhes em [módulo messaging](../modules/messaging.md).
 

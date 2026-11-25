@@ -1,3 +1,5 @@
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Scheduling;
 using Master.Application.Billing.Trial;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -81,6 +83,17 @@ public sealed class TrialNoticeBackgroundService : BackgroundService
     private async Task RunTrialCycleAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
+        var schedulerLeader = scope.ServiceProvider.GetService<IMessagingSchedulerLeader>();
+        if (schedulerLeader is not null)
+        {
+            var lead = await schedulerLeader.TryLeadCycleAsync(cancellationToken);
+            if (lead.IsFailure)
+            {
+                _logger.LogDebug("{Code}: ciclo trial ignorado.", MessagingErrors.LeaseNotAcquired.Code);
+                return;
+            }
+        }
+
         var engineService = scope.ServiceProvider.GetRequiredService<ITrialNotificationEngineService>();
 
         _logger.LogInformation("Disparando ciclo agendado de avaliações da régua de trial...");

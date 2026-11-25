@@ -1,0 +1,20 @@
+@page "/messaging-dead-letters"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@using BackofficeApp.Components.Backoffice
+
+<PageTitle>Dead-letters — Backoffice AdMetricsPro</PageTitle>
+
+<div class="messaging-dead-letters-page">
+    <div class="page-header">
+        <h1 class="page-title">Mensagens em dead-letter</h1>
+        <p class="page-description">
+            Consulta linhas mortas na outbox SQL (catálogo e tenants). Reprocessar cria nova publicação com o mesmo payload.
+        </p>
+    </div>
+
+    <MessagingDeadLettersDashboard @ref="_dashboard" />
+</div>
+
+@code {
+    private MessagingDeadLettersDashboard? _dashboard;
+}

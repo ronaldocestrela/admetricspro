@@ -15,8 +15,11 @@ public static class SocialPublishingCompositionExtensions
     /// Substitui o registro de <see cref="ITenantProvisioningService"/> por um decorator que aplica migrações sociais.
     /// </summary>
     /// <param name="services">Coleção de serviços.</param>
+    /// <param name="registerTenantMigrationWorker">Quando <see langword="true"/>, registra o hosted service de migração.</param>
     /// <returns>Coleção para encadeamento.</returns>
-    public static IServiceCollection AddSocialPublishingTenantPersistenceComposition(this IServiceCollection services)
+    public static IServiceCollection AddSocialPublishingTenantPersistenceComposition(
+        this IServiceCollection services,
+        bool registerTenantMigrationWorker = true)
     {
         var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(ITenantProvisioningService));
         if (descriptor is not null)
@@ -26,7 +29,10 @@ public static class SocialPublishingCompositionExtensions
 
         services.TryAddScoped<TenantProvisioningService>();
         services.AddScoped<ITenantProvisioningService, SocialPublishingTenantProvisioningDecorator>();
-        services.AddHostedService<Background.SocialPublishingTenantMigrationHostedService>();
+        if (registerTenantMigrationWorker)
+        {
+            services.AddHostedService<Background.SocialPublishingTenantMigrationHostedService>();
+        }
 
         return services;
     }

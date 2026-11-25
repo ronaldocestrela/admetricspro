@@ -146,6 +146,13 @@ public sealed class ResendWelcomeEmailEndpointTests : IClassFixture<WebApplicati
         {
             return Task.FromResult<IReadOnlyList<TenantNotificationLog>>(Array.Empty<TenantNotificationLog>());
         }
+
+        public Task<bool> HasSuccessfulNoticeSinceAsync(
+            TenantId tenantId,
+            TrialNoticeType noticeType,
+            DateTime sinceUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
     }
 
     private sealed class FakeUnitOfWork : BuildingBlocks.Application.Persistence.IUnitOfWork

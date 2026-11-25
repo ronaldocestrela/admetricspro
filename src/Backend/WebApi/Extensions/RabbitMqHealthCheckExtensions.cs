@@ -23,7 +23,9 @@ public static class RabbitMqHealthCheckExtensions
         IConfiguration configuration)
     {
         var messaging = configuration.GetSection(MessagingOptions.SectionName).Get<MessagingOptions>() ?? new MessagingOptions();
-        if (!messaging.Enabled)
+        var roleResult = BuildingBlocks.Application.Messaging.MessagingHostRoleParser.Parse(messaging.HostRole);
+        var role = roleResult.IsSuccess ? roleResult.Value : BuildingBlocks.Application.Messaging.MessagingHostRole.All;
+        if (!BuildingBlocks.Application.Messaging.MessagingHostRolePolicy.ShouldRegisterRabbitMqHealthCheck(role, messaging.Enabled))
         {
             return builder;
         }

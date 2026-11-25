@@ -1,3 +1,5 @@
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Scheduling;
 using Master.Application.Billing.Dunning;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,7 +16,6 @@ public sealed class DunningBackgroundService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOptionsMonitor<DunningOptions> _options;
     private readonly ILogger<DunningBackgroundService> _logger;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="DunningBackgroundService"/> class.
     /// </summary>
@@ -77,6 +78,17 @@ public sealed class DunningBackgroundService : BackgroundService
     private async Task RunDunningCycleAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
+        var schedulerLeader = scope.ServiceProvider.GetService<IMessagingSchedulerLeader>();
+        if (schedulerLeader is not null)
+        {
+            var lead = await schedulerLeader.TryLeadCycleAsync(cancellationToken);
+            if (lead.IsFailure)
+            {
+                _logger.LogDebug("{Code}: ciclo dunning ignorado.", MessagingErrors.LeaseNotAcquired.Code);
+                return;
+            }
+        }
+
         var dunningEngine = scope.ServiceProvider.GetRequiredService<IDunningEngineService>();
 
         _logger.LogInformation("Triggering scheduled dunning evaluation cycle...");

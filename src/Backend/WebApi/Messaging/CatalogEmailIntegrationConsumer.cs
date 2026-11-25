@@ -83,6 +83,8 @@ public sealed class CatalogEmailIntegrationConsumer(
             factory,
             context.CancellationToken);
 
+        MessagingConsumerMetrics.RecordDisposition(dispatch.Disposition.Action, messageType);
+
         if (dispatch.Result.IsFailure
             && dispatch.Result.Error.Code is "Messaging.PayloadInvalid" or "Messaging.TenantRequired")
         {
@@ -131,6 +133,7 @@ public sealed class CatalogEmailIntegrationConsumer(
         if (line.AttemptCount >= maxAttempts)
         {
             line.MarkDeadLetter(dispatch.Result.Error.Code);
+            MessagingConsumerMetrics.RecordDeadLetter(transport.MessageType);
             await outboxStore.UpdateAsync(line, cancellationToken);
             return;
         }

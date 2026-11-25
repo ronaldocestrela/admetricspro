@@ -84,6 +84,7 @@ public sealed class CatalogEmailIntegrationCircuitTests(SqlServerFixture sqlFixt
                 services.Configure<CatalogEmailConsumerOptions>(configuration.GetSection(CatalogEmailConsumerOptions.SectionName));
                 services.AddAdMetricsMessaging(
                     configuration,
+                    BuildingBlocks.Messaging.DependencyInjection.AdMetricsMessagingRegistrationMode.Full,
                     bus => bus.AddConsumer<CatalogEmailIntegrationConsumer>(),
                     (context, cfg) =>
                     {

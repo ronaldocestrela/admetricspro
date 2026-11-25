@@ -105,6 +105,7 @@ public sealed class MediaSyncIntegrationConsumer(
         Result commandResult,
         CancellationToken cancellationToken)
     {
+        MessagingConsumerMetrics.RecordDisposition(disposition.Action, context.Message.MessageType);
         if (disposition.Action == IntegrationMessageDispositionAction.Acknowledge)
         {
             await services.GetRequiredService<IIntegrationInboxStore>()
@@ -144,6 +145,7 @@ public sealed class MediaSyncIntegrationConsumer(
         if (line.AttemptCount >= maxAttempts)
         {
             line.MarkDeadLetter(dispatchResult.Error.Code);
+            MessagingConsumerMetrics.RecordDeadLetter(IntegrationsIntegrationMessageTypes.AdAccountSync);
             await outboxStore.UpdateAsync(line, cancellationToken);
             return;
         }

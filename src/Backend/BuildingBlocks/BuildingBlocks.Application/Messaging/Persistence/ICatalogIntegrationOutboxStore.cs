@@ -23,4 +23,20 @@ public interface ICatalogIntegrationOutboxStore
     /// <param name="cancellationToken">Cancelamento.</param>
     /// <returns>Resultado da operação.</returns>
     Task<Result> UpdateAsync(IntegrationOutboxMessage message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista linhas em dead-letter no catálogo.
+    /// </summary>
+    /// <param name="limit">Quantidade máxima.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Linhas mortas.</returns>
+    Task<IReadOnlyList<IntegrationOutboxMessage>> ListDeadLettersAsync(int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verifica reprocessamento pendente por correlação.
+    /// </summary>
+    /// <param name="originalEventId">Evento original.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns><see langword="true"/> quando há fila pendente.</returns>
+    Task<bool> ExistsPendingReprocessForOriginalEventAsync(Guid originalEventId, CancellationToken cancellationToken = default);
 }

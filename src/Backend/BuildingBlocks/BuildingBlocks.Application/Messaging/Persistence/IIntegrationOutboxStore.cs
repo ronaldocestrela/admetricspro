@@ -50,6 +50,22 @@ public interface IIntegrationOutboxStore
     Task<IntegrationOutboxMessage?> GetByEventIdAsync(Guid eventId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lista linhas em dead-letter para operação, mais recentes primeiro.
+    /// </summary>
+    /// <param name="limit">Quantidade máxima.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns>Linhas mortas.</returns>
+    Task<IReadOnlyList<IntegrationOutboxMessage>> ListDeadLettersAsync(int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verifica se há reprocessamento pendente para o evento original (correlation).
+    /// </summary>
+    /// <param name="originalEventId">EventId da linha morta.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    /// <returns><see langword="true"/> quando existe linha Pending/InProgress com mesma correlação.</returns>
+    Task<bool> ExistsPendingReprocessForOriginalEventAsync(Guid originalEventId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Persiste alterações em uma linha já rastreada ou atualizada.
     /// </summary>
     /// <param name="message">Linha de outbox.</param>

@@ -1,5 +1,5 @@
 using BuildingBlocks.Application.Messaging;
-using MassTransit;
+using BuildingBlocks.Messaging.DependencyInjection;
 using BuildingBlocks.Infrastructure.Configuration;
 using BuildingBlocks.Infrastructure.DependencyInjection;
 using BuildingBlocks.Infrastructure.Emails;
@@ -7,7 +7,6 @@ using BuildingBlocks.Infrastructure.Messaging;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Security;
-using BuildingBlocks.Messaging.DependencyInjection;
 using Master.Application.DependencyInjection;
 using Master.Infrastructure.Extensions;
 using Tenants.Application.DependencyInjection;
@@ -44,6 +43,11 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options 
         : originalFactory(context);
 });
 builder.Services.AddOpenApiDocumentation();
+
+var messagingHostRole = MessagingHostRoleExtensions.GetRequiredMessagingHostRole(builder.Configuration);
+var messagingRegistrationMode = MessagingHostRoleExtensions.ResolveMessagingRegistrationMode(builder.Configuration);
+var messagingEnabled = builder.Configuration.GetValue<bool>("Messaging:Enabled");
+
 builder.Services.AddHealthChecks()
     .AddRabbitMqHealthCheck(builder.Configuration);
 
@@ -68,186 +72,28 @@ builder.Services.Configure<WebApi.Configuration.IngestionReactionsConsumerOption
 builder.Services.Configure<WebApi.Configuration.OrganicPublishConsumerOptions>(
     builder.Configuration.GetSection(WebApi.Configuration.OrganicPublishConsumerOptions.SectionName));
 builder.Services.AddScoped<WebApi.Background.IConnectedAdAccountMetaSyncExecutor, WebApi.Background.ConnectedAdAccountMetaSyncExecutor>();
-builder.Services.AddAdMetricsMessaging(
-    builder.Configuration,
-    bus =>
-    {
-        bus.AddConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>();
-        bus.AddConsumer<WebApi.Messaging.MediaSyncIntegrationConsumer, WebApi.Messaging.MediaSyncConsumerDefinition>();
-        bus.AddConsumer<WebApi.Messaging.AutomationsCampaignMetricsSyncedConsumer>();
-        bus.AddConsumer<WebApi.Messaging.AutomationsCampaignHierarchySyncedConsumer>();
-        bus.AddConsumer<WebApi.Messaging.AnalyticsCampaignMetricsSyncedConsumer>();
-        bus.AddConsumer<WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer>();
-        bus.AddConsumer<WebApi.Messaging.PublishOrganicSlotIntegrationConsumer>();
-        bus.AddConsumer<WebApi.Messaging.SocialEditorialPlanJobConsumer>();
-        bus.AddConsumer<WebApi.Messaging.SocialPostImageJobConsumer>();
-        bus.AddConsumer<WebApi.Messaging.AnalyticsReportJobConsumer>();
-        bus.AddConsumer<WebApi.Messaging.BulkCampaignJobConsumer>();
-    },
-    (context, cfg) =>
-    {
-        var mediaSyncOptions = context.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebApi.Configuration.MediaSyncConsumerOptions>>().Value;
-        var mediaPrefetch = (ushort)Math.Clamp((int)mediaSyncOptions.Prefetch, 1, 4);
-        var ingestionOptions = context.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebApi.Configuration.IngestionReactionsConsumerOptions>>().Value;
-        var ingestionPrefetch = (ushort)Math.Clamp((int)ingestionOptions.Prefetch, 1, 4);
-        var organicPublishOptions = context.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebApi.Configuration.OrganicPublishConsumerOptions>>().Value;
-        var organicPrefetch = (ushort)Math.Clamp((int)organicPublishOptions.Prefetch, 1, 4);
+if (MessagingHostRolePolicy.ShouldRegisterMassTransitConsumers(messagingHostRole))
+{
+    builder.Services.AddAdMetricsMessaging(
+        builder.Configuration,
+        messagingRegistrationMode,
+        AdMetricsMessagingConsumerRegistration.AddWebApiIntegrationConsumers,
+        AdMetricsMessagingConsumerRegistration.ConfigureWebApiReceiveEndpoints);
+}
+else
+{
+    builder.Services.AddAdMetricsMessaging(builder.Configuration, messagingRegistrationMode);
+}
 
-        cfg.ReceiveEndpoint(WebApi.Messaging.CatalogEmailIntegrationConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.TenantWelcomeEmail;
-            });
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.SubscriptionConfirmationEmail;
-            });
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.TrialNoticeEmail;
-            });
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.DunningStageEmail;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.MediaSyncIntegrationConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = mediaPrefetch;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.AdAccountSync;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.MediaSyncIntegrationConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.AutomationsCampaignMetricsSyncedConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = ingestionPrefetch;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.CampaignMetricsSynced;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.AutomationsCampaignMetricsSyncedConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.AutomationsCampaignHierarchySyncedConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = ingestionPrefetch;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.CampaignHierarchySynced;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.AutomationsCampaignHierarchySyncedConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.AnalyticsCampaignMetricsSyncedConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = ingestionPrefetch;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.CampaignMetricsSynced;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.AnalyticsCampaignMetricsSyncedConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = ingestionPrefetch;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.IntegrationsIntegrationMessageTypes.CampaignHierarchySynced;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.AnalyticsCampaignHierarchySyncedConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.PublishOrganicSlotIntegrationConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = organicPrefetch;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = SocialPublishing.Application.Messaging.SocialPublishingIntegrationMessageTypes.PublishOrganicSlot;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.PublishOrganicSlotIntegrationConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.SocialEditorialPlanJobConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = 1;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.EditorialPlanGenerate;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.SocialEditorialPlanJobConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.SocialPostImageJobConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = 1;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.PostImageGenerate;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.SocialPostImageJobConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.AnalyticsReportJobConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = 1;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.ReportGenerate;
-            });
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.ReportDispatch;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.AnalyticsReportJobConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint(WebApi.Messaging.BulkCampaignJobConsumer.ConsumerName, endpoint =>
-        {
-            endpoint.PrefetchCount = 1;
-            endpoint.ConfigureConsumeTopology = false;
-            endpoint.Bind("admetricspro.integration", bind =>
-            {
-                bind.ExchangeType = "topic";
-                bind.RoutingKey = BuildingBlocks.Application.Messaging.UserInitiatedJobIntegrationMessageTypes.BulkCampaignMutation;
-            });
-            endpoint.ConfigureConsumer<WebApi.Messaging.BulkCampaignJobConsumer>(context);
-        });
-    });
 builder.Services.AddOptions<WebApi.Background.OutboxDispatchOptions>()
     .BindConfiguration(WebApi.Background.OutboxDispatchOptions.SectionName)
     .Validate(o => o.IntervalSeconds >= 5, "Intervalo de despacho de outbox deve ser >= 5 segundos.");
-if (builder.Configuration.GetValue<bool>("Messaging:Enabled"))
+if (MessagingHostRolePolicy.ShouldRegisterSchedulerWorkers(messagingHostRole))
+{
+    builder.Services.AddMessagingSchedulerLeadership(builder.Configuration);
+}
+
+if (messagingEnabled && MessagingHostRolePolicy.ShouldRegisterSchedulerWorkers(messagingHostRole))
 {
     builder.Services.AddHostedService<WebApi.Background.OutboxDispatchWorker>();
 }
@@ -261,36 +107,47 @@ builder.Services.AddAnalyticsInfrastructure(builder.Configuration);
 builder.Services.AddAutomationsApplication();
 builder.Services.AddAutomationsInfrastructure(builder.Configuration);
 builder.Services.AddSocialPublishingModule(builder.Configuration);
-builder.Services.AddSocialPublishingTenantPersistenceComposition();
+builder.Services.AddSocialPublishingTenantPersistenceComposition(
+    MessagingHostRolePolicy.ShouldRegisterSocialTenantMigrationWorker(messagingHostRole));
 builder.Services.AddEmailInfrastructure(builder.Configuration);
 builder.Services.AddOptions<WebApi.Background.MetaSynchronizationOptions>()
     .BindConfiguration("Integrations:MetaSynchronization")
     .Validate(o => o.IntervalMinutes >= 5 && o.LookbackDays is >= 1 and <= 90, "Intervalo Meta deve ser >= 5 minutos e lookback entre 1 e 90 dias.");
-builder.Services.AddHostedService<WebApi.Background.MetaSynchronizationWorker>();
+if (MessagingHostRolePolicy.ShouldRegisterSchedulerWorkers(messagingHostRole))
+{
+    builder.Services.AddHostedService<WebApi.Background.MetaSynchronizationWorker>();
+}
 builder.Services.AddOptions<SocialPublishing.Application.Options.SocialPublishingDispatchOptions>()
     .BindConfiguration(SocialPublishing.Application.Options.SocialPublishingDispatchOptions.SectionName)
     .Validate(
         o => o.IntervalSeconds >= 5 && o.InProgressTimeoutSeconds >= 60,
         "Intervalo de disparo orgânico deve ser >= 5 segundos e timeout InProgress >= 60 segundos.");
-builder.Services.AddHostedService<WebApi.Background.SocialPublishingDispatchWorker>();
+if (MessagingHostRolePolicy.ShouldRegisterSchedulerWorkers(messagingHostRole))
+{
+    builder.Services.AddHostedService<WebApi.Background.SocialPublishingDispatchWorker>();
+}
 builder.Services.Configure<Master.Infrastructure.Services.ImpersonationJwtOptions>(options =>
 {
     builder.Configuration.GetSection(Master.Infrastructure.Services.ImpersonationJwtOptions.SectionName).Bind(options);
 });
-builder.Services.AddDunningBackgroundService(options =>
+if (MessagingHostRolePolicy.ShouldRegisterSchedulerWorkers(messagingHostRole))
 {
-    builder.Configuration.GetSection(Master.Infrastructure.Services.DunningOptions.SectionName).Bind(options);
-});
-builder.Services.AddTrialNoticeBackgroundService(options =>
-{
-    builder.Configuration.GetSection(Master.Infrastructure.Services.TrialNoticeOptions.SectionName).Bind(options);
-});
+    builder.Services.AddDunningBackgroundService(options =>
+    {
+        builder.Configuration.GetSection(Master.Infrastructure.Services.DunningOptions.SectionName).Bind(options);
+    });
+    builder.Services.AddTrialNoticeBackgroundService(options =>
+    {
+        builder.Configuration.GetSection(Master.Infrastructure.Services.TrialNoticeOptions.SectionName).Bind(options);
+    });
+}
 
 var app = builder.Build();
 
 // Executa migrações automáticas do catálogo MasterDb no startup quando habilitado por configuração e fora de testes
 if (!app.Environment.IsEnvironment("Testing") &&
-    app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOnStartup", false))
+    app.Configuration.GetValue<bool>("DatabaseMigrations:ApplyMasterMigrationsOnStartup", false) &&
+    MessagingHostRolePolicy.ShouldRunMasterMigrationsOnStartup(messagingHostRole))
 {
     var migrationResult = await app.ApplyMasterDatabaseMigrationsAsync();
     if (migrationResult.IsFailure)

@@ -1,4 +1,6 @@
 using BuildingBlocks.Application.Messaging.Persistence;
+using BuildingBlocks.Application.Messaging.Scheduling;
+using BuildingBlocks.Domain.Primitives;
 using FluentAssertions;
 using Master.Application.FeatureFlags.Services;
 using Master.Application.Tenants.Queries.GetTenantDetails;
@@ -62,9 +64,13 @@ public sealed class OutboxDispatchWorkerTests
         bool messagingEnabled,
         bool dispatchEnabled)
     {
+        var leader = Substitute.For<IMessagingSchedulerLeader>();
+        leader.TryLeadCycleAsync(Arg.Any<CancellationToken>()).Returns(Result.Success());
+
         var services = new ServiceCollection();
         services.AddSingleton(sender);
         services.AddSingleton(featureFlags);
+        services.AddScoped<IMessagingSchedulerLeader>(_ => leader);
         services.AddSingleton(Options.Create(new MessagingOptions { Enabled = messagingEnabled }));
         services.AddSingleton(Options.Create(new OutboxDispatchOptions { Enabled = dispatchEnabled, IntervalSeconds = 5 }));
         var provider = services.BuildServiceProvider();

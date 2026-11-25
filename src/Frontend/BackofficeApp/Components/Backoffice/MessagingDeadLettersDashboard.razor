@@ -1,0 +1,126 @@
+@using BackofficeApp.Services
+@using BuildingBlocks.Application.Messaging
+@inject IMessagingDeadLetterClientService DeadLetterService
+
+<div class="messaging-dead-letters-dashboard">
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <section class="alert-danger" role="alert">@_error</section>
+    }
+
+    @if (_isLoading)
+    {
+        <p>Carregando dead-letters…</p>
+    }
+    else if (_items.Count == 0)
+    {
+        <p>Nenhuma mensagem em dead-letter encontrada.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Tenant</th>
+                    <th>Tentativas</th>
+                    <th>Erro</th>
+                    <th>EventId</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in _items)
+                {
+                    <tr>
+                        <td>@item.MessageType</td>
+                        <td>@(item.TenantId?.ToString() ?? "Catálogo")</td>
+                        <td>@item.AttemptCount</td>
+                        <td>@(item.LastErrorCode ?? "—")</td>
+                        <td><code>@item.EventId</code></td>
+                        <td>
+                            <button class="btn-secondary"
+                                    disabled="@_reprocessingEventId.HasValue"
+                                    @onclick="() => ConfirmReprocessAsync(item)">
+                                Reprocessar
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <ConfirmActionDialog IsOpen="_isConfirmOpen"
+                         Title="Reprocessar dead-letter"
+                         Message="@_confirmMessage"
+                         OnConfirm="ReprocessConfirmedAsync"
+                         OnCancel="CancelReprocess" />
+</div>
+
+@code {
+    private readonly List<IntegrationDeadLetterListItemDto> _items = [];
+    private bool _isLoading = true;
+    private string? _error;
+    private Guid? _reprocessingEventId;
+    private IntegrationDeadLetterListItemDto? _pendingItem;
+    private bool _isConfirmOpen;
+    private string _confirmMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    public async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        var result = await DeadLetterService.GetDeadLettersAsync();
+        if (result.IsFailure)
+        {
+            _error = result.Error.Description;
+            _items.Clear();
+        }
+        else
+        {
+            _items.Clear();
+            _items.AddRange(result.Value);
+        }
+
+        _isLoading = false;
+    }
+
+    private void ConfirmReprocessAsync(IntegrationDeadLetterListItemDto item)
+    {
+        _pendingItem = item;
+        _confirmMessage = $"Republicar o evento {item.EventId} sem alterar o payload?";
+        _isConfirmOpen = true;
+    }
+
+    private void CancelReprocess()
+    {
+        _isConfirmOpen = false;
+        _pendingItem = null;
+    }
+
+    private async Task ReprocessConfirmedAsync(string _)
+    {
+        if (_pendingItem is null)
+        {
+            return;
+        }
+
+        _isConfirmOpen = false;
+        var item = _pendingItem;
+        _pendingItem = null;
+        _reprocessingEventId = item.EventId;
+        var result = await DeadLetterService.ReprocessAsync(item.EventId, item.TenantId);
+        _reprocessingEventId = null;
+        if (result.IsFailure)
+        {
+            _error = result.Error.Description;
+        }
+        else
+        {
+            await LoadAsync();
+        }
+    }
+}
