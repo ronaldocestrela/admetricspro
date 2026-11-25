@@ -35,6 +35,16 @@ public sealed class CatalogEmailConsumerDefinition : ConsumerDefinition<CatalogE
                 bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.SubscriptionConfirmationEmail;
                 bind.ExchangeType = "topic";
             });
+            rabbit.Bind("admetricspro.integration", bind =>
+            {
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.TrialNoticeEmail;
+                bind.ExchangeType = "topic";
+            });
+            rabbit.Bind("admetricspro.integration", bind =>
+            {
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.DunningStageEmail;
+                bind.ExchangeType = "topic";
+            });
         }
     }
 }

@@ -1,6 +1,8 @@
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Domain.Primitives;
+using Master.Application.Messaging;
 using Master.Application.Repositories;
 using Master.Domain.Tenants;
 using Master.Domain.Tenants.Events;
@@ -18,6 +20,8 @@ public sealed class DunningEngineService : IDunningEngineService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPublisher _publisher;
     private readonly ILogger<DunningEngineService> _logger;
+    private readonly IMessagingFeatureGate _messagingFeatureGate;
+    private readonly ICatalogIntegrationOutboxWriter _catalogOutboxWriter;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DunningEngineService"/> class.
@@ -26,16 +30,22 @@ public sealed class DunningEngineService : IDunningEngineService
     /// <param name="unitOfWork">Unit of work for committing status updates.</param>
     /// <param name="publisher">In-memory mediator publisher for domain events.</param>
     /// <param name="logger">Structured logger instance.</param>
+    /// <param name="messagingFeatureGate">Feature gate for durable messaging.</param>
+    /// <param name="catalogOutboxWriter">Master catalog outbox writer.</param>
     public DunningEngineService(
         ITenantRepository tenantRepository,
         IUnitOfWork unitOfWork,
         IPublisher publisher,
-        ILogger<DunningEngineService> logger)
+        ILogger<DunningEngineService> logger,
+        IMessagingFeatureGate messagingFeatureGate,
+        ICatalogIntegrationOutboxWriter catalogOutboxWriter)
     {
         _tenantRepository = tenantRepository;
         _unitOfWork = unitOfWork;
         _publisher = publisher;
         _logger = logger;
+        _messagingFeatureGate = messagingFeatureGate;
+        _catalogOutboxWriter = catalogOutboxWriter;
     }
 
     /// <inheritdoc />
@@ -52,8 +62,10 @@ public sealed class DunningEngineService : IDunningEngineService
         int transitionsCount = 0;
         int suspendedCount = 0;
         int unchangedCount = 0;
+        int outboxFailures = 0;
 
         var eventsToDispatch = new List<TenantGracePeriodExceededEvent>();
+        var messagingEnabled = _messagingFeatureGate.IsEnabled;
 
         foreach (var tenant in tenants)
         {
@@ -71,6 +83,40 @@ public sealed class DunningEngineService : IDunningEngineService
                     tenant.CompanyName,
                     previousStage,
                     tenant.DunningStage);
+
+                if (messagingEnabled
+                    && tenant.PaymentDueDateUtc.HasValue
+                    && !string.IsNullOrWhiteSpace(tenant.AdminEmail)
+                    && DunningEmailNoticeMapper.ToNoticeType(tenant.DunningStage) is not null)
+                {
+                    var outboxResult = CatalogIntegrationOutboxFactory.CreateDunningStageOutbox(
+                        tenant.Id.Value,
+                        tenant.DunningStage,
+                        tenant.PaymentDueDateUtc.Value,
+                        tenant.Id.Value,
+                        referenceUtc);
+
+                    if (outboxResult.IsFailure)
+                    {
+                        outboxFailures++;
+                        _logger.LogWarning(
+                            "Failed to build dunning outbox for tenant {TenantId}: {Error}",
+                            tenant.Id.Value,
+                            outboxResult.Error.Description);
+                    }
+                    else
+                    {
+                        var addResult = await _catalogOutboxWriter.AddAsync(outboxResult.Value, cancellationToken);
+                        if (addResult.IsFailure && !IsDuplicateEventId(addResult))
+                        {
+                            outboxFailures++;
+                            _logger.LogWarning(
+                                "Failed to enqueue dunning email for tenant {TenantId}: {Error}",
+                                tenant.Id.Value,
+                                addResult.Error.Description);
+                        }
+                    }
+                }
             }
             else
             {
@@ -86,7 +132,6 @@ public sealed class DunningEngineService : IDunningEngineService
                     tenant.CompanyName);
             }
 
-            // Extract and queue domain events
             foreach (var domainEvent in tenant.DomainEvents)
             {
                 if (domainEvent is TenantGracePeriodExceededEvent gracePeriodEvent)
@@ -98,12 +143,11 @@ public sealed class DunningEngineService : IDunningEngineService
             tenant.ClearDomainEvents();
         }
 
-        if (transitionsCount > 0 || suspendedCount > 0)
+        if (transitionsCount > 0 || suspendedCount > 0 || outboxFailures > 0)
         {
             await _unitOfWork.CommitAsync(cancellationToken);
         }
 
-        // Dispatch collected domain events through in-memory publisher
         foreach (var domainEvent in eventsToDispatch)
         {
             await _publisher.Publish(new DomainEventNotification<TenantGracePeriodExceededEvent>(domainEvent), cancellationToken);
@@ -125,4 +169,7 @@ public sealed class DunningEngineService : IDunningEngineService
 
         return Result<DunningExecutionSummary>.Success(summary);
     }
+
+    private static bool IsDuplicateEventId(Result result) =>
+        result.IsFailure && result.Error.Code == "Messaging.DuplicateEventId";
 }

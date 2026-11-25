@@ -24,6 +24,20 @@ public interface ITenantNotificationLogRepository
     Task<IReadOnlySet<TrialNoticeType>> GetSentNoticeTypesForTenantAsync(TenantId tenantId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Indica se já houve envio bem-sucedido do tipo informado desde o instante de referência (episódio de cobrança).
+    /// </summary>
+    /// <param name="tenantId">Identificador do inquilino.</param>
+    /// <param name="noticeType">Tipo de notificação.</param>
+    /// <param name="sinceUtc">Limite inferior de <see cref="TenantNotificationLog.SentAtUtc"/> (tipicamente o vencimento em aberto).</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns><c>true</c> quando existe log de sucesso no episódio.</returns>
+    Task<bool> HasSuccessfulNoticeSinceAsync(
+        TenantId tenantId,
+        TrialNoticeType noticeType,
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém todo o histórico de logs de notificações de um inquilino ordenado por data decrescente.
     /// </summary>
     /// <param name="tenantId">Identificador do inquilino.</param>

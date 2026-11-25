@@ -50,3 +50,7 @@ No documento de requisitos funcionais (`docs/functions/Backoffice-Functions.md`,
 ### Negativas / Mitigações
 - Avaliação de grandes volumes de tenants em lote no background pode gerar lock na tabela `Tenants`.
   - **Mitigação:** A consulta filtra estritamente tenants com `PaymentDueDateUtc != null` ou `DunningStage != DunningStage.None`, minimizando o conjunto de dados carregado.
+
+## Atualização (Fase 9 — notificação por e-mail na fila)
+
+Quando `Messaging__Enabled=true` ([ADR 0052](0052-rabbitmq-integration-events-and-transactional-outbox.md)), transições para estágios D+3, D+7 e D+14 enfileiram `master.dunning-stage-email.v1` no mesmo commit do catálogo; o envio SMTP fica no consumidor de catálogo. Com a flag desligada, nenhum e-mail de inadimplência é disparado — apenas a régua de bloqueio progressivo desta decisão.

@@ -46,6 +46,25 @@ public sealed class TenantNotificationLogRepository : ITenantNotificationLogRepo
     }
 
     /// <inheritdoc />
+    public async Task<bool> HasSuccessfulNoticeSinceAsync(
+        TenantId tenantId,
+        TrialNoticeType noticeType,
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(tenantId);
+
+        return await _context.TenantNotificationLogs
+            .AsNoTracking()
+            .AnyAsync(
+                log => log.TenantId == tenantId
+                       && log.Type == noticeType
+                       && log.IsSuccess
+                       && log.SentAtUtc >= sinceUtc,
+                cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<TenantNotificationLog>> GetLogsByTenantIdAsync(
         TenantId tenantId,
         CancellationToken cancellationToken = default)

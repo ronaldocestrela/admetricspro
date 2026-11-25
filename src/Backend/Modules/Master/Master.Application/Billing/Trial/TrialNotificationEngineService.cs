@@ -1,8 +1,10 @@
 using BuildingBlocks.Application.Emails;
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Domain.Primitives;
 using Master.Application.Emails;
+using Master.Application.Messaging;
 using Master.Application.Repositories;
 using Master.Domain.Tenants;
 using Master.Domain.Tenants.Events;
@@ -23,6 +25,8 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPublisher _publisher;
     private readonly ILogger<TrialNotificationEngineService> _logger;
+    private readonly IMessagingFeatureGate _messagingFeatureGate;
+    private readonly ICatalogIntegrationOutboxWriter _catalogOutboxWriter;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="TrialNotificationEngineService"/>.
@@ -34,6 +38,8 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
     /// <param name="unitOfWork">Unidade de trabalho para commit de persistência.</param>
     /// <param name="publisher">Publicador de eventos de domínio em memória.</param>
     /// <param name="logger">Logger estruturado.</param>
+    /// <param name="messagingFeatureGate">Feature gate de mensageria durável.</param>
+    /// <param name="catalogOutboxWriter">Gravador de outbox do catálogo Master.</param>
     public TrialNotificationEngineService(
         ITenantRepository tenantRepository,
         ITenantNotificationLogRepository logRepository,
@@ -41,7 +47,9 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
         ITransactionalEmailTemplateRenderer templateRenderer,
         IUnitOfWork unitOfWork,
         IPublisher publisher,
-        ILogger<TrialNotificationEngineService> logger)
+        ILogger<TrialNotificationEngineService> logger,
+        IMessagingFeatureGate messagingFeatureGate,
+        ICatalogIntegrationOutboxWriter catalogOutboxWriter)
     {
         _tenantRepository = tenantRepository ?? throw new ArgumentNullException(nameof(tenantRepository));
         _logRepository = logRepository ?? throw new ArgumentNullException(nameof(logRepository));
@@ -50,6 +58,8 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _messagingFeatureGate = messagingFeatureGate ?? throw new ArgumentNullException(nameof(messagingFeatureGate));
+        _catalogOutboxWriter = catalogOutboxWriter ?? throw new ArgumentNullException(nameof(catalogOutboxWriter));
     }
 
     /// <inheritdoc />
@@ -70,6 +80,7 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
         int failuresCount = 0;
 
         var eventsToDispatch = new List<TenantTrialNoticeSentEvent>();
+        var messagingEnabled = _messagingFeatureGate.IsEnabled;
 
         foreach (var tenant in tenants)
         {
@@ -94,6 +105,41 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
                 tenant.Subdomain,
                 pendingNotice.Value,
                 remainingDays);
+
+            if (messagingEnabled)
+            {
+                var outboxResult = CatalogIntegrationOutboxFactory.CreateTrialNoticeOutbox(
+                    tenant.Id.Value,
+                    pendingNotice.Value,
+                    tenant.Id.Value,
+                    referenceUtc);
+
+                if (outboxResult.IsFailure)
+                {
+                    failuresCount++;
+                    _logger.LogWarning(
+                        "Falha ao montar outbox de trial {NoticeType} para tenant {TenantId}: {Error}",
+                        pendingNotice.Value,
+                        tenant.Id.Value,
+                        outboxResult.Error.Description);
+                    continue;
+                }
+
+                var addResult = await _catalogOutboxWriter.AddAsync(outboxResult.Value, cancellationToken);
+                if (addResult.IsFailure && !IsDuplicateEventId(addResult))
+                {
+                    failuresCount++;
+                    _logger.LogWarning(
+                        "Falha ao gravar outbox de trial {NoticeType} para tenant {TenantId}: {Error}",
+                        pendingNotice.Value,
+                        tenant.Id.Value,
+                        addResult.Error.Description);
+                    continue;
+                }
+
+                IncrementNoticeCounter(ref sevenDayCount, ref threeDayCount, ref oneDayCount, ref expiredCount, pendingNotice.Value);
+                continue;
+            }
 
             var message = _templateRenderer.RenderTrialNoticeEmail(
                 tenant.AdminEmail,
@@ -123,21 +169,7 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
 
             if (sendResult.IsSuccess)
             {
-                switch (pendingNotice.Value)
-                {
-                    case TrialNoticeType.TrialReminder7Days:
-                        sevenDayCount++;
-                        break;
-                    case TrialNoticeType.TrialReminder3Days:
-                        threeDayCount++;
-                        break;
-                    case TrialNoticeType.TrialReminder1Day:
-                        oneDayCount++;
-                        break;
-                    case TrialNoticeType.TrialExpired:
-                        expiredCount++;
-                        break;
-                }
+                IncrementNoticeCounter(ref sevenDayCount, ref threeDayCount, ref oneDayCount, ref expiredCount, pendingNotice.Value);
 
                 eventsToDispatch.Add(new TenantTrialNoticeSentEvent(
                     tenant.Id,
@@ -158,14 +190,18 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
             }
         }
 
-        if (sevenDayCount > 0 || threeDayCount > 0 || oneDayCount > 0 || expiredCount > 0 || failuresCount > 0)
+        var enqueuedCount = sevenDayCount + threeDayCount + oneDayCount + expiredCount;
+        if (enqueuedCount > 0 || failuresCount > 0)
         {
             await _unitOfWork.CommitAsync(cancellationToken);
         }
 
-        foreach (var domainEvent in eventsToDispatch)
+        if (!messagingEnabled)
         {
-            await _publisher.Publish(new DomainEventNotification<TenantTrialNoticeSentEvent>(domainEvent), cancellationToken);
+            foreach (var domainEvent in eventsToDispatch)
+            {
+                await _publisher.Publish(new DomainEventNotification<TenantTrialNoticeSentEvent>(domainEvent), cancellationToken);
+            }
         }
 
         var summary = new TrialNoticeExecutionSummary(
@@ -187,5 +223,32 @@ public sealed class TrialNotificationEngineService : ITrialNotificationEngineSer
             failuresCount);
 
         return Result<TrialNoticeExecutionSummary>.Success(summary);
+    }
+
+    private static bool IsDuplicateEventId(Result result) =>
+        result.IsFailure && result.Error.Code == "Messaging.DuplicateEventId";
+
+    private static void IncrementNoticeCounter(
+        ref int sevenDayCount,
+        ref int threeDayCount,
+        ref int oneDayCount,
+        ref int expiredCount,
+        TrialNoticeType noticeType)
+    {
+        switch (noticeType)
+        {
+            case TrialNoticeType.TrialReminder7Days:
+                sevenDayCount++;
+                break;
+            case TrialNoticeType.TrialReminder3Days:
+                threeDayCount++;
+                break;
+            case TrialNoticeType.TrialReminder1Day:
+                oneDayCount++;
+                break;
+            case TrialNoticeType.TrialExpired:
+                expiredCount++;
+                break;
+        }
     }
 }

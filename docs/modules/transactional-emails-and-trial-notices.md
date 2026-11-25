@@ -16,7 +16,10 @@ O módulo **Mensageria Transacional & Régua de Trial** implementa o sistema de 
      - **D-3 (Aviso de 3 dias):** Disparado quando faltam entre 2 e 3 dias para o encerramento do trial.
      - **D-1 (Aviso de 24 horas):** Disparado quando resta 1 dia para o encerramento do trial.
      - **Trial Expirado:** Disparado imediatamente após a expiração do trial, orientando a regularização e upgrade de plano.
-   - Idempotência rigorosa garantida através da tabela de auditoria `TenantNotificationLogs` no `MasterDb`.
+   - Com `Messaging__Enabled=true` (Fase 9, [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md)): o `TrialNotificationEngineService` avalia a janela e grava outbox `master.trial-notice-email.v1` no mesmo `CommitAsync` — sem SMTP, sem `TenantNotificationLog` e sem `TenantTrialNoticeSentEvent` no ciclo. Contadores do `TrialNoticeExecutionSummary` refletem avisos **enfileirados**. O consumidor `admetricspro.master.catalog-email` executa `SendTrialNoticeEmailCommand`.
+   - Com `Messaging__Enabled=false`: renderização, SMTP, log e evento de domínio in-process (comportamento legado).
+   - Idempotência de enfileiramento: `EventId` determinístico por tenant + `TrialNoticeType`; reexecução trata `Messaging.DuplicateEventId` como já enfileirado.
+   - Idempotência de envio: `TenantNotificationLogs` com `IsSuccess=true` via `GetSentNoticeTypesForTenantAsync`.
 
 3. **Confirmação de assinatura paga (Fase 4):**
    - Com mensageria ligada: após cartão aprovado ou webhook `PAYMENT_RECEIVED`/`PAYMENT_CONFIRMED`, outbox `master.subscription-confirmation-email.v1` no `MasterDb` (sem bloquear o `Result` do checkout).

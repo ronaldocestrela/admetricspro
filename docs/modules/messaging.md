@@ -120,6 +120,21 @@ Portas (`BuildingBlocks.Application`): `IIntegrationOutboxStore`, `IIntegrationI
 | `Messaging__Enabled=false` | Boas-vindas via `TenantProvisionedEvent` + `SendTenantWelcomeEmailCommand` in-process; confirmação de assinatura **não** enfileirada (comportamento legado de checkout) |
 | Retry SMTP longo | `Email.TransientSendFailed` (`ITransientIntegrationFailure`); teto `Messaging:Consumers:CatalogEmail:MaxAttempts` (padrão 5) |
 
+### 4.2.1 Fase 9 — Régua Master (trial e dunning)
+
+| Item | Valor |
+| :--- | :--- |
+| Routing keys | `master.trial-notice-email.v1`, `master.dunning-stage-email.v1` |
+| Fila | `admetricspro.master.catalog-email` (mesma da Fase 4) |
+| Consumidor | `CatalogEmailIntegrationConsumer` — despacha `SendTrialNoticeEmailCommand`, `SendDunningStageEmailCommand` |
+| Agendadores | `TrialNoticeBackgroundService`, `DunningBackgroundService` — mantêm `TrialNoticePolicy` / `DunningPolicy`; só gravam outbox quando `Messaging__Enabled=true` |
+| Payload trial | `tenantId`, `noticeType` — sem HTML nem credencial SMTP |
+| Payload dunning | `tenantId`, `dunningStage`, `paymentDueDateUtc` |
+| EventId estável | `CatalogIntegrationStableEventIds` — trial: tenant + tipo; dunning: tenant + estágio + vencimento |
+| Idempotência enfileiramento | `Messaging.DuplicateEventId` no ciclo → contado como já enfileirado, sem falha do lote |
+| Idempotência envio | `TenantNotificationLog` / `GetSentNoticeTypesForTenantAsync` (trial); `HasSuccessfulNoticeSinceAsync` por episódio de vencimento (dunning) |
+| `Messaging__Enabled=false` | Trial: SMTP in-process legado; Dunning: só transição de estágio (sem e-mail) |
+
 ### 4.3 Fase 5 — Sincronização de conta de mídia (tenant)
 
 | Item | Valor |

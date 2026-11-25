@@ -33,5 +33,20 @@ public enum TrialNoticeType
     /// <summary>
     /// E-mail de confirmação emitido após ativação definitiva de assinatura paga e liquidação financeira.
     /// </summary>
-    SubscriptionActivated = 6
+    SubscriptionActivated = 6,
+
+    /// <summary>
+    /// Notificação de inadimplência ao atingir o estágio D+3 (automações desativadas).
+    /// </summary>
+    DunningAutomationsDisabled = 7,
+
+    /// <summary>
+    /// Notificação de inadimplência ao atingir o estágio D+7 (relatórios bloqueados).
+    /// </summary>
+    DunningReportsBlocked = 8,
+
+    /// <summary>
+    /// Notificação de inadimplência ao atingir o estágio D+14+ (login bloqueado / suspensão).
+    /// </summary>
+    DunningLoginBlocked = 9
 }

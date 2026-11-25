@@ -6,8 +6,11 @@ using BuildingBlocks.Infrastructure.Persistence.Messaging;
 using BuildingBlocks.Messaging.Consumers;
 using BuildingBlocks.Messaging.Contracts;
 using MassTransit;
+using Master.Application.Emails.Commands.SendDunningStageEmail;
 using Master.Application.Emails.Commands.SendSubscriptionConfirmationEmail;
 using Master.Application.Emails.Commands.SendTenantWelcomeEmail;
+using Master.Application.Emails.Commands.SendTrialNoticeEmail;
+using Master.Domain.Tenants;
 using MediatR;
 using Microsoft.Extensions.Options;
 using WebApi.Configuration;
@@ -31,7 +34,9 @@ public sealed class CatalogEmailIntegrationConsumer(
     {
         var messageType = context.Message.MessageType;
         if (messageType is not CatalogIntegrationMessageTypes.TenantWelcomeEmail
-            and not CatalogIntegrationMessageTypes.SubscriptionConfirmationEmail)
+            and not CatalogIntegrationMessageTypes.SubscriptionConfirmationEmail
+            and not CatalogIntegrationMessageTypes.TrialNoticeEmail
+            and not CatalogIntegrationMessageTypes.DunningStageEmail)
         {
             return;
         }
@@ -56,6 +61,20 @@ public sealed class CatalogEmailIntegrationConsumer(
                 new SendSubscriptionConfirmationEmailCommand(
                     env.EventId,
                     env.Payload.GetProperty("tenantId").GetGuid()),
+            CatalogIntegrationMessageTypes.TrialNoticeEmail => env =>
+                new SendTrialNoticeEmailCommand(
+                    env.EventId,
+                    env.Payload.GetProperty("tenantId").GetGuid(),
+                    Enum.Parse<TrialNoticeType>(env.Payload.GetProperty("noticeType").GetString()!)),
+            CatalogIntegrationMessageTypes.DunningStageEmail => env =>
+                new SendDunningStageEmailCommand(
+                    env.EventId,
+                    env.Payload.GetProperty("tenantId").GetGuid(),
+                    Enum.Parse<DunningStage>(env.Payload.GetProperty("dunningStage").GetString()!),
+                    DateTime.Parse(
+                        env.Payload.GetProperty("paymentDueDateUtc").GetString()!,
+                        null,
+                        System.Globalization.DateTimeStyles.RoundtripKind)),
             _ => _ => throw new InvalidOperationException("Tipo de mensagem não suportado.")
         };
 

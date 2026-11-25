@@ -49,6 +49,28 @@ public interface ITransactionalEmailTemplateRenderer
         double daysRemaining);
 
     /// <summary>
+    /// Renderiza o e-mail transacional de transição de estágio de inadimplência (D+3, D+7, D+14).
+    /// </summary>
+    /// <param name="recipientEmail">Endereço de e-mail de destino.</param>
+    /// <param name="recipientName">Nome completo do gestor.</param>
+    /// <param name="companyName">Razão social da agência.</param>
+    /// <param name="subdomain">Subdomínio da agência.</param>
+    /// <param name="customDomain">Domínio CNAME customizado opcional.</param>
+    /// <param name="dunningStage">Estágio atingido.</param>
+    /// <param name="paymentDueDateUtc">Vencimento da fatura em aberto.</param>
+    /// <param name="daysOverdue">Dias de atraso calculados.</param>
+    /// <returns>Mensagem de e-mail pronta para envio.</returns>
+    EmailMessage RenderDunningStageEmail(
+        string recipientEmail,
+        string recipientName,
+        string companyName,
+        string subdomain,
+        string? customDomain,
+        DunningStage dunningStage,
+        DateTime paymentDueDateUtc,
+        int daysOverdue);
+
+    /// <summary>
     /// Renderiza o e-mail de confirmação de ativação definitiva de assinatura comercial paga.
     /// </summary>
     /// <param name="recipientEmail">Endereço de e-mail de destino.</param>

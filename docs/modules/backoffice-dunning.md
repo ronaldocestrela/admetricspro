@@ -142,3 +142,17 @@ Em `appsettings.json`:
 
 - **`Enabled`**: ativa ou desativa o timer do background service.
 - **`IntervalMinutes`**: frequência de execução (padrão de 1440 minutos = 24 horas).
+
+---
+
+## 6. E-mail transacional por estágio (Fase 9)
+
+Com `Messaging__Enabled=true` ([ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md)), cada **transição** para `AutomationsDisabled` (D+3), `ReportsBlocked` (D+7) ou `LoginBlocked` (D+14) grava uma linha de outbox `master.dunning-stage-email.v1` no mesmo `CommitAsync` das alterações de `DunningStage` / `Status`. Carência D+0–D+2 não gera mensagem. O `DunningBackgroundService` e o endpoint manual continuam donos da política temporal; não há SMTP no laço.
+
+| Payload | Campos |
+| :--- | :--- |
+| Envelope | `tenantId`, `dunningStage`, `paymentDueDateUtc` — sem HTML renderizado |
+
+O consumidor reutiliza a fila `admetricspro.master.catalog-email` e o comando `SendDunningStageEmailCommand`. Idempotência por episódio: `HasSuccessfulNoticeSinceAsync` com `SentAtUtc >= PaymentDueDateUtc` do payload. Tipos de log: `TrialNoticeType.DunningAutomationsDisabled`, `DunningReportsBlocked`, `DunningLoginBlocked`.
+
+Com `Messaging__Enabled=false`, o motor mantém apenas bloqueio progressivo e eventos `TenantGracePeriodExceededEvent` (log estruturado); nenhum e-mail de dunning é enviado.

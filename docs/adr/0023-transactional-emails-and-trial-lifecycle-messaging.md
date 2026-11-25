@@ -34,6 +34,10 @@ No fluxo de onboarding self-service de agências e gestão multitenant:
 
 Boas-vindas e confirmação de assinatura paga podem ser enfileiradas no outbox do `MasterDb` quando `Messaging__Enabled=true`, conforme [ADR 0052](0052-rabbitmq-integration-events-and-transactional-outbox.md). Este ADR permanece a referência de templates, `TenantNotificationLog` e régua de trial; o transporte assíncrono não altera o contrato HTTP dos endpoints listados acima.
 
+## Atualização (Fase 9 — régua de trial na fila)
+
+A régua D-7/D-3/D-1/Expirado passa a gravar outbox `master.trial-notice-email.v1` quando a mensageria está ligada; SMTP e `TenantNotificationLog` ocorrem apenas no consumidor (`SendTrialNoticeEmailCommand`). Com `Messaging__Enabled=false`, o `TrialNotificationEngineService` preserva o envio síncrono descrito na decisão original.
+
 ## Consequências
 - **Positivas:**
   - Experiência fluida de ativação para a agência: login e orientações disponíveis no e-mail em segundos após o cadastro.

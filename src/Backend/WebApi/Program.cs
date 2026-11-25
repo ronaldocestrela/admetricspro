@@ -106,6 +106,16 @@ builder.Services.AddAdMetricsMessaging(
                 bind.ExchangeType = "topic";
                 bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.SubscriptionConfirmationEmail;
             });
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.TrialNoticeEmail;
+            });
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.DunningStageEmail;
+            });
             endpoint.ConfigureConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>(context);
         });
 

@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Text.Json;
 using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Domain.Messaging;
 using BuildingBlocks.Domain.Primitives;
+using Master.Domain.Tenants;
 
 namespace Master.Application.Messaging;
 
@@ -40,11 +42,77 @@ public static class CatalogIntegrationOutboxFactory
             correlationId,
             occurredAtUtc);
 
+    /// <summary>
+    /// Cria outbox para um marco da régua de trial.
+    /// </summary>
+    /// <param name="tenantId">Identificador do tenant.</param>
+    /// <param name="noticeType">Marco pendente (7, 3, 1 dia ou expirado).</param>
+    /// <param name="correlationId">Correlação do fluxo.</param>
+    /// <param name="occurredAtUtc">Instante UTC da avaliação.</param>
+    /// <returns>Linha de outbox ou falha de validação.</returns>
+    public static Result<IntegrationOutboxMessage> CreateTrialNoticeOutbox(
+        Guid tenantId,
+        TrialNoticeType noticeType,
+        Guid correlationId,
+        DateTime occurredAtUtc)
+    {
+        var eventId = CatalogIntegrationStableEventIds.ForTrialNotice(tenantId, noticeType);
+        var noticeName = noticeType.ToString();
+        using var payloadDoc = JsonDocument.Parse(
+            $$"""{"tenantId":"{{tenantId}}","noticeType":"{{noticeName}}"}""");
+
+        return CreateCatalogOutbox(
+            CatalogIntegrationMessageTypes.TrialNoticeEmail,
+            tenantId,
+            correlationId,
+            occurredAtUtc,
+            eventId,
+            payloadDoc.RootElement.Clone());
+    }
+
+    /// <summary>
+    /// Cria outbox para notificação de transição de estágio de inadimplência.
+    /// </summary>
+    /// <param name="tenantId">Identificador do tenant.</param>
+    /// <param name="dunningStage">Novo estágio (D+3, D+7 ou D+14).</param>
+    /// <param name="paymentDueDateUtc">Vencimento da fatura em aberto.</param>
+    /// <param name="correlationId">Correlação do fluxo.</param>
+    /// <param name="occurredAtUtc">Instante UTC da transição.</param>
+    /// <returns>Linha de outbox ou falha de validação.</returns>
+    public static Result<IntegrationOutboxMessage> CreateDunningStageOutbox(
+        Guid tenantId,
+        DunningStage dunningStage,
+        DateTime paymentDueDateUtc,
+        Guid correlationId,
+        DateTime occurredAtUtc)
+    {
+        if (paymentDueDateUtc.Kind != DateTimeKind.Utc)
+        {
+            return Result<IntegrationOutboxMessage>.Failure(IntegrationOutboxErrors.InstantNotUtc);
+        }
+
+        var eventId = CatalogIntegrationStableEventIds.ForDunningStage(tenantId, dunningStage, paymentDueDateUtc);
+        var dueIso = paymentDueDateUtc.ToString("O", CultureInfo.InvariantCulture);
+        var stageName = dunningStage.ToString();
+        using var payloadDoc = JsonDocument.Parse(
+            $$"""{"tenantId":"{{tenantId}}","dunningStage":"{{stageName}}","paymentDueDateUtc":"{{dueIso}}"}""");
+
+        return CreateCatalogOutbox(
+            CatalogIntegrationMessageTypes.DunningStageEmail,
+            tenantId,
+            correlationId,
+            occurredAtUtc,
+            eventId,
+            payloadDoc.RootElement.Clone());
+    }
+
     private static Result<IntegrationOutboxMessage> CreateCatalogOutbox(
         string messageType,
         Guid tenantId,
         Guid correlationId,
-        DateTime occurredAtUtc)
+        DateTime occurredAtUtc,
+        Guid? eventId = null,
+        JsonElement? payload = null)
     {
         if (tenantId == Guid.Empty || correlationId == Guid.Empty)
         {
@@ -56,16 +124,20 @@ public static class CatalogIntegrationOutboxFactory
             return Result<IntegrationOutboxMessage>.Failure(IntegrationOutboxErrors.InstantNotUtc);
         }
 
-        var eventId = Guid.NewGuid();
-        using var payloadDoc = JsonDocument.Parse($$"""{"tenantId":"{{tenantId}}"}""");
+        var resolvedEventId = eventId ?? Guid.NewGuid();
+        using var payloadDoc = payload is null
+            ? JsonDocument.Parse($$"""{"tenantId":"{{tenantId}}"}""")
+            : null;
+        var payloadElement = payload ?? payloadDoc!.RootElement.Clone();
+
         var envelopeResult = IntegrationEventEnvelope.Create(
-            eventId,
+            resolvedEventId,
             messageType,
             correlationId,
             new DateTimeOffset(occurredAtUtc, TimeSpan.Zero),
             IntegrationEventScope.Catalog,
             tenantId,
-            payloadDoc.RootElement.Clone());
+            payloadElement.Clone());
 
         if (envelopeResult.IsFailure)
         {
@@ -75,7 +147,7 @@ public static class CatalogIntegrationOutboxFactory
         var json = IntegrationEventEnvelopeSerializer.Serialize(envelopeResult.Value);
         return IntegrationOutboxMessage.Create(
             Guid.NewGuid(),
-            eventId,
+            resolvedEventId,
             messageType,
             json,
             tenantId,

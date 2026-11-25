@@ -200,6 +200,90 @@ public sealed class TransactionalEmailTemplateRenderer : ITransactionalEmailTemp
         return EmailMessage.Create(recipientEmail, subject, html, text).Value;
     }
 
+    /// <inheritdoc />
+    public EmailMessage RenderDunningStageEmail(
+        string recipientEmail,
+        string recipientName,
+        string companyName,
+        string subdomain,
+        string? customDomain,
+        DunningStage dunningStage,
+        DateTime paymentDueDateUtc,
+        int daysOverdue)
+    {
+        var loginUrl = BuildLoginUrl(subdomain, customDomain);
+        var noticeType = dunningStage switch
+        {
+            DunningStage.AutomationsDisabled => TrialNoticeType.DunningAutomationsDisabled,
+            DunningStage.ReportsBlocked => TrialNoticeType.DunningReportsBlocked,
+            DunningStage.LoginBlocked => TrialNoticeType.DunningLoginBlocked,
+            _ => TrialNoticeType.DunningAutomationsDisabled
+        };
+
+        var (subject, headline, urgencyText) = GetNoticeContent(noticeType, companyName, daysOverdue);
+
+        var html = $$"""
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>{{subject}}</title>
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b0f19; color: #f1f5f9; margin: 0; padding: 0; }
+                .wrapper { max-width: 600px; margin: 40px auto; background-color: #131b2e; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+                .header { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 32px; text-align: center; }
+                .header h1 { margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; }
+                .content { padding: 36px 32px; }
+                .content p { font-size: 15px; line-height: 1.6; color: #94a3b8; margin: 0 0 18px; }
+                .content strong { color: #ffffff; }
+                .alert-card { background-color: #450a0a; border-left: 4px solid #ef4444; padding: 18px; border-radius: 6px; margin: 20px 0; font-size: 14px; color: #fecaca; }
+                .btn-container { text-align: center; margin: 32px 0 16px; }
+                .btn { display: inline-block; background-color: #4f46e5; color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35); }
+                .footer { border-top: 1px solid #1e293b; padding: 24px 32px; text-align: center; font-size: 12px; color: #64748b; background-color: #0b0f19; }
+                .footer a { color: #818cf8; text-decoration: none; }
+              </style>
+            </head>
+            <body>
+              <div class="wrapper">
+                <div class="header">
+                  <h1>{{headline}}</h1>
+                </div>
+                <div class="content">
+                  <p>Olá, <strong>{{recipientName}}</strong>,</p>
+                  <p>{{urgencyText}}</p>
+                  <div class="alert-card">
+                    Vencimento em aberto desde {{paymentDueDateUtc:dd/MM/yyyy}} ({{daysOverdue}} dia(s) de atraso).
+                    Regularize o pagamento para restabelecer o acesso completo.
+                  </div>
+                  <div class="btn-container">
+                    <a href="{{loginUrl}}" class="btn" target="_blank">Acessar Faturamento</a>
+                  </div>
+                </div>
+                <div class="footer">
+                  <p>© {{DateTime.UtcNow.Year}} {{AppBrandName}}. Todos os direitos reservados.</p>
+                  <p>Dúvidas? <a href="mailto:{{SupportEmail}}">{{SupportEmail}}</a></p>
+                </div>
+              </div>
+            </body>
+            </html>
+            """;
+
+        var text = $"""
+            Olá, {recipientName}!
+
+            {urgencyText.Replace("<strong>", string.Empty).Replace("</strong>", string.Empty)}
+
+            Vencimento: {paymentDueDateUtc:dd/MM/yyyy} ({daysOverdue} dia(s) de atraso).
+            Acesse: {loginUrl}
+
+            Atenciosamente,
+            Equipe {AppBrandName}
+            """;
+
+        return EmailMessage.Create(recipientEmail, subject, html, text).Value;
+    }
+
     private static (string Subject, string Headline, string UrgencyText) GetNoticeContent(
         TrialNoticeType noticeType,
         string companyName,
@@ -226,6 +310,21 @@ public sealed class TransactionalEmailTemplateRenderer : ITransactionalEmailTemp
                 $"[Ação Necessária] O período de testes da {companyName} expirou",
                 "Seu período de avaliação gratuita expirou",
                 $"O período de avaliação de 14 dias da <strong>{companyName}</strong> expirou. Para reativar o acesso total aos seus dados e automações, regularize sua assinatura agora."),
+
+            TrialNoticeType.DunningAutomationsDisabled => (
+                $"[Fatura em aberto] Automações suspensas — {companyName}",
+                "Automações desativadas por inadimplência",
+                $"Identificamos atraso no pagamento da <strong>{companyName}</strong>. As automações de tráfego foram pausadas para evitar risco orçamentário até a regularização."),
+
+            TrialNoticeType.DunningReportsBlocked => (
+                $"[Urgente] Relatórios bloqueados — {companyName}",
+                "Relatórios e dashboards bloqueados",
+                $"O atraso no faturamento da <strong>{companyName}</strong> atingiu o limite operacional. Relatórios e dashboards analíticos estão indisponíveis até a quitação."),
+
+            TrialNoticeType.DunningLoginBlocked => (
+                $"[Suspensão] Conta suspensa por inadimplência — {companyName}",
+                "Acesso suspenso",
+                $"A conta da <strong>{companyName}</strong> foi suspensa após <strong>{(int)daysRemaining}</strong> dias de atraso. Quite a fatura em aberto para reativar o login da equipe."),
 
             _ => (
                 $"Lembrete de ciclo de vida - {AppBrandName}",
