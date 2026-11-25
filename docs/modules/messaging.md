@@ -1,6 +1,6 @@
 # Mensageria durável (eventos de integração)
 
-> **Fases 0–3** entregues até outbox transacional, dispatcher, inbox, transporte MassTransit e circuito de laboratório SQL → RabbitMQ → consumidor ping (apenas testes). **Sem endpoint HTTP de mensageria** nem consumidores de negócio em produção (Fase 4+). Decisão formal: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
+> **Fases 0–4:** outbox, dispatcher, inbox, transporte MassTransit, consumidor de laboratório (testes) e **consumidor de e-mail de catálogo** (boas-vindas e confirmação de assinatura) quando `Messaging__Enabled=true`. Sem endpoint HTTP de mensageria. Decisão: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
 
 ## 1. Fase 1 — broker no ambiente (entregue)
 
@@ -105,7 +105,20 @@ Portas (`BuildingBlocks.Application`): `IIntegrationOutboxStore`, `IIntegrationI
 
 **Consumidor e inbox:** ack terminal (sucesso ou erro permanente coberto por política) grava inbox na mesma transação do efeito; reentrega com mesmo `EventId` não repete o handler (`IntegrationResultDisposition` + `ExistsAsync`). Reagendar publicação **não** grava inbox.
 
-**Laboratório:** tipo `messaging.ping.v1` e consumidor `PingIntegrationMessageConsumer` existem apenas em `tests/IntegrationTests` (não há rota HTTP de ping). Produção com mensageria ligada sobe o barramento sem consumidor de negócio até a Fase 4.
+**Laboratório:** tipo `messaging.ping.v1` e consumidor `PingIntegrationMessageConsumer` existem apenas em `tests/IntegrationTests`.
+
+### 4.2 Fase 4 — E-mail transacional (catálogo)
+
+| Item | Valor |
+| :--- | :--- |
+| Routing keys | `master.tenant-welcome-email.v1`, `master.subscription-confirmation-email.v1` |
+| Fila | `admetricspro.master.catalog-email` |
+| Consumidor | `CatalogEmailIntegrationConsumer` (`WebApi/Messaging`) |
+| Inbox / outbox | `MasterIntegrationInboxStore` + reagendamento na mesma linha via `ScheduleForConsumerRetry` (de `Published` → `Pending`) |
+| Comandos | `SendTenantWelcomeEmailCommand`, `SendSubscriptionConfirmationEmailCommand` |
+| Gravação outbox | `ICatalogIntegrationOutboxWriter` (provisionamento e checkout/webhook pagos no mesmo `CommitAsync` do Master) |
+| `Messaging__Enabled=false` | Boas-vindas via `TenantProvisionedEvent` + `SendTenantWelcomeEmailCommand` in-process; confirmação de assinatura **não** enfileirada (comportamento legado de checkout) |
+| Retry SMTP longo | `Email.TransientSendFailed` (`ITransientIntegrationFailure`); teto `Messaging:Consumers:CatalogEmail:MaxAttempts` (padrão 5) |
 
 ## 5. Fluxo alvo (referência)
 

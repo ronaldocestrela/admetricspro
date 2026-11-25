@@ -71,6 +71,7 @@ public sealed class SmtpEmailSender : IEmailSender
 
         var maxAttempts = 1 + Math.Max(0, config.MaxRetryAttempts);
         string? lastError = null;
+        var lastFailureWasTransient = false;
 
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -95,6 +96,7 @@ public sealed class SmtpEmailSender : IEmailSender
             }
             catch (SmtpDeliveryException ex) when (ex.IsTransient && attempt < maxAttempts)
             {
+                lastFailureWasTransient = true;
                 lastError = ex.Message;
                 _logger.LogWarning(
                     ex,
@@ -106,7 +108,15 @@ public sealed class SmtpEmailSender : IEmailSender
             catch (SmtpDeliveryException ex)
             {
                 lastError = ex.Message;
+                lastFailureWasTransient = ex.IsTransient;
                 _logger.LogError(ex, "Falha ao enviar e-mail transacional via SMTP para {To}.", message.To);
+                if (ex.IsTransient)
+                {
+                    var nextAttempt = DateTimeOffset.UtcNow.AddSeconds(
+                        config.TransientRescheduleDelaySeconds > 0 ? config.TransientRescheduleDelaySeconds : 60);
+                    return Result.Failure(new EmailTransientSendFailure(ex.Message, nextAttempt));
+                }
+
                 return Result.Failure(EmailErrors.SendFailed(ex.Message));
             }
             catch (Exception ex)
@@ -117,7 +127,16 @@ public sealed class SmtpEmailSender : IEmailSender
             }
         }
 
-        return Result.Failure(EmailErrors.SendFailed(lastError ?? "Falha transitória após esgotar tentativas."));
+        if (lastFailureWasTransient)
+        {
+            var nextAttempt = DateTimeOffset.UtcNow.AddSeconds(
+                config.TransientRescheduleDelaySeconds > 0 ? config.TransientRescheduleDelaySeconds : 60);
+            return Result.Failure(new EmailTransientSendFailure(
+                lastError ?? "Falha transitória após esgotar tentativas.",
+                nextAttempt));
+        }
+
+        return Result.Failure(EmailErrors.SendFailed(lastError ?? "Falha ao enviar e-mail transacional."));
     }
 
     /// <summary>

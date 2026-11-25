@@ -5,7 +5,8 @@
 O módulo **Mensageria Transacional & Régua de Trial** implementa o sistema de disparo de e-mails transacionais e a gestão automatizada do ciclo de vida de testes gratuitos no SaaS AdMetricsPro:
 
 1. **E-mail de Boas-Vindas Automatizado (Welcome Email):**
-   - Disparado imediatamente após a conclusão do provisionamento do banco dedicado de um novo inquilino (`TenantProvisionedEvent`).
+   - Com `Messaging__Enabled=true`: linha de outbox `master.tenant-welcome-email.v1` no mesmo `CommitAsync` do provisionamento; SMTP no consumidor `admetricspro.master.catalog-email` ([ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md)).
+   - Com `Messaging__Enabled=false`: disparo in-process via `TenantProvisionedEvent` → `SendTenantWelcomeEmailCommand` (comportamento legado).
    - Apresenta as credenciais de acesso, plano contratado, orientações de primeiros passos e um botão de ação com link direto para o subdomínio exclusivo de login da agência: `https://{subdomain}.admetricspro.com.br/login` (ou domínio CNAME customizado caso configurado).
    - Disponibiliza endpoint de reenvio manual para suporte e autoatendimento: `POST /api/v1/tenants/{id}/resend-welcome-email`.
 
@@ -17,7 +18,11 @@ O módulo **Mensageria Transacional & Régua de Trial** implementa o sistema de 
      - **Trial Expirado:** Disparado imediatamente após a expiração do trial, orientando a regularização e upgrade de plano.
    - Idempotência rigorosa garantida através da tabela de auditoria `TenantNotificationLogs` no `MasterDb`.
 
-3. **Abstração Desacoplada de E-mails (`BuildingBlocks.Application/Emails`):**
+3. **Confirmação de assinatura paga (Fase 4):**
+   - Com mensageria ligada: após cartão aprovado ou webhook `PAYMENT_RECEIVED`/`PAYMENT_CONFIRMED`, outbox `master.subscription-confirmation-email.v1` no `MasterDb` (sem bloquear o `Result` do checkout).
+   - Idempotência de negócio: `TenantNotificationLog` com `TrialNoticeType.SubscriptionActivated`.
+
+4. **Abstração Desacoplada de E-mails (`BuildingBlocks.Application/Emails`):**
    - Suporte transparente a envio via SMTP corporativo (`SmtpEmailSender` + `MailKitSmtpTransport`, [ADR 0049](../adr/0049-mailkit-platform-smtp.md)) e modo in-memory (`InMemoryEmailSender`) para testes automatizados.
    - Templates HTML modernos, responsivos e acessíveis com paleta corporativa slate/indigo e fallback automático em texto plano.
 

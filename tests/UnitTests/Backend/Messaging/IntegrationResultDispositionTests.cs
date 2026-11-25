@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Emails;
 using BuildingBlocks.Application.Messaging;
 using BuildingBlocks.Domain.Primitives;
 using FluentAssertions;
@@ -48,6 +49,20 @@ public sealed class IntegrationResultDispositionTests
         var disposition = IntegrationResultDisposition.ForResult(Result.Failure(error), alreadyInInbox: false);
 
         disposition.Action.Should().Be(IntegrationMessageDispositionAction.Acknowledge);
+    }
+
+    /// <summary>
+    /// Erro de SMTP transitório da Fase 4 deve reagendar via outbox.
+    /// </summary>
+    [Fact]
+    public void ForResult_EmailTransientSendFailure_DeveReschedule()
+    {
+        var retryAt = DateTimeOffset.UtcNow.AddSeconds(60);
+        var error = new EmailTransientSendFailure("smtp timeout", retryAt);
+        var disposition = IntegrationResultDisposition.ForResult(Result.Failure(error), alreadyInInbox: false);
+
+        disposition.Action.Should().Be(IntegrationMessageDispositionAction.Reschedule);
+        disposition.NextAttemptAtUtc.Should().Be(retryAt);
     }
 
     /// <summary>

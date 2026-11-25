@@ -8,7 +8,8 @@ namespace BuildingBlocks.Infrastructure.Persistence.Messaging;
 /// <summary>
 /// Grava linhas de outbox no <see cref="DbContext"/> transacional do escopo atual.
 /// </summary>
-public sealed class DbIntegrationOutboxWriter(DbContext context) : IIntegrationOutboxWriter
+public sealed class DbIntegrationOutboxWriter(DbContext context)
+    : IIntegrationOutboxWriter, ICatalogIntegrationOutboxWriter
 {
     /// <inheritdoc />
     public async Task<Result> AddAsync(IntegrationOutboxMessage message, CancellationToken cancellationToken = default)

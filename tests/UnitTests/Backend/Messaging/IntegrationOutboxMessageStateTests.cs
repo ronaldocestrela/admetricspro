@@ -122,6 +122,41 @@ public sealed class IntegrationOutboxMessageStateTests
     }
 
     /// <summary>
+    /// Published volta a Pending com próximo horário após falha do consumidor.
+    /// </summary>
+    [Fact]
+    public void ScheduleForConsumerRetry_DePublished_DeveVoltarPending()
+    {
+        var message = CreatePending();
+        message.MarkInProgress(FixedUtc);
+        message.MarkPublished();
+        var next = FixedUtc.AddMinutes(1);
+
+        var result = message.ScheduleForConsumerRetry(next, "Email.TransientSendFailed", FixedUtc);
+
+        result.IsSuccess.Should().BeTrue();
+        message.Status.Should().Be(IntegrationOutboxMessageStatus.Pending);
+        message.NextAttemptAtUtc.Should().Be(next);
+        message.AttemptCount.Should().Be(1);
+    }
+
+    /// <summary>
+    /// Dead letter a partir de Published quando esgotam tentativas.
+    /// </summary>
+    [Fact]
+    public void MarkDeadLetter_DePublished_DeveTransicionar()
+    {
+        var message = CreatePending();
+        message.MarkInProgress(FixedUtc);
+        message.MarkPublished();
+
+        var result = message.MarkDeadLetter("Email.SendFailed");
+
+        result.IsSuccess.Should().BeTrue();
+        message.Status.Should().Be(IntegrationOutboxMessageStatus.DeadLetter);
+    }
+
+    /// <summary>
     /// Dead letter a partir de Pending ou InProgress.
     /// </summary>
     [Theory]

@@ -1,6 +1,9 @@
+using BuildingBlocks.Application.Messaging;
+using MassTransit;
 using BuildingBlocks.Infrastructure.Configuration;
 using BuildingBlocks.Infrastructure.DependencyInjection;
 using BuildingBlocks.Infrastructure.Emails;
+using BuildingBlocks.Infrastructure.Messaging;
 using BuildingBlocks.Infrastructure.MultiTenancy;
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Security;
@@ -53,9 +56,32 @@ builder.Services.AddSecurityServices();
 builder.Services.AddMultiTenancy();
 builder.Services.AddTenantPersistence<TenantDbContext>();
 builder.Services.AddTenantMessagingStores();
+builder.Services.AddSingleton<IMessagingFeatureGate, ConfigurationMessagingFeatureGate>();
 builder.Services.Configure<WebApi.Configuration.MessagingOptions>(
     builder.Configuration.GetSection(WebApi.Configuration.MessagingOptions.SectionName));
-builder.Services.AddAdMetricsMessaging(builder.Configuration);
+builder.Services.Configure<WebApi.Configuration.CatalogEmailConsumerOptions>(
+    builder.Configuration.GetSection(WebApi.Configuration.CatalogEmailConsumerOptions.SectionName));
+builder.Services.AddAdMetricsMessaging(
+    builder.Configuration,
+    bus => bus.AddConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>(),
+    (context, cfg) =>
+    {
+        cfg.ReceiveEndpoint(WebApi.Messaging.CatalogEmailIntegrationConsumer.ConsumerName, endpoint =>
+        {
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.TenantWelcomeEmail;
+            });
+            endpoint.Bind("admetricspro.integration", bind =>
+            {
+                bind.ExchangeType = "topic";
+                bind.RoutingKey = BuildingBlocks.Application.Messaging.CatalogIntegrationMessageTypes.SubscriptionConfirmationEmail;
+            });
+            endpoint.ConfigureConsumer<WebApi.Messaging.CatalogEmailIntegrationConsumer>(context);
+        });
+    });
 builder.Services.AddOptions<WebApi.Background.OutboxDispatchOptions>()
     .BindConfiguration(WebApi.Background.OutboxDispatchOptions.SectionName)
     .Validate(o => o.IntervalSeconds >= 5, "Intervalo de despacho de outbox deve ser >= 5 segundos.");

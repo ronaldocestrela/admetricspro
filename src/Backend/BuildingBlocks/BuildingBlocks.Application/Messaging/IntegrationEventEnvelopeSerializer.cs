@@ -50,9 +50,7 @@ public static class IntegrationEventEnvelopeSerializer
             return Result<IntegrationEventEnvelope>.Failure(MessagingErrors.PayloadInvalid);
         }
 
-        var resolvedScope = scope ?? (dto.TenantId.HasValue
-            ? IntegrationEventScope.Operational
-            : IntegrationEventScope.Catalog);
+        var resolvedScope = scope ?? dto.ResolveScope();
 
         if (dto.TenantId is null && resolvedScope == IntegrationEventScope.Operational)
         {
@@ -89,6 +87,9 @@ public static class IntegrationEventEnvelopeSerializer
         [JsonPropertyName("payload")]
         public JsonElement Payload { get; init; }
 
+        [JsonPropertyName("scope")]
+        public string? Scope { get; init; }
+
         public static IntegrationEventEnvelopeDto FromEnvelope(IntegrationEventEnvelope envelope) =>
             new()
             {
@@ -98,6 +99,24 @@ public static class IntegrationEventEnvelopeSerializer
                 OccurredOnUtc = envelope.OccurredOnUtc,
                 TenantId = envelope.TenantId,
                 Payload = envelope.Payload,
+                Scope = envelope.Scope == IntegrationEventScope.Catalog ? "catalog" : "operational",
             };
+
+        public IntegrationEventScope ResolveScope()
+        {
+            if (string.Equals(Scope, "catalog", StringComparison.OrdinalIgnoreCase))
+            {
+                return IntegrationEventScope.Catalog;
+            }
+
+            if (string.Equals(Scope, "operational", StringComparison.OrdinalIgnoreCase))
+            {
+                return IntegrationEventScope.Operational;
+            }
+
+            return TenantId.HasValue
+                ? IntegrationEventScope.Operational
+                : IntegrationEventScope.Catalog;
+        }
     }
 }

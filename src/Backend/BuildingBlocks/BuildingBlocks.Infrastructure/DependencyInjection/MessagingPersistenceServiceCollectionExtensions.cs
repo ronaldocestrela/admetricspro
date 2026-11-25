@@ -35,6 +35,10 @@ public static class MessagingPersistenceServiceCollectionExtensions
     {
         services.AddScoped<MasterOutboxDispatchStore>(sp =>
             new MasterOutboxDispatchStore(new DbIntegrationOutboxStore(sp.GetRequiredService<TMasterContext>())));
+        services.AddScoped<ICatalogIntegrationOutboxWriter>(sp =>
+            new DbIntegrationOutboxWriter(sp.GetRequiredService<TMasterContext>()));
+        services.AddScoped<ICatalogIntegrationOutboxStore>(sp =>
+            new DbCatalogIntegrationOutboxStore(sp.GetRequiredService<TMasterContext>()));
         services.AddScoped<IIntegrationOutboxWriter>(sp =>
             new DbIntegrationOutboxWriter(sp.GetRequiredService<TMasterContext>()));
         services.AddScoped<MasterIntegrationInboxStore>(sp =>

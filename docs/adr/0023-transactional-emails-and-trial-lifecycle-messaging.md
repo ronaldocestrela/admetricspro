@@ -30,6 +30,10 @@ No fluxo de onboarding self-service de agências e gestão multitenant:
    - Disparo de e-mails em D-7, D-3, D-1 e Expiração com verificação contra `TenantNotificationLog` para prevenir disparos duplicados no mesmo ciclo de vida.
    - Endpoint manual `POST /api/v1/billing/trial-notices/execute` para gatilhos operacionais de rotinas agendadas (ex: cron jobs externos) e testes pontuais.
 
+## Atualização (Fase 4 — mensageria durável)
+
+Boas-vindas e confirmação de assinatura paga podem ser enfileiradas no outbox do `MasterDb` quando `Messaging__Enabled=true`, conforme [ADR 0052](0052-rabbitmq-integration-events-and-transactional-outbox.md). Este ADR permanece a referência de templates, `TenantNotificationLog` e régua de trial; o transporte assíncrono não altera o contrato HTTP dos endpoints listados acima.
+
 ## Consequências
 - **Positivas:**
   - Experiência fluida de ativação para a agência: login e orientações disponíveis no e-mail em segundos após o cadastro.

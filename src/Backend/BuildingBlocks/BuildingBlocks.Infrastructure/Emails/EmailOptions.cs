@@ -64,4 +64,9 @@ public sealed class EmailOptions
     /// Número máximo de novas tentativas após falha transitória (além da primeira tentativa).
     /// </summary>
     public int MaxRetryAttempts { get; set; } = 1;
+
+    /// <summary>
+    /// Atraso sugerido (segundos) antes de reagendar envio via outbox após falha transitória esgotada no retry curto.
+    /// </summary>
+    public int TransientRescheduleDelaySeconds { get; set; } = 60;
 }

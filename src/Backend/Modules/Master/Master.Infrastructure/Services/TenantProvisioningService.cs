@@ -1,9 +1,12 @@
 using System.Text.RegularExpressions;
+using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Application.Security;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Tenants;
 using BuildingBlocks.Infrastructure.Security;
+using Master.Application.Messaging;
 using Master.Application.Repositories;
 using Master.Application.Services;
 using Master.Domain.Tenants;
@@ -25,6 +28,8 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
     private readonly IEncryptionService _encryptionService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly MediatR.IPublisher? _publisher;
+    private readonly ICatalogIntegrationOutboxWriter? _catalogOutboxWriter;
+    private readonly IMessagingFeatureGate? _messagingFeatureGate;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TenantProvisioningService"/> class.
@@ -38,7 +43,7 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         ITenantRepository tenantRepository,
         IUnitOfWork unitOfWork,
         IEncryptionService encryptionService)
-        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, new PasswordHasher(), null)
+        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, new PasswordHasher(), null, null, null)
     {
     }
 
@@ -56,7 +61,7 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         IUnitOfWork unitOfWork,
         IEncryptionService encryptionService,
         IPasswordHasher passwordHasher)
-        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, passwordHasher, null)
+        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, passwordHasher, null, null, null)
     {
     }
 
@@ -76,6 +81,30 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         IEncryptionService encryptionService,
         IPasswordHasher passwordHasher,
         MediatR.IPublisher? publisher)
+        : this(masterDbContext, tenantRepository, unitOfWork, encryptionService, passwordHasher, publisher, null, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TenantProvisioningService"/> class with outbox de catálogo e feature gate de mensageria.
+    /// </summary>
+    /// <param name="masterDbContext">Master catalog context.</param>
+    /// <param name="tenantRepository">Tenant repository abstraction.</param>
+    /// <param name="unitOfWork">Unit of work for commit coordination.</param>
+    /// <param name="encryptionService">Encryption service for connection string storage.</param>
+    /// <param name="passwordHasher">Cryptographic password hasher.</param>
+    /// <param name="publisher">Optional in-memory domain event publisher.</param>
+    /// <param name="catalogOutboxWriter">Gravador de outbox no MasterDb.</param>
+    /// <param name="messagingFeatureGate">Feature flag de mensageria durável.</param>
+    public TenantProvisioningService(
+        MasterDbContext masterDbContext,
+        ITenantRepository tenantRepository,
+        IUnitOfWork unitOfWork,
+        IEncryptionService encryptionService,
+        IPasswordHasher passwordHasher,
+        MediatR.IPublisher? publisher,
+        ICatalogIntegrationOutboxWriter? catalogOutboxWriter,
+        IMessagingFeatureGate? messagingFeatureGate)
     {
         _masterDbContext = masterDbContext;
         _tenantRepository = tenantRepository;
@@ -83,6 +112,8 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         _encryptionService = encryptionService;
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _publisher = publisher;
+        _catalogOutboxWriter = catalogOutboxWriter;
+        _messagingFeatureGate = messagingFeatureGate;
     }
 
     /// <inheritdoc />
@@ -182,9 +213,35 @@ public sealed partial class TenantProvisioningService : ITenantProvisioningServi
         }
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
+
+        var messagingEnabled = _messagingFeatureGate?.IsEnabled == true;
+        if (messagingEnabled && !string.IsNullOrWhiteSpace(tenant.AdminEmail))
+        {
+            if (_catalogOutboxWriter is null)
+            {
+                return Result<TenantId>.Failure(
+                    Error.Failure("Messaging.OutboxUnavailable", "Gravador de outbox do catálogo não configurado."));
+            }
+
+            var outboxResult = CatalogIntegrationOutboxFactory.CreateWelcomeEmailOutbox(
+                tenant.Id.Value,
+                tenant.Id.Value,
+                DateTime.UtcNow);
+            if (outboxResult.IsFailure)
+            {
+                return Result<TenantId>.Failure(outboxResult.Error);
+            }
+
+            var enqueueResult = await _catalogOutboxWriter.AddAsync(outboxResult.Value, cancellationToken);
+            if (enqueueResult.IsFailure)
+            {
+                return Result<TenantId>.Failure(enqueueResult.Error);
+            }
+        }
+
         await _unitOfWork.CommitAsync(cancellationToken);
 
-        if (_publisher is not null && !string.IsNullOrWhiteSpace(tenant.AdminEmail))
+        if (!messagingEnabled && _publisher is not null && !string.IsNullOrWhiteSpace(tenant.AdminEmail))
         {
             var provisionedEvent = new Master.Domain.Tenants.Events.TenantProvisionedEvent(
                 tenant.Id,

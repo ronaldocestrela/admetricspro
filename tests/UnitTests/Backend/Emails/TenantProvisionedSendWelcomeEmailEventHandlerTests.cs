@@ -1,124 +1,71 @@
-using BuildingBlocks.Application.Emails;
 using BuildingBlocks.Application.Messaging;
-using BuildingBlocks.Application.Persistence;
-using BuildingBlocks.Domain.Primitives;
-using FluentAssertions;
-using Master.Application.Emails;
-using Master.Application.Repositories;
 using Master.Application.Tenants.Events;
 using Master.Domain.Tenants;
 using Master.Domain.Tenants.Events;
-using Microsoft.Extensions.Logging;
+using MediatR;
 using NSubstitute;
-using Xunit;
 
 namespace UnitTests.Backend.Emails;
 
 /// <summary>
-/// Testes unitários para o despachador de e-mail de boas-vindas (<see cref="TenantProvisionedSendWelcomeEmailEventHandler"/>).
+/// Testes do handler in-process de boas-vindas quando a mensageria está desligada.
 /// </summary>
 public sealed class TenantProvisionedSendWelcomeEmailEventHandlerTests
 {
-    private readonly IEmailSender _emailSender = Substitute.For<IEmailSender>();
-    private readonly ITransactionalEmailTemplateRenderer _templateRenderer = Substitute.For<ITransactionalEmailTemplateRenderer>();
-    private readonly ITenantNotificationLogRepository _logRepository = Substitute.For<ITenantNotificationLogRepository>();
-    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
-    private readonly ILogger<TenantProvisionedSendWelcomeEmailEventHandler> _logger = Substitute.For<ILogger<TenantProvisionedSendWelcomeEmailEventHandler>>();
-
     /// <summary>
-    /// Valida que ao receber TenantProvisionedEvent o handler renderiza, envia o e-mail e registra o log com sucesso.
+    /// Com mensageria ligada o handler não despacha comando.
     /// </summary>
     [Fact]
-    public async Task Handle_WhenEventReceived_ShouldRenderSendAndLogEmail()
+    public async Task Handle_WhenMessagingEnabled_ShouldNotSendCommand()
     {
-        // Arrange
-        var tenantId = TenantId.New();
-        var domainEvent = new TenantProvisionedEvent(
-            tenantId,
-            "Agência Alpha",
-            "agencia-alpha",
-            "carlos@alpha.com.br",
-            "Carlos Mendes",
-            null,
-            SubscriptionTier.Pro,
-            DateTime.UtcNow);
+        var sender = Substitute.For<ISender>();
+        var gate = Substitute.For<IMessagingFeatureGate>();
+        gate.IsEnabled.Returns(true);
 
-        var notification = new DomainEventNotification<TenantProvisionedEvent>(domainEvent);
+        var handler = new TenantProvisionedSendWelcomeEmailEventHandler(sender, gate);
+        var notification = new DomainEventNotification<TenantProvisionedEvent>(
+            new TenantProvisionedEvent(
+                TenantId.New(),
+                "Co",
+                "co",
+                "a@b.com",
+                "Admin",
+                null,
+                SubscriptionTier.Trial,
+                DateTime.UtcNow));
 
-        var sampleMessage = EmailMessage.Create("carlos@alpha.com.br", "Bem-vindo", "<p>Corpo</p>", "Corpo").Value;
-        _templateRenderer.RenderWelcomeEmail(
-            domainEvent.AdminEmail,
-            domainEvent.AdminFullName,
-            domainEvent.CompanyName,
-            domainEvent.Subdomain,
-            domainEvent.CustomDomain,
-            domainEvent.Tier)
-            .Returns(sampleMessage);
-
-        _emailSender.SendEmailAsync(sampleMessage, Arg.Any<CancellationToken>())
-            .Returns(Result.Success());
-
-        var handler = new TenantProvisionedSendWelcomeEmailEventHandler(
-            _emailSender,
-            _templateRenderer,
-            _logRepository,
-            _unitOfWork,
-            _logger);
-
-        // Act
         await handler.Handle(notification, CancellationToken.None);
 
-        // Assert
-        await _emailSender.Received(1).SendEmailAsync(sampleMessage, Arg.Any<CancellationToken>());
-        await _logRepository.Received(1).AddAsync(
-            Arg.Is<TenantNotificationLog>(log => log.TenantId == tenantId && log.IsSuccess && log.Type == TrialNoticeType.WelcomeEmail),
-            Arg.Any<CancellationToken>());
-        await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+        await sender.DidNotReceive().Send(Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>
-    /// Valida que quando o envio de e-mail falha, o log registra a falha sem estourar exceção.
+    /// Com mensageria desligada delega ao comando MediatR.
     /// </summary>
     [Fact]
-    public async Task Handle_WhenEmailSendFails_ShouldRecordFailureInLogWithoutThrowing()
+    public async Task Handle_WhenMessagingDisabled_ShouldSendCommand()
     {
-        // Arrange
+        var sender = Substitute.For<ISender>();
+        var gate = Substitute.For<IMessagingFeatureGate>();
+        gate.IsEnabled.Returns(false);
+
+        var handler = new TenantProvisionedSendWelcomeEmailEventHandler(sender, gate);
         var tenantId = TenantId.New();
-        var domainEvent = new TenantProvisionedEvent(
-            tenantId,
-            "Agência Alpha",
-            "agencia-alpha",
-            "carlos@alpha.com.br",
-            "Carlos Mendes",
-            null,
-            SubscriptionTier.Pro,
-            DateTime.UtcNow);
+        var notification = new DomainEventNotification<TenantProvisionedEvent>(
+            new TenantProvisionedEvent(
+                tenantId,
+                "Co",
+                "co",
+                "a@b.com",
+                "Admin",
+                null,
+                SubscriptionTier.Trial,
+                DateTime.UtcNow));
 
-        var notification = new DomainEventNotification<TenantProvisionedEvent>(domainEvent);
+        await handler.Handle(notification, CancellationToken.None);
 
-        var sampleMessage = EmailMessage.Create("carlos@alpha.com.br", "Bem-vindo", "<p>Corpo</p>", "Corpo").Value;
-        _templateRenderer.RenderWelcomeEmail(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<SubscriptionTier>())
-            .Returns(sampleMessage);
-
-        _emailSender.SendEmailAsync(sampleMessage, Arg.Any<CancellationToken>())
-            .Returns(Result.Failure(EmailErrors.SendFailed("Servidor SMTP fora do ar")));
-
-        var handler = new TenantProvisionedSendWelcomeEmailEventHandler(
-            _emailSender,
-            _templateRenderer,
-            _logRepository,
-            _unitOfWork,
-            _logger);
-
-        // Act
-        var act = () => handler.Handle(notification, CancellationToken.None);
-
-        // Assert
-        await act.Should().NotThrowAsync();
-        await _logRepository.Received(1).AddAsync(
-            Arg.Is<TenantNotificationLog>(log => log.TenantId == tenantId && !log.IsSuccess && log.ErrorMessage!.Contains("SMTP")),
+        await sender.Received(1).Send(
+            Arg.Is<Master.Application.Emails.Commands.SendTenantWelcomeEmail.SendTenantWelcomeEmailCommand>(c => c.TenantId == tenantId.Value),
             Arg.Any<CancellationToken>());
-        await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
 }

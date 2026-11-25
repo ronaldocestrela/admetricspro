@@ -233,7 +233,9 @@ public sealed class IntegrationOutboxMessage : Entity<Guid>
     /// <returns>Resultado da transição.</returns>
     public Result MarkDeadLetter(string errorCode)
     {
-        if (Status is not IntegrationOutboxMessageStatus.Pending and not IntegrationOutboxMessageStatus.InProgress)
+        if (Status is not IntegrationOutboxMessageStatus.Pending
+            and not IntegrationOutboxMessageStatus.InProgress
+            and not IntegrationOutboxMessageStatus.Published)
         {
             return Result.Failure(IntegrationOutboxErrors.InvalidTransition);
         }
@@ -241,6 +243,33 @@ public sealed class IntegrationOutboxMessage : Entity<Guid>
         Status = IntegrationOutboxMessageStatus.DeadLetter;
         InProgressSinceUtc = null;
         LastErrorCode = string.IsNullOrWhiteSpace(errorCode) ? null : errorCode.Trim();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Reagenda consumo após publicação bem-sucedida no broker (retry longo de SMTP, etc.).
+    /// </summary>
+    /// <param name="nextAttemptAtUtc">Próximo instante em que o dispatcher pode republicar.</param>
+    /// <param name="errorCode">Código de erro do consumidor.</param>
+    /// <param name="utcNow">Relógio de referência em UTC.</param>
+    /// <returns>Resultado da transição.</returns>
+    public Result ScheduleForConsumerRetry(DateTime nextAttemptAtUtc, string errorCode, DateTime utcNow)
+    {
+        if (nextAttemptAtUtc.Kind != DateTimeKind.Utc || utcNow.Kind != DateTimeKind.Utc)
+        {
+            return Result.Failure(IntegrationOutboxErrors.InstantNotUtc);
+        }
+
+        if (Status != IntegrationOutboxMessageStatus.Published)
+        {
+            return Result.Failure(IntegrationOutboxErrors.InvalidTransition);
+        }
+
+        Status = IntegrationOutboxMessageStatus.Pending;
+        AttemptCount += 1;
+        NextAttemptAtUtc = nextAttemptAtUtc;
+        LastErrorCode = string.IsNullOrWhiteSpace(errorCode) ? null : errorCode.Trim();
+        InProgressSinceUtc = null;
         return Result.Success();
     }
 

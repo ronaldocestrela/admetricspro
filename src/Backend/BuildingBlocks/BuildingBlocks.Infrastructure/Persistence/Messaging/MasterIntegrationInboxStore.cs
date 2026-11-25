@@ -6,7 +6,7 @@ namespace BuildingBlocks.Infrastructure.Persistence.Messaging;
 /// <summary>
 /// Inbox do catálogo Master (evita colisão com <see cref="IIntegrationInboxStore"/> do tenant).
 /// </summary>
-public sealed class MasterIntegrationInboxStore(DbIntegrationInboxStore inner)
+public sealed class MasterIntegrationInboxStore(DbIntegrationInboxStore inner) : IIntegrationInboxStore
 {
     /// <summary>
     /// Verifica existência de registro na inbox do catálogo.

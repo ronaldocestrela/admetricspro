@@ -1,7 +1,9 @@
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Messaging.Persistence;
 using BuildingBlocks.Application.Persistence;
 using BuildingBlocks.Domain.Primitives;
 using Master.Application.Billing.Payments;
+using Master.Application.Messaging;
 using Master.Application.Repositories;
 using Master.Domain.Billing;
 using Master.Domain.Tenants;
@@ -18,6 +20,8 @@ public sealed class ProcessCheckoutCommandHandler : ICommandHandler<ProcessCheck
     private readonly ITenantPaymentTransactionRepository _transactionRepository;
     private readonly IPaymentGatewayService _paymentGateway;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICatalogIntegrationOutboxWriter? _catalogOutboxWriter;
+    private readonly IMessagingFeatureGate? _messagingFeatureGate;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="ProcessCheckoutCommandHandler"/>.
@@ -27,18 +31,24 @@ public sealed class ProcessCheckoutCommandHandler : ICommandHandler<ProcessCheck
     /// <param name="transactionRepository">Repositório de transações financeiras.</param>
     /// <param name="paymentGateway">Serviço de integração com gateway de pagamento.</param>
     /// <param name="unitOfWork">Coordenador transacional de persistência.</param>
+    /// <param name="catalogOutboxWriter">Gravador de outbox no MasterDb.</param>
+    /// <param name="messagingFeatureGate">Feature flag de mensageria.</param>
     public ProcessCheckoutCommandHandler(
         ITenantRepository tenantRepository,
         IPlanRepository planRepository,
         ITenantPaymentTransactionRepository transactionRepository,
         IPaymentGatewayService paymentGateway,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICatalogIntegrationOutboxWriter? catalogOutboxWriter = null,
+        IMessagingFeatureGate? messagingFeatureGate = null)
     {
         _tenantRepository = tenantRepository ?? throw new ArgumentNullException(nameof(tenantRepository));
         _planRepository = planRepository ?? throw new ArgumentNullException(nameof(planRepository));
         _transactionRepository = transactionRepository ?? throw new ArgumentNullException(nameof(transactionRepository));
         _paymentGateway = paymentGateway ?? throw new ArgumentNullException(nameof(paymentGateway));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _catalogOutboxWriter = catalogOutboxWriter;
+        _messagingFeatureGate = messagingFeatureGate;
     }
 
     /// <inheritdoc />
@@ -132,6 +142,13 @@ public sealed class ProcessCheckoutCommandHandler : ICommandHandler<ProcessCheck
                 }
 
                 await _transactionRepository.AddAsync(transaction, cancellationToken);
+
+                var enqueueResult = await TryEnqueueSubscriptionConfirmationAsync(tenant, cancellationToken);
+                if (enqueueResult.IsFailure)
+                {
+                    return Result<ProcessCheckoutResult>.Failure(enqueueResult.Error);
+                }
+
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result<ProcessCheckoutResult>.Success(new ProcessCheckoutResult(
@@ -207,6 +224,31 @@ public sealed class ProcessCheckoutCommandHandler : ICommandHandler<ProcessCheck
             PixQrCode: pixCharge.QrCodeBase64,
             PixCopiaECola: pixCharge.CopiaECola,
             PixExpiresAtUtc: pixCharge.ExpiresAtUtc));
+    }
+
+    private async Task<Result> TryEnqueueSubscriptionConfirmationAsync(Tenant tenant, CancellationToken cancellationToken)
+    {
+        if (_messagingFeatureGate?.IsEnabled != true || string.IsNullOrWhiteSpace(tenant.AdminEmail))
+        {
+            return Result.Success();
+        }
+
+        if (_catalogOutboxWriter is null)
+        {
+            return Result.Failure(
+                Error.Failure("Messaging.OutboxUnavailable", "Gravador de outbox do catálogo não configurado."));
+        }
+
+        var outboxResult = CatalogIntegrationOutboxFactory.CreateSubscriptionConfirmationOutbox(
+            tenant.Id.Value,
+            tenant.Id.Value,
+            DateTime.UtcNow);
+        if (outboxResult.IsFailure)
+        {
+            return Result.Failure(outboxResult.Error);
+        }
+
+        return await _catalogOutboxWriter.AddAsync(outboxResult.Value, cancellationToken);
     }
 
     private static decimal GetDefaultMonthlyPrice(SubscriptionTier tier) => tier switch
