@@ -1,8 +1,19 @@
 # Mensageria durável (eventos de integração)
 
-> **Fase 0 — contrato apenas.** Não há tipos C#, broker, tabelas nem consumidores implementados nesta entrega. **Sem endpoint HTTP nesta fase.** A implementação segue o [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md); a decisão formal está no [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md).
+> **Fase 0 — contrato** e **Fase 1 — broker no ambiente** (Compose + health check condicional). Ainda **sem** outbox, MassTransit, dispatcher nem publicação de mensagens de negócio. **Sem endpoint HTTP de mensageria.** Decisão formal: [ADR 0052](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md); ordem de construção: [roadmap](../roadmaps/rabbitmq-messaging-roadmap.md).
 
-## 1. Diagnóstico do estado atual
+## 1. Fase 1 — broker no ambiente (entregue)
+
+| Item | Comportamento |
+| :--- | :--- |
+| Compose (dev) | Serviço `rabbitmq:4-management`; portas `5672` e `15672` apenas em `127.0.0.1`. |
+| Compose (prod) | `rabbitmq:4` sem management; **nenhuma** porta AMQP publicada no host. |
+| `Messaging__Enabled=false` (padrão) | Health check `rabbitmq` **não** registrado; `GET /health` segue 200; nenhum handler publica mensagem. |
+| `Messaging__Enabled=true` | Health check nomeado `rabbitmq` no `GET /health`; broker inacessível → agregado Unhealthy (503). |
+| `GET /api/v1/health` | Inalterado (contrato de negócio sempre `Healthy`). |
+| Variáveis | `RabbitMQ__*`, `Messaging__HostRole` (lido; papel efetivo na Fase 10), ver [.env.example](../../.env.example). |
+
+## 2. Diagnóstico do estado atual
 
 A comunicação entre módulos é **in-memory** via MediatR ([ADR 0009](../adr/0009-in-memory-messaging-and-validation-pipeline.md)): `ICommand` / `IQuery`, `ValidationBehavior` e `DomainEventNotification<T>` para `IDomainEventHandler<T>`. Isso permanece correto quando o caller precisa de `Result<T>` na mesma requisição HTTP.
 
@@ -16,7 +27,7 @@ Três lacunas motivam o canal durável:
 
 O frontend (`WebApp`, `BackofficeApp`) continua **somente** via Web API ([ADR 0020](../adr/0020-zero-direct-db-access-frontend-api-client.md)); nenhum cliente AMQP na UI.
 
-## 2. Fronteira: MediatR vs fila
+## 3. Fronteira: MediatR vs fila
 
 | Situação | Canal | Motivo |
 | :--- | :--- | :--- |
@@ -30,7 +41,7 @@ O frontend (`WebApp`, `BackofficeApp`) continua **somente** via Web API ([ADR 00
 | Operação em massa com chamada de rede | Uma mensagem por item, com inbox | Falha parcial tolerada (bulk cross-platform). |
 | Migração de schema no startup | Hosted service atual | Não é mensagem de negócio. |
 
-## 3. Contrato de envelope (não implementado)
+## 4. Contrato de envelope (não implementado)
 
 Representação alvo do payload publicado no exchange `admetricspro.integration`. Cabeçalhos AMQP espelham os mesmos campos (`message-id` = `eventId`, `correlation-id`, `message-type`, `occurred-on-utc`, `tenant-id` quando aplicável).
 
@@ -62,7 +73,7 @@ Representação alvo do payload publicado no exchange `admetricspro.integration`
 
 Persistência: duas tabelas de **outbox** (nomes físicos e schema **a definir na Fase 3**) — uma no `MasterDb`, outra no banco do tenant — mais **inbox** por consumidor para idempotência de transporte.
 
-## 4. Fluxo alvo (referência)
+## 5. Fluxo alvo (referência)
 
 ```mermaid
 sequenceDiagram
@@ -86,7 +97,7 @@ sequenceDiagram
     CON->>MED: Comando existente + inbox
 ```
 
-## 5. Política de ack a partir de `Result`
+## 6. Política de ack a partir de `Result`
 
 | Resultado | Ação na mensagem |
 | :--- | :--- |
@@ -96,7 +107,7 @@ sequenceDiagram
 | Exceção inesperada | Retry curto no transporte; depois dead-letter. |
 | `EventId` já na inbox | Ack imediato (reentrega). |
 
-## 6. Catálogo de erros do módulo
+## 7. Catálogo de erros do módulo
 
 | Código | Quando | Destino / efeito |
 | :--- | :--- | :--- |
@@ -108,7 +119,7 @@ sequenceDiagram
 
 Consumidor **não** usa exceção para forçar retry em falha de negócio coberta por `Result`.
 
-## 7. Fora de escopo (fronteira protegida)
+## 8. Fora de escopo (fronteira protegida)
 
 - Substituir MediatR por fila em comando ou consulta síncrona.
 - Colocar segredos ou credenciais no corpo da mensagem.
@@ -116,7 +127,7 @@ Consumidor **não** usa exceção para forçar retry em falha de negócio cobert
 - Cliente RabbitMQ no Blazor, Backoffice ou browser.
 - Endpoints HTTP de mensageria **nesta fase** (consulta de dead-letter e status de job entram em fases posteriores).
 
-## 8. Referências
+## 9. Referências
 
 - [ADR 0052 — RabbitMQ e outbox transacional](../adr/0052-rabbitmq-integration-events-and-transactional-outbox.md)
 - [Roadmap de implementação](../roadmaps/rabbitmq-messaging-roadmap.md)

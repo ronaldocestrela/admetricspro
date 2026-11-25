@@ -54,6 +54,17 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         result.Value.TimestampUtc.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
     }
 
+    /// <summary>
+    /// Com <c>Messaging:Enabled</c> desligado (padrão de teste), o endpoint de infraestrutura usado pelo Compose responde 200.
+    /// </summary>
+    [Fact]
+    public async Task GetInfrastructureHealth_ShouldReturnOk_WhenMessagingDisabledByDefault()
+    {
+        var response = await _client.GetAsync("/health");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     private sealed record HealthResultEnvelope(
         bool IsSuccess,
         Error? Error,

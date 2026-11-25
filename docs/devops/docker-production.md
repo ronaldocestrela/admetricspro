@@ -55,6 +55,7 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 | Serviço | Imagem / Build | Porta Interna | Porta Exposta no Host | Função |
 | :--- | :--- | :--- | :--- | :--- |
 | **`sqlserver`** | `mssql/server:2022-latest` | `1433` | `127.0.0.1:1433` | Banco de dados `MasterCatalog` e bancos isolados de inquilinos. |
+| **`rabbitmq`** | `rabbitmq:4` | `5672` (AMQP) | **Nenhuma** | Broker de mensageria; tráfego somente na rede `admetricspro-prod-net`. Não exponha `5672` nem `15672` na internet. |
 | **`webapi`** | `src/Backend/WebApi/Dockerfile` | `8080` | `7001` | Backend Monólito Modular ASP.NET Core .NET 10. |
 | **`webapp`** | `src/Frontend/WebApp/Dockerfile` | `8080` | `7000` | Painel do Cliente / Inquilinos (Blazor Server). |
 | **`backoffice`** | `src/Frontend/BackofficeApp/Dockerfile` | `8080` | `7002` | Painel do Administrador Global (Blazor Server). |
@@ -63,9 +64,19 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 
 ## 4. Ordem de Inicialização e Health Checks
 
-1. **SQL Server Inicia Primeiro:** O container do banco de dados inicializa e executa checagens periódicas via `/opt/mssql-tools18/bin/sqlcmd`.
-2. **WebApi Aguarda o SQL Server:** O container `webapi` possui `depends_on: sqlserver` com condição `service_healthy`. Ao iniciar, ele executa as migrações automáticas do banco `MasterCatalog` (`DatabaseMigrations__ApplyMasterMigrationsOnStartup=true`).
-3. **WebApps Aguardam a WebApi:** Os portais Blazor Server (`webapp` e `backoffice`) iniciam somente após a `webapi` reportar status saudável em seu endpoint `/health`.
+1. **SQL Server e RabbitMQ iniciam em paralelo:** Ambos executam health checks nativos (`sqlcmd` e `rabbitmq-diagnostics -q ping`).
+2. **WebApi aguarda SQL Server e RabbitMQ:** O container `webapi` possui `depends_on` com `service_healthy` em `sqlserver` e `rabbitmq`. Ao iniciar, executa as migrações automáticas do banco `MasterCatalog` quando configurado (`DatabaseMigrations__ApplyMasterMigrationsOnStartup=true`).
+3. **WebApps aguardam a WebApi:** Os portais Blazor Server (`webapp` e `backoffice`) iniciam somente após a `webapi` reportar status saudável em `GET /health`.
+
+### RabbitMQ em produção (Fase 1)
+
+No arquivo `.env.prod` do operador, defina credenciais fortes (nunca versionadas):
+
+- `RABBITMQ_DEFAULT_USER`, `RABBITMQ_DEFAULT_PASS`, `RABBITMQ_DEFAULT_VHOST` (padrão `admetricspro`)
+- `Messaging__Enabled=false` mantém o comportamento legado: o health check AMQP não é registrado e `/health` permanece 200 mesmo se o broker cair depois.
+- Com `Messaging__Enabled=true`, a Web API exige broker acessível em `rabbitmq:5672` na rede interna; falha de conexão deixa o check `rabbitmq` **Unhealthy** e o agregado `/health` retorna 503.
+
+O plugin de management **não** é publicado em produção (`rabbitmq:4` sem UI). Diagnóstico operacional do broker ocorre via logs do container ou ferramentas na rede interna, não pela internet.
 
 ---
 

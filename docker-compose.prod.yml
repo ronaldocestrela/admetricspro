@@ -26,6 +26,28 @@ services:
       start_period: 20s
 
   # ----------------------------------------------------------------------------
+  # 1b. RABBITMQ (MENSAGERIA — SEM MANAGEMENT NA INTERNET)
+  # ----------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:4
+    container_name: admetricspro-prod-rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST:-admetricspro}
+    volumes:
+      - rabbitmq-prod-data:/var/lib/rabbitmq
+    networks:
+      - admetricspro-prod-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  # ----------------------------------------------------------------------------
   # 2. BACKEND WEB API (ASP.NET CORE .NET 10 - MONÓLITO MODULAR)
   # ----------------------------------------------------------------------------
   webapi:
@@ -36,6 +58,8 @@ services:
     restart: always
     depends_on:
       sqlserver:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
@@ -98,6 +122,13 @@ services:
       - SocialImageAi__ImageSize=${SocialImageAi__ImageSize:-1K}
       - SocialImageAi__TimeoutSeconds=${SocialImageAi__TimeoutSeconds:-90}
       - SocialPublishing__Media__LocalRoot=/app/data/social-media
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__VirtualHost=${RABBITMQ_DEFAULT_VHOST:-admetricspro}
+      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
+      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - Messaging__Enabled=${Messaging__Enabled:-false}
+      - Messaging__HostRole=${Messaging__HostRole:-All}
     volumes:
       - social-media-prod-data:/app/data/social-media
     ports:
@@ -169,6 +200,8 @@ services:
 
 volumes:
   sqlserver-prod-data:
+    driver: local
+  rabbitmq-prod-data:
     driver: local
   social-media-prod-data:
     driver: local

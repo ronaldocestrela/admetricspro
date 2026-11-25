@@ -39,7 +39,8 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options 
         : originalFactory(context);
 });
 builder.Services.AddOpenApiDocumentation();
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddRabbitMqHealthCheck(builder.Configuration);
 
 var masterConnectionString = builder.Configuration.GetConnectionString("MasterDb")
     ?? "Server=localhost;Database=MasterCatalog;Trusted_Connection=True;TrustServerCertificate=True;";
