@@ -1,3 +1,5 @@
+using Master.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Master.Infrastructure.Persistence.Migrations.TenantOperational
 {
     /// <inheritdoc />
+    [DbContext(typeof(TenantOperationalDbContext))]
+    [Migration("20261126120000_Add_TenantBranding_ObjectKeys")]
     public partial class Add_TenantBranding_ObjectKeys : Migration
     {
         /// <inheritdoc />

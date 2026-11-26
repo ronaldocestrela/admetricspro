@@ -30,10 +30,15 @@ public sealed class TenantContextAccessor : ITenantContextAccessor
             var newContext = value ?? MultiTenancy.TenantContext.Empty;
             _scopedContext = newContext;
 
-            var existingHolder = AsyncLocalContext.Value;
-            if (existingHolder is not null)
+            // Esvaziar o holder anterior só no clear. Reatribuir um tenant válido não pode
+            // anular o holder que uma continuação já capturou entre awaits.
+            if (!newContext.IsResolved)
             {
-                existingHolder.Context = MultiTenancy.TenantContext.Empty;
+                var existingHolder = AsyncLocalContext.Value;
+                if (existingHolder is not null)
+                {
+                    existingHolder.Context = MultiTenancy.TenantContext.Empty;
+                }
             }
 
             AsyncLocalContext.Value = new ContextHolder { Context = newContext };

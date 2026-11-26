@@ -81,4 +81,29 @@ public sealed class TenantContextAccessorTests
 
         await Task.WhenAll(task1, task2);
     }
+
+    /// <summary>
+    /// Reatribuir o tenant depois de um await não pode esvaziar o contexto já capturado pelo chamador.
+    /// </summary>
+    [Fact]
+    public async Task TenantContext_WhenReassignedAcrossAwaits_ShouldStayResolvedForCaller()
+    {
+        var accessor = new TenantContextAccessor();
+        var original = TenantContext.Create(Guid.NewGuid(), "original", TenantResolutionSource.Header);
+        accessor.TenantContext = original;
+        await Task.Yield();
+
+        await ReassignAcrossAwaitsAsync(accessor);
+
+        accessor.TenantContext.IsResolved.Should().BeTrue();
+        accessor.TenantContext.TenantId.Should().NotBeNull();
+    }
+
+    private static async Task ReassignAcrossAwaitsAsync(TenantContextAccessor accessor)
+    {
+        accessor.TenantContext = TenantContext.Create(Guid.NewGuid(), "intermediario", TenantResolutionSource.Header);
+        await Task.Yield();
+        accessor.TenantContext = TenantContext.Create(Guid.NewGuid(), "final", TenantResolutionSource.Header);
+        await Task.Yield();
+    }
 }

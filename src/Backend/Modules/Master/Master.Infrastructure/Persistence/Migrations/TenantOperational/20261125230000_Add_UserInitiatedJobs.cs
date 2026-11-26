@@ -1,4 +1,6 @@
 using System;
+using Master.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Master.Infrastructure.Persistence.Migrations.TenantOperational
 {
     /// <inheritdoc />
+    [DbContext(typeof(TenantOperationalDbContext))]
+    [Migration("20261125230000_Add_UserInitiatedJobs")]
     public partial class Add_UserInitiatedJobs : Migration
     {
         /// <inheritdoc />

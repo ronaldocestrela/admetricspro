@@ -84,7 +84,7 @@ public sealed class TenantShellPresentationTests : BunitTestBase
         BrowserStorageService.RemoveItemAsync("admetricspro_tenant_session", Arg.Any<CancellationToken>())
             .Returns(new ValueTask(removal.Task));
         var cut = Render<TenantSidebar>();
-        var logout = Task.Run(() => cut.Find(".sidebar-logout-btn").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs()));
+        var logout = cut.Find(".sidebar-logout-btn").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
         try
         {
             cut.WaitForAssertion(() => WorkspaceContextStateProvider.CurrentWorkspaceId.Should().BeNull());

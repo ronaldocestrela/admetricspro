@@ -1,3 +1,4 @@
+using DotNet.Testcontainers.Configurations;
 using Testcontainers.Minio;
 
 namespace IntegrationTests.Infrastructure;
@@ -9,7 +10,12 @@ public sealed class MinioFixture : IAsyncLifetime
 {
     private const string TestBucketName = "admetricspro-integration-test";
 
-    private readonly MinioContainer _container = new MinioBuilder("minio/minio:latest")
+    // minio/minio saiu do Docker Hub. bitnamilegacy/minio:2024.12.18 ainda publica o mesmo binário.
+    // O entrypoint da imagem é um script e /data não é gravável pelo usuário 1001.
+    // WithCommand acrescenta argumentos; OverwriteEnumerable substitui o "server /data" do módulo.
+    private readonly MinioContainer _container = new MinioBuilder("bitnamilegacy/minio:2024.12.18")
+        .WithEntrypoint("/opt/bitnami/minio/bin/minio")
+        .WithCommand(new OverwriteEnumerable<string>(["server", "/tmp/data"]))
         .WithUsername("admetrics")
         .WithPassword("ChangeMeMinioTestOnly!")
         .WithCleanUp(true)
