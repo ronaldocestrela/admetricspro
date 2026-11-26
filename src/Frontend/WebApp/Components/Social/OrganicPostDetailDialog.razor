@@ -6,6 +6,7 @@
 @using SocialPublishing.Domain.Posts
 @inject ISocialPublishingClient SocialClient
 @inject ISocialMediaPreviewCache MediaPreviewCache
+@inject IJSRuntime JSRuntime
 
 @if (Post is not null)
 {
@@ -128,6 +129,24 @@
                                data-testid="organic-post-detail-image-loading">Carregando prévia…</p>
                         }
                     </div>
+                    @if (!string.IsNullOrWhiteSpace(_previewSrc))
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary mt-2"
+                                data-testid="organic-post-detail-download-image"
+                                disabled="@(_isDownloadingImage || _isLifecycleBusy)"
+                                @onclick="DownloadImageAsync">
+                            <i class="bi bi-download me-1"></i>
+                            @if (_isDownloadingImage)
+                            {
+                                <span>Baixando…</span>
+                            }
+                            else
+                            {
+                                <span>Baixar imagem</span>
+                            }
+                        </button>
+                    }
                 }
                 @if (!string.IsNullOrEmpty(_successMessage))
                 {
@@ -262,13 +281,19 @@
     private bool _isSavingCaption;
     private bool _isGeneratingImage;
     private bool _isLoadingPreview;
+    private bool _isDownloadingImage;
     private string _editCaption = string.Empty;
     private string? _successMessage;
     private string? _previewSrc;
     private Guid? _loadedPreviewAssetId;
 
     private bool _isLifecycleBusy =>
-        _isSubmitting || _isApproving || _isScheduling || _isSavingCaption || _isGeneratingImage;
+        _isSubmitting
+        || _isApproving
+        || _isScheduling
+        || _isSavingCaption
+        || _isGeneratingImage
+        || _isDownloadingImage;
 
     private bool CanReviseCaption =>
         _displayedPost.Status is OrganicPostStatus.Draft or OrganicPostStatus.ChangesRequested;
@@ -417,6 +442,49 @@
         var ticket = MediaPreviewCache.Store(previewBytes, content.Value.MimeType);
         _previewSrc = $"/social/media-preview/{ticket}";
         _loadedPreviewAssetId = asset.Id;
+    }
+
+    /// <summary>
+    /// Obtém o conteúdo autenticado da primeira mídia e dispara o download no navegador.
+    /// </summary>
+    private async Task DownloadImageAsync()
+    {
+        if (WorkspaceId == Guid.Empty || _isDownloadingImage)
+        {
+            return;
+        }
+
+        var post = _displayedPost;
+        var asset = post?.Media?.FirstOrDefault();
+        if (post is null || asset is null)
+        {
+            return;
+        }
+
+        _isDownloadingImage = true;
+        _errorMessage = null;
+
+        var content = await SocialClient.GetPostMediaContentAsync(WorkspaceId, post.Id, asset.Id);
+        _isDownloadingImage = false;
+
+        if (content is null || content.IsFailure)
+        {
+            _errorMessage = content?.Error.Description ?? "Não foi possível baixar a imagem.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(content.Value.ContentBase64))
+        {
+            _errorMessage = "Não foi possível baixar a imagem.";
+            return;
+        }
+
+        var fileName = OrganicPostMediaFileNames.BuildDownloadFileName(post.Id, content.Value.MimeType);
+        await JSRuntime.InvokeVoidAsync(
+            "fileDownload.downloadBase64",
+            fileName,
+            content.Value.MimeType,
+            content.Value.ContentBase64);
     }
 
     private async Task RequestClose() => await OnClose.InvokeAsync();

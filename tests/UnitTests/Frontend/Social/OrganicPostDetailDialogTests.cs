@@ -159,6 +159,101 @@ public sealed class OrganicPostDetailDialogTests : BunitTestBase
         });
     }
 
+    /// <summary>
+    /// Com mídia e prévia visível, o botão de baixar imagem deve aparecer.
+    /// </summary>
+    [Fact]
+    public void WithMedia_ShouldRenderDownloadImageButton()
+    {
+        var workspaceId = Guid.NewGuid();
+        var post = SamplePost(workspaceId, OrganicPostStatus.Approved) with
+        {
+            Media =
+            [
+                new OrganicPostMediaItemDto(
+                    Guid.NewGuid(),
+                    "image/png",
+                    1080,
+                    1350,
+                    "4:5",
+                    "https://cdn.test/preview.png"),
+            ],
+        };
+
+        var cut = Render<OrganicPostDetailDialog>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.Post, post));
+
+        cut.Find("[data-testid='organic-post-detail-download-image']").Should().NotBeNull();
+    }
+
+    /// <summary>
+    /// Sem mídia, o botão de baixar imagem não deve aparecer.
+    /// </summary>
+    [Fact]
+    public void WithoutMedia_ShouldNotRenderDownloadImageButton()
+    {
+        var workspaceId = Guid.NewGuid();
+        var post = SamplePost(workspaceId, OrganicPostStatus.Approved);
+
+        var cut = Render<OrganicPostDetailDialog>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.Post, post));
+
+        cut.FindAll("[data-testid='organic-post-detail-download-image']").Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// O clique em baixar deve buscar o conteúdo autenticado e invocar o helper JS.
+    /// </summary>
+    [Fact]
+    public async Task WhenDownloadImageClicked_InvokesJsDownloadBase64()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var workspaceId = Guid.NewGuid();
+        var assetId = Guid.NewGuid();
+        var postId = Guid.NewGuid();
+        var post = SamplePost(workspaceId, OrganicPostStatus.Approved) with
+        {
+            Id = postId,
+            Media =
+            [
+                new OrganicPostMediaItemDto(
+                    assetId,
+                    "image/png",
+                    1080,
+                    1350,
+                    "4:5",
+                    "https://cdn.test/preview.png"),
+            ],
+        };
+
+        const string previewBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+        _socialClient.GetPostMediaContentAsync(workspaceId, postId, assetId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<OrganicPostMediaContentDto>.Success(
+                new OrganicPostMediaContentDto("image/png", previewBase64))));
+
+        var cut = Render<OrganicPostDetailDialog>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.Post, post));
+
+        var downloadBtn = cut.Find("[data-testid='organic-post-detail-download-image']");
+        await cut.InvokeAsync(() => downloadBtn.Click());
+
+        await _socialClient.Received(1).GetPostMediaContentAsync(
+            workspaceId,
+            postId,
+            assetId,
+            Arg.Any<CancellationToken>());
+
+        var invocation = JSInterop.VerifyInvoke("fileDownload.downloadBase64");
+        invocation.Arguments.Should().HaveCount(3);
+        invocation.Arguments[0]?.ToString().Should().Be($"post-{postId}.png");
+        invocation.Arguments[1]?.ToString().Should().Be("image/png");
+        invocation.Arguments[2]?.ToString().Should().Be(previewBase64);
+    }
+
     private static OrganicPostDto SamplePost(Guid workspaceId, OrganicPostStatus status) =>
         new(
             Guid.NewGuid(),
