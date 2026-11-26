@@ -792,6 +792,10 @@ namespace Master.Infrastructure.Persistence.Migrations.TenantOperational
                     b.Property<byte[]>("PdfContent")
                         .HasColumnType("varbinary(max)");
 
+                    b.Property<string>("PdfObjectKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
                     b.Property<string>("ReportDataPayloadJson")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

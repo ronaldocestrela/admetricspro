@@ -1,4 +1,5 @@
 using System.Text;
+using Analytics.Application.Reports;
 using Analytics.Domain.Reports;
 using BuildingBlocks.Application.Emails;
 using BuildingBlocks.Domain.Primitives;
@@ -14,6 +15,7 @@ public sealed class ReportDispatchService : IReportDispatchService
     private readonly IEmailSender _emailSender;
     private readonly IReportWhatsAppNotifier _whatsAppNotifier;
     private readonly IReportRepository _repository;
+    private readonly ReportPdfContentReader _pdfContentReader;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="ReportDispatchService"/>.
@@ -21,11 +23,13 @@ public sealed class ReportDispatchService : IReportDispatchService
     public ReportDispatchService(
         IEmailSender emailSender,
         IReportWhatsAppNotifier whatsAppNotifier,
-        IReportRepository repository)
+        IReportRepository repository,
+        ReportPdfContentReader pdfContentReader)
     {
         _emailSender = emailSender ?? throw new ArgumentNullException(nameof(emailSender));
         _whatsAppNotifier = whatsAppNotifier ?? throw new ArgumentNullException(nameof(whatsAppNotifier));
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _pdfContentReader = pdfContentReader ?? throw new ArgumentNullException(nameof(pdfContentReader));
     }
 
     /// <inheritdoc />
@@ -51,7 +55,7 @@ public sealed class ReportDispatchService : IReportDispatchService
         {
             if (recipient.Channel == ReportDeliveryChannel.Email)
             {
-                var emailLog = await SendEmailReportAsync(report, recipient, model, agencyName, cancellationToken);
+                var emailLog = await SendEmailReportAsync(report, schedule, recipient, model, agencyName, cancellationToken);
                 logs.Add(emailLog);
             }
             else if (recipient.Channel == ReportDeliveryChannel.WhatsApp)
@@ -76,6 +80,7 @@ public sealed class ReportDispatchService : IReportDispatchService
 
     private async Task<ReportDispatchLog> SendEmailReportAsync(
         GeneratedReport report,
+        ReportSchedule schedule,
         ReportRecipient recipient,
         ReportRenderModel model,
         string agencyName,
@@ -85,13 +90,27 @@ public sealed class ReportDispatchService : IReportDispatchService
         var htmlBody = BuildEmailHtml(model, agencyName, recipient.Name);
         var textBody = $"Olá {recipient.Name},\n\nSegue o resumo do seu relatório executivo:\nInvestimento: R$ {model.KpiSummary.TotalSpend:N2}\nReceita: R$ {model.KpiSummary.TotalRevenue:N2}\nROAS: {model.KpiSummary.BlendedRoas:N2}x\nConversões: {model.KpiSummary.TotalConversions}\n\nAcesse a versão interativa completa em: {model.ShareUrl}\n\nAtenciosamente,\n{agencyName}";
 
+        EmailAttachment? attachment = null;
+        if (schedule.OutputFormat is ReportOutputFormat.Pdf or ReportOutputFormat.Both && report.HasPdfAvailable)
+        {
+            var pdfBytesResult = await _pdfContentReader.ReadPdfBytesAsync(report, cancellationToken);
+            if (pdfBytesResult.IsSuccess)
+            {
+                attachment = new EmailAttachment(
+                    $"relatorio-{report.Id:N}.pdf",
+                    "application/pdf",
+                    pdfBytesResult.Value);
+            }
+        }
+
         var emailResult = EmailMessage.Create(
             recipient.Destination,
             subject,
             htmlBody,
             textBody,
             model.Branding?.SupportEmail,
-            agencyName);
+            agencyName,
+            attachment);
 
         if (emailResult.IsFailure)
         {

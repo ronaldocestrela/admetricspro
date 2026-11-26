@@ -59,9 +59,9 @@ A porta é `IOrganicMediaStore` (`SaveAsync`, `OpenReadAsync`, `DeleteAsync`), c
 
 Hoje o padrão é `LocalOrganicMediaStore` (volume da API). O cliente S3 que existia no módulo social foi removido na Fase 2; o bucket compartilhado via `IObjectStore` entra na Fase 4. Duas réplicas da Web API não compartilham o mesmo disco; backup do volume não acompanha o banco do tenant.
 
-### 1.2 PDF de relatório white-label — `varbinary(max)` no banco do tenant
+### 1.2 PDF de relatório white-label — objeto + coluna legada (Fase 6)
 
-`GeneratedReport.PdfContent` guarda o PDF compilado na mesma linha de `RenderModelJson`. Download e anexo de e-mail leem essa coluna. O [ADR 0037](../adr/0037-white-label-automated-reports-generator.md) previa mitigar volume via JSON; o binário foi persistido. O [ADR 0053](../adr/0053-minio-object-storage.md) define migração do byte para objeto.
+Novos relatórios gravam o PDF no bucket `admetricspro-reports` com chave `{tenantId:N}/{workspaceId:N}/{reportId:N}.pdf` e persistem `GeneratedReport.PdfObjectKey`. `RenderModelJson` permanece no SQL. A coluna `PdfContent` (`varbinary`) ainda existe para migração: leitura prioriza o objeto quando a chave está preenchida; download e anexo de e-mail usam `IReportPdfStore` via `ReportPdfContentReader`. Detalhes: [reports-generator.md](reports-generator.md).
 
 ### 1.3 Marca white-label — URL colada, não arquivo
 
@@ -79,7 +79,7 @@ Upload pago para a Graph API, previews de CDN de anúncios, Creative Hub com URL
 | :--- | :--- | :--- | :--- | :--- |
 | Upload `POST /api/v1/social/media` (JPEG, PNG, MP4) | `admetricspro-organic` | chave atual com `staging` ou `durable` | `OrganicMediaAssets` | — |
 | PNG do Nano Banana após normalização | `admetricspro-organic` | mesma chave durable que `ReplaceGeneratedImage` | `OrganicMediaAssets` | — |
-| PDF de `GeneratedReport` | `admetricspro-reports` | `{tenantId:N}/{workspaceId:N}/{reportId:N}.pdf` | `PdfObjectKey` (futuro); `PdfContent` sai após cópia | `RenderModelJson` |
+| PDF de `GeneratedReport` | `admetricspro-reports` | `{tenantId:N}/{workspaceId:N}/{reportId:N}.pdf` | `PdfObjectKey`; `PdfContent` legado até migração 6.5 | `RenderModelJson` |
 | Logo claro, escuro, favicon enviados no formulário de marca | `admetricspro-branding` | `{tenantId:N}/light`, `{tenantId:N}/dark`, `{tenantId:N}/favicon` | chave opcional; URL externa continua válida | SVG/PNG já hospedados pela agência |
 | Upload Meta `POST /api/v1/integrations/meta/media` | — | — | hash / video id na conta de anúncios | binário não retido |
 | `wwwroot` | — | — | — | permanece no publish do Blazor |
@@ -162,6 +162,7 @@ if (keyResult.IsFailure)
 | `ObjectStorage__PublicBaseUrl` | Origem HTTPS da Web API para links de publicação assinados. |
 | `ObjectStorage__PublishUrlTtlMinutes` | Vida do token de leitura pública (padrão 120, teto 1440). |
 | `ObjectStorage__MigrateLocalRoot` | `true` apenas no processo one-shot de cópia do volume orgânico (Fase 5); padrão `false`. |
+| `ObjectStorage__MigrateReportPdfs` | `true` apenas no processo one-shot de cópia de `PdfContent` → bucket de relatórios (Fase 6); padrão `false`. |
 | `ObjectStorage__PublishUrlSigningKey` | Chave HMAC de tokens públicos (obrigatória com `PublicBaseUrl`). |
 
 ### `GET /api/v1/public/media/{token}`
@@ -176,9 +177,16 @@ Detalhes de upload e prévia: [social-publishing.md](social-publishing.md).
 
 ---
 
-## 6. Próximas entregas documentadas
+## 6. Fase 6 — PDF de relatório (entregue)
+
+- **Porta:** `IReportPdfStore` em `Analytics.Domain.Reports`; implementação `ObjectStoreReportPdfStore` no bucket `ObjectStorage:ReportsBucket`.
+- **Write path:** `GenerateReportCommand` e `DispatchReportScheduleCommand` fazem put antes do commit SQL; falha de put retorna `Storage.WriteFailed` sem linha órfã.
+- **Leitura:** `GET .../reports/{id}/pdf` e `GET /api/v1/public/reports/{token}/pdf` — objeto primeiro, coluna legada na janela de migração.
+- **E-mail:** anexo PDF opcional em `EmailMessage` quando o agendamento usa `Pdf` ou `Both`.
+- **Cópia one-shot:** `ObjectStorage:MigrateReportPdfs=true` com `Provider=MinIO` registra `ReportPdfMigrationHostedService` (encerra o host ao terminar). Não roda no startup normal das réplicas HTTP.
+
+## 7. Próxima entrega documentada
 
 | Fase | Documentação adicional |
 | :--- | :--- |
-| 6 | Download/anexo de PDF em [reports-generator.md](reports-generator.md). |
 | 7 | Upload de logo em [tenants-white-label.md](tenants-white-label.md). |

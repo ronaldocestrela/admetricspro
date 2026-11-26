@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Reports;
 
 namespace Analytics.Domain.Reports;
@@ -55,7 +56,7 @@ public interface IReportRepository
     /// <summary>
     /// Adiciona um novo relatório gerado ao histórico.
     /// </summary>
-    Task AddGeneratedReportAsync(GeneratedReport report, CancellationToken cancellationToken = default);
+    Task<Result> AddGeneratedReportAsync(GeneratedReport report, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Atualiza um relatório gerado.
@@ -71,4 +72,14 @@ public interface IReportRepository
     /// Obtém os registros de auditoria de despacho de um relatório específico.
     /// </summary>
     Task<IReadOnlyList<ReportDispatchLog>> GetDispatchLogsByReportIdAsync(Guid reportId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista relatórios com <c>PdfContent</c> não vazio (cópia para object storage).
+    /// </summary>
+    Task<IReadOnlyList<GeneratedReport>> ListGeneratedReportsWithPdfBytesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista relatórios que possuem <see cref="GeneratedReport.PdfObjectKey"/> preenchida.
+    /// </summary>
+    Task<IReadOnlyList<GeneratedReport>> ListGeneratedReportsWithPdfObjectKeyAsync(CancellationToken cancellationToken = default);
 }

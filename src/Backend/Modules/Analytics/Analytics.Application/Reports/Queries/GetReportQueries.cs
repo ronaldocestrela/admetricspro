@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Analytics.Application.Reports;
 using Analytics.Application.Reports.DTOs;
 using Analytics.Domain.Reports;
 using BuildingBlocks.Application.Messaging;
@@ -97,7 +98,7 @@ public sealed class GetGeneratedReportsQueryHandler : IQueryHandler<GetGenerated
             r.Status,
             r.GeneratedAtUtc,
             ShareUrl: $"/reports/shared/{r.ShareToken}",
-            HasPdf: r.PdfContent is not null && r.PdfContent.Length > 0))
+            HasPdf: r.HasPdfAvailable))
             .ToList();
 
         return Result<IReadOnlyList<GeneratedReportSummaryDto>>.Success(dtos);
@@ -189,13 +190,15 @@ public sealed record GetReportPdfQuery(Guid? ReportId, string? ShareToken) : IQu
 public sealed class GetReportPdfQueryHandler : IQueryHandler<GetReportPdfQuery, byte[]>
 {
     private readonly IReportRepository _repository;
+    private readonly ReportPdfContentReader _pdfContentReader;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="GetReportPdfQueryHandler"/>.
     /// </summary>
-    public GetReportPdfQueryHandler(IReportRepository repository)
+    public GetReportPdfQueryHandler(IReportRepository repository, ReportPdfContentReader pdfContentReader)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _pdfContentReader = pdfContentReader ?? throw new ArgumentNullException(nameof(pdfContentReader));
     }
 
     /// <inheritdoc />
@@ -217,11 +220,6 @@ public sealed class GetReportPdfQueryHandler : IQueryHandler<GetReportPdfQuery, 
             return Result<byte[]>.Failure(Error.NotFound("Report.NotFound", "Relatório não localizado."));
         }
 
-        if (report.PdfContent is null || report.PdfContent.Length == 0)
-        {
-            return Result<byte[]>.Failure(Error.NotFound("Report.PdfNotFound", "Arquivo PDF deste relatório não foi gerado."));
-        }
-
-        return Result<byte[]>.Success(report.PdfContent);
+        return await _pdfContentReader.ReadPdfBytesAsync(report, cancellationToken);
     }
 }

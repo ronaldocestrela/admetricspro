@@ -1,4 +1,5 @@
 using Analytics.Domain.Reports;
+using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Reports;
 using BuildingBlocks.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -128,15 +129,19 @@ public sealed class ReportRepository : IReportRepository
     }
 
     /// <inheritdoc />
-    public async Task AddGeneratedReportAsync(GeneratedReport report, CancellationToken cancellationToken = default)
+    public async Task<Result> AddGeneratedReportAsync(GeneratedReport report, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(report);
         var dbResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
-        if (dbResult.IsFailure) return;
+        if (dbResult.IsFailure)
+        {
+            return Result.Failure(dbResult.Error);
+        }
 
         var db = dbResult.Value;
         await db.GeneratedReports.AddAsync(report, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+        return Result.Success();
     }
 
     /// <inheritdoc />
@@ -173,6 +178,34 @@ public sealed class ReportRepository : IReportRepository
             .AsNoTracking()
             .Where(l => l.GeneratedReportId == reportId)
             .OrderByDescending(l => l.DispatchedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<GeneratedReport>> ListGeneratedReportsWithPdfBytesAsync(CancellationToken cancellationToken = default)
+    {
+        var dbResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (dbResult.IsFailure)
+        {
+            return Array.Empty<GeneratedReport>();
+        }
+
+        return await dbResult.Value.GeneratedReports
+            .Where(r => r.PdfContent != null && r.PdfContent.Length > 0)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<GeneratedReport>> ListGeneratedReportsWithPdfObjectKeyAsync(CancellationToken cancellationToken = default)
+    {
+        var dbResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (dbResult.IsFailure)
+        {
+            return Array.Empty<GeneratedReport>();
+        }
+
+        return await dbResult.Value.GeneratedReports
+            .Where(r => r.PdfObjectKey != null && r.PdfObjectKey != string.Empty)
             .ToListAsync(cancellationToken);
     }
 }

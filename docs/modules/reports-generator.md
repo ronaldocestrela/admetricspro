@@ -213,7 +213,39 @@ Endpoint seguro e anônimo (`[AllowAnonymous]`) consumido pela rota de apresenta
 
 ---
 
-## 4. Auditoria de Entregas & Casos de Falha
+## 4. PDF no object storage (Fase 6 — ADR 0053)
+
+### Destino do binário
+
+- **Bucket:** `ObjectStorage:ReportsBucket` (`admetricspro-reports`).
+- **Chave:** `{tenantId:N}/{workspaceId:N}/{reportId:N}.pdf`.
+- **SQL:** `GeneratedReport.PdfObjectKey` (nvarchar 512). `RenderModelJson` permanece no banco do tenant.
+- **Legado:** `PdfContent` ainda pode existir em linhas antigas; leitura **prioriza** o objeto quando `PdfObjectKey` está preenchida. A coluna só será removida na migração 6.5, após cópia verificada em produção.
+
+### Geração e persistência
+
+`GenerateReportCommand` (incluindo consumidor `analytics.report-generate.v1`) compila com `WhiteLabelReportPdfGenerator`, grava o stream via `IReportPdfStore` e persiste o relatório **sem** `PdfContent`. Falha de put não commita; falha de commit apaga o objeto recém-gravado.
+
+### Download
+
+| Endpoint | Comportamento |
+| :--- | :--- |
+| `GET /api/v1/workspaces/{workspaceId}/reports/{reportId}/pdf` | Autenticado; bytes do objeto ou da coluna legada. |
+| `GET /api/v1/public/reports/{token}/pdf` | Anônimo; mesmo critério de leitura. |
+
+Erros: `Report.NotFound`, `Report.PdfNotFound`, `Storage.ObjectNotFound`, `Storage.ReadFailed`.
+
+### Disparo de e-mail
+
+Com `ReportOutputFormat.Pdf` ou `Both`, o `ReportDispatchService` anexa `relatorio-{reportId:N}.pdf` (`application/pdf`) lido do objeto ou da coluna legada. O envelope RabbitMQ de geração/dispatch continua sem binário (somente identificadores).
+
+### Migração operacional
+
+Processo único da Web API com `ObjectStorage__Provider=MinIO` e `ObjectStorage__MigrateReportPdfs=true`. Percorre tenants ativos, envia `PdfContent` ao bucket, preenche `PdfObjectKey` (idempotente), opcionalmente sobe arquivos ainda em `ObjectStorage:LocalRoot` quando a chave já está no SQL. Runbook: [docker-production.md](../devops/docker-production.md).
+
+---
+
+## 5. Auditoria de Entregas & Casos de Falha
 Cada disparo gera um registro em `ReportDispatchLog`:
 - Se o canal for WhatsApp e o destinatário não contiver telefone válido internacional (`+DDI DDD NUMERO`), o sistema registra falha `WhatsApp.InvalidDestination` sem interromper o envio de e-mails para os demais destinatários.
 - Se o token de compartilhamento tiver atingido sua data limite de validade, a API retorna sucesso com a flag `isExpired: true`, instruindo a UI pública a renderizar a tela de expiração com dados de contato da agência parceira.

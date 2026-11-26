@@ -21,6 +21,8 @@ public static class AnalyticsApplicationServiceExtensions
             cfg.RegisterServicesFromAssembly(typeof(AnalyticsApplicationServiceExtensions).Assembly);
         });
 
+        services.AddScoped<Reports.ReportPdfContentReader>();
+
         return services;
     }
 }

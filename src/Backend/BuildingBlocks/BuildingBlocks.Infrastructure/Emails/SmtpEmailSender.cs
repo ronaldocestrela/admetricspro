@@ -224,7 +224,23 @@ public sealed class SmtpEmailSender : IEmailSender
             multipart.Add(new TextPart("html") { Text = message.HtmlBody });
         }
 
-        mimeMessage.Body = multipart;
+        if (message.Attachment is null)
+        {
+            mimeMessage.Body = multipart;
+            return mimeMessage;
+        }
+
+        var mixed = new Multipart("mixed");
+        mixed.Add(multipart);
+        mixed.Add(new MimePart(message.Attachment.ContentType)
+        {
+            Content = new MimeContent(new MemoryStream(message.Attachment.Content)),
+            ContentDisposition = new ContentDisposition(ContentDisposition.Attachment),
+            ContentTransferEncoding = ContentEncoding.Base64,
+            FileName = message.Attachment.FileName,
+        });
+
+        mimeMessage.Body = mixed;
         return mimeMessage;
     }
 }

@@ -32,6 +32,7 @@ public sealed class GeneratedReport : Entity<Guid>
         string shareToken,
         DateTime? shareTokenExpiresAtUtc,
         byte[]? pdfContent,
+        string? pdfObjectKey,
         string reportDataPayloadJson,
         ReportStatus status,
         DateTime generatedAtUtc)
@@ -45,6 +46,7 @@ public sealed class GeneratedReport : Entity<Guid>
         ShareToken = shareToken;
         ShareTokenExpiresAtUtc = shareTokenExpiresAtUtc;
         PdfContent = pdfContent;
+        PdfObjectKey = pdfObjectKey;
         ReportDataPayloadJson = reportDataPayloadJson;
         Status = status;
         GeneratedAtUtc = generatedAtUtc;
@@ -86,9 +88,21 @@ public sealed class GeneratedReport : Entity<Guid>
     public DateTime? ShareTokenExpiresAtUtc { get; private set; }
 
     /// <summary>
-    /// Conteúdo binário do documento PDF gerado com a marca da agência.
+    /// Conteúdo binário legado do PDF (janela de migração; novos relatórios usam <see cref="PdfObjectKey"/>).
     /// </summary>
     public byte[]? PdfContent { get; private set; }
+
+    /// <summary>
+    /// Chave do PDF no bucket de relatórios (<c>{tenantId:N}/{workspaceId:N}/{reportId:N}.pdf</c>).
+    /// </summary>
+    public string? PdfObjectKey { get; private set; }
+
+    /// <summary>
+    /// Indica se há PDF disponível por objeto ou coluna legada.
+    /// </summary>
+    public bool HasPdfAvailable =>
+        !string.IsNullOrWhiteSpace(PdfObjectKey)
+        || PdfContent is { Length: > 0 };
 
     /// <summary>
     /// Payload JSON estruturado com todos os KPIs, comparativos de canais, criativos e snapshot de branding.
@@ -119,7 +133,8 @@ public sealed class GeneratedReport : Entity<Guid>
         byte[]? pdfContent,
         string reportDataPayloadJson,
         DateTime generatedAtUtc,
-        string? customToken = null)
+        string? customToken = null,
+        string? pdfObjectKey = null)
     {
         if (id == Guid.Empty)
             return Result<GeneratedReport>.Failure(Error.Validation("GeneratedReport.EmptyId", "O identificador do relatório é obrigatório."));
@@ -147,6 +162,7 @@ public sealed class GeneratedReport : Entity<Guid>
             token,
             shareTokenExpiresAtUtc,
             pdfContent,
+            pdfObjectKey,
             reportDataPayloadJson,
             ReportStatus.Generated,
             generatedAtUtc);
@@ -179,11 +195,20 @@ public sealed class GeneratedReport : Entity<Guid>
     }
 
     /// <summary>
-    /// Atualiza os bytes do PDF caso gerado assincronamente.
+    /// Atualiza os bytes do PDF na coluna legada (somente migração).
     /// </summary>
     public void AttachPdf(byte[] pdfBytes)
     {
         PdfContent = pdfBytes;
+    }
+
+    /// <summary>
+    /// Associa a chave do PDF no bucket de relatórios.
+    /// </summary>
+    /// <param name="objectKey">Chave validada pelo módulo.</param>
+    public void AssignPdfObjectKey(string objectKey)
+    {
+        PdfObjectKey = string.IsNullOrWhiteSpace(objectKey) ? null : objectKey.Trim();
     }
 
     /// <summary>

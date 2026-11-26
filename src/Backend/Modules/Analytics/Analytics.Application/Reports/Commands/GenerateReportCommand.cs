@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Analytics.Application.Reports;
 using Analytics.Domain.Reports;
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Storage;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Reports;
 
@@ -30,6 +32,7 @@ public sealed class GenerateReportCommandHandler : ICommandHandler<GenerateRepor
 
     private readonly IReportDataProvider _dataProvider;
     private readonly IReportPdfGenerator _pdfGenerator;
+    private readonly IReportPdfStore _pdfStore;
     private readonly IReportRepository _repository;
 
     /// <summary>
@@ -38,10 +41,12 @@ public sealed class GenerateReportCommandHandler : ICommandHandler<GenerateRepor
     public GenerateReportCommandHandler(
         IReportDataProvider dataProvider,
         IReportPdfGenerator pdfGenerator,
+        IReportPdfStore pdfStore,
         IReportRepository repository)
     {
         _dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider));
         _pdfGenerator = pdfGenerator ?? throw new ArgumentNullException(nameof(pdfGenerator));
+        _pdfStore = pdfStore ?? throw new ArgumentNullException(nameof(pdfStore));
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
     }
 
@@ -66,12 +71,23 @@ public sealed class GenerateReportCommandHandler : ICommandHandler<GenerateRepor
         }
 
         var model = modelResult.Value;
-
-        // Renderiza o PDF com a identidade White-Label
         var pdfResult = await _pdfGenerator.GeneratePdfAsync(model, cancellationToken);
-        byte[]? pdfBytes = pdfResult.IsSuccess ? pdfResult.Value : null;
 
         var reportId = Guid.NewGuid();
+        string? pdfObjectKey = null;
+
+        if (pdfResult.IsSuccess && pdfResult.Value is { Length: > 0 })
+        {
+            await using var stream = new MemoryStream(pdfResult.Value);
+            var saveResult = await _pdfStore.SaveAsync(request.WorkspaceId, reportId, stream, cancellationToken);
+            if (saveResult.IsFailure)
+            {
+                return Result<Guid>.Failure(saveResult.Error);
+            }
+
+            pdfObjectKey = saveResult.Value;
+        }
+
         var expiresAtUtc = DateTime.UtcNow.AddDays(request.ExpirationDays > 0 ? request.ExpirationDays : 30);
         var jsonPayload = JsonSerializer.Serialize(model, JsonOptions);
 
@@ -83,16 +99,33 @@ public sealed class GenerateReportCommandHandler : ICommandHandler<GenerateRepor
             dateRangeStartUtc: request.StartDateUtc,
             dateRangeEndUtc: request.EndDateUtc,
             shareTokenExpiresAtUtc: expiresAtUtc,
-            pdfContent: pdfBytes,
+            pdfContent: null,
             reportDataPayloadJson: jsonPayload,
-            generatedAtUtc: DateTime.UtcNow);
+            generatedAtUtc: DateTime.UtcNow,
+            pdfObjectKey: pdfObjectKey);
 
         if (reportResult.IsFailure)
         {
+            if (pdfObjectKey is not null)
+            {
+                await _pdfStore.DeleteAsync(pdfObjectKey, cancellationToken);
+            }
+
             return Result<Guid>.Failure(reportResult.Error);
         }
 
-        await _repository.AddGeneratedReportAsync(reportResult.Value, cancellationToken);
+        var addResult = await _repository.AddGeneratedReportAsync(reportResult.Value, cancellationToken);
+        if (addResult.IsFailure)
+        {
+            if (pdfObjectKey is not null)
+            {
+                await _pdfStore.DeleteAsync(pdfObjectKey, cancellationToken);
+            }
+
+            return Result<Guid>.Failure(addResult.Error.Code == StorageErrors.WriteFailed.Code
+                ? StorageErrors.WriteFailed
+                : addResult.Error);
+        }
 
         return Result<Guid>.Success(reportId);
     }

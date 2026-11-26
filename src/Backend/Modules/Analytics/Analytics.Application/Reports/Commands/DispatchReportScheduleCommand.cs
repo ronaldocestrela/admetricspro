@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Analytics.Domain.Reports;
 using BuildingBlocks.Application.Messaging;
+using BuildingBlocks.Application.Storage;
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Reports;
 
@@ -21,6 +22,7 @@ public sealed class DispatchReportScheduleCommandHandler : ICommandHandler<Dispa
     private readonly IReportRepository _repository;
     private readonly IReportDataProvider _dataProvider;
     private readonly IReportPdfGenerator _pdfGenerator;
+    private readonly IReportPdfStore _pdfStore;
     private readonly IReportDispatchService _dispatchService;
 
     /// <summary>
@@ -30,11 +32,13 @@ public sealed class DispatchReportScheduleCommandHandler : ICommandHandler<Dispa
         IReportRepository repository,
         IReportDataProvider dataProvider,
         IReportPdfGenerator pdfGenerator,
+        IReportPdfStore pdfStore,
         IReportDispatchService dispatchService)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider));
         _pdfGenerator = pdfGenerator ?? throw new ArgumentNullException(nameof(pdfGenerator));
+        _pdfStore = pdfStore ?? throw new ArgumentNullException(nameof(pdfStore));
         _dispatchService = dispatchService ?? throw new ArgumentNullException(nameof(dispatchService));
     }
 
@@ -67,19 +71,25 @@ public sealed class DispatchReportScheduleCommandHandler : ICommandHandler<Dispa
         }
 
         var model = modelResult.Value;
+        var reportId = Guid.NewGuid();
+        string? pdfObjectKey = null;
 
-        // Renderiza PDF se configurado
-        byte[]? pdfBytes = null;
         if (schedule.OutputFormat is ReportOutputFormat.Pdf or ReportOutputFormat.Both)
         {
             var pdfResult = await _pdfGenerator.GeneratePdfAsync(model, cancellationToken);
-            if (pdfResult.IsSuccess)
+            if (pdfResult.IsSuccess && pdfResult.Value is { Length: > 0 })
             {
-                pdfBytes = pdfResult.Value;
+                await using var stream = new MemoryStream(pdfResult.Value);
+                var saveResult = await _pdfStore.SaveAsync(schedule.WorkspaceId, reportId, stream, cancellationToken);
+                if (saveResult.IsFailure)
+                {
+                    return Result<Guid>.Failure(saveResult.Error);
+                }
+
+                pdfObjectKey = saveResult.Value;
             }
         }
 
-        var reportId = Guid.NewGuid();
         var jsonPayload = JsonSerializer.Serialize(model, JsonOptions);
         var expiresAtUtc = DateTime.UtcNow.AddDays(30);
 
@@ -91,22 +101,37 @@ public sealed class DispatchReportScheduleCommandHandler : ICommandHandler<Dispa
             startUtc,
             endUtc,
             expiresAtUtc,
-            pdfBytes,
-            jsonPayload,
-            DateTime.UtcNow);
+            pdfContent: null,
+            reportDataPayloadJson: jsonPayload,
+            generatedAtUtc: DateTime.UtcNow,
+            pdfObjectKey: pdfObjectKey);
 
         if (reportResult.IsFailure)
         {
+            if (pdfObjectKey is not null)
+            {
+                await _pdfStore.DeleteAsync(pdfObjectKey, cancellationToken);
+            }
+
             return Result<Guid>.Failure(reportResult.Error);
         }
 
         var report = reportResult.Value;
-        await _repository.AddGeneratedReportAsync(report, cancellationToken);
+        var addResult = await _repository.AddGeneratedReportAsync(report, cancellationToken);
+        if (addResult.IsFailure)
+        {
+            if (pdfObjectKey is not null)
+            {
+                await _pdfStore.DeleteAsync(pdfObjectKey, cancellationToken);
+            }
 
-        // Despacha para os destinatários (Email / WhatsApp)
+            return Result<Guid>.Failure(addResult.Error.Code == StorageErrors.WriteFailed.Code
+                ? StorageErrors.WriteFailed
+                : addResult.Error);
+        }
+
         await _dispatchService.DispatchReportAsync(report, schedule, model, cancellationToken);
 
-        // Atualiza a execução do agendamento
         schedule.RecordExecution(DateTime.UtcNow);
         await _repository.UpdateScheduleAsync(schedule, cancellationToken);
 

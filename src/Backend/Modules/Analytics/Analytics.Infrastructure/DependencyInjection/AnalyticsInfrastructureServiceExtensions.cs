@@ -75,6 +75,8 @@ public static class AnalyticsInfrastructureServiceExtensions
         services.AddSingleton<Analytics.Domain.Reports.IReportPdfGenerator, Analytics.Infrastructure.Reports.WhiteLabelReportPdfGenerator>();
         services.AddScoped<Analytics.Domain.Reports.IReportDispatchService, Analytics.Infrastructure.Reports.ReportDispatchService>();
         services.AddHttpClient<Analytics.Domain.Reports.IReportWhatsAppNotifier, Analytics.Infrastructure.Reports.ReportWhatsAppNotifier>();
+        services.AddScoped<Analytics.Domain.Reports.IReportPdfStore, Analytics.Infrastructure.Reports.ObjectStoreReportPdfStore>();
+        services.AddScoped<Analytics.Infrastructure.Reports.ReportPdfCopier>();
 
         return services;
     }

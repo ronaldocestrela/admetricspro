@@ -1,3 +1,4 @@
+using Analytics.Application.Reports;
 using Analytics.Domain.Reports;
 using Analytics.Infrastructure.Reports;
 using BuildingBlocks.Application.Emails;
@@ -17,6 +18,7 @@ public sealed class ReportDispatchServiceTests
     private readonly IEmailSender _emailSender = Substitute.For<IEmailSender>();
     private readonly IReportWhatsAppNotifier _whatsAppNotifier = Substitute.For<IReportWhatsAppNotifier>();
     private readonly IReportRepository _repository = Substitute.For<IReportRepository>();
+    private readonly IReportPdfStore _pdfStore = Substitute.For<IReportPdfStore>();
     private readonly ReportDispatchService _dispatchService;
 
     /// <summary>
@@ -24,7 +26,11 @@ public sealed class ReportDispatchServiceTests
     /// </summary>
     public ReportDispatchServiceTests()
     {
-        _dispatchService = new ReportDispatchService(_emailSender, _whatsAppNotifier, _repository);
+        _dispatchService = new ReportDispatchService(
+            _emailSender,
+            _whatsAppNotifier,
+            _repository,
+            new ReportPdfContentReader(_pdfStore));
     }
 
     /// <summary>
@@ -59,6 +65,7 @@ public sealed class ReportDispatchServiceTests
             recipients,
             DateTime.UtcNow).Value;
 
+        const string pdfKey = "tenant/ws/report.pdf";
         var report = GeneratedReport.Create(
             reportId,
             workspaceId,
@@ -67,9 +74,13 @@ public sealed class ReportDispatchServiceTests
             DateTime.UtcNow.AddDays(-7),
             DateTime.UtcNow,
             shareTokenExpiresAtUtc: DateTime.UtcNow.AddDays(30),
-            pdfContent: new byte[] { 1, 2, 3 },
+            pdfContent: null,
             reportDataPayloadJson: "{}",
-            generatedAtUtc: DateTime.UtcNow).Value;
+            generatedAtUtc: DateTime.UtcNow,
+            pdfObjectKey: pdfKey).Value;
+
+        _pdfStore.OpenReadAsync(pdfKey, Arg.Any<CancellationToken>())
+            .Returns(Result<Stream>.Success(new MemoryStream(new byte[] { 1, 2, 3 })));
 
         var model = new ReportRenderModel
         {
@@ -82,7 +93,9 @@ public sealed class ReportDispatchServiceTests
             ShareUrl = "https://agency.com/r/abc"
         };
 
-        _emailSender.SendEmailAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+        _emailSender.SendEmailAsync(
+            Arg.Is<EmailMessage>(m => m.Attachment != null && m.Attachment.Content.Length == 3),
+            Arg.Any<CancellationToken>())
             .Returns(Result.Success());
 
         _whatsAppNotifier.SendReportMessageAsync(Arg.Any<ReportWhatsAppMessage>(), Arg.Any<CancellationToken>())

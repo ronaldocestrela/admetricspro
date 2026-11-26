@@ -18,7 +18,8 @@ public sealed partial record EmailMessage
         string htmlBody,
         string plainTextBody,
         string? fromEmail,
-        string? fromDisplayName)
+        string? fromDisplayName,
+        EmailAttachment? attachment)
     {
         To = to;
         Subject = subject;
@@ -26,6 +27,7 @@ public sealed partial record EmailMessage
         PlainTextBody = plainTextBody;
         FromEmail = fromEmail;
         FromDisplayName = fromDisplayName;
+        Attachment = attachment;
     }
 
     /// <summary>
@@ -59,6 +61,11 @@ public sealed partial record EmailMessage
     public string? FromDisplayName { get; }
 
     /// <summary>
+    /// Obtém o anexo opcional (ex.: PDF de relatório).
+    /// </summary>
+    public EmailAttachment? Attachment { get; }
+
+    /// <summary>
     /// Fábrica para criação e validação de uma nova mensagem de e-mail transacional.
     /// </summary>
     /// <param name="to">Endereço de e-mail do destinatário.</param>
@@ -67,6 +74,7 @@ public sealed partial record EmailMessage
     /// <param name="plainTextBody">Corpo alternativo em texto plano.</param>
     /// <param name="fromEmail">Endereço de remetente customizado opcional.</param>
     /// <param name="fromDisplayName">Nome de exibição do remetente opcional.</param>
+    /// <param name="attachment">Anexo opcional.</param>
     /// <returns>Resultado com a mensagem criada ou erro de validação.</returns>
     public static Result<EmailMessage> Create(
         string to,
@@ -74,7 +82,8 @@ public sealed partial record EmailMessage
         string htmlBody,
         string? plainTextBody = null,
         string? fromEmail = null,
-        string? fromDisplayName = null)
+        string? fromDisplayName = null,
+        EmailAttachment? attachment = null)
     {
         if (string.IsNullOrWhiteSpace(to) || !EmailFormatRegex.IsMatch(to.Trim()))
         {
@@ -94,13 +103,20 @@ public sealed partial record EmailMessage
             return Result<EmailMessage>.Failure(EmailErrors.BodyRequired);
         }
 
+        if (attachment is not null && (attachment.Content is null || attachment.Content.Length == 0))
+        {
+            return Result<EmailMessage>.Failure(
+                Error.Validation("Email.AttachmentEmpty", "O anexo do e-mail não pode estar vazio."));
+        }
+
         var message = new EmailMessage(
             to.Trim().ToLowerInvariant(),
             subject.Trim(),
             normalizedHtml.Trim(),
             string.IsNullOrWhiteSpace(normalizedPlainText) ? normalizedHtml.Trim() : normalizedPlainText.Trim(),
             string.IsNullOrWhiteSpace(fromEmail) ? null : fromEmail.Trim(),
-            string.IsNullOrWhiteSpace(fromDisplayName) ? null : fromDisplayName.Trim());
+            string.IsNullOrWhiteSpace(fromDisplayName) ? null : fromDisplayName.Trim(),
+            attachment);
 
         return Result<EmailMessage>.Success(message);
     }

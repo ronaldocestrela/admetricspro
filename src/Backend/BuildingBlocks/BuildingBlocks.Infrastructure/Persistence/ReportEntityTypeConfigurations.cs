@@ -111,6 +111,9 @@ public sealed class GeneratedReportEntityTypeConfiguration : IEntityTypeConfigur
 
         builder.Property(r => r.PdfContent);
 
+        builder.Property(r => r.PdfObjectKey)
+            .HasMaxLength(512);
+
         builder.Property(r => r.ReportDataPayloadJson)
             .IsRequired();
     }
