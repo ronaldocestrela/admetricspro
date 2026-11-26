@@ -404,7 +404,9 @@ O SQL Server do tenant guarda **somente metadados** (`ObjectKey`, MIME, dimensõ
 | `OpenReadAsync` | Retorna `Stream` legível para inspeção de cabeçalho ou publicação futura. |
 | `DeleteAsync` | Remove objeto por chave (limpeza de staging ou rollback). |
 
-Implementação atual: **`LocalOrganicMediaStore`** (`SocialPublishing:Media:Provider=Local`, `LocalRoot`). O antigo `S3OrganicMediaStore` foi removido na **Fase 2** do [roadmap MinIO](roadmaps/minio-object-storage-roadmap.md); valores diferentes de `Local` em `SocialPublishing:Media:Provider` falham na composição do módulo. A mídia orgânica passará a usar **`IObjectStore`** (`ObjectStorage:Provider=MinIO`) na **Fase 4** — ver [object-storage.md](object-storage.md).
+Implementação: com `ObjectStorage:Provider=Local` (padrão), **`LocalOrganicMediaStore`** em `SocialPublishing:Media:LocalRoot`. Com `ObjectStorage:Provider=MinIO`, **`ObjectStoreOrganicMediaStore`** no bucket `admetricspro-organic` via `IObjectStore` (Fase 4 entregue — [object-storage.md](object-storage.md)). `MaxUploadBytes` e `KeyPrefix` permanecem em `SocialPublishing:Media`.
+
+**Leitura pública (publicação nas redes):** `IOrganicMediaPublicUrlResolver` emite `https://{ObjectStorage:PublicBaseUrl}/api/v1/public/media/{token}` (HMAC, MIME no token). Endpoint anônimo `GET /api/v1/public/media/{token}` faz stream após validar tenant e expiração. Prévia autenticada no Blazor continua em `GET /api/v1/social/posts/{id}/media/{assetId}` + ticket `/social/media-preview/{ticket}` quando não há URL pública.
 
 ### `POST /api/v1/social/media`
 
@@ -789,7 +791,7 @@ Com **`Messaging:Enabled=true`** (ADR 0052, Fase 8), o POST retorna **`Result<Us
 
 Configuração: seção **`SocialImageAi`** / variáveis `SOCIAL_IMAGE_AI_*` (ADR 0051, ADR 0018). Modelo padrão `gemini-nano-banana-2.1`, resolução `1K`.
 
-A resposta `200` (`Result<OrganicPostDto>`) inclui `media[]`. O PNG retornado pelo modelo é **recortado e redimensionado** no servidor para **1080×1350** (Instagram) ou **1080×1080** (Facebook) antes de `ReplaceGeneratedImage`. A prévia no calendário usa `publicUrl` quando `OrganicMedia:PublicBaseUrl` está definido; sem URL pública, o WebApp lê `GET /api/v1/social/posts/{id}/media/{assetId}` e serve bytes via ticket curto `GET /social/media-preview/{ticket}` (evita data URLs grandes no circuito Blazor Server). Em Docker, montar volume em `SocialPublishing__Media__LocalRoot` (`/app/data/social-media`).
+A resposta `200` (`Result<OrganicPostDto>`) inclui `media[]`. O PNG retornado pelo modelo é **recortado e redimensionado** no servidor para **1080×1350** (Instagram) ou **1080×1080** (Facebook) antes de `ReplaceGeneratedImage`. A prévia no calendário usa `publicUrl` quando `ObjectStorage:PublicBaseUrl` e `ObjectStorage:PublishUrlSigningKey` estão configurados; sem URL pública, o WebApp lê `GET /api/v1/social/posts/{id}/media/{assetId}` e serve bytes via ticket curto `GET /social/media-preview/{ticket}` (evita data URLs grandes no circuito Blazor Server). Com `ObjectStorage:Provider=Local`, montar volume em `SocialPublishing__Media__LocalRoot` (`/app/data/social-media`). Modo MinIO opcional: `docker compose -f docker-compose.yml -f docker-compose.minio.yml up`.
 
 | Código | HTTP | Quando |
 | :--- | :--- | :--- |
@@ -904,7 +906,7 @@ Fluxo por tenant (`Active` / `Trial`):
 1. Kill switch `killswitch.social-publishing.dispatch` armado → ciclo encerra sem despacho.
 2. `ListDueAsync(utcNow)` → `Pending` com `scheduledAtUtc <= now` ou `RetryScheduled` com `nextAttemptAtUtc <= now`.
 3. `TryClaimAsync` → `InProgress`; post deve estar `Scheduled`.
-4. `MarkPublishing` → adaptador `PublishAsync` (token decifrado, URLs via `IOrganicMediaPublicUrlResolver` + `SocialPublishing:Media:PublicBaseUrl`).
+4. `MarkPublishing` → adaptador `PublishAsync` (token decifrado, URLs via `IOrganicMediaPublicUrlResolver` + `ObjectStorage:PublicBaseUrl`).
 5. Sucesso → `MarkPublished(externalId)`, job `Succeeded`, `CommitAsync`.
 6. `Social.PublishRateLimited` / `Social.PublishFailed` → se restam tentativas, `RetryScheduled` e post `Scheduled`; senão `DeadLetter` e post `Failed`.
 7. `NextAttemptAtUtc` = `utcNow + max(OrganicPublishRateLimitPolicy, PublishRateLimitedError.RetryAfter)`.

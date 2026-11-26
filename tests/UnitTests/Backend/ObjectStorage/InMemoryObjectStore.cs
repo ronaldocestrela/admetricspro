@@ -10,6 +10,11 @@ public sealed class InMemoryObjectStore : IObjectStore
 {
     private readonly Dictionary<(string Bucket, string Key), StoredObject> _objects = new();
 
+    /// <summary>
+    /// Chaves gravadas (somente testes).
+    /// </summary>
+    public IReadOnlyCollection<(string Bucket, string Key)> Keys => _objects.Keys;
+
     /// <inheritdoc />
     public async Task<Result> PutAsync(
         string bucket,

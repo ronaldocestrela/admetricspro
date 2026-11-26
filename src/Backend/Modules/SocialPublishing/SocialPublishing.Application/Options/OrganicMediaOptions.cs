@@ -11,7 +11,7 @@ public sealed class OrganicMediaOptions
     public const string SectionName = "SocialPublishing:Media";
 
     /// <summary>
-    /// Provedor de armazenamento: somente <c>Local</c> até a Fase 4 do MinIO (<c>ObjectStorage:Provider</c>).
+    /// Obsoleto na composição DI (Fase 4): o provedor efetivo é <c>ObjectStorage:Provider</c>. Mantido para compatibilidade de configuração.
     /// </summary>
     public string Provider { get; set; } = "Local";
 

@@ -41,7 +41,13 @@ public static class SocialErrors
     /// Erro quando a URL base pública de mídia orgânica não está configurada.
     /// </summary>
     public static Error MediaPublicBaseUrlMissing { get; } =
-        Error.Validation("Social.MediaPublicBaseUrlMissing", "SocialPublishing:Media:PublicBaseUrl é obrigatório para publicação orgânica.");
+        Error.Validation("Social.MediaPublicBaseUrlMissing", "ObjectStorage:PublicBaseUrl é obrigatório para publicação orgânica.");
+
+    /// <summary>
+    /// Erro opaco para token público de mídia inválido ou expirado (resposta HTTP 404).
+    /// </summary>
+    public static Error PublicMediaNotFound { get; } =
+        Error.NotFound("Social.PublicMediaNotFound", "Mídia não encontrada.");
 
     /// <summary>
     /// Erro quando o cabeçalho do arquivo não permite ler dimensões ou duração.

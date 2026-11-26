@@ -23,7 +23,7 @@ public sealed class ConfigurableOrganicMediaPublicUrlResolver : IOrganicMediaPub
     }
 
     /// <inheritdoc />
-    public Result<string> ResolvePublicUrl(string objectKey)
+    public Result<string> ResolvePublicUrl(string objectKey, string contentType)
     {
         if (string.IsNullOrWhiteSpace(objectKey))
         {

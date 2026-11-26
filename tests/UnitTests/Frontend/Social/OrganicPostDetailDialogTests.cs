@@ -64,6 +64,40 @@ public sealed class OrganicPostDetailDialogTests : BunitTestBase
     }
 
     /// <summary>
+    /// Com URL pública da API, não deve chamar o cliente autenticado de mídia.
+    /// </summary>
+    [Fact]
+    public void WithPublicApiUrl_ShouldNotCallSocialClientForPreview()
+    {
+        var workspaceId = Guid.NewGuid();
+        var post = SamplePost(workspaceId, OrganicPostStatus.Approved) with
+        {
+            Media =
+            [
+                new OrganicPostMediaItemDto(
+                    Guid.NewGuid(),
+                    "image/png",
+                    1080,
+                    1350,
+                    "4:5",
+                    "https://api.test/api/v1/public/media/token.opaco"),
+            ],
+        };
+
+        var cut = Render<OrganicPostDetailDialog>(p => p
+            .Add(x => x.WorkspaceId, workspaceId)
+            .Add(x => x.Post, post));
+
+        var img = cut.Find("[data-testid='organic-post-detail-image-preview']");
+        img.GetAttribute("src").Should().Be("https://api.test/api/v1/public/media/token.opaco");
+        _socialClient.DidNotReceive().GetPostMediaContentAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
     /// Preview deve usar a URL pública retornada pela API.
     /// </summary>
     [Fact]

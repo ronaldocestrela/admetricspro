@@ -2,23 +2,26 @@
 
 Contrato e diagnóstico do armazenamento de objetos gerados pelo AdMetricsPro. A decisão arquitetural está no [ADR 0053](../adr/0053-minio-object-storage.md). A ordem de implementação está no [roadmap MinIO](../roadmaps/minio-object-storage-roadmap.md).
 
-**sem endpoint HTTP de negócio nesta fase**
+### Fase 4 — mídia orgânica (entregue)
 
-Não existem rotas versionadas de produto nem `[EndpointSummary]` de mídia/PDF/marca ligados ao storage. A Web API registra `AddObjectStorage` (Fase 3), mas **nenhum handler de módulo** grava ou lê objetos até a **Fase 4**. O endpoint público de stream de mídia (`GET /api/v1/public/media/{token}`) é entrega da **Fase 4** do roadmap.
+- **`ObjectStoreOrganicMediaStore`:** quando `ObjectStorage:Provider=MinIO`, `IOrganicMediaStore` grava no bucket `ObjectStorage:OrganicBucket` via `IObjectStore`; com `Local`, permanece `LocalOrganicMediaStore` em `SocialPublishing:Media:LocalRoot` (padrão do repositório até a Fase 5).
+- **Chave inalterada:** `organic-media/staging|durable/{tenant:N}/{workspace:N}/{asset:N}` (`OrganicMediaObjectKeyFormatter`).
+- **URL pública:** `SignedOrganicMediaPublicUrlResolver` emite `https://{ObjectStorage:PublicBaseUrl}/api/v1/public/media/{token}` com HMAC (`ObjectStorage:PublishUrlSigningKey`, TTL `ObjectStorage:PublishUrlTtlMinutes`, teto 1440). Sem `PublicBaseUrl`, publicação falha com `Social.MediaPublicBaseUrlMissing`.
+- **Endpoint:** `GET /api/v1/public/media/{token}` (`[AllowAnonymous]`) — stream binário com `Content-Type` do token; 404 opaco para token inválido/expirado; 422 para `Storage.KeyInvalid` pós-HMAC.
 
 ### Fase 1 — cluster no ambiente (entregue)
 
 - Serviços `minio` e `minio-init` em `docker-compose.yml` / `docker-compose.prod.yml`: três buckets privados (`admetricspro-organic`, `admetricspro-reports`, `admetricspro-branding`), regra ILM de 24 h no prefixo `organic-media/staging/` do bucket orgânico (script idempotente em `deploy/minio/init-buckets.sh`).
 - Dev: API S3 e console em `127.0.0.1:9000` e `127.0.0.1:9001`. Produção: **nenhuma** porta MinIO publicada no host ([guia Docker produção](../devops/docker-production.md)).
 - Health check nomeado `minio` em `GET /health` somente quando `ObjectStorage__Provider=MinIO`; com `Local` (padrão), o agregado permanece como antes.
-- Nenhum handler de módulo grava ou lê objetos no cluster até a Fase 4.
+- Handlers de mídia orgânica leem/gravam no cluster somente com `ObjectStorage:Provider=MinIO` (Fase 4).
 
 ### Fase 2 — porta sem rede (entregue)
 
 - **`BuildingBlocks.Application.Storage`:** `IObjectStore`, `ObjectKey.Create`, `StorageErrors` (códigos estáveis do catálogo da seção 3).
 - **Regra de chave:** validação pura por `Guid tenantId` — chaves orgânicas `organic-media/staging|durable/{tenant:N}/{workspace:N}/{asset:N}` ou prefixo `{tenant:N}/…` com ao menos um segmento após o tenant; rejeição de `\`, `..` e segmentos vazios.
 - **Fake:** `InMemoryObjectStore` apenas em testes unitários (`UnitTests.Backend.ObjectStorage`).
-- **Compliance:** `AgentsArchitectureComplianceTests.ObjectStorageSdk_MustNotBeReferencedOutsideBuildingBlocksInfrastructure` — `AWSSDK.S3` / `AWSSDK.Core` removidos de `SocialPublishing.Infrastructure` (`S3OrganicMediaStore` eliminado); `SocialPublishing:Media:Provider` aceita somente `Local` até a Fase 4.
+- **Compliance:** `AgentsArchitectureComplianceTests.ObjectStorageSdk_MustNotBeReferencedOutsideBuildingBlocksInfrastructure` — `AWSSDK.S3` / `AWSSDK.Core` removidos de `SocialPublishing.Infrastructure` (`S3OrganicMediaStore` eliminado); provedor de mídia orgânica é `ObjectStorage:Provider` (Fase 4).
 
 ### Fase 3 — cliente MinIO (entregue)
 
@@ -149,6 +152,17 @@ if (keyResult.IsFailure)
 | `ObjectStorage__BrandingBucket` | `admetricspro-branding`. |
 | `ObjectStorage__PublicBaseUrl` | Origem HTTPS da Web API para links de publicação assinados. |
 | `ObjectStorage__PublishUrlTtlMinutes` | Vida do token de leitura pública (padrão 120, teto 1440). |
+| `ObjectStorage__PublishUrlSigningKey` | Chave HMAC de tokens públicos (obrigatória com `PublicBaseUrl`). |
+
+### `GET /api/v1/public/media/{token}`
+
+| Status | Corpo |
+| :--- | :--- |
+| `200` | Stream binário (`Content-Type` do token assinado). |
+| `404` | `Result` com `Social.PublicMediaNotFound` (token inválido, expirado, tenant divergente ou objeto ausente). |
+| `422` | `Result` com `Storage.KeyInvalid` quando a chave pós-HMAC é malformada. |
+
+Detalhes de upload e prévia: [social-publishing.md](social-publishing.md).
 
 ---
 
@@ -156,6 +170,5 @@ if (keyResult.IsFailure)
 
 | Fase | Documentação adicional |
 | :--- | :--- |
-| 4 | `GET /api/v1/public/media/{token}` em [social-publishing.md](social-publishing.md). |
 | 6 | Download/anexo de PDF em [reports-generator.md](reports-generator.md). |
 | 7 | Upload de logo em [tenants-white-label.md](tenants-white-label.md). |

@@ -66,6 +66,11 @@ public sealed class ObjectStorageOptions
     public int PublishUrlTtlMinutes { get; set; } = 120;
 
     /// <summary>
+    /// Chave HMAC para tokens de leitura pública de mídia (mínimo 32 caracteres quando <see cref="PublicBaseUrl"/> está definido).
+    /// </summary>
+    public string PublishUrlSigningKey { get; set; } = string.Empty;
+
+    /// <summary>
     /// Indica se o health check do MinIO deve ser registrado.
     /// </summary>
     /// <param name="options">Opções materializadas da seção <c>ObjectStorage</c>.</param>

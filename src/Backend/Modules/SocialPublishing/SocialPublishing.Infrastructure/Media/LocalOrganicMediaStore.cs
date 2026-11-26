@@ -1,6 +1,8 @@
 using BuildingBlocks.Domain.Primitives;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Media;
 using SocialPublishing.Application.Options;
 
 namespace SocialPublishing.Infrastructure.Media;
@@ -11,14 +13,17 @@ namespace SocialPublishing.Infrastructure.Media;
 public sealed class LocalOrganicMediaStore : IOrganicMediaStore
 {
     private readonly OrganicMediaOptions _options;
+    private readonly ILogger<LocalOrganicMediaStore> _logger;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="LocalOrganicMediaStore"/>.
     /// </summary>
     /// <param name="options">Opções de mídia orgânica.</param>
-    public LocalOrganicMediaStore(IOptions<OrganicMediaOptions> options)
+    /// <param name="logger">Logger estruturado.</param>
+    public LocalOrganicMediaStore(IOptions<OrganicMediaOptions> options, ILogger<LocalOrganicMediaStore> logger)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc />
@@ -32,7 +37,12 @@ public sealed class LocalOrganicMediaStore : IOrganicMediaStore
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var key = BuildKey(tenantId, workspaceId, assetId, tier);
+        var key = OrganicMediaObjectKeyFormatter.Build(
+            _options.KeyPrefix,
+            tenantId,
+            workspaceId,
+            assetId,
+            tier);
         var path = MapPath(key);
 
         try
@@ -49,8 +59,9 @@ public sealed class LocalOrganicMediaStore : IOrganicMediaStore
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Falha ao gravar mídia orgânica local. Key={ObjectKey}", key);
             return Result<string>.Failure(
-                Error.Failure("Social.MediaStorageFailed", $"Falha ao gravar mídia local: {ex.Message}"));
+                Error.Failure("Social.MediaStorageFailed", "Falha ao gravar mídia orgânica no armazenamento local."));
         }
     }
 
@@ -80,12 +91,6 @@ public sealed class LocalOrganicMediaStore : IOrganicMediaStore
         }
 
         return Task.FromResult(Result.Success());
-    }
-
-    private string BuildKey(Guid tenantId, Guid workspaceId, Guid assetId, OrganicMediaStorageTier tier)
-    {
-        var segment = tier == OrganicMediaStorageTier.Staging ? "staging" : "durable";
-        return $"{_options.KeyPrefix}/{segment}/{tenantId:N}/{workspaceId:N}/{assetId:N}";
     }
 
     private string MapPath(string objectKey) =>

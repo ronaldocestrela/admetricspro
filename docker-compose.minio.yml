@@ -1,0 +1,11 @@
+# Overlay opcional: liga mídia orgânica ao cluster MinIO (Fase 4).
+# Uso: docker compose -f docker-compose.yml -f docker-compose.minio.yml up
+#
+# Padrão do repositório permanece ObjectStorage__Provider=Local até a Fase 5 em ambientes com volume legado.
+services:
+  webapi:
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      - ObjectStorage__Provider=MinIO

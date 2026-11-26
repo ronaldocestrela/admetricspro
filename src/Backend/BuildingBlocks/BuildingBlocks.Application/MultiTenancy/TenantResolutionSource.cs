@@ -33,5 +33,10 @@ public enum TenantResolutionSource
     /// <summary>
     /// Tenant identity was inferred from the forwarded browser host header (portal público Blazor → API).
     /// </summary>
-    ForwardedHost = 5
+    ForwardedHost = 5,
+
+    /// <summary>
+    /// Tenant identity was embedded in a token HMAC de leitura pública de mídia orgânica.
+    /// </summary>
+    PublishToken = 6
 }

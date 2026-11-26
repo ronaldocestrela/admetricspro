@@ -45,7 +45,9 @@ public static class OrganicPostMapping
             if (publicUrlResolver is not null &&
                 !string.IsNullOrWhiteSpace(asset.ObjectKey))
             {
-                var urlResult = publicUrlResolver.ResolvePublicUrl(asset.ObjectKey);
+                var urlResult = publicUrlResolver.ResolvePublicUrl(
+                    asset.ObjectKey,
+                    asset.MimeType ?? "application/octet-stream");
                 if (urlResult.IsSuccess)
                 {
                     publicUrl = urlResult.Value;

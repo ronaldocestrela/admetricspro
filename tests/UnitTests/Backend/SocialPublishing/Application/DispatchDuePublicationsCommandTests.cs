@@ -201,8 +201,8 @@ public sealed class DispatchDuePublicationsCommandTests
                 .Returns(Result<string>.Success("plain-token"));
 
             MediaUrlResolver = Substitute.For<IOrganicMediaPublicUrlResolver>();
-            MediaUrlResolver.ResolvePublicUrl(Arg.Any<string>())
-                .Returns(call => Result<string>.Success($"https://cdn.test/{call.Arg<string>()}"));
+            MediaUrlResolver.ResolvePublicUrl(Arg.Any<string>(), Arg.Any<string>())
+                .Returns(call => Result<string>.Success($"https://cdn.test/{call.ArgAt<string>(0)}"));
 
             Jitter = Substitute.For<IOrganicPublishJitterProvider>();
             Jitter.GetJitterMilliseconds().Returns(0);

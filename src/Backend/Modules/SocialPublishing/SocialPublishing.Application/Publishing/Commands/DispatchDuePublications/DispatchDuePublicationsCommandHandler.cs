@@ -216,7 +216,9 @@ public sealed class DispatchDuePublicationsCommandHandler
                 return Result<OrganicPublishReceipt>.Failure(SocialPublishing.Domain.SocialErrors.PublishFailed);
             }
 
-            var url = _mediaPublicUrlResolver.ResolvePublicUrl(asset.ObjectKey);
+            var url = _mediaPublicUrlResolver.ResolvePublicUrl(
+                asset.ObjectKey,
+                asset.MimeType ?? "application/octet-stream");
             if (url.IsFailure)
             {
                 return Result<OrganicPublishReceipt>.Failure(url.Error);

@@ -1,6 +1,7 @@
 using System.Reflection;
 using BuildingBlocks.Application.DependencyInjection;
 using BuildingBlocks.Infrastructure.Persistence;
+using BuildingBlocks.Infrastructure.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -137,17 +138,27 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddSingleton<IOrganicMediaMetadataReader, OrganicMediaHeaderInspector>();
         services.AddSingleton<IGeneratedFeedImageNormalizer, ImageSharpFeedImageNormalizer>();
 
-        var provider = configuration[$"{OrganicMediaOptions.SectionName}:Provider"] ?? "Local";
-        if (!string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase))
+        var objectStorageProvider = configuration[$"{ObjectStorageOptions.SectionName}:Provider"] ?? "Local";
+        if (string.Equals(objectStorageProvider, "MinIO", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException(
-                "SocialPublishing:Media:Provider deve ser Local nesta versão. O cliente S3 do módulo foi removido na Fase 2 do MinIO; " +
-                "ObjectStorage:Provider=MinIO e IObjectStore entram na Fase 4.");
+            services.AddSingleton<IOrganicMediaStore, ObjectStoreOrganicMediaStore>();
+        }
+        else
+        {
+            services.AddSingleton<IOrganicMediaStore, LocalOrganicMediaStore>();
         }
 
-        services.AddSingleton<IOrganicMediaStore, LocalOrganicMediaStore>();
+        services.AddOptions<ObjectStorageOptions>()
+            .Bind(configuration.GetSection(ObjectStorageOptions.SectionName))
+            .Validate(
+                o => string.IsNullOrWhiteSpace(o.PublicBaseUrl)
+                     || (!string.IsNullOrWhiteSpace(o.PublishUrlSigningKey) && o.PublishUrlSigningKey.Length >= 32),
+                "Configure ObjectStorage:PublishUrlSigningKey com pelo menos 32 caracteres quando ObjectStorage:PublicBaseUrl estiver definido.")
+            .ValidateOnStart();
 
-        services.AddSingleton<IOrganicMediaPublicUrlResolver, ConfigurableOrganicMediaPublicUrlResolver>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<IOrganicMediaPublishTokenService, OrganicMediaPublishTokenService>();
+        services.AddSingleton<IOrganicMediaPublicUrlResolver, SignedOrganicMediaPublicUrlResolver>();
         services.AddSingleton<IOrganicPublishJitterProvider, RandomOrganicPublishJitterProvider>();
     }
 

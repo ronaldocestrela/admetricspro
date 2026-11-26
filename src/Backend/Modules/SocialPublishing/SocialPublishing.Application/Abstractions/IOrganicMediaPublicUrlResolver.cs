@@ -11,6 +11,7 @@ public interface IOrganicMediaPublicUrlResolver
     /// Converte uma chave de armazenamento em URL absoluta HTTPS.
     /// </summary>
     /// <param name="objectKey">Chave persistida no ativo de mídia.</param>
+    /// <param name="contentType">Tipo MIME do ativo (embutido no token de leitura).</param>
     /// <returns>URL pública ou falha de configuração.</returns>
-    Result<string> ResolvePublicUrl(string objectKey);
+    Result<string> ResolvePublicUrl(string objectKey, string contentType);
 }
