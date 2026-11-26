@@ -84,6 +84,14 @@ public static class TenantsInfrastructureServiceExtensions
         services.AddScoped<Tenants.Application.Audit.Repositories.ITenantAuditLogRepository, Tenants.Infrastructure.Audit.TenantAuditLogRepository>();
         services.AddScoped<Tenants.Application.Rbac.Services.IPermissionEvaluator, Tenants.Infrastructure.Rbac.TenantPermissionEvaluator>();
         services.AddScoped<Tenants.Application.Branding.Repositories.ITenantBrandingRepository, Tenants.Infrastructure.Branding.TenantBrandingRepository>();
+        services.AddScoped<Tenants.Application.Branding.ITenantBrandAssetStore>(sp =>
+            new Tenants.Infrastructure.Branding.ObjectStoreTenantBrandAssetStore(
+                sp.GetRequiredService<BuildingBlocks.Application.Storage.IObjectStore>(),
+                sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<BuildingBlocks.Infrastructure.Storage.ObjectStorageOptions>>(),
+                sp.GetRequiredService<BuildingBlocks.Application.MultiTenancy.ITenantContextAccessor>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Tenants.Infrastructure.Branding.ObjectStoreTenantBrandAssetStore>>(),
+                sp.GetService<Amazon.S3.IAmazonS3>()));
+        services.AddSingleton<Tenants.Application.Branding.ITenantBrandPublicUrlResolver, Tenants.Infrastructure.Branding.TenantBrandPublicUrlResolver>();
         services.AddScoped<Tenants.Application.Persistence.ITenantUnitOfWork, Tenants.Infrastructure.Persistence.TenantUnitOfWork>();
 
         return services;

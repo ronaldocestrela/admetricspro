@@ -250,6 +250,72 @@ public sealed class MinioObjectStore : IObjectStore
         }
     }
 
+    /// <inheritdoc />
+    public async Task<Result> DeletePrefixAsync(
+        string bucket,
+        string prefix,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var tenantId = _tenantContextAccessor.TenantContext.TenantId;
+        if (!tenantId.HasValue)
+        {
+            return Result.Failure(StorageErrors.KeyInvalid);
+        }
+
+        var prefixCheck = ObjectPrefix.ValidateForTenant(prefix, tenantId.Value);
+        if (prefixCheck.IsFailure)
+        {
+            return prefixCheck;
+        }
+
+        var normalizedPrefix = prefix.Trim().TrimEnd('/') + "/";
+        try
+        {
+            var request = new ListObjectsV2Request
+            {
+                BucketName = bucket,
+                Prefix = normalizedPrefix,
+            };
+
+            ListObjectsV2Response response;
+            do
+            {
+                response = await _s3.ListObjectsV2Async(request, cancellationToken);
+                foreach (var entry in response.S3Objects)
+                {
+                    if (entry.Key is null)
+                    {
+                        continue;
+                    }
+
+                    await _s3.DeleteObjectAsync(bucket, entry.Key, cancellationToken);
+                }
+
+                request.ContinuationToken = response.IsTruncated ? response.NextContinuationToken : null;
+            }
+            while (response.IsTruncated);
+
+            return Result.Success();
+        }
+        catch (AmazonS3Exception ex)
+        {
+            LogS3Error(ex, "DeletePrefix", bucket, normalizedPrefix);
+            return Result.Failure(StorageErrors.DeleteFailed);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Falha de transporte ao excluir prefixo. Endpoint={Endpoint}, Bucket={Bucket}, Prefix={Prefix}",
+                _options.ServiceUrl,
+                bucket,
+                normalizedPrefix);
+            return Result.Failure(StorageErrors.DeleteFailed);
+        }
+    }
+
     private Result<ObjectKey> ValidateKey(string key)
     {
         var tenantId = _tenantContextAccessor.TenantContext.TenantId;

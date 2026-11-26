@@ -85,6 +85,29 @@ O pipeline de identificação multitenant foi estendido com a estratégia `Custo
 - Cores devem estar no formato hexadecimal `#RRGGBB` ou `#RGB`.
 - URLs de logomarcas devem ter esquema `http` ou `https` e extensões permitidas: `.png`, `.svg`, `.jpg`, `.jpeg`, `.webp`.
 - Favicon deve possuir extensões: `.ico`, `.png`, `.svg`.
+- URL da API devolvida após upload pode ser reenviada no PUT sem apagar o objeto; URL externa nova substitui e remove o arquivo hospedado.
+
+---
+
+### 3.2.1 Upload de logo ou favicon (object storage)
+
+- **Rota:** `POST /api/v1/tenants/branding/assets/{light|dark|favicon}` (`multipart/form-data`, campo `file`)
+- **Sumário OpenAPI:** `Envia logo ou favicon white-label para object storage`
+- **Teto:** 2 MB; validação de MIME e cabeçalho (`TenantBranding.AssetTooLarge`, `TenantBranding.InvalidAssetMime`).
+- **Códigos HTTP:** `200 OK`, `400 BadRequest`, `401 Unauthorized`, `413 Payload Too Large`, `422 UnprocessableEntity`
+
+### 3.2.2 Remover ativo hospedado
+
+- **Rota:** `DELETE /api/v1/tenants/branding/assets/{light|dark|favicon}`
+- **Sumário OpenAPI:** `Remove logo ou favicon hospedado no object storage`
+- **Códigos HTTP:** `200 OK`, `401 Unauthorized`, `404 NotFound`, `422 UnprocessableEntity`
+
+### 3.2.3 Leitura pública (login, portal, `<img src>`)
+
+- **Rota:** `GET /api/v1/public/branding/{tenantId:N}/{light|dark|favicon}` (`AllowAnonymous`)
+- **Sumário OpenAPI:** `Leitura pública de logo ou favicon white-label`
+- **Códigos HTTP:** `200 OK`, `404 NotFound`, `422 UnprocessableEntity`
+- Sem JWT; não expõe MinIO nem URL pré-assinada.
 
 ---
 

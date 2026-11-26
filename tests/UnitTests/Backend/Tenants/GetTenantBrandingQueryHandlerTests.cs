@@ -3,6 +3,7 @@ using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Tenants;
 using FluentAssertions;
 using NSubstitute;
+using Tenants.Application.Branding;
 using Tenants.Application.Branding.DTOs;
 using Tenants.Application.Branding.Queries.GetTenantBranding;
 using Tenants.Application.Branding.Repositories;
@@ -15,6 +16,7 @@ namespace UnitTests.Backend.Tenants;
 public sealed class GetTenantBrandingQueryHandlerTests
 {
     private readonly ITenantBrandingRepository _brandingRepository = Substitute.For<ITenantBrandingRepository>();
+    private readonly ITenantBrandPublicUrlResolver _urlResolver = Substitute.For<ITenantBrandPublicUrlResolver>();
     private readonly ITenantContextAccessor _tenantContextAccessor = Substitute.For<ITenantContextAccessor>();
     private readonly GetTenantBrandingQueryHandler _handler;
     private readonly Guid _tenantId = Guid.NewGuid();
@@ -29,7 +31,10 @@ public sealed class GetTenantBrandingQueryHandlerTests
         tenantContext.TenantId.Returns(_tenantId);
         _tenantContextAccessor.TenantContext.Returns(tenantContext);
 
-        _handler = new GetTenantBrandingQueryHandler(_brandingRepository, _tenantContextAccessor);
+        _urlResolver.Resolve(Arg.Any<Guid>(), Arg.Any<TenantBrandAssetSlot>(), Arg.Any<string?>())
+            .Returns(call => (string?)null);
+
+        _handler = new GetTenantBrandingQueryHandler(_brandingRepository, _urlResolver, _tenantContextAccessor);
     }
 
     /// <summary>

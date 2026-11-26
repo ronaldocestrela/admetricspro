@@ -88,5 +88,26 @@ public sealed class InMemoryObjectStore : IObjectStore
         return Task.FromResult(Result<long?>.Success(stored.Content.LongLength));
     }
 
+    /// <inheritdoc />
+    public Task<Result> DeletePrefixAsync(
+        string bucket,
+        string prefix,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalized = prefix.Trim().TrimEnd('/') + "/";
+        var keys = _objects.Keys
+            .Where(k => string.Equals(k.Bucket, bucket, StringComparison.Ordinal)
+                        && k.Key.StartsWith(normalized, StringComparison.Ordinal))
+            .ToList();
+
+        foreach (var key in keys)
+        {
+            _objects.Remove(key);
+        }
+
+        return Task.FromResult(Result.Success());
+    }
+
     private sealed record StoredObject(byte[] Content, string ContentType);
 }

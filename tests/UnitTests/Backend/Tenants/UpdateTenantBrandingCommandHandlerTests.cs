@@ -5,6 +5,7 @@ using BuildingBlocks.Domain.Tenants;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
+using Tenants.Application.Branding;
 using Tenants.Application.Branding.Commands.UpdateTenantBranding;
 using Tenants.Application.Branding.DTOs;
 using Tenants.Application.Branding.Repositories;
@@ -18,6 +19,8 @@ namespace UnitTests.Backend.Tenants;
 public sealed class UpdateTenantBrandingCommandHandlerTests
 {
     private readonly ITenantBrandingRepository _brandingRepository = Substitute.For<ITenantBrandingRepository>();
+    private readonly ITenantBrandAssetStore _brandAssetStore = Substitute.For<ITenantBrandAssetStore>();
+    private readonly ITenantBrandPublicUrlResolver _urlResolver = Substitute.For<ITenantBrandPublicUrlResolver>();
     private readonly ITenantUnitOfWork _unitOfWork = Substitute.For<ITenantUnitOfWork>();
     private readonly ITenantContextAccessor _tenantContextAccessor = Substitute.For<ITenantContextAccessor>();
     private readonly IPublisher _publisher = Substitute.For<IPublisher>();
@@ -34,8 +37,13 @@ public sealed class UpdateTenantBrandingCommandHandlerTests
         tenantContext.TenantId.Returns(_tenantId);
         _tenantContextAccessor.TenantContext.Returns(tenantContext);
 
+        _urlResolver.IsResolvedApiUrl(Arg.Any<Guid>(), Arg.Any<TenantBrandAssetSlot>(), Arg.Any<string?>(), Arg.Any<string?>())
+            .Returns(false);
+
         _handler = new UpdateTenantBrandingCommandHandler(
             _brandingRepository,
+            _brandAssetStore,
+            _urlResolver,
             _unitOfWork,
             _tenantContextAccessor,
             _publisher);

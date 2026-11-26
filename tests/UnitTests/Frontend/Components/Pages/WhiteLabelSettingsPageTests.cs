@@ -30,6 +30,10 @@ public sealed class WhiteLabelSettingsPageTests : BunitTestBase
         cut.Find("#lightLogoInput").Should().NotBeNull();
         cut.Find("#darkLogoInput").Should().NotBeNull();
         cut.Find("#faviconInput").Should().NotBeNull();
+        cut.Find("#lightLogoFile").Should().NotBeNull();
+        cut.Find("#darkLogoFile").Should().NotBeNull();
+        cut.Find("#faviconFile").Should().NotBeNull();
+        cut.FindAll(".alert-danger").Should().BeEmpty();
         cut.Find(".mockup-shell").Should().NotBeNull();
     }
 

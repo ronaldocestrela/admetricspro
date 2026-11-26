@@ -70,4 +70,16 @@ public interface IObjectStore
         string bucket,
         string key,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Remove todos os objetos cujo caminho começa com o prefixo informado (isolado por tenant).
+    /// </summary>
+    /// <param name="bucket">Nome do bucket.</param>
+    /// <param name="prefix">Prefixo relativo (deve conter o segmento do tenant atual).</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Sucesso ou falha de storage.</returns>
+    Task<Result> DeletePrefixAsync(
+        string bucket,
+        string prefix,
+        CancellationToken cancellationToken = default);
 }

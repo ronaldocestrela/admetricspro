@@ -195,6 +195,9 @@ public sealed class OrganicMediaVolumeCopierTests : IDisposable
 
         public Task<Result<long?>> GetContentLengthAsync(string bucket, string key, CancellationToken cancellationToken = default) =>
             _inner.GetContentLengthAsync(bucket, key, cancellationToken);
+
+        public Task<Result> DeletePrefixAsync(string bucket, string prefix, CancellationToken cancellationToken = default) =>
+            _inner.DeletePrefixAsync(bucket, prefix, cancellationToken);
     }
 
     private sealed class SelectiveFailObjectStore : IObjectStore
@@ -233,5 +236,8 @@ public sealed class OrganicMediaVolumeCopierTests : IDisposable
 
         public Task<Result<long?>> GetContentLengthAsync(string bucket, string key, CancellationToken cancellationToken = default) =>
             _inner.GetContentLengthAsync(bucket, key, cancellationToken);
+
+        public Task<Result> DeletePrefixAsync(string bucket, string prefix, CancellationToken cancellationToken = default) =>
+            _inner.DeletePrefixAsync(bucket, prefix, cancellationToken);
     }
 }

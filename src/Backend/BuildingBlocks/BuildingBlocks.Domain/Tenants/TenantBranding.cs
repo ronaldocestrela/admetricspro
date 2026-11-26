@@ -20,7 +20,13 @@ public sealed partial class TenantBranding : Entity<Guid>
         string? lightLogoUrl,
         string? darkLogoUrl,
         string? faviconUrl,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        string? lightLogoObjectKey = null,
+        string? darkLogoObjectKey = null,
+        string? faviconObjectKey = null,
+        string? lightLogoContentType = null,
+        string? darkLogoContentType = null,
+        string? faviconContentType = null)
         : base(id)
     {
         PrimaryColor = primaryColor;
@@ -28,6 +34,12 @@ public sealed partial class TenantBranding : Entity<Guid>
         LightLogoUrl = lightLogoUrl;
         DarkLogoUrl = darkLogoUrl;
         FaviconUrl = faviconUrl;
+        LightLogoObjectKey = lightLogoObjectKey;
+        DarkLogoObjectKey = darkLogoObjectKey;
+        FaviconObjectKey = faviconObjectKey;
+        LightLogoContentType = lightLogoContentType;
+        DarkLogoContentType = darkLogoContentType;
+        FaviconContentType = faviconContentType;
         CreatedAtUtc = createdAtUtc;
     }
 
@@ -63,6 +75,36 @@ public sealed partial class TenantBranding : Entity<Guid>
     /// Gets the optional URL of the browser tab favicon icon.
     /// </summary>
     public string? FaviconUrl { get; private set; }
+
+    /// <summary>
+    /// Gets the optional object key for the light logo in the branding bucket.
+    /// </summary>
+    public string? LightLogoObjectKey { get; private set; }
+
+    /// <summary>
+    /// Gets the optional object key for the dark logo in the branding bucket.
+    /// </summary>
+    public string? DarkLogoObjectKey { get; private set; }
+
+    /// <summary>
+    /// Gets the optional object key for the favicon in the branding bucket.
+    /// </summary>
+    public string? FaviconObjectKey { get; private set; }
+
+    /// <summary>
+    /// Gets the MIME type gravado para o logo claro (quando há objeto).
+    /// </summary>
+    public string? LightLogoContentType { get; private set; }
+
+    /// <summary>
+    /// Gets the MIME type gravado para o logo escuro (quando há objeto).
+    /// </summary>
+    public string? DarkLogoContentType { get; private set; }
+
+    /// <summary>
+    /// Gets the MIME type gravado para o favicon (quando há objeto).
+    /// </summary>
+    public string? FaviconContentType { get; private set; }
 
     /// <summary>
     /// Gets the UTC timestamp when the branding configuration was created.
@@ -275,6 +317,188 @@ public sealed partial class TenantBranding : Entity<Guid>
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Obtém a URL persistida para o slot (externa ou da API).
+    /// </summary>
+    /// <param name="kind">Slot do ativo.</param>
+    /// <returns>URL ou <see langword="null"/>.</returns>
+    public string? GetUrlForKind(TenantBrandStoredAssetKind kind) =>
+        kind switch
+        {
+            TenantBrandStoredAssetKind.Light => LightLogoUrl,
+            TenantBrandStoredAssetKind.Dark => DarkLogoUrl,
+            TenantBrandStoredAssetKind.Favicon => FaviconUrl,
+            _ => null,
+        };
+
+    /// <summary>
+    /// Obtém a chave de objeto armazenada para o slot informado.
+    /// </summary>
+    /// <param name="kind">Slot do ativo.</param>
+    /// <returns>Chave ou <see langword="null"/>.</returns>
+    public string? GetStoredObjectKey(TenantBrandStoredAssetKind kind) =>
+        kind switch
+        {
+            TenantBrandStoredAssetKind.Light => LightLogoObjectKey,
+            TenantBrandStoredAssetKind.Dark => DarkLogoObjectKey,
+            TenantBrandStoredAssetKind.Favicon => FaviconObjectKey,
+            _ => null,
+        };
+
+    /// <summary>
+    /// Obtém o MIME gravado para o slot informado.
+    /// </summary>
+    /// <param name="kind">Slot do ativo.</param>
+    /// <returns>Tipo MIME ou <see langword="null"/>.</returns>
+    public string? GetStoredContentType(TenantBrandStoredAssetKind kind) =>
+        kind switch
+        {
+            TenantBrandStoredAssetKind.Light => LightLogoContentType,
+            TenantBrandStoredAssetKind.Dark => DarkLogoContentType,
+            TenantBrandStoredAssetKind.Favicon => FaviconContentType,
+            _ => null,
+        };
+
+    /// <summary>
+    /// Associa um upload ao slot: persiste chave, MIME e URL pública da API (substitui URL externa no slot).
+    /// </summary>
+    /// <param name="kind">Slot do ativo.</param>
+    /// <param name="objectKey">Chave canônica no bucket.</param>
+    /// <param name="contentType">MIME gravado.</param>
+    /// <param name="publicApiUrl">URL absoluta do endpoint público da API.</param>
+    /// <returns>Sucesso ou validação.</returns>
+    public Result AssignUploadedAsset(
+        TenantBrandStoredAssetKind kind,
+        string objectKey,
+        string contentType,
+        string publicApiUrl)
+    {
+        if (string.IsNullOrWhiteSpace(objectKey))
+        {
+            return Result.Failure(Error.Validation("TenantBranding.ObjectKeyRequired", "A chave do objeto é obrigatória."));
+        }
+
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return Result.Failure(Error.Validation("TenantBranding.ContentTypeRequired", "O tipo MIME é obrigatório."));
+        }
+
+        if (string.IsNullOrWhiteSpace(publicApiUrl))
+        {
+            return Result.Failure(Error.Validation("TenantBranding.PublicUrlRequired", "A URL pública da API é obrigatória."));
+        }
+
+        switch (kind)
+        {
+            case TenantBrandStoredAssetKind.Light:
+                LightLogoObjectKey = objectKey.Trim();
+                LightLogoContentType = contentType.Trim();
+                LightLogoUrl = publicApiUrl.Trim();
+                break;
+            case TenantBrandStoredAssetKind.Dark:
+                DarkLogoObjectKey = objectKey.Trim();
+                DarkLogoContentType = contentType.Trim();
+                DarkLogoUrl = publicApiUrl.Trim();
+                break;
+            case TenantBrandStoredAssetKind.Favicon:
+                FaviconObjectKey = objectKey.Trim();
+                FaviconContentType = contentType.Trim();
+                FaviconUrl = publicApiUrl.Trim();
+                break;
+            default:
+                return Result.Failure(Error.Validation("TenantBranding.InvalidAssetSlot", "Slot de ativo inválido."));
+        }
+
+        UpdatedAtUtc = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Zera URL, chave e MIME do slot (após remoção do objeto).
+    /// </summary>
+    /// <param name="kind">Slot do ativo.</param>
+    public void ClearStoredAsset(TenantBrandStoredAssetKind kind)
+    {
+        switch (kind)
+        {
+            case TenantBrandStoredAssetKind.Light:
+                LightLogoObjectKey = null;
+                LightLogoContentType = null;
+                LightLogoUrl = null;
+                break;
+            case TenantBrandStoredAssetKind.Dark:
+                DarkLogoObjectKey = null;
+                DarkLogoContentType = null;
+                DarkLogoUrl = null;
+                break;
+            case TenantBrandStoredAssetKind.Favicon:
+                FaviconObjectKey = null;
+                FaviconContentType = null;
+                FaviconUrl = null;
+                break;
+        }
+
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Atualiza apenas a URL exibida quando o objeto permanece no bucket.
+    /// </summary>
+    /// <param name="kind">Slot do ativo.</param>
+    /// <param name="publicApiUrl">URL pública da API.</param>
+    public void SetStoredAssetPublicUrl(TenantBrandStoredAssetKind kind, string publicApiUrl)
+    {
+        if (string.IsNullOrWhiteSpace(publicApiUrl))
+        {
+            return;
+        }
+
+        switch (kind)
+        {
+            case TenantBrandStoredAssetKind.Light:
+                LightLogoUrl = publicApiUrl.Trim();
+                break;
+            case TenantBrandStoredAssetKind.Dark:
+                DarkLogoUrl = publicApiUrl.Trim();
+                break;
+            case TenantBrandStoredAssetKind.Favicon:
+                FaviconUrl = publicApiUrl.Trim();
+                break;
+        }
+
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Aplica URL externa no slot e zera metadados de objeto (sem upload).
+    /// </summary>
+    /// <param name="kind">Slot do ativo.</param>
+    /// <param name="externalUrl">URL HTTPS externa ou <see langword="null"/>.</param>
+    public void ApplyExternalUrl(TenantBrandStoredAssetKind kind, string? externalUrl)
+    {
+        var normalized = NormalizeUrl(externalUrl);
+        switch (kind)
+        {
+            case TenantBrandStoredAssetKind.Light:
+                LightLogoObjectKey = null;
+                LightLogoContentType = null;
+                LightLogoUrl = normalized;
+                break;
+            case TenantBrandStoredAssetKind.Dark:
+                DarkLogoObjectKey = null;
+                DarkLogoContentType = null;
+                DarkLogoUrl = normalized;
+                break;
+            case TenantBrandStoredAssetKind.Favicon:
+                FaviconObjectKey = null;
+                FaviconContentType = null;
+                FaviconUrl = normalized;
+                break;
+        }
+
+        UpdatedAtUtc = DateTime.UtcNow;
     }
 
     private static Result ValidateColor(string? color, string errorCode, string fieldName)

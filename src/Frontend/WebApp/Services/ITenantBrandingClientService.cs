@@ -25,4 +25,30 @@ public interface ITenantBrandingClientService
     Task<Result<TenantBrandingDetailsDto>> UpdateBrandingAsync(
         UpdateTenantBrandingModel model,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Envia arquivo de logo ou favicon para o bucket de branding.
+    /// </summary>
+    /// <param name="slot">Slot (<c>light</c>, <c>dark</c>, <c>favicon</c>).</param>
+    /// <param name="fileName">Nome do arquivo.</param>
+    /// <param name="contentType">MIME do arquivo.</param>
+    /// <param name="content">Conteúdo binário.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Branding atualizado ou falha.</returns>
+    Task<Result<TenantBrandingDetailsDto>> UploadBrandAssetAsync(
+        string slot,
+        string fileName,
+        string contentType,
+        Stream content,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Remove o ativo hospedado no slot.
+    /// </summary>
+    /// <param name="slot">Slot (<c>light</c>, <c>dark</c>, <c>favicon</c>).</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Branding atualizado ou falha.</returns>
+    Task<Result<TenantBrandingDetailsDto>> DeleteBrandAssetAsync(
+        string slot,
+        CancellationToken cancellationToken = default);
 }

@@ -15,6 +15,8 @@ namespace Tenants.Application.Branding.Commands.UpdateTenantBranding;
 public sealed class UpdateTenantBrandingCommandHandler : ICommandHandler<UpdateTenantBrandingCommand, TenantBrandingDetailsDto>
 {
     private readonly ITenantBrandingRepository _brandingRepository;
+    private readonly ITenantBrandAssetStore _brandAssetStore;
+    private readonly ITenantBrandPublicUrlResolver _urlResolver;
     private readonly ITenantUnitOfWork _unitOfWork;
     private readonly ITenantContextAccessor _tenantContextAccessor;
     private readonly IPublisher _publisher;
@@ -23,16 +25,22 @@ public sealed class UpdateTenantBrandingCommandHandler : ICommandHandler<UpdateT
     /// Inicializa uma nova instância de <see cref="UpdateTenantBrandingCommandHandler"/>.
     /// </summary>
     /// <param name="brandingRepository">Repositório de identidade visual do inquilino.</param>
+    /// <param name="brandAssetStore">Store de ativos de marca.</param>
+    /// <param name="urlResolver">Resolvedor de URL pública.</param>
     /// <param name="unitOfWork">Unidade de trabalho do banco de dados dedicado do inquilino.</param>
     /// <param name="tenantContextAccessor">Acessor de contexto multi-inquilino.</param>
     /// <param name="publisher">Publicador in-memory para notificações desacopladas.</param>
     public UpdateTenantBrandingCommandHandler(
         ITenantBrandingRepository brandingRepository,
+        ITenantBrandAssetStore brandAssetStore,
+        ITenantBrandPublicUrlResolver urlResolver,
         ITenantUnitOfWork unitOfWork,
         ITenantContextAccessor tenantContextAccessor,
         IPublisher publisher)
     {
         _brandingRepository = brandingRepository ?? throw new ArgumentNullException(nameof(brandingRepository));
+        _brandAssetStore = brandAssetStore ?? throw new ArgumentNullException(nameof(brandAssetStore));
+        _urlResolver = urlResolver ?? throw new ArgumentNullException(nameof(urlResolver));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContextAccessor = tenantContextAccessor ?? throw new ArgumentNullException(nameof(tenantContextAccessor));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
@@ -50,23 +58,12 @@ public sealed class UpdateTenantBrandingCommandHandler : ICommandHandler<UpdateT
                 Error.Unauthorized("Tenant.Unresolved", "Acesso não autorizado: contexto do inquilino não identificado."));
         }
 
+        var tenantId = tenantContext.TenantId.Value;
         var existingBranding = await _brandingRepository.GetAsync(cancellationToken);
         TenantBranding branding;
 
         if (existingBranding is not null)
         {
-            var updateResult = existingBranding.UpdateDetails(
-                request.PrimaryColor,
-                request.SecondaryColor,
-                request.LightLogoUrl,
-                request.DarkLogoUrl,
-                request.FaviconUrl);
-
-            if (updateResult.IsFailure)
-            {
-                return Result<TenantBrandingDetailsDto>.Failure(updateResult.Error);
-            }
-
             branding = existingBranding;
         }
         else
@@ -74,10 +71,7 @@ public sealed class UpdateTenantBrandingCommandHandler : ICommandHandler<UpdateT
             var createResult = TenantBranding.Create(
                 Guid.NewGuid(),
                 request.PrimaryColor,
-                request.SecondaryColor,
-                request.LightLogoUrl,
-                request.DarkLogoUrl,
-                request.FaviconUrl);
+                request.SecondaryColor);
 
             if (createResult.IsFailure)
             {
@@ -88,15 +82,42 @@ public sealed class UpdateTenantBrandingCommandHandler : ICommandHandler<UpdateT
             await _brandingRepository.AddAsync(branding, cancellationToken);
         }
 
+        var sync = await TenantBrandingAssetUrlSynchronizer.SyncAsync(
+            branding,
+            tenantId,
+            request.LightLogoUrl,
+            request.DarkLogoUrl,
+            request.FaviconUrl,
+            _urlResolver,
+            _brandAssetStore,
+            request.RequestOrigin,
+            cancellationToken);
+
+        if (sync.IsFailure)
+        {
+            return Result<TenantBrandingDetailsDto>.Failure(sync.Error);
+        }
+
+        var urls = TenantBrandingAssetUrlSynchronizer.GetEffectiveUrls(branding);
+        var updateResult = branding.UpdateDetails(
+            request.PrimaryColor,
+            request.SecondaryColor,
+            urls.Light,
+            urls.Dark,
+            urls.Favicon);
+
+        if (updateResult.IsFailure)
+        {
+            return Result<TenantBrandingDetailsDto>.Failure(updateResult.Error);
+        }
+
         await _unitOfWork.CommitAsync(cancellationToken);
 
-        var dto = new TenantBrandingDetailsDto(
-            branding.PrimaryColor,
-            branding.SecondaryColor,
-            branding.LightLogoUrl,
-            branding.DarkLogoUrl,
-            branding.FaviconUrl,
-            branding.UpdatedAtUtc ?? branding.CreatedAtUtc);
+        var dto = TenantBrandingDetailsMapper.ToDetailsDto(
+            branding,
+            tenantId,
+            _urlResolver,
+            request.RequestOrigin);
 
         return Result<TenantBrandingDetailsDto>.Success(dto);
     }

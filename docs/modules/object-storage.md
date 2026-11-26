@@ -27,7 +27,7 @@ Contrato e diagnóstico do armazenamento de objetos gerados pelo AdMetricsPro. A
 
 ### Fase 2 — porta sem rede (entregue)
 
-- **`BuildingBlocks.Application.Storage`:** `IObjectStore` (`PutAsync`, `OpenReadAsync`, `DeleteAsync`, `ExistsAsync`, `GetContentLengthAsync`), `ObjectKey.Create`, `StorageErrors` (códigos estáveis do catálogo da seção 3).
+- **`BuildingBlocks.Application.Storage`:** `IObjectStore` (`PutAsync`, `OpenReadAsync`, `DeleteAsync`, `DeletePrefixAsync`, `ExistsAsync`, `GetContentLengthAsync`), `ObjectKey.Create`, `ObjectPrefix.ValidateForTenant`, `StorageErrors` (códigos estáveis do catálogo da seção 3).
 - **Regra de chave:** validação pura por `Guid tenantId` — chaves orgânicas `organic-media/staging|durable/{tenant:N}/{workspace:N}/{asset:N}` ou prefixo `{tenant:N}/…` com ao menos um segmento após o tenant; rejeição de `\`, `..` e segmentos vazios.
 - **Fake:** `InMemoryObjectStore` apenas em testes unitários (`UnitTests.Backend.ObjectStorage`).
 - **Compliance:** `AgentsArchitectureComplianceTests.ObjectStorageSdk_MustNotBeReferencedOutsideBuildingBlocksInfrastructure` — `AWSSDK.S3` / `AWSSDK.Core` removidos de `SocialPublishing.Infrastructure` (`S3OrganicMediaStore` eliminado); provedor de mídia orgânica é `ObjectStorage:Provider` (Fase 4).
@@ -63,9 +63,11 @@ Hoje o padrão é `LocalOrganicMediaStore` (volume da API). O cliente S3 que exi
 
 Novos relatórios gravam o PDF no bucket `admetricspro-reports` com chave `{tenantId:N}/{workspaceId:N}/{reportId:N}.pdf` e persistem `GeneratedReport.PdfObjectKey`. `RenderModelJson` permanece no SQL. A coluna `PdfContent` (`varbinary`) ainda existe para migração: leitura prioriza o objeto quando a chave está preenchida; download e anexo de e-mail usam `IReportPdfStore` via `ReportPdfContentReader`. Detalhes: [reports-generator.md](reports-generator.md).
 
-### 1.3 Marca white-label — URL colada, não arquivo
+### 1.3 Marca white-label — URL externa ou objeto no bucket (Fase 7)
 
-`LightLogoUrl`, `DarkLogoUrl` e `FaviconUrl` são strings HTTPS. A agência pode hospedar em CDN externo. Estáticos padrão do produto ficam no `wwwroot` do Blazor.
+Upload via `POST /api/v1/tenants/branding/assets/{light|dark|favicon}` (multipart, teto 2 MB). Chaves em `admetricspro-branding`: `{tenantId:N}/light|dark|favicon`. O SQL guarda `*ObjectKey`, MIME e URL pública da API (`GET /api/v1/public/branding/{tenantId:N}/{slot}`). URLs HTTPS coladas continuam válidas; troca de URL externa remove o objeto do slot. `DeletePrefixAsync` prepara desprovisionamento futuro por tenant (sem endpoint HTTP nesta fase).
+
+Retenção de staging orgânico: MinIO ILM 24 h em `organic-media/staging/` (`deploy/minio/init-buckets.sh`); com `ObjectStorage:Provider=Local`, `OrganicMediaStagingSweepHostedService` varre o disco a cada hora.
 
 ### 1.4 O que passa pela API e não é arquivo nosso
 

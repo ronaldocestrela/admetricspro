@@ -185,6 +185,43 @@ public sealed class LocalObjectStore : IObjectStore
         return Task.FromResult(Result<long?>.Success(length));
     }
 
+    /// <inheritdoc />
+    public Task<Result> DeletePrefixAsync(
+        string bucket,
+        string prefix,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var tenantId = _tenantContextAccessor.TenantContext.TenantId;
+        if (!tenantId.HasValue)
+        {
+            return Task.FromResult(Result.Failure(StorageErrors.KeyInvalid));
+        }
+
+        var prefixCheck = ObjectPrefix.ValidateForTenant(prefix, tenantId.Value);
+        if (prefixCheck.IsFailure)
+        {
+            return Task.FromResult(prefixCheck);
+        }
+
+        var root = MapPath(prefix.Trim().TrimEnd('/'));
+        try
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+
+            return Task.FromResult(Result.Success());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao excluir prefixo local. Bucket={Bucket}, Prefix={Prefix}", bucket, prefix);
+            return Task.FromResult(Result.Failure(StorageErrors.DeleteFailed));
+        }
+    }
+
     private Result<ObjectKey> ValidateKey(string key)
     {
         var tenantId = _tenantContextAccessor.TenantContext.TenantId;

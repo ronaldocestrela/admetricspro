@@ -15,18 +15,22 @@ public sealed class GetTenantBrandingQueryHandler : IQueryHandler<GetTenantBrand
     private const string DefaultSecondaryColor = "#0F172A";
 
     private readonly ITenantBrandingRepository _brandingRepository;
+    private readonly ITenantBrandPublicUrlResolver _urlResolver;
     private readonly ITenantContextAccessor _tenantContextAccessor;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="GetTenantBrandingQueryHandler"/>.
     /// </summary>
     /// <param name="brandingRepository">Repositório de branding do inquilino.</param>
+    /// <param name="urlResolver">Resolvedor de URL pública.</param>
     /// <param name="tenantContextAccessor">Acessor do contexto de inquilino ativo.</param>
     public GetTenantBrandingQueryHandler(
         ITenantBrandingRepository brandingRepository,
+        ITenantBrandPublicUrlResolver urlResolver,
         ITenantContextAccessor tenantContextAccessor)
     {
         _brandingRepository = brandingRepository ?? throw new ArgumentNullException(nameof(brandingRepository));
+        _urlResolver = urlResolver ?? throw new ArgumentNullException(nameof(urlResolver));
         _tenantContextAccessor = tenantContextAccessor ?? throw new ArgumentNullException(nameof(tenantContextAccessor));
     }
 
@@ -35,6 +39,7 @@ public sealed class GetTenantBrandingQueryHandler : IQueryHandler<GetTenantBrand
         GetTenantBrandingQuery request,
         CancellationToken cancellationToken)
     {
+        var tenantId = _tenantContextAccessor.TenantContext?.TenantId ?? Guid.Empty;
         var branding = await _brandingRepository.GetAsync(cancellationToken);
         if (branding is null)
         {
@@ -47,12 +52,12 @@ public sealed class GetTenantBrandingQueryHandler : IQueryHandler<GetTenantBrand
                 UpdatedAtUtc: null));
         }
 
-        return Result<TenantBrandingDetailsDto>.Success(new TenantBrandingDetailsDto(
-            PrimaryColor: branding.PrimaryColor,
-            SecondaryColor: branding.SecondaryColor,
-            LightLogoUrl: branding.LightLogoUrl,
-            DarkLogoUrl: branding.DarkLogoUrl,
-            FaviconUrl: branding.FaviconUrl,
-            UpdatedAtUtc: branding.UpdatedAtUtc ?? branding.CreatedAtUtc));
+        var dto = TenantBrandingDetailsMapper.ToDetailsDto(
+            branding,
+            tenantId,
+            _urlResolver,
+            request.RequestOrigin);
+
+        return Result<TenantBrandingDetailsDto>.Success(dto);
     }
 }

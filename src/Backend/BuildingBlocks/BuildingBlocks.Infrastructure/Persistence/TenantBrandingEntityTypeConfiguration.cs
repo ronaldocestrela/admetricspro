@@ -36,6 +36,30 @@ public sealed class TenantBrandingEntityTypeConfiguration : IEntityTypeConfigura
             .HasMaxLength(1000)
             .IsRequired(false);
 
+        builder.Property(branding => branding.LightLogoObjectKey)
+            .HasMaxLength(512)
+            .IsRequired(false);
+
+        builder.Property(branding => branding.DarkLogoObjectKey)
+            .HasMaxLength(512)
+            .IsRequired(false);
+
+        builder.Property(branding => branding.FaviconObjectKey)
+            .HasMaxLength(512)
+            .IsRequired(false);
+
+        builder.Property(branding => branding.LightLogoContentType)
+            .HasMaxLength(128)
+            .IsRequired(false);
+
+        builder.Property(branding => branding.DarkLogoContentType)
+            .HasMaxLength(128)
+            .IsRequired(false);
+
+        builder.Property(branding => branding.FaviconContentType)
+            .HasMaxLength(128)
+            .IsRequired(false);
+
         builder.Property(branding => branding.CreatedAtUtc)
             .IsRequired();
 
