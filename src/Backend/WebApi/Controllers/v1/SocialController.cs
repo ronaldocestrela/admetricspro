@@ -7,9 +7,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using SocialPublishing.Application.Brand;
+using SocialPublishing.Application.Brand.Commands.DeleteBrandVoiceLogo;
+using SocialPublishing.Application.Brand.Commands.UploadBrandVoiceLogo;
 using SocialPublishing.Application.Brand.Commands.UpsertBrandVoice;
 using SocialPublishing.Application.Brand.DTOs;
 using SocialPublishing.Application.Brand.Queries.GetBrandVoice;
+using SocialPublishing.Application.Brand.Queries.GetBrandVoiceLogo;
 using SocialPublishing.Application.Connections.Commands.CompleteOrganicAuthorization;
 using SocialPublishing.Application.Connections.Commands.RevokeOrganicConnection;
 using SocialPublishing.Application.Connections.DTOs;
@@ -449,6 +453,147 @@ public sealed class SocialController : ControllerBase
 
         var result = await _sender.Send(new GetBrandVoiceQuery(workspaceId), cancellationToken);
         return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
+    /// Envia ou substitui a logo do cliente para referência na geração de criativos.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace cliente.</param>
+    /// <param name="file">Arquivo de imagem (PNG, JPEG ou WebP, até 2 MB).</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Perfil atualizado com indicador de logo.</returns>
+    [HttpPost("brand-voice/{workspaceId:guid}/logo")]
+    [RequestSizeLimit(BrandLogoAssetLimits.MaxUploadBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = BrandLogoAssetLimits.MaxUploadBytes)]
+    [EndpointSummary("Envia logo do cliente para referência na geração de criativos sociais")]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<Result<BrandVoiceDto>>> UploadBrandVoiceLogo(
+        Guid workspaceId,
+        IFormFile file,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<BrandVoiceDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        if (file is null || file.Length < 1)
+        {
+            return BadRequest(Result<BrandVoiceDto>.Failure(
+                Error.Validation("Social.BrandLogoFileRequired", "O arquivo da logo é obrigatório.")));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<BrandVoiceDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<BrandVoiceDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<BrandVoiceDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        await using var stream = file.OpenReadStream();
+        var result = await _sender.Send(
+            new UploadBrandVoiceLogoCommand(
+                workspaceId,
+                file.FileName,
+                file.ContentType ?? "application/octet-stream",
+                stream),
+            cancellationToken);
+
+        return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
+    /// Remove a logo do cliente do Brand Voice.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace cliente.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Perfil atualizado sem logo.</returns>
+    [HttpDelete("brand-voice/{workspaceId:guid}/logo")]
+    [EndpointSummary("Remove a logo do cliente do DNA de marca")]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<BrandVoiceDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Result<BrandVoiceDto>>> DeleteBrandVoiceLogo(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<BrandVoiceDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<BrandVoiceDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<BrandVoiceDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<BrandVoiceDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(new DeleteBrandVoiceLogoCommand(workspaceId), cancellationToken);
+        return MapSocialConnectionResult(result);
+    }
+
+    /// <summary>
+    /// Obtém o conteúdo da logo do cliente para prévia autenticada.
+    /// </summary>
+    /// <param name="workspaceId">Identificador do workspace cliente.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Arquivo de imagem.</returns>
+    [HttpGet("brand-voice/{workspaceId:guid}/logo")]
+    [EndpointSummary("Obtém a logo do cliente para prévia autenticada")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Result<BrandVoiceLogoContentDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(Result<BrandVoiceLogoContentDto>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Result<BrandVoiceLogoContentDto>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetBrandVoiceLogo(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return BadRequest(Result<BrandVoiceLogoContentDto>.Failure(SocialErrors.WorkspaceRequired));
+        }
+
+        var workspaceResult = await _sender.Send(new GetWorkspaceByIdQuery(workspaceId), cancellationToken);
+        if (workspaceResult.IsFailure)
+        {
+            return workspaceResult.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(Result<BrandVoiceLogoContentDto>.Failure(workspaceResult.Error)),
+                ErrorType.Unauthorized => Unauthorized(Result<BrandVoiceLogoContentDto>.Failure(workspaceResult.Error)),
+                _ => BadRequest(Result<BrandVoiceLogoContentDto>.Failure(workspaceResult.Error))
+            };
+        }
+
+        var result = await _sender.Send(new GetBrandVoiceLogoQuery(workspaceId), cancellationToken);
+        if (result.IsFailure)
+        {
+            return result.Error.Type switch
+            {
+                ErrorType.NotFound => NotFound(result),
+                ErrorType.Unauthorized => Unauthorized(result),
+                ErrorType.Validation => UnprocessableEntity(result),
+                _ => BadRequest(result)
+            };
+        }
+
+        var bytes = Convert.FromBase64String(result.Value.ContentBase64);
+        return File(bytes, result.Value.ContentType);
     }
 
     /// <summary>

@@ -98,6 +98,30 @@ public static class SocialErrors
         Error.Validation("Social.BrandBusinessInfoTooLong", "Um dos campos de informações do negócio excede o tamanho máximo permitido.");
 
     /// <summary>
+    /// Erro quando o arquivo de logo do cliente é inválido ou o MIME não é permitido.
+    /// </summary>
+    public static Error BrandLogoInvalid { get; } =
+        Error.Validation("Social.BrandLogoInvalid", "A logo deve ser PNG, JPEG ou WebP válido.");
+
+    /// <summary>
+    /// Erro quando o arquivo de logo excede o tamanho máximo permitido.
+    /// </summary>
+    public static Error BrandLogoTooLarge { get; } =
+        Error.Validation("Social.BrandLogoTooLarge", "A logo excede o tamanho máximo permitido (2 MB).");
+
+    /// <summary>
+    /// Erro quando o workspace não possui logo do cliente configurada.
+    /// </summary>
+    public static Error BrandLogoNotFound { get; } =
+        Error.NotFound("Social.BrandLogoNotFound", "Nenhuma logo do cliente foi encontrada para este workspace.");
+
+    /// <summary>
+    /// Erro quando a logo está configurada mas o objeto não pode ser lido para geração.
+    /// </summary>
+    public static Error BrandLogoUnavailable { get; } =
+        Error.Failure("Social.BrandLogoUnavailable", "A logo do cliente não está disponível para geração de criativos.");
+
+    /// <summary>
     /// Erro quando a data final do plano é anterior à data inicial.
     /// </summary>
     public static Error PlanRangeInvalid { get; } =

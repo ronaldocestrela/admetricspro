@@ -25,6 +25,7 @@ O armazenamento dessas credenciais diretamente em arquivos rastreados pelo contr
      - Não bloqueante (`optional = true` por padrão), permitindo execução perfeita em ambientes conteinerizados ou de nuvem (onde as variáveis já são injetadas no ambiente do sistema operacional).
    - Implementamos a extensão fluente `IConfigurationBuilder.AddDotEnvFile()`:
      - Injeta as variáveis do `.env` na árvore de configuração do ASP.NET Core e normaliza chaves hierárquicas .NET (convertendo automaticamente `Seção__Chave` para `Seção:Chave`).
+     - Com `overrideExisting` falso (padrão), chaves já definidas — variáveis de ambiente, `appsettings` ou `UseSetting` dos testes — não são substituídas pelo arquivo.
 
 3. **Inicialização Integrada no Backend e Frontend:**
    - O `src/Backend/WebApi/Program.cs` e o `src/Frontend/WebApp/Program.cs` invocam `DotEnvLoader.Load()` e `builder.Configuration.AddDotEnvFile()` antes da resolução de serviços e conexões.

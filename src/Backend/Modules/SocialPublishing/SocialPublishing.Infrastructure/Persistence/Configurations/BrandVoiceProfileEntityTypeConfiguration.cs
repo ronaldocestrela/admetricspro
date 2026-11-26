@@ -31,6 +31,8 @@ public sealed class BrandVoiceProfileEntityTypeConfiguration : IEntityTypeConfig
         builder.Property(p => p.HashtagLimit).IsRequired();
         builder.Property(p => p.LanguageCode).HasMaxLength(16).IsRequired();
         builder.Property(p => p.CreatedAtUtc).IsRequired();
+        builder.Property(p => p.LogoObjectKey).HasMaxLength(512);
+        builder.Property(p => p.LogoContentType).HasMaxLength(64);
 
         builder.OwnsOne(p => p.PillarWeights, weights =>
         {

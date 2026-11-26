@@ -3,6 +3,7 @@
 @using SocialPublishing.Application.Brand.DTOs
 @using SocialPublishing.Domain
 @using SocialPublishing.Domain.Brand
+@using Microsoft.AspNetCore.Components.Forms
 @using WebApp.Services.Social
 @inject ISocialPublishingClient SocialClient
 
@@ -119,6 +120,47 @@
             {
                 <p class="small text-danger mt-2 mb-0" data-testid="brand-voice-colors-invalid">Informe cores válidas ou deixe os campos vazios.</p>
             }
+
+            <div class="brand-voice-logo-section mt-3" data-testid="brand-voice-logo-section">
+                <label class="form-label" for="brand-voice-logo-file">Logo do cliente</label>
+                <p class="small text-muted mb-2">Usada como referência visual na geração de criativos (PNG, JPEG ou WebP, até 2 MB).</p>
+                @if (_brandVoicePersisted)
+                {
+                    <InputFile id="brand-voice-logo-file"
+                               data-testid="brand-voice-logo-file"
+                               class="form-control"
+                               accept=".png,.jpg,.jpeg,.webp"
+                               OnChange="HandleLogoSelectedAsync" />
+                    @if (!string.IsNullOrEmpty(_logoError))
+                    {
+                        <p class="small text-danger mt-2 mb-0" data-testid="brand-voice-logo-error">@_logoError</p>
+                    }
+                    @if (!string.IsNullOrEmpty(_logoSuccess))
+                    {
+                        <p class="small text-success mt-2 mb-0" data-testid="brand-voice-logo-success">@_logoSuccess</p>
+                    }
+                    @if (!string.IsNullOrEmpty(_logoPreviewDataUrl))
+                    {
+                        <div class="brand-voice-logo-preview mt-2" data-testid="brand-voice-logo-preview">
+                            <img src="@_logoPreviewDataUrl" alt="Logo do cliente" class="brand-voice-logo-img" />
+                        </div>
+                    }
+                    @if (_hasLogo)
+                    {
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm mt-2"
+                                data-testid="brand-voice-logo-remove"
+                                disabled="@_logoBusy"
+                                @onclick="RemoveLogoAsync">
+                            Remover logo
+                        </button>
+                    }
+                }
+                else
+                {
+                    <p class="small text-muted mb-0" data-testid="brand-voice-logo-blocked">Salve o DNA de marca antes de enviar a logo.</p>
+                }
+            </div>
         </fieldset>
 
         <div class="mb-3">
@@ -222,6 +264,15 @@
     private string _primaryColor = string.Empty;
     private string _secondaryColor = string.Empty;
     private string _accentColor = string.Empty;
+    private bool _brandVoicePersisted;
+    private bool _hasLogo;
+    private string? _logoContentType;
+    private string? _logoPreviewDataUrl;
+    private string? _logoError;
+    private string? _logoSuccess;
+    private bool _logoBusy;
+
+    private const long BrandLogoMaxBytes = 2_097_152;
 
     private static readonly Regex HexColorRegex = new(
         @"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
@@ -269,12 +320,15 @@
         if (result.IsSuccess)
         {
             ApplyDto(result.Value);
+            _brandVoicePersisted = true;
+            await LoadLogoPreviewAsync();
             return;
         }
 
         if (result.Error.Code == SocialErrors.BrandVoiceNotFound.Code)
         {
             ResetToEmptyDefaults();
+            _brandVoicePersisted = false;
             return;
         }
 
@@ -301,6 +355,8 @@
         _primaryColor = dto.PrimaryColor ?? string.Empty;
         _secondaryColor = dto.SecondaryColor ?? string.Empty;
         _accentColor = dto.AccentColor ?? string.Empty;
+        _hasLogo = dto.HasLogo;
+        _logoContentType = dto.LogoContentType;
     }
 
     private void ResetToEmptyDefaults()
@@ -323,6 +379,11 @@
         _primaryColor = string.Empty;
         _secondaryColor = string.Empty;
         _accentColor = string.Empty;
+        _hasLogo = false;
+        _logoContentType = null;
+        _logoPreviewDataUrl = null;
+        _logoError = null;
+        _logoSuccess = null;
     }
 
     private async Task SaveAsync()
@@ -370,7 +431,84 @@
         }
 
         ApplyDto(result.Value);
+        _brandVoicePersisted = true;
         _saveSuccess = "DNA de marca salvo com sucesso.";
+    }
+
+    private async Task LoadLogoPreviewAsync()
+    {
+        _logoPreviewDataUrl = null;
+        if (!_hasLogo)
+        {
+            return;
+        }
+
+        var preview = await SocialClient.GetBrandVoiceLogoDataUrlAsync(WorkspaceId);
+        if (preview.IsSuccess)
+        {
+            _logoPreviewDataUrl = preview.Value;
+        }
+    }
+
+    private async Task HandleLogoSelectedAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        _logoError = null;
+        _logoSuccess = null;
+
+        if (file.Size > BrandLogoMaxBytes)
+        {
+            _logoError = "A logo excede 2 MB.";
+            return;
+        }
+
+        _logoBusy = true;
+        StateHasChanged();
+
+        await using var stream = file.OpenReadStream(BrandLogoMaxBytes);
+        var result = await SocialClient.UploadBrandVoiceLogoAsync(
+            WorkspaceId,
+            file.Name,
+            file.ContentType,
+            stream);
+
+        _logoBusy = false;
+
+        if (result.IsFailure)
+        {
+            _logoError = result.Error.Description;
+            return;
+        }
+
+        ApplyDto(result.Value);
+        _logoSuccess = "Logo enviada com sucesso.";
+        await LoadLogoPreviewAsync();
+    }
+
+    private async Task RemoveLogoAsync()
+    {
+        _logoError = null;
+        _logoSuccess = null;
+        _logoBusy = true;
+        StateHasChanged();
+
+        var result = await SocialClient.DeleteBrandVoiceLogoAsync(WorkspaceId);
+        _logoBusy = false;
+
+        if (result.IsFailure)
+        {
+            _logoError = result.Error.Description;
+            return;
+        }
+
+        ApplyDto(result.Value);
+        _logoPreviewDataUrl = null;
+        _logoSuccess = "Logo removida.";
     }
 
     private static IReadOnlyList<string> SplitLines(string text) =>

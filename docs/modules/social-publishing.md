@@ -181,7 +181,7 @@ Contexto: `SocialPublishingDbContext` (não herda `TenantDbContext`). Histórico
 | `OrganicPosts` | `Id`, `WorkspaceId`, `ConnectionId`, `Platform`, `Format`, `Pillar`, `Caption`, `ScheduledAtUtc`, `Status`, `CreatedAtUtc` | `(WorkspaceId, ScheduledAtUtc)` |
 | `ScheduleRevisions` | `Id`, `OrganicPostId`, `PreviousScheduledAtUtc`, `NewScheduledAtUtc`, `RevisedByUserId`, `RevisedAtUtc` | FK → `OrganicPosts` (cascade) |
 | `OrganicMediaAssets` | `Id`, `OrganicPostId` (nullable), `WorkspaceId`, `Format`, `ObjectKey`, `MimeType`, `DurationMilliseconds`, `AspectLabel`, `Width`, `Height`, `SortOrder` | FK opcional → `OrganicPosts` (cascade); índice `WorkspaceId`. **Sem coluna de binário.** |
-| `BrandVoiceProfiles` | `Id`, `WorkspaceId`, `Tone`, `Persona`, `EmojiPolicy`, `HashtagLimit`, pilares (`PillarAuthority`…), `LanguageCode`, `BusinessSummary`, `TargetAudience`, `MainOffer`, `Differentiators`, `PrimaryColor`, `SecondaryColor`, `AccentColor`, `MandatoryLinksJson`, `ForbiddenTermsJson`, `CreatedAtUtc` | Único `WorkspaceId` |
+| `BrandVoiceProfiles` | `Id`, `WorkspaceId`, `Tone`, `Persona`, `EmojiPolicy`, `HashtagLimit`, pilares (`PillarAuthority`…), `LanguageCode`, `BusinessSummary`, `TargetAudience`, `MainOffer`, `Differentiators`, `PrimaryColor`, `SecondaryColor`, `AccentColor`, `LogoObjectKey`, `LogoContentType`, `MandatoryLinksJson`, `ForbiddenTermsJson`, `CreatedAtUtc` | Único `WorkspaceId` |
 
 Exemplo de valor persistido para token (nunca plaintext):
 
@@ -457,6 +457,11 @@ Comandos MediatR: **`UpsertBrandVoiceCommand`**, consulta **`GetBrandVoiceQuery`
 | :--- | :--- | :--- |
 | `PUT /api/v1/social/brand-voice/{workspaceId}` | `social.copilot.generate` | Cria ou atualiza o DNA de marca |
 | `GET /api/v1/social/brand-voice/{workspaceId}` | `social.read` | Lê o perfil persistido |
+| `POST /api/v1/social/brand-voice/{workspaceId}/logo` | `social.copilot.generate` | Envia ou substitui a logo do cliente (multipart `file`; exige perfil já salvo) |
+| `DELETE /api/v1/social/brand-voice/{workspaceId}/logo` | `social.copilot.generate` | Remove logo e objeto no bucket orgânico |
+| `GET /api/v1/social/brand-voice/{workspaceId}/logo` | `social.read` | Retorna bytes da logo para prévia autenticada (`Content-Type` da imagem) |
+
+A logo do **cliente do workspace** é distinta da marca white-label da agência. O binário fica no bucket orgânico (`IBrandLogoStore`, chave `{prefix}/{tenantId:N}/brand-voice/{workspaceId:N}/logo`). Formatos: PNG, JPEG, WebP; teto **2 MB**; SVG não é aceito (referência na Interactions API do Gemini).
 
 ### Entrada (`UpsertBrandVoiceRequest`)
 
@@ -513,10 +518,14 @@ Comandos MediatR: **`UpsertBrandVoiceCommand`**, consulta **`GetBrandVoiceQuery`
     "primaryColor": "#2563EB",
     "secondaryColor": "#FFFFFF",
     "accentColor": "#F59E0B",
+    "hasLogo": true,
+    "logoContentType": "image/png",
     "createdAtUtc": "2026-11-03T12:00:00Z"
   }
 }
 ```
+
+`hasLogo` e `logoContentType` refletem metadados persistidos; a chave do objeto **não** é exposta na API.
 
 ### Erros de borda
 
@@ -530,6 +539,12 @@ Comandos MediatR: **`UpsertBrandVoiceCommand`**, consulta **`GetBrandVoiceQuery`
 | `Social.BrandColorInvalid` | 422 | Cor informada fora do formato hexadecimal aceito |
 | `Social.BrandBusinessInfoTooLong` | 422 | Campo de negócio acima do teto (resumo 2000, público/oferta 1000, diferenciais 2000) |
 | `Social.BrandVoiceNotFound` | 404 | `GET` sem perfil para o workspace |
+| `Social.BrandLogoInvalid` | 422 | MIME/extensão/cabeçalho inválido |
+| `Social.BrandLogoTooLarge` | 422 | Arquivo acima de 2 MB |
+| `Social.BrandLogoNotFound` | 404 | `GET`/`DELETE` de logo sem metadados |
+| `Social.BrandLogoUnavailable` | 500 | Logo configurada mas objeto ilegível na geração de imagem |
+
+Na geração de arte (`GeneratePostImageCommand`), quando `hasLogo` é verdadeiro o handler carrega os bytes e o `HttpGeminiImageGenerator` envia `input` multimodal (`text` + `image` em Base64) para o modelo incorporar o logotipo na composição.
 
 ---
 
@@ -1186,7 +1201,7 @@ Formulário de **Brand Voice** e diálogo **Gerar cronograma** no calendário. T
 
 ### Fluxo ponta a ponta (gestor)
 
-1. **Voz da marca** — em `/social/brand-voice`, salvar tom, persona, **informações do negócio** (resumo, público-alvo, oferta, diferenciais), **cores da identidade visual** (primária, secundária, destaque), links, termos, emoji e pesos dos pilares (`PUT /api/v1/social/brand-voice/{workspaceId}`). A UI **bloqueia** salvar se a soma dos quatro pesos ≠ 100 ou se alguma cor preenchida for hexadecimal inválido; validações adicionais continuam no backend (`Social.PillarWeightsInvalid`, `Social.BrandColorInvalid`, etc.).
+1. **Voz da marca** — em `/social/brand-voice`, salvar tom, persona, **informações do negócio** (resumo, público-alvo, oferta, diferenciais), **cores da identidade visual** (primária, secundária, destaque), **logo do cliente** (upload após o primeiro save do DNA; PNG/JPEG/WebP até 2 MB, usada como referência na geração de criativos), links, termos, emoji e pesos dos pilares (`PUT /api/v1/social/brand-voice/{workspaceId}`). A UI **bloqueia** salvar se a soma dos quatro pesos ≠ 100 ou se alguma cor preenchida for hexadecimal inválido; validações adicionais continuam no backend (`Social.PillarWeightsInvalid`, `Social.BrandColorInvalid`, etc.).
 2. **Gerar cronograma** — no calendário (`/social/calendar`), botão **Gerar cronograma** abre `GeneratePlanDialog` e chama `POST /api/v1/social/plans:generate` com intervalo (`DateOnly`), `postsPerWeek`, `seed` e fuso IANA (**`America/Sao_Paulo`**, constante da página até o `WorkspaceDto` expor fuso).
 3. **Revisar na grade** — posts em **`Draft`** aparecem na grade após fechar o diálogo com sucesso (total ou parcial); a página recarrega `ListPostsAsync`.
 4. **Aprovação e agendamento** — no detalhe: **Enviar para aprovação** (`:submit`) em rascunho; compartilhe o **link público** para o cliente; **Aprovar** internamente (`:approve`) quando em **`PendingApproval`**; **Agendar publicação** (`:schedule`) após **`Approved`** até **`Scheduled`**.
@@ -1239,6 +1254,9 @@ Corpo HTTP gerado pelo cliente (espelha §7.4):
 | :--- | :--- |
 | `GetBrandVoiceAsync` | `GET /api/v1/social/brand-voice/{workspaceId}` |
 | `UpsertBrandVoiceAsync` | `PUT /api/v1/social/brand-voice/{workspaceId}` |
+| `UploadBrandVoiceLogoAsync` | `POST /api/v1/social/brand-voice/{workspaceId}/logo` |
+| `DeleteBrandVoiceLogoAsync` | `DELETE /api/v1/social/brand-voice/{workspaceId}/logo` |
+| `GetBrandVoiceLogoDataUrlAsync` | `GET /api/v1/social/brand-voice/{workspaceId}/logo` |
 | `GeneratePlanAsync` | `POST /api/v1/social/plans:generate` |
 
 Permissões: leitura de Brand Voice **`social.read`**; upsert e geração **`social.copilot.generate`**. Falhas de rede → `Social.NetworkError` no cliente (sem exceção de fluxo na UI).

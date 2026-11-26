@@ -151,11 +151,14 @@ public sealed class GeneratePostImageCommandTests
         mediaUrlResolver.ResolvePublicUrl(Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result<string>.Failure(SocialErrors.MediaPublicBaseUrlMissing));
 
+        var brandLogoStore = Substitute.For<IBrandLogoStore>();
+
         return new GeneratePostImageCommandHandler(
             host.PostRepository,
             brandVoiceRepository,
             imageGenerator,
             new ImageSharpFeedImageNormalizer(),
+            brandLogoStore,
             mediaStore,
             mediaUrlResolver,
             host.UnitOfWork,

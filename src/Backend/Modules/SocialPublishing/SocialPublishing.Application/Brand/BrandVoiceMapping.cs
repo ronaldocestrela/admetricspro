@@ -35,5 +35,7 @@ public static class BrandVoiceMapping
             profile.VisualIdentity?.PrimaryColor,
             profile.VisualIdentity?.SecondaryColor,
             profile.VisualIdentity?.AccentColor,
+            profile.HasLogo,
+            profile.LogoContentType,
             profile.CreatedAtUtc);
 }

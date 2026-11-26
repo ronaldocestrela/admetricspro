@@ -27,12 +27,16 @@ public static class ImageBriefBuilder
     /// <param name="post">Post orgânico aprovado.</param>
     /// <param name="imageSize">Resolução alvo (ex.: 1K).</param>
     /// <param name="optionalDirection">Direcionamento visual opcional.</param>
+    /// <param name="logoReferenceContent">Bytes da logo do cliente, quando disponíveis.</param>
+    /// <param name="logoReferenceMimeType">MIME da logo de referência.</param>
     /// <returns>Brief pronto para o adaptador de imagem.</returns>
     public static ImageBrief Build(
         BrandVoiceProfile brandVoice,
         OrganicPost post,
         string imageSize,
-        string? optionalDirection)
+        string? optionalDirection,
+        byte[]? logoReferenceContent = null,
+        string? logoReferenceMimeType = null)
     {
         ArgumentNullException.ThrowIfNull(brandVoice);
         ArgumentNullException.ThrowIfNull(post);
@@ -61,6 +65,8 @@ public static class ImageBriefBuilder
             brandVoice.VisualIdentity?.AccentColor,
             aspectRatio,
             imageSize,
-            optionalDirection);
+            optionalDirection,
+            logoReferenceContent,
+            logoReferenceMimeType);
     }
 }

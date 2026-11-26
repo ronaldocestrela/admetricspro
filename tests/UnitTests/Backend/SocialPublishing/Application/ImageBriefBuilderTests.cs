@@ -50,6 +50,24 @@ public sealed class ImageBriefBuilderTests
         brief.AspectRatio.Should().Be(ImageBriefBuilder.FacebookFeedAspectRatio);
     }
 
+    /// <summary>
+    /// Brief com logo de referência deve orientar o modelo a usar a imagem anexada.
+    /// </summary>
+    [Fact]
+    public void Build_ComLogoReference_DeveInstruirUsoDaImagem()
+    {
+        var brandVoice = SeedBrandVoice();
+        var post = SeedApprovedPost(OrganicPlatform.Instagram, "Texto");
+        var logoBytes = new byte[] { 1, 2, 3 };
+
+        var brief = ImageBriefBuilder.Build(brandVoice, post, "1K", null, logoBytes, "image/png");
+        var prompt = brief.ToPromptText();
+
+        brief.HasLogoReference.Should().BeTrue();
+        prompt.Should().Contain("imagem de referência anexada");
+        prompt.Should().NotContain("Não invente logotipo, oferta");
+    }
+
     private static BrandVoiceProfile SeedBrandVoice(
         string? primaryColor = null,
         string? mainOffer = "Oferta X")

@@ -143,10 +143,12 @@ public static class SocialPublishingModuleServiceExtensions
         if (string.Equals(objectStorageProvider, "MinIO", StringComparison.OrdinalIgnoreCase))
         {
             services.AddSingleton<IOrganicMediaStore, ObjectStoreOrganicMediaStore>();
+            services.AddSingleton<IBrandLogoStore, ObjectStoreBrandLogoStore>();
         }
         else
         {
             services.AddSingleton<IOrganicMediaStore, LocalOrganicMediaStore>();
+            services.AddSingleton<IBrandLogoStore, LocalBrandLogoStore>();
         }
 
         services.AddOptions<ObjectStorageOptions>()

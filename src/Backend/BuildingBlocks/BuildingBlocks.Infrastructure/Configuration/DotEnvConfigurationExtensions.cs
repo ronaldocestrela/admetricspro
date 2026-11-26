@@ -12,6 +12,7 @@ public static class DotEnvConfigurationExtensions
     /// <summary>
     /// Adiciona um arquivo .env como fonte de configuração em memória no <see cref="IConfigurationBuilder"/>,
     /// normalizando automaticamente chaves hierárquicas no formato .NET ('__' para ':').
+    /// Com <paramref name="overrideExisting"/> falso, chaves já definidas permanecem.
     /// </summary>
     /// <param name="builder">O construtor de configuração.</param>
     /// <param name="filePath">Caminho específico para o arquivo .env. Se omitido, busca recursivamente a partir da raiz.</param>
@@ -58,7 +59,66 @@ public static class DotEnvConfigurationExtensions
             }
         }
 
-        builder.AddInMemoryCollection(configurationDictionary);
+        if (!overrideExisting)
+        {
+            RemoveKeysAlreadyPresent(builder, configurationDictionary);
+        }
+
+        if (configurationDictionary.Count > 0)
+        {
+            builder.AddInMemoryCollection(configurationDictionary);
+        }
+
         return builder;
+    }
+
+    /// <summary>
+    /// Remove chaves que já possuem valor, para que o arquivo .env não substitua configuração anterior.
+    /// </summary>
+    /// <param name="builder">Construtor de configuração já populado.</param>
+    /// <param name="configurationDictionary">Chaves lidas do arquivo .env.</param>
+    private static void RemoveKeysAlreadyPresent(
+        IConfigurationBuilder builder,
+        Dictionary<string, string?> configurationDictionary)
+    {
+        if (builder is IConfiguration current)
+        {
+            RemoveKeysPresentIn(current, configurationDictionary);
+            return;
+        }
+
+        var snapshotBuilder = new ConfigurationBuilder();
+        foreach (var source in builder.Sources)
+        {
+            snapshotBuilder.Add(source);
+        }
+
+        var snapshot = snapshotBuilder.Build();
+        try
+        {
+            RemoveKeysPresentIn(snapshot, configurationDictionary);
+        }
+        finally
+        {
+            (snapshot as IDisposable)?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Descarta entradas cujo valor já está definido na configuração corrente.
+    /// </summary>
+    /// <param name="current">Configuração já materializada.</param>
+    /// <param name="configurationDictionary">Chaves candidatas a inclusão.</param>
+    private static void RemoveKeysPresentIn(
+        IConfiguration current,
+        Dictionary<string, string?> configurationDictionary)
+    {
+        foreach (var key in configurationDictionary.Keys.ToArray())
+        {
+            if (current[key] is not null)
+            {
+                configurationDictionary.Remove(key);
+            }
+        }
     }
 }

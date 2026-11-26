@@ -134,6 +134,34 @@ public sealed class HttpGeminiImageGeneratorTests
     }
 
     /// <summary>
+    /// Com logo de referência, o payload envia input como array com bloco image.
+    /// </summary>
+    [Fact]
+    public async Task GenerateAsync_ComLogoReference_DeveEnviarInputMultimodal()
+    {
+        string? capturedJson = null;
+        var handler = new TestHttpMessageHandler((request, _) =>
+        {
+            capturedJson = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+            return SuccessInteractionResponse(MinimalPng);
+        });
+
+        var generator = CreateGenerator(handler);
+        var brief = SampleBrief() with
+        {
+            LogoReferenceContent = MinimalPng,
+            LogoReferenceMimeType = "image/png",
+        };
+
+        var result = await generator.GenerateAsync(brief, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        capturedJson.Should().NotBeNullOrWhiteSpace();
+        capturedJson.Should().Contain("\"type\":\"image\"");
+        capturedJson.Should().Contain("\"mime_type\":\"image/png\"");
+    }
+
+    /// <summary>
     /// Corpo sem imagem retorna ImageGenerationFailed.
     /// </summary>
     [Fact]
@@ -180,6 +208,8 @@ public sealed class HttpGeminiImageGeneratorTests
             null,
             ImageBriefBuilder.InstagramFeedAspectRatio,
             "1K",
+            null,
+            null,
             null);
 
     private static HttpResponseMessage SuccessInteractionResponse(byte[] png)

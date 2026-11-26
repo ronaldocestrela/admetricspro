@@ -315,4 +315,122 @@ public sealed class BrandVoiceProfileTests
         created.BusinessProfile!.BusinessSummary.Should().Be("E-commerce de moda");
         created.VisualIdentity!.PrimaryColor.Should().Be("#1E40AF");
     }
+
+    /// <summary>
+    /// AttachLogo persiste chave e MIME válidos.
+    /// </summary>
+    [Fact]
+    public void AttachLogo_ComDadosValidos_DevePersistir()
+    {
+        var created = BrandVoiceProfile.Create(
+            Guid.NewGuid(),
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Sparingly,
+            10,
+            25,
+            25,
+            25,
+            25).Value;
+
+        var result = created.AttachLogo("organic-media/brand-voice/abc/logo", "image/png");
+
+        result.IsSuccess.Should().BeTrue();
+        created.LogoObjectKey.Should().Be("organic-media/brand-voice/abc/logo");
+        created.LogoContentType.Should().Be("image/png");
+        created.HasLogo.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// AttachLogo rejeita chave ou MIME ausentes.
+    /// </summary>
+    [Fact]
+    public void AttachLogo_ComMetadadosInvalidos_DeveFalhar()
+    {
+        var created = BrandVoiceProfile.Create(
+            Guid.NewGuid(),
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Sparingly,
+            10,
+            25,
+            25,
+            25,
+            25).Value;
+
+        created.AttachLogo(string.Empty, "image/png").IsFailure.Should().BeTrue();
+        created.AttachLogo("key", string.Empty).IsFailure.Should().BeTrue();
+        created.HasLogo.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// ClearLogo remove metadados de logo.
+    /// </summary>
+    [Fact]
+    public void ClearLogo_ComLogoAnexada_DeveZerar()
+    {
+        var created = BrandVoiceProfile.Create(
+            Guid.NewGuid(),
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Sparingly,
+            10,
+            25,
+            25,
+            25,
+            25).Value;
+
+        created.AttachLogo("key", "image/jpeg").IsSuccess.Should().BeTrue();
+        var result = created.ClearLogo();
+
+        result.IsSuccess.Should().BeTrue();
+        created.LogoObjectKey.Should().BeNull();
+        created.LogoContentType.Should().BeNull();
+        created.HasLogo.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Revise não remove a logo já anexada.
+    /// </summary>
+    [Fact]
+    public void Revise_ComLogoAnexada_DevePreservarLogo()
+    {
+        var created = BrandVoiceProfile.Create(
+            Guid.NewGuid(),
+            "Tom",
+            "Persona",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Sparingly,
+            10,
+            25,
+            25,
+            25,
+            25).Value;
+
+        created.AttachLogo("logo-key", "image/webp").IsSuccess.Should().BeTrue();
+
+        var result = created.Revise(
+            "Tom novo",
+            "Persona nova",
+            ["https://example.com"],
+            [],
+            EmojiPolicy.Sparingly,
+            10,
+            25,
+            25,
+            25,
+            25);
+
+        result.IsSuccess.Should().BeTrue();
+        created.Tone.Should().Be("Tom novo");
+        created.LogoObjectKey.Should().Be("logo-key");
+        created.LogoContentType.Should().Be("image/webp");
+    }
 }

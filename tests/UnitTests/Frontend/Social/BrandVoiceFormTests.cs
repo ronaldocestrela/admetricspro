@@ -256,6 +256,35 @@ public sealed class BrandVoiceFormTests : BunitTestBase
         });
     }
 
+    /// <summary>
+    /// Sem perfil salvo, upload de logo fica bloqueado.
+    /// </summary>
+    [Fact]
+    public async Task Form_SemPerfilSalvo_DeveBloquearUploadLogo()
+    {
+        var workspaceId = Guid.NewGuid();
+        _socialClient.GetBrandVoiceAsync(workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<BrandVoiceDto>.Failure(SocialErrors.BrandVoiceNotFound)));
+
+        var cut = Render<BrandVoiceForm>(p => p.Add(x => x.WorkspaceId, workspaceId));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='brand-voice-logo-blocked']").Should().NotBeNull());
+        cut.FindAll("[data-testid='brand-voice-logo-file']").Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Com perfil carregado, exibe input de logo.
+    /// </summary>
+    [Fact]
+    public async Task Form_ComPerfilSalvo_ExibeInputLogo()
+    {
+        var workspaceId = Guid.NewGuid();
+        _socialClient.GetBrandVoiceAsync(workspaceId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<BrandVoiceDto>.Success(CreateDto(workspaceId))));
+
+        var cut = Render<BrandVoiceForm>(p => p.Add(x => x.WorkspaceId, workspaceId));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='brand-voice-logo-file']").Should().NotBeNull());
+    }
+
     private static BrandVoiceDto CreateDto(Guid workspaceId) =>
         new(
             Guid.NewGuid(),
@@ -277,6 +306,8 @@ public sealed class BrandVoiceFormTests : BunitTestBase
             null,
             null,
             null,
+            null,
+            false,
             null,
             DateTime.UtcNow);
 }

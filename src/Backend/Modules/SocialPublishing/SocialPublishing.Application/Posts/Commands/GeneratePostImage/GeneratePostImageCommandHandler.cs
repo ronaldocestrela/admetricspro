@@ -23,6 +23,7 @@ public sealed class GeneratePostImageCommandHandler : ICommandHandler<GeneratePo
     private readonly IBrandVoiceRepository _brandVoiceRepository;
     private readonly ISocialImageGenerator _imageGenerator;
     private readonly IGeneratedFeedImageNormalizer _feedImageNormalizer;
+    private readonly IBrandLogoStore _brandLogoStore;
     private readonly IOrganicMediaStore _mediaStore;
     private readonly IOrganicMediaPublicUrlResolver _mediaPublicUrlResolver;
     private readonly ISocialPublishingUnitOfWork _unitOfWork;
@@ -38,6 +39,7 @@ public sealed class GeneratePostImageCommandHandler : ICommandHandler<GeneratePo
         IBrandVoiceRepository brandVoiceRepository,
         ISocialImageGenerator imageGenerator,
         IGeneratedFeedImageNormalizer feedImageNormalizer,
+        IBrandLogoStore brandLogoStore,
         IOrganicMediaStore mediaStore,
         IOrganicMediaPublicUrlResolver mediaPublicUrlResolver,
         ISocialPublishingUnitOfWork unitOfWork,
@@ -49,6 +51,7 @@ public sealed class GeneratePostImageCommandHandler : ICommandHandler<GeneratePo
         _brandVoiceRepository = brandVoiceRepository ?? throw new ArgumentNullException(nameof(brandVoiceRepository));
         _imageGenerator = imageGenerator ?? throw new ArgumentNullException(nameof(imageGenerator));
         _feedImageNormalizer = feedImageNormalizer ?? throw new ArgumentNullException(nameof(feedImageNormalizer));
+        _brandLogoStore = brandLogoStore ?? throw new ArgumentNullException(nameof(brandLogoStore));
         _mediaStore = mediaStore ?? throw new ArgumentNullException(nameof(mediaStore));
         _mediaPublicUrlResolver = mediaPublicUrlResolver ?? throw new ArgumentNullException(nameof(mediaPublicUrlResolver));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -94,11 +97,32 @@ public sealed class GeneratePostImageCommandHandler : ICommandHandler<GeneratePo
             return Result<OrganicPostDto>.Failure(SocialErrors.BrandVoiceNotFound);
         }
 
+        byte[]? logoBytes = null;
+        string? logoMime = null;
+        if (brandVoice.HasLogo)
+        {
+            var openLogo = await _brandLogoStore.OpenReadAsync(brandVoice.LogoObjectKey!, cancellationToken);
+            if (openLogo.IsFailure)
+            {
+                return Result<OrganicPostDto>.Failure(SocialErrors.BrandLogoUnavailable);
+            }
+
+            await using (openLogo.Value)
+            {
+                using var buffer = new MemoryStream();
+                await openLogo.Value.CopyToAsync(buffer, cancellationToken);
+                logoBytes = buffer.ToArray();
+                logoMime = brandVoice.LogoContentType;
+            }
+        }
+
         var brief = ImageBriefBuilder.Build(
             brandVoice,
             post,
             _imageAiOptions.ImageSize,
-            request.Direction?.Trim());
+            request.Direction?.Trim(),
+            logoBytes,
+            logoMime);
 
         var generated = await _imageGenerator.GenerateAsync(brief, cancellationToken);
         if (generated.IsFailure)

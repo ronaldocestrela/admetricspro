@@ -246,6 +246,42 @@ public interface ISocialPublishingClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Envia ou substitui a logo do cliente no Brand Voice.
+    /// </summary>
+    /// <param name="workspaceId">Workspace do cliente.</param>
+    /// <param name="fileName">Nome do arquivo.</param>
+    /// <param name="contentType">MIME declarado.</param>
+    /// <param name="content">Conteúdo da imagem.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Perfil atualizado.</returns>
+    Task<Result<BrandVoiceDto>> UploadBrandVoiceLogoAsync(
+        Guid workspaceId,
+        string fileName,
+        string contentType,
+        Stream content,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Remove a logo do cliente do Brand Voice.
+    /// </summary>
+    /// <param name="workspaceId">Workspace do cliente.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Perfil atualizado.</returns>
+    Task<Result<BrandVoiceDto>> DeleteBrandVoiceLogoAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém a logo do cliente como data URL para prévia na UI.
+    /// </summary>
+    /// <param name="workspaceId">Workspace do cliente.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Data URL (<c>data:image/...;base64,...</c>) ou falha.</returns>
+    Task<Result<string>> GetBrandVoiceLogoDataUrlAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Materializa um plano editorial em posts orgânicos em rascunho.
     /// </summary>
     /// <param name="workspaceId">Workspace proprietário.</param>

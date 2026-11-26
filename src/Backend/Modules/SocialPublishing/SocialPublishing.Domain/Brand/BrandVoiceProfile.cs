@@ -108,6 +108,22 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
     public BrandVisualIdentity? VisualIdentity { get; private set; }
 
     /// <summary>
+    /// Obtém a chave do objeto da logo do cliente no armazenamento orgânico, quando configurada.
+    /// </summary>
+    public string? LogoObjectKey { get; private set; }
+
+    /// <summary>
+    /// Obtém o tipo MIME da logo do cliente, quando configurada.
+    /// </summary>
+    public string? LogoContentType { get; private set; }
+
+    /// <summary>
+    /// Indica se há logo do cliente persistida para geração de criativos.
+    /// </summary>
+    public bool HasLogo =>
+        !string.IsNullOrWhiteSpace(LogoObjectKey) && !string.IsNullOrWhiteSpace(LogoContentType);
+
+    /// <summary>
     /// Cria um perfil de voz de marca para o workspace.
     /// </summary>
     /// <param name="workspaceId">Identificador do workspace.</param>
@@ -281,6 +297,46 @@ public sealed class BrandVoiceProfile : AggregateRoot<Guid>
         _forbiddenTerms.Clear();
         _forbiddenTerms.AddRange(content.ForbiddenTerms);
 
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Associa ou substitui a logo do cliente usada como referência na geração de criativos.
+    /// </summary>
+    /// <param name="objectKey">Chave do objeto no bucket orgânico.</param>
+    /// <param name="contentType">Tipo MIME permitido (PNG, JPEG ou WebP).</param>
+    /// <returns>Resultado de sucesso ou erro de validação.</returns>
+    public Result AttachLogo(string objectKey, string contentType)
+    {
+        if (string.IsNullOrWhiteSpace(objectKey))
+        {
+            return Result.Failure(SocialErrors.BrandLogoInvalid);
+        }
+
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return Result.Failure(SocialErrors.BrandLogoInvalid);
+        }
+
+        var normalizedMime = contentType.Trim().ToLowerInvariant();
+        if (normalizedMime is not ("image/png" or "image/jpeg" or "image/webp"))
+        {
+            return Result.Failure(SocialErrors.BrandLogoInvalid);
+        }
+
+        LogoObjectKey = objectKey.Trim();
+        LogoContentType = normalizedMime;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Remove a logo do cliente do perfil (metadados; o objeto deve ser apagado na camada de aplicação).
+    /// </summary>
+    /// <returns>Resultado de sucesso.</returns>
+    public Result ClearLogo()
+    {
+        LogoObjectKey = null;
+        LogoContentType = null;
         return Result.Success();
     }
 

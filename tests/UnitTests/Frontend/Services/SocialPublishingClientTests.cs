@@ -330,6 +330,8 @@ public sealed class SocialPublishingClientTests
             null,
             null,
             null,
+            false,
+            null,
             DateTime.UtcNow);
 
         string? capturedTenantHeader = null;
@@ -380,6 +382,8 @@ public sealed class SocialPublishingClientTests
             null,
             null,
             null,
+            null,
+            false,
             null,
             DateTime.UtcNow);
 

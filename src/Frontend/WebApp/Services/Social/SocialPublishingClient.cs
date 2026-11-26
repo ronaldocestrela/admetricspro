@@ -530,6 +530,107 @@ public sealed class SocialPublishingClient : ISocialPublishingClient
     }
 
     /// <inheritdoc />
+    public async Task<Result<BrandVoiceDto>> UploadBrandVoiceLogoAsync(
+        Guid workspaceId,
+        string fileName,
+        string contentType,
+        Stream content,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<BrandVoiceDto>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var multipart = new MultipartFormDataContent();
+            var streamContent = new StreamContent(content);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+            multipart.Add(streamContent, "file", fileName);
+
+            using var message = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/social/brand-voice/{workspaceId}/logo")
+            {
+                Content = multipart,
+            };
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<BrandVoiceDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<BrandVoiceDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao enviar logo do cliente."));
+        }
+        catch (Exception ex)
+        {
+            return Result<BrandVoiceDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao enviar logo do cliente: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<BrandVoiceDto>> DeleteBrandVoiceLogoAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<BrandVoiceDto>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/social/brand-voice/{workspaceId}/logo");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<Result<BrandVoiceDto>>(JsonOptions, cancellationToken);
+
+            return result ?? Result<BrandVoiceDto>.Failure(
+                Error.Failure("Social.InvalidResponse", "Resposta inválida ao remover logo do cliente."));
+        }
+        catch (Exception ex)
+        {
+            return Result<BrandVoiceDto>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao remover logo do cliente: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<string>> GetBrandVoiceLogoDataUrlAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workspaceId == Guid.Empty)
+        {
+            return Result<string>.Failure(SocialPublishing.Domain.SocialErrors.WorkspaceRequired);
+        }
+
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/social/brand-voice/{workspaceId}/logo");
+            AppendTenantHeader(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result<string>.Failure(
+                    Error.Failure("Social.InvalidResponse", "Não foi possível carregar a logo do cliente."));
+            }
+
+            var mime = response.Content.Headers.ContentType?.MediaType ?? "image/png";
+            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            var dataUrl = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            return Result<string>.Success(dataUrl);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Failure(
+                Error.Failure("Social.NetworkError", $"Erro de comunicação ao carregar logo do cliente: {ex.Message}"));
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<Result<GeneratedPlanDto>> GeneratePlanAsync(
         Guid workspaceId,
         DateOnly rangeStart,

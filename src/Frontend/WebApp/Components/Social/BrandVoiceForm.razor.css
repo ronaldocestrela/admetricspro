@@ -26,3 +26,18 @@
     border: none;
     border-radius: 0.2rem;
 }
+
+.brand-voice-logo-preview {
+    max-width: 12rem;
+    padding: 0.5rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: var(--bs-border-radius, 0.375rem);
+    background: var(--bs-body-bg, #fff);
+}
+
+.brand-voice-logo-img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}

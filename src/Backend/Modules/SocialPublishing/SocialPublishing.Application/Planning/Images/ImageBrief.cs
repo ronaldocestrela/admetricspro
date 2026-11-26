@@ -23,6 +23,8 @@ namespace SocialPublishing.Application.Planning.Images;
 /// <param name="AspectRatio">Proporção solicitada ao modelo (ex.: 4:5).</param>
 /// <param name="ImageSize">Resolução solicitada (ex.: 1K).</param>
 /// <param name="OptionalDirection">Direcionamento visual opcional da agência.</param>
+/// <param name="LogoReferenceContent">Bytes da logo do cliente para referência na IA, quando configurada.</param>
+/// <param name="LogoReferenceMimeType">MIME da logo de referência.</param>
 public sealed record ImageBrief(
     string CaptionBody,
     ContentPillar Pillar,
@@ -38,8 +40,17 @@ public sealed record ImageBrief(
     string? AccentColor,
     string AspectRatio,
     string ImageSize,
-    string? OptionalDirection)
+    string? OptionalDirection,
+    byte[]? LogoReferenceContent,
+    string? LogoReferenceMimeType)
 {
+    /// <summary>
+    /// Indica se há logo de referência anexada ao brief.
+    /// </summary>
+    public bool HasLogoReference =>
+        LogoReferenceContent is { Length: > 0 }
+        && !string.IsNullOrWhiteSpace(LogoReferenceMimeType);
+
     /// <summary>
     /// Serializa o brief em texto para o prompt do modelo de imagem.
     /// </summary>
@@ -79,7 +90,18 @@ public sealed record ImageBrief(
             sb.AppendLine($"Direcionamento visual adicional: {OptionalDirection}");
         }
 
-        sb.AppendLine("Não invente logotipo, oferta, preço ou dados ausentes acima.");
+        if (HasLogoReference)
+        {
+            sb.AppendLine(
+                "Use a imagem de referência anexada como logotipo oficial do cliente. "
+                + "Incorpore-a de forma legível e harmoniosa na composição, sem distorcer nem redesenhar a marca.");
+            sb.AppendLine("Não invente outro logotipo, oferta, preço ou dados ausentes no texto acima.");
+        }
+        else
+        {
+            sb.AppendLine("Não invente logotipo, oferta, preço ou dados ausentes acima.");
+        }
+
         sb.AppendLine("Evite texto pequeno ilegível. Não inclua hashtags na imagem.");
         return sb.ToString();
     }

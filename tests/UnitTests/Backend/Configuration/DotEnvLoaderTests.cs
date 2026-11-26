@@ -246,4 +246,63 @@ public sealed class DotEnvLoaderTests : IDisposable
         // Assert
         config.GetConnectionString("MasterDb").Should().Be(expectedConnection);
     }
+
+    /// <summary>
+    /// Com <c>overrideExisting</c> falso, chaves já presentes na configuração permanecem.
+    /// </summary>
+    [Fact]
+    public void AddDotEnvFile_WhenOverrideExistingIsFalse_ShouldKeepExistingKeys()
+    {
+        var envFilePath = Path.Combine(_tempDirectory, ".env");
+        File.WriteAllText(envFilePath, "Messaging__Enabled=false\nObjectStorage__Provider=MinIO\n");
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Messaging:Enabled"] = "true",
+            })
+            .AddDotEnvFile(envFilePath, optional: false, overrideExisting: false)
+            .Build();
+
+        config["Messaging:Enabled"].Should().Be("true");
+        config["ObjectStorage:Provider"].Should().Be("MinIO");
+    }
+
+    /// <summary>
+    /// No <see cref="ConfigurationManager"/>, o padrão não substitui valores definidos antes do .env.
+    /// </summary>
+    [Fact]
+    public void AddDotEnvFile_OnConfigurationManager_ShouldNotReplacePresetValues()
+    {
+        var envFilePath = Path.Combine(_tempDirectory, ".env");
+        File.WriteAllText(envFilePath, "Messaging__Enabled=false\nMessaging__HostRole=All\n");
+
+        using var manager = new ConfigurationManager();
+        manager["Messaging:Enabled"] = "true";
+        manager["Messaging:HostRole"] = "Api";
+        manager.AddDotEnvFile(envFilePath, optional: false);
+
+        manager["Messaging:Enabled"].Should().Be("true");
+        manager["Messaging:HostRole"].Should().Be("Api");
+    }
+
+    /// <summary>
+    /// Com <c>overrideExisting</c> verdadeiro, o arquivo .env substitui chaves já carregadas.
+    /// </summary>
+    [Fact]
+    public void AddDotEnvFile_WhenOverrideExistingIsTrue_ShouldReplaceExistingKeys()
+    {
+        var envFilePath = Path.Combine(_tempDirectory, ".env");
+        File.WriteAllText(envFilePath, "Messaging__Enabled=false\n");
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Messaging:Enabled"] = "true",
+            })
+            .AddDotEnvFile(envFilePath, optional: false, overrideExisting: true)
+            .Build();
+
+        config["Messaging:Enabled"].Should().Be("false");
+    }
 }

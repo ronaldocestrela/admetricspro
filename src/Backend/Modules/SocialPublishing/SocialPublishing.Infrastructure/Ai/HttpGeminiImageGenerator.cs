@@ -54,10 +54,21 @@ public sealed class HttpGeminiImageGenerator : ISocialImageGenerator
             return Result<GeneratedSocialImage>.Failure(SocialErrors.ImageAiConfigurationMissing);
         }
 
+        var promptText = brief.ToPromptText();
         var payload = new InteractionRequest
         {
             Model = _options.Model,
-            Input = brief.ToPromptText(),
+            Input = brief.HasLogoReference
+                ? new object[]
+                {
+                    new InteractionInputText { Text = promptText },
+                    new InteractionInputImage
+                    {
+                        Data = Convert.ToBase64String(brief.LogoReferenceContent!),
+                        MimeType = brief.LogoReferenceMimeType!,
+                    },
+                }
+                : promptText,
             ResponseFormat = new InteractionResponseFormat
             {
                 Type = "image",
@@ -362,9 +373,25 @@ public sealed class HttpGeminiImageGenerator : ISocialImageGenerator
     {
         public string Model { get; set; } = string.Empty;
 
-        public string Input { get; set; } = string.Empty;
+        public object Input { get; set; } = string.Empty;
 
         public InteractionResponseFormat? ResponseFormat { get; set; }
+    }
+
+    private sealed class InteractionInputText
+    {
+        public string Type { get; set; } = "text";
+
+        public string Text { get; set; } = string.Empty;
+    }
+
+    private sealed class InteractionInputImage
+    {
+        public string Type { get; set; } = "image";
+
+        public string Data { get; set; } = string.Empty;
+
+        public string MimeType { get; set; } = string.Empty;
     }
 
     private sealed class InteractionResponseFormat

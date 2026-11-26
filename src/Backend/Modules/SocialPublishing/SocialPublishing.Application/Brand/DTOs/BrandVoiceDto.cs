@@ -25,6 +25,8 @@ namespace SocialPublishing.Application.Brand.DTOs;
 /// <param name="PrimaryColor">Cor primária da identidade visual.</param>
 /// <param name="SecondaryColor">Cor secundária.</param>
 /// <param name="AccentColor">Cor de destaque.</param>
+/// <param name="HasLogo">Indica se há logo do cliente para referência na geração de criativos.</param>
+/// <param name="LogoContentType">MIME da logo, quando configurada.</param>
 /// <param name="CreatedAtUtc">Carimbo UTC de criação do perfil.</param>
 public sealed record BrandVoiceDto(
     Guid Id,
@@ -47,4 +49,6 @@ public sealed record BrandVoiceDto(
     string? PrimaryColor,
     string? SecondaryColor,
     string? AccentColor,
+    bool HasLogo,
+    string? LogoContentType,
     DateTime CreatedAtUtc);
