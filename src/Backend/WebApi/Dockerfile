@@ -25,14 +25,18 @@ RUN dotnet publish src/Backend/WebApi/WebApi.csproj -c Release -o /app/publish -
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
-# Instala curl para healthchecks em containers
+# Instala curl para healthchecks em containers.
+# O processo inicia como root só para alinhar a posse dos volumes de mídia
+# (criados pelo daemon como root) e o entrypoint troca para o usuário app.
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/data/social-media /app/data/object-storage \
+    && chown -R app:app /app/data
 
-# Executa com usuário não-root nativo do .NET
-USER app
+COPY src/Backend/WebApi/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
@@ -41,4 +45,4 @@ ENV DOTNET_RUNNING_IN_CONTAINER=true
 
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "WebApi.dll"]
+ENTRYPOINT ["docker-entrypoint.sh"]

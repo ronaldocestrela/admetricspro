@@ -791,6 +791,8 @@ Com **`Messaging:Enabled=true`** (ADR 0052, Fase 8), o POST retorna **`Result<Us
 
 Configuração: seção **`SocialImageAi`** / variáveis `SOCIAL_IMAGE_AI_*` (ADR 0051, ADR 0018). Modelo padrão `gemini-nano-banana-2.1`, resolução `1K`.
 
+O adaptador `HttpGeminiImageGenerator` lê a imagem na resposta REST da **Interactions API** em `steps[].content[]` com `type: image` e `data` (base64), típico de `model_output` com `status: completed`. O atalho `output_image` existe no SDK oficial, mas **não** vem no JSON HTTP; quando há vários blocos, usa-se a **última** imagem em `model_output`. Modelos com thinking podem expor rascunhos em `steps[].summary[]` — fallback opcional. Falha de parse gera log com `status` e tipos de step/content (sem payload sensível) e retorna `Social.ImageGenerationFailed`.
+
 A resposta `200` (`Result<OrganicPostDto>`) inclui `media[]`. O PNG retornado pelo modelo é **recortado e redimensionado** no servidor para **1080×1350** (Instagram) ou **1080×1080** (Facebook) antes de `ReplaceGeneratedImage`. A prévia no calendário usa `publicUrl` quando `ObjectStorage:PublicBaseUrl` e `ObjectStorage:PublishUrlSigningKey` estão configurados; sem URL pública, o WebApp lê `GET /api/v1/social/posts/{id}/media/{assetId}` e serve bytes via ticket curto `GET /social/media-preview/{ticket}` (evita data URLs grandes no circuito Blazor Server). Com `ObjectStorage:Provider=Local`, montar volume em `SocialPublishing__Media__LocalRoot` (`/app/data/social-media`) — destino em disco **ou** origem da cópia para MinIO ([Fase 5 em object-storage.md](object-storage.md)). Modo MinIO nas réplicas de produção: só depois do runbook de cópia; overlay: `docker compose -f docker-compose.yml -f docker-compose.minio.yml up`.
 
 | Código | HTTP | Quando |

@@ -2,6 +2,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using BuildingBlocks.Domain.Primitives;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SocialPublishing.Application.Abstractions;
 using SocialPublishing.Application.Options;
@@ -24,16 +26,22 @@ public sealed class HttpGeminiImageGenerator : ISocialImageGenerator
 
     private readonly HttpClient _httpClient;
     private readonly SocialImageAiOptions _options;
+    private readonly ILogger<HttpGeminiImageGenerator> _logger;
 
     /// <summary>
     /// Inicializa uma nova instância de <see cref="HttpGeminiImageGenerator"/>.
     /// </summary>
     /// <param name="httpClient">Cliente HTTP nomeado.</param>
     /// <param name="options">Opções do provedor de imagem.</param>
-    public HttpGeminiImageGenerator(HttpClient httpClient, IOptions<SocialImageAiOptions> options)
+    /// <param name="logger">Logger estruturado para falhas de parse da resposta.</param>
+    public HttpGeminiImageGenerator(
+        HttpClient httpClient,
+        IOptions<SocialImageAiOptions> options,
+        ILogger<HttpGeminiImageGenerator>? logger = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _logger = logger ?? NullLogger<HttpGeminiImageGenerator>.Instance;
     }
 
     /// <inheritdoc />
@@ -76,6 +84,7 @@ public sealed class HttpGeminiImageGenerator : ISocialImageGenerator
             var bytesResult = ExtractImageBytes(json);
             if (bytesResult.IsFailure)
             {
+                LogUnrecognizedInteractionShape(json);
                 return Result<GeneratedSocialImage>.Failure(bytesResult.Error);
             }
 
@@ -96,7 +105,12 @@ public sealed class HttpGeminiImageGenerator : ISocialImageGenerator
         }
     }
 
-    private static Result<byte[]> ExtractImageBytes(string json)
+    /// <summary>
+    /// Extrai bytes de imagem do JSON da Interactions API (formatos legados e REST).
+    /// </summary>
+    /// <param name="json">Corpo JSON da resposta HTTP.</param>
+    /// <returns>Bytes decodificados ou falha de negócio.</returns>
+    private Result<byte[]> ExtractImageBytes(string json)
     {
         try
         {
@@ -139,6 +153,16 @@ public sealed class HttpGeminiImageGenerator : ISocialImageGenerator
                         return Result<byte[]>.Success(fromStep);
                     }
                 }
+
+                if (TryExtractLastModelOutputImage(steps, out var fromModelOutput))
+                {
+                    return Result<byte[]>.Success(fromModelOutput);
+                }
+
+                if (TryExtractLastThoughtSummaryImage(steps, out var fromThought))
+                {
+                    return Result<byte[]>.Success(fromThought);
+                }
             }
 
             return Result<byte[]>.Failure(SocialErrors.ImageGenerationFailed);
@@ -151,6 +175,164 @@ public sealed class HttpGeminiImageGenerator : ISocialImageGenerator
         {
             return Result<byte[]>.Failure(SocialErrors.ImageGenerationFailed);
         }
+    }
+
+    /// <summary>
+    /// Registra o formato da resposta quando nenhum bloco de imagem foi localizado (sem dados sensíveis).
+    /// </summary>
+    /// <param name="json">Corpo JSON da resposta HTTP.</param>
+    private void LogUnrecognizedInteractionShape(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var status = root.TryGetProperty("status", out var statusEl)
+                ? statusEl.GetString()
+                : null;
+
+            var stepTypes = new List<string>();
+            var contentTypes = new List<string>();
+
+            if (root.TryGetProperty("steps", out var steps) && steps.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var step in steps.EnumerateArray())
+                {
+                    if (step.TryGetProperty("type", out var stepType))
+                    {
+                        stepTypes.Add(stepType.GetString() ?? "?");
+                    }
+
+                    if (step.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var block in content.EnumerateArray())
+                        {
+                            if (block.TryGetProperty("type", out var blockType))
+                            {
+                                contentTypes.Add(blockType.GetString() ?? "?");
+                            }
+                        }
+                    }
+
+                    if (step.TryGetProperty("summary", out var summary) && summary.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var block in summary.EnumerateArray())
+                        {
+                            if (block.TryGetProperty("type", out var blockType))
+                            {
+                                contentTypes.Add("summary:" + (blockType.GetString() ?? "?"));
+                            }
+                        }
+                    }
+                }
+            }
+
+            _logger.LogWarning(
+                "Gemini Interactions response sem imagem extraível. Status={Status} StepTypes={StepTypes} ContentTypes={ContentTypes}",
+                status,
+                string.Join(',', stepTypes),
+                string.Join(',', contentTypes));
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Gemini Interactions response sem imagem extraível; corpo JSON não pôde ser inspecionado.");
+        }
+    }
+
+    private static bool TryExtractLastModelOutputImage(JsonElement steps, out byte[] bytes)
+    {
+        bytes = [];
+        byte[]? last = null;
+
+        foreach (var step in steps.EnumerateArray())
+        {
+            if (!step.TryGetProperty("type", out var stepType) ||
+                !string.Equals(stepType.GetString(), "model_output", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!step.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var block in content.EnumerateArray())
+            {
+                if (TryReadImageContentBlock(block, out var decoded))
+                {
+                    last = decoded;
+                }
+            }
+        }
+
+        if (last is null)
+        {
+            return false;
+        }
+
+        bytes = last;
+        return true;
+    }
+
+    private static bool TryExtractLastThoughtSummaryImage(JsonElement steps, out byte[] bytes)
+    {
+        bytes = [];
+        byte[]? last = null;
+
+        foreach (var step in steps.EnumerateArray())
+        {
+            if (!step.TryGetProperty("type", out var stepType) ||
+                !string.Equals(stepType.GetString(), "thought", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!step.TryGetProperty("summary", out var summary) || summary.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var block in summary.EnumerateArray())
+            {
+                if (TryReadImageContentBlock(block, out var decoded))
+                {
+                    last = decoded;
+                }
+            }
+        }
+
+        if (last is null)
+        {
+            return false;
+        }
+
+        bytes = last;
+        return true;
+    }
+
+    private static bool TryReadImageContentBlock(JsonElement block, out byte[] bytes)
+    {
+        bytes = [];
+        if (!block.TryGetProperty("type", out var typeEl) ||
+            !string.Equals(typeEl.GetString(), "image", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!block.TryGetProperty("data", out var dataElement))
+        {
+            return false;
+        }
+
+        var encoded = dataElement.GetString();
+        if (string.IsNullOrWhiteSpace(encoded))
+        {
+            return false;
+        }
+
+        bytes = Convert.FromBase64String(encoded);
+        return bytes.Length > 0;
     }
 
     private static bool TryReadBase64(JsonElement parent, string objectProperty, string dataProperty, out byte[] bytes)

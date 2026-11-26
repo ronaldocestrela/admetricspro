@@ -22,8 +22,11 @@ public sealed class HttpGeminiImageGeneratorTests
 {
     private const string ApiKey = "gemini-test-key";
 
-  private static readonly byte[] MinimalPng = Convert.FromBase64String(
+    private static readonly byte[] MinimalPng = Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+
+    private static readonly byte[] AlternatePng = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAADElEQVQI12P4z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
 
     /// <summary>
     /// Resposta válida com output_image deve retornar bytes PNG.
@@ -77,6 +80,51 @@ public sealed class HttpGeminiImageGeneratorTests
     public async Task GenerateAsync_ComStepsInlineData_DeveRetornarPng()
     {
         var handler = new TestHttpMessageHandler((_, _) => StepsInlineDataResponse(MinimalPng));
+        var generator = CreateGenerator(handler);
+
+        var result = await generator.GenerateAsync(SampleBrief(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Content.Should().Equal(MinimalPng);
+    }
+
+    /// <summary>
+    /// Resposta REST com steps.model_output.content type image deve retornar bytes PNG.
+    /// </summary>
+    [Fact]
+    public async Task GenerateAsync_ComModelOutputContentImage_DeveRetornarPng()
+    {
+        var handler = new TestHttpMessageHandler((_, _) => ModelOutputContentImageResponse(MinimalPng));
+        var generator = CreateGenerator(handler);
+
+        var result = await generator.GenerateAsync(SampleBrief(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Content.Should().Equal(MinimalPng);
+    }
+
+    /// <summary>
+    /// Com texto e múltiplas imagens em model_output, deve usar a última imagem.
+    /// </summary>
+    [Fact]
+    public async Task GenerateAsync_ComVariasImagensEmModelOutput_DeveUsarUltimaImagem()
+    {
+        var handler = new TestHttpMessageHandler((_, _) => ModelOutputMixedContentResponse(MinimalPng, AlternatePng));
+        var generator = CreateGenerator(handler);
+
+        var result = await generator.GenerateAsync(SampleBrief(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Content.Should().Equal(AlternatePng);
+    }
+
+    /// <summary>
+    /// Resposta com imagem apenas em steps.thought.summary deve retornar bytes PNG.
+    /// </summary>
+    [Fact]
+    public async Task GenerateAsync_ComThoughtSummaryImage_DeveRetornarPng()
+    {
+        var handler = new TestHttpMessageHandler((_, _) => ThoughtSummaryImageResponse(MinimalPng));
         var generator = CreateGenerator(handler);
 
         var result = await generator.GenerateAsync(SampleBrief(), CancellationToken.None);
@@ -152,6 +200,83 @@ public sealed class HttpGeminiImageGeneratorTests
             steps = new[]
             {
                 new { inline_data = new { mime_type = "image/png", data = base64 } },
+            },
+        });
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    private static HttpResponseMessage ModelOutputContentImageResponse(byte[] png)
+    {
+        var base64 = Convert.ToBase64String(png);
+        var json = JsonSerializer.Serialize(new
+        {
+            status = "completed",
+            steps = new[]
+            {
+                new
+                {
+                    type = "model_output",
+                    content = new[]
+                    {
+                        new { type = "image", data = base64, mime_type = "image/png" },
+                    },
+                },
+            },
+        });
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    private static HttpResponseMessage ModelOutputMixedContentResponse(byte[] firstPng, byte[] lastPng)
+    {
+        var firstBase64 = Convert.ToBase64String(firstPng);
+        var lastBase64 = Convert.ToBase64String(lastPng);
+        var json = JsonSerializer.Serialize(new
+        {
+            status = "completed",
+            steps = new[]
+            {
+                new
+                {
+                    type = "model_output",
+                    content = new object[]
+                    {
+                        new { type = "text", text = "draft" },
+                        new { type = "image", data = firstBase64, mime_type = "image/png" },
+                        new { type = "text", text = "final" },
+                        new { type = "image", data = lastBase64, mime_type = "image/png" },
+                    },
+                },
+            },
+        });
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    private static HttpResponseMessage ThoughtSummaryImageResponse(byte[] png)
+    {
+        var base64 = Convert.ToBase64String(png);
+        var json = JsonSerializer.Serialize(new
+        {
+            status = "completed",
+            steps = new[]
+            {
+                new
+                {
+                    type = "thought",
+                    summary = new object[]
+                    {
+                        new { type = "text", text = "composing" },
+                        new { type = "image", data = base64, mime_type = "image/png" },
+                    },
+                },
             },
         });
         return new HttpResponseMessage(HttpStatusCode.OK)
