@@ -4,7 +4,7 @@
 
 Aceito em 2026-11-25.
 
-As **Fases 1–4** do [roadmap de object storage](../roadmaps/minio-object-storage-roadmap.md) estão implementadas (cluster, `IObjectStore`, cliente MinIO/local, mídia orgânica em `IOrganicMediaStore` com URL pública HMAC e `GET /api/v1/public/media/{token}`). As **Fases 5–7** permanecem pendentes. O padrão do repositório permanece `ObjectStorage:Provider=**Local**` até a Fase 5 em ambientes com volume legado; `GeneratedReport.PdfContent` no SQL do tenant só migra na Fase 6. Este ADR **não** substitui o [ADR 0037](0037-white-label-automated-reports-generator.md); complementa-o quanto ao destino dos bytes do PDF.
+As **Fases 1–5** do [roadmap de object storage](../roadmaps/minio-object-storage-roadmap.md) estão implementadas (cluster, `IObjectStore`, cliente MinIO/local, mídia orgânica, cópia one-shot do volume `social-media-data`). As **Fases 6–7** permanecem pendentes. O padrão do repositório permanece `ObjectStorage:Provider=**Local**` em ambientes legados até o operador concluir a cópia e validar contagens; `GeneratedReport.PdfContent` no SQL do tenant só migra na Fase 6. Este ADR **não** substitui o [ADR 0037](0037-white-label-automated-reports-generator.md); complementa-o quanto ao destino dos bytes do PDF.
 
 ## Contexto
 

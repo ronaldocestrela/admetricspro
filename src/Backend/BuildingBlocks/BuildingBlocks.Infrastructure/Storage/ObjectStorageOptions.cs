@@ -71,6 +71,19 @@ public sealed class ObjectStorageOptions
     public string PublishUrlSigningKey { get; set; } = string.Empty;
 
     /// <summary>
+    /// Quando <see langword="true"/> com <see cref="Provider"/>=MinIO, dispara a cópia one-shot do volume orgânico local (Fase 5).
+    /// </summary>
+    public bool MigrateLocalRoot { get; set; }
+
+    /// <summary>
+    /// Indica se o job de migração do volume orgânico deve ser registrado.
+    /// </summary>
+    /// <param name="options">Opções materializadas da seção <c>ObjectStorage</c>.</param>
+    /// <returns><see langword="true"/> quando MinIO e <see cref="MigrateLocalRoot"/> estão ativos.</returns>
+    public static bool ShouldRunOrganicMediaVolumeMigration(ObjectStorageOptions options) =>
+        ShouldRegisterMinioHealthCheck(options) && options.MigrateLocalRoot;
+
+    /// <summary>
     /// Indica se o health check do MinIO deve ser registrado.
     /// </summary>
     /// <param name="options">Opções materializadas da seção <c>ObjectStorage</c>.</param>

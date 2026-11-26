@@ -58,4 +58,16 @@ public interface IObjectStore
         string bucket,
         string key,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém o tamanho em bytes do objeto, se existir.
+    /// </summary>
+    /// <param name="bucket">Nome do bucket.</param>
+    /// <param name="key">Chave do objeto.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns><see langword="null"/> quando ausente; caso contrário o tamanho em sucesso.</returns>
+    Task<Result<long?>> GetContentLengthAsync(
+        string bucket,
+        string key,
+        CancellationToken cancellationToken = default);
 }

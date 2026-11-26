@@ -46,6 +46,7 @@ public static class SocialPublishingModuleServiceExtensions
         services.AddScoped<IOrganicConnectionRepository, OrganicConnectionRepository>();
         services.AddScoped<IOrganicPostRepository, OrganicPostRepository>();
         services.AddScoped<IOrganicMediaAssetRepository, OrganicMediaAssetRepository>();
+        services.AddScoped<OrganicMediaVolumeCopier>();
         services.AddScoped<IBrandVoiceRepository, BrandVoiceRepository>();
         services.AddScoped<IEditorialPlanGenerationRepository, EditorialPlanGenerationRepository>();
         services.AddScoped<IPublicationJobRepository, PublicationJobRepository>();

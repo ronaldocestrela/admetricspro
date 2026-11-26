@@ -3,6 +3,7 @@ using BuildingBlocks.Infrastructure.MultiTenancy;
 using FluentAssertions;
 using NSubstitute;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Media;
 using SocialPublishing.Application.Media.Commands.RegisterOrganicMedia;
 using SocialPublishing.Application.Options;
 using SocialPublishing.Domain;
@@ -188,5 +189,9 @@ public sealed class RegisterOrganicMediaCommandTests
             Items.Add(asset);
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<OrganicMediaCatalogEntry>> ListObjectKeysForMigrationAuditAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicMediaCatalogEntry>>(Array.Empty<OrganicMediaCatalogEntry>());
     }
 }

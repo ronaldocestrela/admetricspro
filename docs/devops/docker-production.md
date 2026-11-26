@@ -90,7 +90,14 @@ No `.env.prod` do operador, defina credenciais fortes (nunca versionadas):
 - Com `ObjectStorage__Provider=MinIO`, a Web API registra o check nomeado `minio` em `GET /health`; cluster inacessível em `http://minio:9000` deixa o agregado **Unhealthy** (503). A **mídia orgânica** (Fase 4) grava no bucket `admetricspro-organic` quando `MinIO` está ativo; o padrão do repositório permanece **`ObjectStorage__Provider=Local`** até a Fase 5 concluir a cópia do volume `social-media-data` em ambientes legados. Overlay opcional: `docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.minio.yml up` (dev: `docker-compose.yml` + `docker-compose.minio.yml`). Com `ObjectStorage__PublicBaseUrl` definido, configure `ObjectStorage__PublishUrlSigningKey` (mín. 32 caracteres).
 - Console MinIO (`9001`) e API S3 (`9000`) **não** são publicados no host. Diagnóstico via logs do container ou `mc` na rede interna.
 
-Variáveis de referência (ADR 0018): `ObjectStorage__LocalRoot`, `ObjectStorage__ServiceUrl`, `ObjectStorage__OrganicBucket`, `ObjectStorage__ReportsBucket`, `ObjectStorage__BrandingBucket`, `ObjectStorage__Region`, `ObjectStorage__PublicBaseUrl`, `ObjectStorage__PublishUrlTtlMinutes`.
+Variáveis de referência (ADR 0018): `ObjectStorage__LocalRoot`, `ObjectStorage__ServiceUrl`, `ObjectStorage__OrganicBucket`, `ObjectStorage__ReportsBucket`, `ObjectStorage__BrandingBucket`, `ObjectStorage__Region`, `ObjectStorage__PublicBaseUrl`, `ObjectStorage__PublishUrlTtlMinutes`, `ObjectStorage__MigrateLocalRoot` (padrão `false`; **nunca** `true` nas réplicas que servem HTTP no dia a dia).
+
+**Runbook — cópia do volume orgânico (Fase 5)**
+
+1. Subir MinIO e `minio-init` (buckets privados). As réplicas que atendem tráfego permanecem com `ObjectStorage__Provider=Local` e o volume `social-media-prod-data` montado em `SocialPublishing__Media__LocalRoot`.
+2. Disparar **um** processo da imagem `webapi` com overlay MinIO, volume legado montado, `ObjectStorage__Provider=MinIO`, `ObjectStorage__MigrateLocalRoot=true` e `Messaging__HostRole=Api` (evita laços de scheduler durante a cópia). Exemplo: `docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.minio.yml run --rm -e ObjectStorage__MigrateLocalRoot=true -e Messaging__HostRole=Api webapi`.
+3. Conferir o log estruturado: `Copiados + Ignorados` deve refletir os arquivos do volume; `Falhos` = 0 antes do corte; revisar `AusentesNoDisco` (buraco SQL × disco).
+4. Somente então alterar `ObjectStorage__Provider=MinIO` nas réplicas de produção. **Manter** o volume montado por uma janela de rollback. Remover o volume não faz parte desta fase.
 
 ### Mensageria multi-instância (Fase 10)
 

@@ -161,6 +161,30 @@ public sealed class LocalObjectStore : IObjectStore
         return Task.FromResult(Result<bool>.Success(File.Exists(path)));
     }
 
+    /// <inheritdoc />
+    public Task<Result<long?>> GetContentLengthAsync(
+        string bucket,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var keyResult = ValidateKey(key);
+        if (keyResult.IsFailure)
+        {
+            return Task.FromResult(Result<long?>.Failure(keyResult.Error));
+        }
+
+        var path = MapPath(keyResult.Value!.Value);
+        if (!File.Exists(path))
+        {
+            return Task.FromResult(Result<long?>.Success(null));
+        }
+
+        var length = new FileInfo(path).Length;
+        return Task.FromResult(Result<long?>.Success(length));
+    }
+
     private Result<ObjectKey> ValidateKey(string key)
     {
         var tenantId = _tenantContextAccessor.TenantContext.TenantId;

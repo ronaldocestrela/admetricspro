@@ -1,3 +1,4 @@
+using SocialPublishing.Application.Media;
 using SocialPublishing.Domain.Posts;
 
 namespace SocialPublishing.Application.Abstractions;
@@ -21,4 +22,12 @@ public interface IOrganicMediaAssetRepository
     /// <param name="asset">Entidade validada.</param>
     /// <param name="cancellationToken">Token de cancelamento.</param>
     Task AddAsync(OrganicMediaAsset asset, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista chaves e MIME de todos os ativos para auditoria de migração (somente leitura).
+    /// </summary>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    /// <returns>Entradas com <see cref="OrganicMediaCatalogEntry.ObjectKey"/> preenchido.</returns>
+    Task<IReadOnlyList<OrganicMediaCatalogEntry>> ListObjectKeysForMigrationAuditAsync(
+        CancellationToken cancellationToken = default);
 }

@@ -129,5 +129,11 @@ public sealed class OrganicMediaStoreTests
             string key,
             CancellationToken cancellationToken = default) =>
             inner.ExistsAsync(bucket, key, cancellationToken);
+
+        public Task<BuildingBlocks.Domain.Primitives.Result<long?>> GetContentLengthAsync(
+            string bucket,
+            string key,
+            CancellationToken cancellationToken = default) =>
+            inner.GetContentLengthAsync(bucket, key, cancellationToken);
     }
 }

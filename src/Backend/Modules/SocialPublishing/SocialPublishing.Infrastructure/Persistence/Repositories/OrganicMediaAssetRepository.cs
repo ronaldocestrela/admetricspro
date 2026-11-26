@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Media;
 using SocialPublishing.Domain.Posts;
 
 namespace SocialPublishing.Infrastructure.Persistence.Repositories;
@@ -46,5 +47,23 @@ public sealed class OrganicMediaAssetRepository : IOrganicMediaAssetRepository
         }
 
         await contextResult.Value.OrganicMediaAssets.AddAsync(asset, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<OrganicMediaCatalogEntry>> ListObjectKeysForMigrationAuditAsync(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var contextResult = await _contextAccessor.GetDbContextAsync(cancellationToken);
+        if (contextResult.IsFailure)
+        {
+            return Array.Empty<OrganicMediaCatalogEntry>();
+        }
+
+        return await contextResult.Value.OrganicMediaAssets
+            .AsNoTracking()
+            .Where(a => a.ObjectKey != null && a.ObjectKey != string.Empty)
+            .Select(a => new OrganicMediaCatalogEntry(a.ObjectKey!, a.MimeType))
+            .ToListAsync(cancellationToken);
     }
 }

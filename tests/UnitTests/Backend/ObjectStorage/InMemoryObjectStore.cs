@@ -73,5 +73,20 @@ public sealed class InMemoryObjectStore : IObjectStore
         return Task.FromResult(Result<bool>.Success(exists));
     }
 
+    /// <inheritdoc />
+    public Task<Result<long?>> GetContentLengthAsync(
+        string bucket,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!_objects.TryGetValue((bucket, key), out var stored))
+        {
+            return Task.FromResult(Result<long?>.Success(null));
+        }
+
+        return Task.FromResult(Result<long?>.Success(stored.Content.LongLength));
+    }
+
     private sealed record StoredObject(byte[] Content, string ContentType);
 }

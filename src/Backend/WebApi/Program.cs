@@ -110,6 +110,7 @@ builder.Services.AddAnalyticsInfrastructure(builder.Configuration);
 builder.Services.AddAutomationsApplication();
 builder.Services.AddAutomationsInfrastructure(builder.Configuration);
 builder.Services.AddSocialPublishingModule(builder.Configuration);
+builder.Services.AddOrganicMediaVolumeMigration(builder.Configuration);
 builder.Services.AddSocialPublishingTenantPersistenceComposition(
     MessagingHostRolePolicy.ShouldRegisterSocialTenantMigrationWorker(messagingHostRole));
 builder.Services.AddEmailInfrastructure(builder.Configuration);

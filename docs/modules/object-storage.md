@@ -2,9 +2,18 @@
 
 Contrato e diagnóstico do armazenamento de objetos gerados pelo AdMetricsPro. A decisão arquitetural está no [ADR 0053](../adr/0053-minio-object-storage.md). A ordem de implementação está no [roadmap MinIO](../roadmaps/minio-object-storage-roadmap.md).
 
+### Fase 5 — cópia do volume orgânico (entregue)
+
+- **Sem endpoint HTTP:** o operador sobe um processo único da Web API com `ObjectStorage:Provider=MinIO` e `ObjectStorage:MigrateLocalRoot=true` (`OrganicMediaVolumeMigrationHostedService`); o host encerra após o relatório.
+- **Origem:** `SocialPublishing:Media:LocalRoot` (volume legado `social-media-data`). **Destino:** bucket `ObjectStorage:OrganicBucket` com a **mesma** chave. Nenhum `UPDATE` em `OrganicMediaAssets`.
+- **`OrganicMediaVolumeCopier`:** enumera arquivos, consulta `IObjectStore.GetContentLengthAsync`, ignora quando o tamanho remoto coincide; MIME do `Put` vem do catálogo SQL quando disponível.
+- **Relatório:** `Copied`, `Skipped`, `Failed`, `MissingOnDisk` (chave no SQL sem arquivo no volume). Logs registram só a chave.
+- **Rollback:** manter o volume montado e `ObjectStorage:Provider=Local` até validar contagens; apagar o volume fica fora desta fase.
+- Runbook operacional: [docker-production.md](../devops/docker-production.md) (seção MinIO).
+
 ### Fase 4 — mídia orgânica (entregue)
 
-- **`ObjectStoreOrganicMediaStore`:** quando `ObjectStorage:Provider=MinIO`, `IOrganicMediaStore` grava no bucket `ObjectStorage:OrganicBucket` via `IObjectStore`; com `Local`, permanece `LocalOrganicMediaStore` em `SocialPublishing:Media:LocalRoot` (padrão do repositório até a Fase 5).
+- **`ObjectStoreOrganicMediaStore`:** quando `ObjectStorage:Provider=MinIO`, `IOrganicMediaStore` grava no bucket `ObjectStorage:OrganicBucket` via `IObjectStore`; com `Local`, permanece `LocalOrganicMediaStore` em `SocialPublishing:Media:LocalRoot` (padrão do repositório até concluir a Fase 5 em ambientes legados).
 - **Chave inalterada:** `organic-media/staging|durable/{tenant:N}/{workspace:N}/{asset:N}` (`OrganicMediaObjectKeyFormatter`).
 - **URL pública:** `SignedOrganicMediaPublicUrlResolver` emite `https://{ObjectStorage:PublicBaseUrl}/api/v1/public/media/{token}` com HMAC (`ObjectStorage:PublishUrlSigningKey`, TTL `ObjectStorage:PublishUrlTtlMinutes`, teto 1440). Sem `PublicBaseUrl`, publicação falha com `Social.MediaPublicBaseUrlMissing`.
 - **Endpoint:** `GET /api/v1/public/media/{token}` (`[AllowAnonymous]`) — stream binário com `Content-Type` do token; 404 opaco para token inválido/expirado; 422 para `Storage.KeyInvalid` pós-HMAC.
@@ -18,7 +27,7 @@ Contrato e diagnóstico do armazenamento de objetos gerados pelo AdMetricsPro. A
 
 ### Fase 2 — porta sem rede (entregue)
 
-- **`BuildingBlocks.Application.Storage`:** `IObjectStore`, `ObjectKey.Create`, `StorageErrors` (códigos estáveis do catálogo da seção 3).
+- **`BuildingBlocks.Application.Storage`:** `IObjectStore` (`PutAsync`, `OpenReadAsync`, `DeleteAsync`, `ExistsAsync`, `GetContentLengthAsync`), `ObjectKey.Create`, `StorageErrors` (códigos estáveis do catálogo da seção 3).
 - **Regra de chave:** validação pura por `Guid tenantId` — chaves orgânicas `organic-media/staging|durable/{tenant:N}/{workspace:N}/{asset:N}` ou prefixo `{tenant:N}/…` com ao menos um segmento após o tenant; rejeição de `\`, `..` e segmentos vazios.
 - **Fake:** `InMemoryObjectStore` apenas em testes unitários (`UnitTests.Backend.ObjectStorage`).
 - **Compliance:** `AgentsArchitectureComplianceTests.ObjectStorageSdk_MustNotBeReferencedOutsideBuildingBlocksInfrastructure` — `AWSSDK.S3` / `AWSSDK.Core` removidos de `SocialPublishing.Infrastructure` (`S3OrganicMediaStore` eliminado); provedor de mídia orgânica é `ObjectStorage:Provider` (Fase 4).
@@ -152,6 +161,7 @@ if (keyResult.IsFailure)
 | `ObjectStorage__BrandingBucket` | `admetricspro-branding`. |
 | `ObjectStorage__PublicBaseUrl` | Origem HTTPS da Web API para links de publicação assinados. |
 | `ObjectStorage__PublishUrlTtlMinutes` | Vida do token de leitura pública (padrão 120, teto 1440). |
+| `ObjectStorage__MigrateLocalRoot` | `true` apenas no processo one-shot de cópia do volume orgânico (Fase 5); padrão `false`. |
 | `ObjectStorage__PublishUrlSigningKey` | Chave HMAC de tokens públicos (obrigatória com `PublicBaseUrl`). |
 
 ### `GET /api/v1/public/media/{token}`

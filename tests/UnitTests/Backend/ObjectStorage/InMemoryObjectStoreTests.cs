@@ -104,6 +104,19 @@ public sealed class InMemoryObjectStoreTests
     }
 
     [Fact]
+    public async Task GetContentLengthAsync_WhenPresent_ReturnsSize_WhenAbsent_ReturnsNull()
+    {
+        var store = new InMemoryObjectStore();
+        const string bucket = "b";
+        const string key = "k";
+        var payload = new byte[] { 1, 2, 3, 4, 5 };
+
+        (await store.GetContentLengthAsync(bucket, key)).Value.Should().BeNull();
+        await store.PutAsync(bucket, key, new MemoryStream(payload), "application/octet-stream");
+        (await store.GetContentLengthAsync(bucket, key)).Value.Should().Be(payload.Length);
+    }
+
+    [Fact]
     public async Task ExistsAsync_ReturnsFalseWithoutObjectNotFound()
     {
         var store = new InMemoryObjectStore();

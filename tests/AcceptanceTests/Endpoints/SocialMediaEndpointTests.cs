@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SocialPublishing.Application.Abstractions;
+using SocialPublishing.Application.Media;
 using SocialPublishing.Application.Media.DTOs;
 using SocialPublishing.Domain.Posts;
 using System.IdentityModel.Tokens.Jwt;
@@ -307,6 +308,10 @@ public sealed class SocialMediaEndpointTests : IClassFixture<WebApplicationFacto
 
         public Task AddAsync(OrganicMediaAsset asset, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task<IReadOnlyList<OrganicMediaCatalogEntry>> ListObjectKeysForMigrationAuditAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrganicMediaCatalogEntry>>(Array.Empty<OrganicMediaCatalogEntry>());
     }
 
     private sealed class AcceptanceStubSocialUnitOfWork : ISocialPublishingUnitOfWork

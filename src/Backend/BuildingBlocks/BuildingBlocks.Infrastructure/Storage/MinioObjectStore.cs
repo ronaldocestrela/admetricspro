@@ -209,6 +209,47 @@ public sealed class MinioObjectStore : IObjectStore
         }
     }
 
+    /// <inheritdoc />
+    public async Task<Result<long?>> GetContentLengthAsync(
+        string bucket,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var keyResult = ValidateKey(key);
+        if (keyResult.IsFailure)
+        {
+            return Result<long?>.Failure(keyResult.Error);
+        }
+
+        var objectKey = keyResult.Value.Value;
+        try
+        {
+            var metadata = await _s3.GetObjectMetadataAsync(bucket, objectKey, cancellationToken);
+            return Result<long?>.Success(metadata.ContentLength);
+        }
+        catch (AmazonS3Exception ex) when (IsObjectNotFound(ex))
+        {
+            return Result<long?>.Success(null);
+        }
+        catch (AmazonS3Exception ex)
+        {
+            LogS3Error(ex, "HeadObject", bucket, objectKey);
+            return Result<long?>.Failure(StorageErrors.ReadFailed);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Falha de transporte ao obter tamanho do objeto. Endpoint={Endpoint}, Bucket={Bucket}, Key={Key}",
+                _options.ServiceUrl,
+                bucket,
+                objectKey);
+            return Result<long?>.Failure(StorageErrors.ReadFailed);
+        }
+    }
+
     private Result<ObjectKey> ValidateKey(string key)
     {
         var tenantId = _tenantContextAccessor.TenantContext.TenantId;
