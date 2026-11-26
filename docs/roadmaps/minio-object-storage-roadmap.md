@@ -90,7 +90,7 @@ Staging orgânico não confirmado em 24 horas é lixo. A limpeza é política de
 
 ## 4. Topologia alvo
 
-Um serviço `minio` na rede Docker já usada pelo SQL e pelo RabbitMQ. Imagem `minio/minio` com `server /data`. Volume nomeado `minio-data` (dev) e `minio-prod-data` (prod). Healthcheck em `mc ready local` ou no endpoint de live do processo, no padrão `service_healthy` do ADR 0038.
+Um serviço `minio` na rede Docker já usada pelo SQL e pelo RabbitMQ. Imagem com `server /data` (hoje `docker.io/pgsty/silo`, porque `minio/minio` saiu do Docker Hub). Volume nomeado `minio-data` (dev) e `minio-prod-data` (prod). Healthcheck em `mc ready local` ou no endpoint de live do processo, no padrão `service_healthy` do ADR 0038.
 
 | Peça | Dev | Produção |
 | :--- | :--- | :--- |

@@ -56,8 +56,8 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 | :--- | :--- | :--- | :--- | :--- |
 | **`sqlserver`** | `mssql/server:2022-latest` | `1433` | `127.0.0.1:1433` | Banco de dados `MasterCatalog` e bancos isolados de inquilinos. |
 | **`rabbitmq`** | `rabbitmq:4` | `5672` (AMQP) | **Nenhuma** | Broker de mensageria; tráfego somente na rede `admetricspro-prod-net`. Não exponha `5672` nem `15672` na internet. |
-| **`minio`** | `minio/minio` | `9000` (API S3), `9001` (console) | **Nenhuma** | Object storage S3-compatível; tráfego somente na rede `admetricspro-prod-net`. Não exponha `9000` nem `9001` na internet. |
-| **`minio-init`** | `minio/mc` | — | — | Job único: cria buckets privados e regra ILM de staging; idempotente. |
+| **`minio`** | `pgsty/silo` | `9000` (API S3), `9001` (console) | **Nenhuma** | Object storage S3-compatível (fork do MinIO community, removido do Docker Hub). Tráfego somente na rede `admetricspro-prod-net`. Não exponha `9000` nem `9001` na internet. |
+| **`minio-init`** | `pgsty/silo` | — | — | Job único: a imagem inclui o cliente `mc`. Cria buckets privados e regra ILM de staging; idempotente. |
 | **`webapi`** | `src/Backend/WebApi/Dockerfile` | `8080` | `7001` | Backend Monólito Modular ASP.NET Core .NET 10. |
 | **`webapp`** | `src/Frontend/WebApp/Dockerfile` | `8080` | `7000` | Painel do Cliente / Inquilinos (Blazor Server). |
 | **`backoffice`** | `src/Frontend/BackofficeApp/Dockerfile` | `8080` | `7002` | Painel do Administrador Global (Blazor Server). |

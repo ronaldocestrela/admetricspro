@@ -52,9 +52,11 @@ services:
 
   # ----------------------------------------------------------------------------
   # 1c. MINIO (OBJECT STORAGE — FASE 1)
+  # minio/minio e minio/mc saíram do Docker Hub. pgsty/silo mantém o mesmo
+  # contrato (server /data, mc, curl) e aceita o volume já existente.
   # ----------------------------------------------------------------------------
   minio:
-    image: minio/minio:RELEASE.2024-12-13T22-37-12Z
+    image: docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     container_name: admetricspro-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -76,7 +78,7 @@ services:
       start_period: 15s
 
   minio-init:
-    image: minio/mc:RELEASE.2024-12-13T22-37-12Z
+    image: docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     container_name: admetricspro-minio-init
     restart: "no"
     depends_on:

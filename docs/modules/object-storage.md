@@ -20,7 +20,7 @@ Contrato e diagnóstico do armazenamento de objetos gerados pelo AdMetricsPro. A
 
 ### Fase 1 — cluster no ambiente (entregue)
 
-- Serviços `minio` e `minio-init` em `docker-compose.yml` / `docker-compose.prod.yml`: três buckets privados (`admetricspro-organic`, `admetricspro-reports`, `admetricspro-branding`), regra ILM de 24 h no prefixo `organic-media/staging/` do bucket orgânico (script idempotente em `deploy/minio/init-buckets.sh`).
+- Serviços `minio` e `minio-init` em `docker-compose.yml` / `docker-compose.prod.yml`, imagem `docker.io/pgsty/silo` (o registry `minio/minio` foi removido): três buckets privados (`admetricspro-organic`, `admetricspro-reports`, `admetricspro-branding`), regra ILM de 24 h no prefixo `organic-media/staging/` do bucket orgânico (script idempotente em `deploy/minio/init-buckets.sh`, cliente `mc` incluso na imagem).
 - Dev: API S3 e console em `127.0.0.1:9000` e `127.0.0.1:9001`. Produção: **nenhuma** porta MinIO publicada no host ([guia Docker produção](../devops/docker-production.md)).
 - Health check nomeado `minio` em `GET /health` somente quando `ObjectStorage__Provider=MinIO`; com `Local` (padrão), o agregado permanece como antes.
 - Handlers de mídia orgânica leem/gravam no cluster somente com `ObjectStorage:Provider=MinIO` (Fase 4).
