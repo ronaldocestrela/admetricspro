@@ -122,6 +122,7 @@ public sealed class OrganicPostDetailDialogTests : BunitTestBase
             .Add(x => x.WorkspaceId, workspaceId)
             .Add(x => x.Post, post));
 
+        cut.Find("[data-testid='organic-post-detail-image-frame']").Should().NotBeNull();
         var img = cut.Find("[data-testid='organic-post-detail-image-preview']");
         img.GetAttribute("src").Should().Be("https://cdn.test/preview.png");
     }

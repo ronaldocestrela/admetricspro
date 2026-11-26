@@ -29,4 +29,18 @@ public sealed class OrganicPostCaptionDisplayTests
         parts.Body.Should().Be("Gancho");
         parts.Hashtags.Should().BeEquivalentTo(["#Marca", "#Nicho"]);
     }
+
+    /// <summary>
+    /// Linhas finais duplicadas só com hashtags não repetem chips na UI.
+    /// </summary>
+    [Fact]
+    public void Parse_WithDuplicateHashtagLines_DeduplicatesTagsPreservingOrder()
+    {
+        const string tags = "#LavaJato #EsteticaAutomotiva #GestaoSimples";
+        var caption = $"Gancho\n{tags}\n{tags}";
+        var parts = OrganicPostCaptionDisplay.Parse(caption);
+
+        parts.Body.Should().Be("Gancho");
+        parts.Hashtags.Should().Equal(["#LavaJato", "#EsteticaAutomotiva", "#GestaoSimples"]);
+    }
 }

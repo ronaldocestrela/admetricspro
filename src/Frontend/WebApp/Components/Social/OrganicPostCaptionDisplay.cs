@@ -75,7 +75,17 @@ public static class OrganicPostCaptionDisplay
         }
 
         var body = string.Join('\n', lines.Take(bodyEnd)).TrimEnd();
-        return new Parts(body, hashtags);
+        var distinctHashtags = new List<string>(hashtags.Count);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tag in hashtags)
+        {
+            if (seen.Add(tag))
+            {
+                distinctHashtags.Add(tag);
+            }
+        }
+
+        return new Parts(body, distinctHashtags);
     }
 
     /// <summary>

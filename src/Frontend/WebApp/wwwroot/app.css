@@ -256,8 +256,64 @@ h1:focus {
 }
 
 /* Diálogo de detalhe do post orgânico (calendário social) */
+.tenant-app-shell .organic-post-detail-backdrop {
+    overflow: auto;
+    align-items: flex-start;
+}
+
+@media (min-height: 640px) {
+    .tenant-app-shell .organic-post-detail-backdrop {
+        align-items: center;
+    }
+}
+
 .tenant-app-shell .organic-post-detail-dialog {
-    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    max-width: min(560px, calc(100vw - 2rem));
+    max-height: min(92vh, 900px);
+    margin: auto;
+    border: 1px solid var(--tenant-border, #42475370);
+    background: var(--tenant-surface, #12151e);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px #0006;
+    overflow: hidden;
+}
+
+.tenant-app-shell .organic-post-detail-dialog .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.tenant-app-shell .organic-post-detail-image-frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--tenant-border, #42475370);
+    background: var(--tenant-surface-elevated, #1b1f2b);
+}
+
+.tenant-app-shell .organic-post-detail-image-preview {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: min(52vh, 480px);
+    object-fit: contain;
+    margin-inline: auto;
+}
+
+.tenant-app-shell .organic-post-detail-image-loading {
+    margin: 0;
+    padding: 24px 12px;
+    text-align: center;
+    color: var(--tenant-muted, #8c909f);
+    font-size: 12px;
 }
 
 .tenant-app-shell .organic-post-detail-badges {

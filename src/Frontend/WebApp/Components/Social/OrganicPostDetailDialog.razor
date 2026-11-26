@@ -110,17 +110,24 @@
                     <p class="organic-post-detail-client-change"
                        data-testid="organic-post-detail-client-change">@Post.ClientApprovalComment</p>
                 }
-                @if (!string.IsNullOrWhiteSpace(_previewSrc))
+                @if (!string.IsNullOrWhiteSpace(_previewSrc) || _isLoadingPreview)
                 {
                     <h3 class="h6 organic-post-detail-section-title mt-4">Imagem</h3>
-                    <img class="organic-post-detail-image-preview img-fluid rounded"
-                         data-testid="organic-post-detail-image-preview"
-                         src="@_previewSrc"
-                         alt="Prévia da imagem do post" />
-                }
-                else if (_isLoadingPreview)
-                {
-                    <p class="small text-muted mt-3 mb-0" data-testid="organic-post-detail-image-loading">Carregando prévia…</p>
+                    <div class="organic-post-detail-image-frame"
+                         data-testid="organic-post-detail-image-frame">
+                        @if (!string.IsNullOrWhiteSpace(_previewSrc))
+                        {
+                            <img class="organic-post-detail-image-preview rounded"
+                                 data-testid="organic-post-detail-image-preview"
+                                 src="@_previewSrc"
+                                 alt="Prévia da imagem do post" />
+                        }
+                        else
+                        {
+                            <p class="organic-post-detail-image-loading"
+                               data-testid="organic-post-detail-image-loading">Carregando prévia…</p>
+                        }
+                    </div>
                 }
                 @if (!string.IsNullOrEmpty(_successMessage))
                 {
