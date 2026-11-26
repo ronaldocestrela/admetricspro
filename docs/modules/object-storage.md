@@ -4,21 +4,29 @@ Contrato e diagnóstico do armazenamento de objetos gerados pelo AdMetricsPro. A
 
 **sem endpoint HTTP de negócio nesta fase**
 
-Não existem rotas versionadas de produto, `[EndpointSummary]` de mídia/PDF/marca nem registro de `IObjectStore` na Web API. O endpoint público de stream de mídia (`GET /api/v1/public/media/{token}`) é entrega da **Fase 4** do roadmap.
+Não existem rotas versionadas de produto nem `[EndpointSummary]` de mídia/PDF/marca ligados ao storage. A Web API registra `AddObjectStorage` (Fase 3), mas **nenhum handler de módulo** grava ou lê objetos até a **Fase 4**. O endpoint público de stream de mídia (`GET /api/v1/public/media/{token}`) é entrega da **Fase 4** do roadmap.
 
 ### Fase 1 — cluster no ambiente (entregue)
 
 - Serviços `minio` e `minio-init` em `docker-compose.yml` / `docker-compose.prod.yml`: três buckets privados (`admetricspro-organic`, `admetricspro-reports`, `admetricspro-branding`), regra ILM de 24 h no prefixo `organic-media/staging/` do bucket orgânico (script idempotente em `deploy/minio/init-buckets.sh`).
 - Dev: API S3 e console em `127.0.0.1:9000` e `127.0.0.1:9001`. Produção: **nenhuma** porta MinIO publicada no host ([guia Docker produção](../devops/docker-production.md)).
 - Health check nomeado `minio` em `GET /health` somente quando `ObjectStorage__Provider=MinIO`; com `Local` (padrão), o agregado permanece como antes.
-- Nenhum handler grava ou lê objetos no cluster até as Fases 3–4.
+- Nenhum handler de módulo grava ou lê objetos no cluster até a Fase 4.
 
 ### Fase 2 — porta sem rede (entregue)
 
 - **`BuildingBlocks.Application.Storage`:** `IObjectStore`, `ObjectKey.Create`, `StorageErrors` (códigos estáveis do catálogo da seção 3).
 - **Regra de chave:** validação pura por `Guid tenantId` — chaves orgânicas `organic-media/staging|durable/{tenant:N}/{workspace:N}/{asset:N}` ou prefixo `{tenant:N}/…` com ao menos um segmento após o tenant; rejeição de `\`, `..` e segmentos vazios.
-- **Fake:** `InMemoryObjectStore` apenas em testes unitários (`UnitTests.Backend.ObjectStorage`); não há `AddObjectStorage` nem cliente `AWSSDK` em produção nesta fase.
+- **Fake:** `InMemoryObjectStore` apenas em testes unitários (`UnitTests.Backend.ObjectStorage`).
 - **Compliance:** `AgentsArchitectureComplianceTests.ObjectStorageSdk_MustNotBeReferencedOutsideBuildingBlocksInfrastructure` — `AWSSDK.S3` / `AWSSDK.Core` removidos de `SocialPublishing.Infrastructure` (`S3OrganicMediaStore` eliminado); `SocialPublishing:Media:Provider` aceita somente `Local` até a Fase 4.
+
+### Fase 3 — cliente MinIO (entregue)
+
+- **`BuildingBlocks.Infrastructure.Storage`:** `LocalObjectStore`, `MinioObjectStore`, `ObjectStorageOptions`, `AddObjectStorage`.
+- **`ObjectStorage:Provider`:** `Local` (padrão) registra só disco em `ObjectStorage:LocalRoot` (padrão `./data/object-storage`, irmão de `SocialPublishing:Media:LocalRoot`); `MinIO` registra `IAmazonS3` singleton (`ForcePathStyle`, credenciais da seção `ObjectStorage`) e `MinioObjectStore`.
+- Validação de chave via `ObjectKey.Create` + `ITenantContextAccessor` antes de IO ou chamada S3; falhas estáveis (`StorageErrors`); detalhe do SDK só em log.
+- **`AWSSDK.S3` 3.7.410.12** apenas em `BuildingBlocks.Infrastructure`.
+- Testes: unitários em `UnitTests.Backend.ObjectStorage` (sem rede); integração `MinioObjectStoreIntegrationTests` + `MinioFixture` (`Testcontainers.Minio`) — única suíte que sobe container MinIO.
 
 ---
 
@@ -128,11 +136,12 @@ if (keyResult.IsFailure)
 
 ---
 
-## 5. Configuração (referência; DI na Fase 3)
+## 5. Configuração e DI
 
 | Variável | Papel |
 | :--- | :--- |
 | `ObjectStorage__Provider` | `Local` (padrão) ou `MinIO`. |
+| `ObjectStorage__LocalRoot` | Raiz no disco com `Provider=Local` (padrão `./data/object-storage`). |
 | `ObjectStorage__ServiceUrl` | Endpoint interno, ex. `http://minio:9000`. |
 | `ObjectStorage__AccessKey` / `ObjectStorage__SecretKey` | Credenciais ([ADR 0018](../adr/0018-dotenv-configuration-and-secrets-management.md)). |
 | `ObjectStorage__OrganicBucket` | `admetricspro-organic`. |
@@ -147,7 +156,6 @@ if (keyResult.IsFailure)
 
 | Fase | Documentação adicional |
 | :--- | :--- |
-| 3 | `MinioObjectStore`, `AddObjectStorage` e integração Testcontainers neste arquivo. |
 | 4 | `GET /api/v1/public/media/{token}` em [social-publishing.md](social-publishing.md). |
 | 6 | Download/anexo de PDF em [reports-generator.md](reports-generator.md). |
 | 7 | Upload de logo em [tenants-white-label.md](tenants-white-label.md). |

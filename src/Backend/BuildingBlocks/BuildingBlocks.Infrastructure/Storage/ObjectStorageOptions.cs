@@ -1,7 +1,7 @@
-namespace WebApi.Configuration;
+namespace BuildingBlocks.Infrastructure.Storage;
 
 /// <summary>
-/// Opções de armazenamento de objetos (MinIO / S3). Na Fase 1 apenas o health check consome <see cref="Provider"/> e <see cref="ServiceUrl"/>.
+/// Opções de armazenamento de objetos (MinIO / disco local).
 /// </summary>
 public sealed class ObjectStorageOptions
 {
@@ -16,17 +16,22 @@ public sealed class ObjectStorageOptions
     public string Provider { get; set; } = "Local";
 
     /// <summary>
+    /// Raiz no disco quando <see cref="Provider"/> é <c>Local</c> (irmão de <c>SocialPublishing:Media:LocalRoot</c>).
+    /// </summary>
+    public string LocalRoot { get; set; } = "./data/object-storage";
+
+    /// <summary>
     /// Endpoint HTTP(S) interno da API S3 do MinIO (ex.: <c>http://minio:9000</c>).
     /// </summary>
     public string ServiceUrl { get; set; } = string.Empty;
 
     /// <summary>
-    /// Access key do cluster (usado nas fases seguintes; não lida pelo health check da Fase 1).
+    /// Access key do cluster.
     /// </summary>
     public string AccessKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Secret key do cluster (usado nas fases seguintes; não lida pelo health check da Fase 1).
+    /// Secret key do cluster.
     /// </summary>
     public string SecretKey { get; set; } = string.Empty;
 
@@ -49,6 +54,16 @@ public sealed class ObjectStorageOptions
     /// Nome do bucket de logos e favicon enviados pela agência.
     /// </summary>
     public string BrandingBucket { get; set; } = "admetricspro-branding";
+
+    /// <summary>
+    /// Origem HTTPS da Web API para links de publicação assinados (Fase 4).
+    /// </summary>
+    public string PublicBaseUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Vida do token de leitura pública em minutos (Fase 4).
+    /// </summary>
+    public int PublishUrlTtlMinutes { get; set; } = 120;
 
     /// <summary>
     /// Indica se o health check do MinIO deve ser registrado.

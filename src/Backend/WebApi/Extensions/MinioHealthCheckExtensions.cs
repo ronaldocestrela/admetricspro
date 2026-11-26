@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using WebApi.Configuration;
+using BuildingBlocks.Infrastructure.Storage;
 using WebApi.HealthChecks;
 
 namespace WebApi.Extensions;

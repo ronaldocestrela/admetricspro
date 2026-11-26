@@ -4,7 +4,7 @@
 
 Aceito em 2026-11-25.
 
-A **Fase 1** do [roadmap de object storage](../roadmaps/minio-object-storage-roadmap.md) (cluster MinIO, buckets privados, health check condicional) está implementada. As **Fases 2–7** permanecem pendentes. Até a Fase 4 estar verde, `ObjectStorage:Provider` permanece **`Local`** (comportamento atual: volume da API e `GeneratedReport.PdfContent` no SQL do tenant). Este ADR **não** substitui o [ADR 0037](0037-white-label-automated-reports-generator.md); complementa-o quanto ao destino dos bytes do PDF.
+As **Fases 1–3** do [roadmap de object storage](../roadmaps/minio-object-storage-roadmap.md) estão implementadas (cluster MinIO, porta `IObjectStore`, cliente `MinioObjectStore` / `LocalObjectStore` e `AddObjectStorage`). As **Fases 4–7** permanecem pendentes. Até a Fase 4 estar verde, `ObjectStorage:Provider` permanece **`Local`** (comportamento atual: volume da API / `SocialPublishing:Media:LocalRoot` e `GeneratedReport.PdfContent` no SQL do tenant). Este ADR **não** substitui o [ADR 0037](0037-white-label-automated-reports-generator.md); complementa-o quanto ao destino dos bytes do PDF.
 
 ## Contexto
 

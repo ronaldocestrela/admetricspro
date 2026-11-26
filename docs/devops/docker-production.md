@@ -86,11 +86,11 @@ O plugin de management **não** é publicado em produção (`rabbitmq:4` sem UI)
 No `.env.prod` do operador, defina credenciais fortes (nunca versionadas):
 
 - `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` — usuário dedicado; **não** use `minioadmin`.
-- `ObjectStorage__Provider=Local` (padrão no Compose) mantém o comportamento legado: nenhum health check `minio`, nenhum tráfego S3 na API e a mídia orgânica continua no volume `social-media-prod-data`.
-- Com `ObjectStorage__Provider=MinIO`, a Web API registra o check nomeado `minio` em `GET /health`; cluster inacessível em `http://minio:9000` deixa o agregado **Unhealthy** (503). A gravação de objetos pelos módulos só entra na **Fase 4**; até lá o cluster pode subir vazio para validação operacional.
+- `ObjectStorage__Provider=Local` (padrão no Compose) mantém o comportamento legado: nenhum health check `minio`, nenhum socket S3 na API, `IObjectStore` em disco (`ObjectStorage__LocalRoot`, padrão `./data/object-storage`) e a mídia orgânica continua no volume `social-media-prod-data`.
+- Com `ObjectStorage__Provider=MinIO`, a Web API registra o check nomeado `minio` em `GET /health`; cluster inacessível em `http://minio:9000` deixa o agregado **Unhealthy** (503). O cliente S3 (`AddObjectStorage`) já está ativo na **Fase 3**; a gravação de objetos pelos **módulos** só entra na **Fase 4**; até lá o cluster pode subir vazio para validação operacional.
 - Console MinIO (`9001`) e API S3 (`9000`) **não** são publicados no host. Diagnóstico via logs do container ou `mc` na rede interna.
 
-Variáveis de referência (ADR 0018): `ObjectStorage__ServiceUrl`, `ObjectStorage__OrganicBucket`, `ObjectStorage__ReportsBucket`, `ObjectStorage__BrandingBucket`, `ObjectStorage__Region`, `ObjectStorage__PublicBaseUrl`, `ObjectStorage__PublishUrlTtlMinutes`.
+Variáveis de referência (ADR 0018): `ObjectStorage__LocalRoot`, `ObjectStorage__ServiceUrl`, `ObjectStorage__OrganicBucket`, `ObjectStorage__ReportsBucket`, `ObjectStorage__BrandingBucket`, `ObjectStorage__Region`, `ObjectStorage__PublicBaseUrl`, `ObjectStorage__PublishUrlTtlMinutes`.
 
 ### Mensageria multi-instância (Fase 10)
 
